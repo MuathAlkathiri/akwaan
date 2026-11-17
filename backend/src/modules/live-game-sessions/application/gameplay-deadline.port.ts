@@ -1,3 +1,6 @@
+import type { GameplayRuntime } from '../domain/gameplay-runtime';
+import type { LiveGameSession } from '../domain/live-game-session';
+
 export const GAMEPLAY_DEADLINE_SYNCHRONIZER = Symbol(
   'GAMEPLAY_DEADLINE_SYNCHRONIZER',
 );
@@ -18,4 +21,12 @@ export const GAMEPLAY_DEADLINE_SYNCHRONIZER = Symbol(
  */
 export interface GameplayDeadlineSynchronizer {
   synchronize(sessionId: string): Promise<void>;
+  assertPresentationDeadline?(
+    session: LiveGameSession,
+    runtime: GameplayRuntime,
+    now: Date,
+    key: string,
+    generation: number | undefined,
+    policy: 'activate' | 'fail',
+  ): void;
 }

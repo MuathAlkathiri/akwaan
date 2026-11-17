@@ -309,6 +309,7 @@ function makeHarness(overrides?: {
   } as unknown as LiveSessionTransitionPublisher;
   const deadlines = {
     synchronize,
+    assertPresentationDeadline: jest.fn(),
   } as unknown as GameplayDeadlineSynchronizer;
 
   const unitOfWork: GameplayTransactionUnitOfWork = {
@@ -363,6 +364,54 @@ function ack(
 }
 
 describe('PresentationReady (RYO multi-surface)', () => {
+  it('rejects internal timeout requests without a deadline identity', async () => {
+    const h = makeHarness();
+    await expect(
+      h.useCase.executeDeadline(
+        {
+          sessionId: SESSION_ID,
+          actor: CONTROLLER_ACTOR,
+          commandId: 'missing-key',
+          expectedRuntimeRevision: h.runtime.revision,
+          expectedSessionRevision: h.session.revision,
+          forcePresentationActivation: true,
+        },
+        undefined as never,
+      ),
+    ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
+  });
+
+  it('rejects a forged forced activation through the public command path', async () => {
+    const h = makeHarness();
+    await expect(
+      h.useCase.execute({
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'forged',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        forcePresentationActivation: true,
+      }),
+    ).rejects.toBeInstanceOf(LiveSessionForbiddenError);
+  });
+
+  it('activates an initial barrier through the validated internal path', async () => {
+    const h = makeHarness();
+    h.setNow(new Date(LAUNCH.getTime() + 60_000));
+    await h.useCase.executeDeadline(
+      {
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'deadline',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        forcePresentationActivation: true,
+      },
+      'test-deadline',
+    );
+    expect(h.runtime.serialize().presentationActivatedAt).toBeDefined();
+  });
+
   describe('surface identity and security enforcement', () => {
     it('maps the controller to the shared surface', async () => {
       const h = makeHarness();
@@ -683,15 +732,18 @@ describe('PresentationReady (recurring generation)', () => {
   it('force-activates a generation whose surfaces never acknowledged', async () => {
     const { h, generation } = await preparedHarness();
     h.setNow(T_ACT);
-    await h.useCase.execute({
-      sessionId: SESSION_ID,
-      actor: CONTROLLER_ACTOR,
-      commandId: 'cmd-forced',
-      expectedRuntimeRevision: h.runtime.revision,
-      expectedSessionRevision: h.session.revision,
-      presentationGeneration: generation,
-      forcePresentationActivation: true,
-    });
+    await h.useCase.executeDeadline(
+      {
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'cmd-forced',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        presentationGeneration: generation,
+        forcePresentationActivation: true,
+      },
+      'test-deadline',
+    );
     expect(currentPresentation(h).status).toBe('activated');
     expect(currentPresentation(h).activatedAt).toBe(T_ACT.toISOString());
   });
@@ -702,15 +754,18 @@ describe('PresentationReady (recurring generation)', () => {
     // A real multi-surface acknowledgement without a connection is refused —
     // this one is not, because there is no surface to bind. It must also not
     // invent provenance for surfaces that never acknowledged anything.
-    await h.useCase.execute({
-      sessionId: SESSION_ID,
-      actor: CONTROLLER_ACTOR,
-      commandId: 'cmd-forced-noconn',
-      expectedRuntimeRevision: h.runtime.revision,
-      expectedSessionRevision: h.session.revision,
-      presentationGeneration: generation,
-      forcePresentationActivation: true,
-    });
+    await h.useCase.executeDeadline(
+      {
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'cmd-forced-noconn',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        presentationGeneration: generation,
+        forcePresentationActivation: true,
+      },
+      'test-deadline',
+    );
     expect(currentPresentation(h).readiness).toEqual([]);
   });
 
@@ -718,15 +773,18 @@ describe('PresentationReady (recurring generation)', () => {
     const { h, generation } = await preparedHarness();
     h.setNow(T_ACT);
     await expect(
-      h.useCase.execute({
-        sessionId: SESSION_ID,
-        actor: CONTROLLER_ACTOR,
-        commandId: 'cmd-forced-stale',
-        expectedRuntimeRevision: h.runtime.revision,
-        expectedSessionRevision: h.session.revision,
-        presentationGeneration: generation - 1,
-        forcePresentationActivation: true,
-      }),
+      h.useCase.executeDeadline(
+        {
+          sessionId: SESSION_ID,
+          actor: CONTROLLER_ACTOR,
+          commandId: 'cmd-forced-stale',
+          expectedRuntimeRevision: h.runtime.revision,
+          expectedSessionRevision: h.session.revision,
+          presentationGeneration: generation - 1,
+          forcePresentationActivation: true,
+        },
+        'test-deadline',
+      ),
     ).rejects.toMatchObject({ code: 'STALE_PRESENTATION_GENERATION' });
     expect(currentPresentation(h).status).toBe('prepared');
   });
@@ -734,15 +792,18 @@ describe('PresentationReady (recurring generation)', () => {
   it('a late real acknowledgement after a forced activation is a safe no-op', async () => {
     const { h, generation } = await preparedHarness();
     h.setNow(T_ACT);
-    await h.useCase.execute({
-      sessionId: SESSION_ID,
-      actor: CONTROLLER_ACTOR,
-      commandId: 'cmd-forced-first',
-      expectedRuntimeRevision: h.runtime.revision,
-      expectedSessionRevision: h.session.revision,
-      presentationGeneration: generation,
-      forcePresentationActivation: true,
-    });
+    await h.useCase.executeDeadline(
+      {
+        sessionId: SESSION_ID,
+        actor: CONTROLLER_ACTOR,
+        commandId: 'cmd-forced-first',
+        expectedRuntimeRevision: h.runtime.revision,
+        expectedSessionRevision: h.session.revision,
+        presentationGeneration: generation,
+        forcePresentationActivation: true,
+      },
+      'test-deadline',
+    );
     const activatedAt = currentPresentation(h).activatedAt;
     // The shared screen finally finishes buffering and acks. The window must
     // not be re-anchored under a room that is already playing.

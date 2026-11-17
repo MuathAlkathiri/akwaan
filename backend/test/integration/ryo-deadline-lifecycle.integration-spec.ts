@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import { io as connectClient } from 'socket.io-client';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { Connection } from 'mongoose';
@@ -38,6 +40,7 @@ import { GetGameplayRuntime } from '../../src/modules/live-game-sessions/applica
 import {
   GameplayDeadlineScheduler,
   PRESENTATION_ACTIVATION_TIMEOUT_SECONDS,
+  PRESENTATION_INITIAL_TIMEOUT_SECONDS,
 } from '../../src/modules/live-game-sessions/application/gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from '../../src/modules/live-game-sessions/application/gameplay-observer.registry';
 import { GameplayInteractionUseCases } from '../../src/modules/live-game-sessions/application/gameplay-interaction.use-cases';
@@ -481,6 +484,433 @@ describe('RYO deadline lifecycle integration', () => {
       runtimeState: runtime!.serialize(),
     });
   };
+
+  for (const winner of ['socket', 'deadline'] as const) {
+    it(`preserves one activation when ${winner} wins the socket and deadline interleaving`, async () => {
+      const { sessionId, participants } = await startSession();
+      await createUnified(sessionId);
+      await launchRyo(sessionId);
+      const runtime = (await runtimes().findBySessionId(sessionId))!;
+      for (const surface of runtime
+        .requiredPresentationSurfaces()
+        .filter((s) => s.capability !== 'shared')) {
+        const actor = participants.find(
+          (p) =>
+            p.kind === 'participant' &&
+            p.participantId === surface.participantId,
+        )!;
+        await ackSurface(sessionId, actor, `race-${surface.capability}`);
+      }
+      const socket = connectClient(
+        `${await app.getUrl()}/live-game-sessions`.replace(
+          '[::1]',
+          '127.0.0.1',
+        ),
+        {
+          auth: { token },
+          transports: ['websocket'],
+          reconnection: false,
+        },
+      );
+      try {
+        await new Promise<void>((resolve, reject) => {
+          socket.once('connect', () => resolve());
+          socket.once('connect_error', reject);
+        });
+        const before = (await rawRuntime(sessionId))!;
+        const started = new Date(Date.now() - 120_000);
+        const due = new Date(
+          started.getTime() + PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+        ).toISOString();
+        const key = `${before.state.id}|${before.state.activeRound.id}|presentation|initial|${due}`;
+        await database
+          .collection('gameplay_runtimes')
+          .updateOne(
+            { _id: before._id as never },
+            { $set: { 'state.activeRound.startedAt': started } },
+          );
+        const body = {
+          sessionId,
+          commandId: randomUUID(),
+          expectedRuntimeRevision: Number(before.state.revision),
+          expectedSessionRevision: await sessionRevision(sessionId),
+        };
+        const scheduler = app.get(GameplayDeadlineScheduler) as unknown as {
+          expire(id: string, key: string): Promise<void>;
+          armedKeyFor(id: string): string | undefined;
+          schedule(id: string): Promise<void>;
+        };
+        const acknowledge = () =>
+          socket
+            .timeout(5_000)
+            .emitWithAck('live-session:presentation-ready', body);
+        const match = (await database
+          .collection('matches')
+          .findOne({ liveSessionId: sessionId }))!;
+        const ledger = () =>
+          database
+            .collection('content_exposures')
+            .find({ matchId: match.matchId })
+            .sort({ contentItemId: 1 })
+            .toArray();
+        let winningRevision: number;
+        let winningLedger: unknown;
+        let winningMatch: unknown;
+        if (winner === 'socket') {
+          expect(await acknowledge()).toMatchObject({ ok: true });
+          winningRevision = Number(
+            (await rawRuntime(sessionId))!.state.revision,
+          );
+          winningLedger = await ledger();
+          winningMatch = await database
+            .collection('matches')
+            .findOne({ liveSessionId: sessionId });
+          await scheduler.expire(sessionId, key);
+        } else {
+          await scheduler.schedule(sessionId);
+          await scheduler.expire(sessionId, key);
+          winningRevision = Number(
+            (await rawRuntime(sessionId))!.state.revision,
+          );
+          winningLedger = await ledger();
+          winningMatch = await database
+            .collection('matches')
+            .findOne({ liveSessionId: sessionId });
+          const rejected = await acknowledge();
+          expect(rejected.ok).not.toBe(true);
+        }
+        const after = (await rawRuntime(sessionId))!;
+        expect(Number(after.state.revision)).toBe(winningRevision);
+        expect(await ledger()).toEqual(winningLedger);
+        expect(
+          await database
+            .collection('matches')
+            .findOne({ liveSessionId: sessionId }),
+        ).toEqual(winningMatch);
+        expect(
+          after.state.transitions.filter(
+            (t: { type: string }) => t.type === 'presentation-activated',
+          ),
+        ).toHaveLength(1);
+        expect(after.state.presentationActivatedAt).toBeTruthy();
+        expect(after.state.activeRound.interaction.status).toBe('open');
+        expect(scheduler.armedKeyFor(sessionId)).toContain(
+          String(after.state.activeRound.interaction.id),
+        );
+        expect(after.state.currentPresentation).toBeUndefined();
+        const clientSnapshot = await socket
+          .timeout(5_000)
+          .emitWithAck('live-session:runtime-request-snapshot', { sessionId });
+        expect(clientSnapshot.gameplay.revision).toBe(after.state.revision);
+        const stable = await rawRuntime(sessionId);
+        expect(stable!.state.revision).toBe(after.state.revision);
+        expect(stable!.state.presentationActivatedAt).toEqual(
+          after.state.presentationActivatedAt,
+        );
+      } finally {
+        socket.disconnect();
+      }
+    }, 120_000);
+  }
+
+  it('rejects a due deadline with a revision superseded by an authenticated socket', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const before = (await rawRuntime(sessionId))!;
+    const sessionRev = await sessionRevision(sessionId);
+    const socket = connectClient(
+      `${await app.getUrl()}/live-game-sessions`.replace('[::1]', '127.0.0.1'),
+      {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: false,
+      },
+    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('connect', () => resolve());
+        socket.once('connect_error', reject);
+      });
+      const ack = await socket
+        .timeout(5_000)
+        .emitWithAck('live-session:presentation-ready', {
+          sessionId,
+          commandId: randomUUID(),
+          expectedRuntimeRevision: Number(before.state.revision),
+          expectedSessionRevision: sessionRev,
+        });
+      expect(ack).toMatchObject({ ok: true });
+      const updated = (await rawRuntime(sessionId))!;
+      expect(Number(updated.state.revision)).toBeGreaterThan(
+        Number(before.state.revision),
+      );
+      const started = new Date(Date.now() - 120_000);
+      const due = new Date(
+        started.getTime() + PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+      ).toISOString();
+      const key = `${before.state.id}|${before.state.activeRound.id}|presentation|initial|${due}`;
+      await database
+        .collection('gameplay_runtimes')
+        .updateOne(
+          { _id: before._id as never },
+          { $set: { 'state.activeRound.startedAt': started } },
+        );
+      await expect(
+        app.get(PresentationReady).executeDeadline(
+          {
+            sessionId,
+            actor: { kind: 'user', actorId: controllerId },
+            commandId: randomUUID(),
+            expectedRuntimeRevision: Number(before.state.revision),
+            expectedSessionRevision: sessionRev,
+            forcePresentationActivation: true,
+          },
+          key,
+        ),
+      ).rejects.toMatchObject({ code: 'STALE_RUNTIME_REVISION' });
+      const after = (await rawRuntime(sessionId))!;
+      expect(after.state.revision).toBe(updated.state.revision);
+      expect(after.state.presentationActivatedAt).toBeUndefined();
+    } finally {
+      socket.disconnect();
+    }
+  }, 120_000);
+
+  it('commits at most one concurrent dispatch of the same due presentation deadline', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const before = (await rawRuntime(sessionId))!;
+    const revision = await sessionRevision(sessionId);
+    const started = new Date(Date.now() - 120_000);
+    const due = new Date(
+      started.getTime() + PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+    ).toISOString();
+    const key = `${before.state.id}|${before.state.activeRound.id}|presentation|initial|${due}`;
+    await database
+      .collection('gameplay_runtimes')
+      .updateOne(
+        { _id: before._id as never },
+        { $set: { 'state.activeRound.startedAt': started } },
+      );
+    const command = {
+      sessionId,
+      actor: { kind: 'user' as const, actorId: controllerId },
+      expectedSessionRevision: revision,
+      expectedRuntimeRevision: Number(before.state.revision),
+      forcePresentationActivation: true,
+    };
+    const matchBefore = (await database
+      .collection('matches')
+      .findOne({ liveSessionId: sessionId }))!;
+    const handler = app.get(PresentationReady);
+    const results = await Promise.allSettled([
+      handler.executeDeadline({ ...command, commandId: randomUUID() }, key),
+      handler.executeDeadline({ ...command, commandId: randomUUID() }, key),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    const after = (await rawRuntime(sessionId))!;
+    expect(after.state.presentationActivatedAt).toBeTruthy();
+    expect(after.state.activeRound.interaction.status).toBe('open');
+    const matchAfter = (await database
+      .collection('matches')
+      .findOne({ liveSessionId: sessionId }))!;
+    expect(matchAfter.teams).toEqual(matchBefore.teams);
+    const exposed = await database
+      .collection('content_exposures')
+      .find({ matchId: matchBefore.matchId, state: 'exposed' })
+      .toArray();
+    expect(exposed.length).toBeLessThanOrEqual(1);
+    expect(new Set(exposed.map((entry) => entry.contentItemId)).size).toBe(
+      exposed.length,
+    );
+    expect(app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId)).toContain(
+      String(after.state.activeRound.interaction.id),
+    );
+    expect(
+      after.state.transitions.filter(
+        (t: { type: string }) => t.type === 'presentation-activated',
+      ),
+    ).toHaveLength(1);
+  }, 120_000);
+
+  it('accepts a real authenticated socket acknowledgement for the shared surface', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const socket = connectClient(
+      `${await app.getUrl()}/live-game-sessions`.replace('[::1]', '127.0.0.1'),
+      {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: false,
+      },
+    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('connect', () => resolve());
+        socket.once('connect_error', reject);
+      });
+      const document = (await rawRuntime(sessionId))!;
+      const acknowledgement = await socket
+        .timeout(5_000)
+        .emitWithAck('live-session:presentation-ready', {
+          sessionId,
+          commandId: randomUUID(),
+          expectedRuntimeRevision: Number(document.state.revision),
+          expectedSessionRevision: await sessionRevision(sessionId),
+        });
+      expect(acknowledgement).toMatchObject({ ok: true, sessionId });
+      const current = (await rawRuntime(sessionId))!;
+      expect(current.state.presentationReady).toContainEqual({
+        capability: 'shared',
+        connectionId: socket.id,
+      });
+      expect(current.state.presentationActivatedAt).toBeUndefined();
+    } finally {
+      socket.disconnect();
+    }
+  }, 120_000);
+
+  it('rejects forged and premature initial deadline activation', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const runtime = (await rawRuntime(sessionId))!;
+    const key = app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId)!;
+    const command = {
+      sessionId,
+      actor: { kind: 'user' as const, actorId: controllerId },
+      commandId: uuid(),
+      expectedRuntimeRevision: Number(runtime.state.revision),
+      expectedSessionRevision: await sessionRevision(sessionId),
+      forcePresentationActivation: true,
+    };
+    const handler = app.get(PresentationReady);
+    await expect(handler.execute(command)).rejects.toThrow();
+    await expect(handler.executeDeadline(command, key)).rejects.toThrow(
+      'no longer valid or due',
+    );
+    await expect(
+      handler.executeDeadline(command, 'wrong-deadline'),
+    ).rejects.toThrow('no longer valid or due');
+    expect(
+      (await rawRuntime(sessionId))!.state.presentationActivatedAt,
+    ).toBeUndefined();
+  }, 120_000);
+
+  it('activates a due initial RYO presentation from its persisted deadline', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const held = (await rawRuntime(sessionId))!;
+    expect(held.state.presentationActivatedAt).toBeUndefined();
+    const started = new Date(Date.now() - 120_000);
+    const deadline = new Date(
+      started.getTime() + PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+    ).toISOString();
+    const key = `${held.state.id}|${held.state.activeRound.id}|presentation|initial|${deadline}`;
+    const oldRevision = await sessionRevision(sessionId);
+    await database
+      .collection('gameplay_runtimes')
+      .updateOne(
+        { _id: held._id as never },
+        { $set: { 'state.activeRound.startedAt': started } },
+      );
+    await converge(sessionId);
+    const activated = await waitForRuntime(
+      sessionId,
+      (document) => Boolean(document.state.presentationActivatedAt),
+      'due initial presentation to activate',
+    );
+    expect(activated.state.presentationReady).toEqual([]);
+    expect(activated.state.activeRound.interaction.status).toBe('open');
+    await expect(
+      app.get(PresentationReady).executeDeadline(
+        {
+          sessionId,
+          actor: { kind: 'user', actorId: controllerId },
+          commandId: uuid(),
+          expectedSessionRevision: oldRevision,
+          expectedRuntimeRevision: Number(held.state.revision),
+          forcePresentationActivation: true,
+        },
+        key,
+      ),
+    ).rejects.toThrow('no longer valid or due');
+    const afterReplay = (await rawRuntime(sessionId))!;
+    expect(afterReplay.state.revision).toBe(activated.state.revision);
+    expect(afterReplay.state.presentationActivatedAt).toBe(
+      activated.state.presentationActivatedAt,
+    );
+    expect(afterReplay.state.activeRound.interaction.prompt.deadlineAt).toEqual(
+      activated.state.activeRound.interaction.prompt.deadlineAt,
+    );
+    expect(
+      new Date(
+        activated.state.activeRound.interaction.prompt.deadlineAt,
+      ).getTime(),
+    ).toBeGreaterThan(Date.now());
+  }, 120_000);
+
+  it('rejects a consumed initial deadline after the next presentation generation is prepared', async () => {
+    const { sessionId } = await startSession();
+    await createUnified(sessionId);
+    await launchRyo(sessionId);
+    const held = (await rawRuntime(sessionId))!;
+    const oldSessionRevision = await sessionRevision(sessionId);
+    const started = new Date(Date.now() - 120_000);
+    const due = new Date(
+      started.getTime() + PRESENTATION_INITIAL_TIMEOUT_SECONDS * 1000,
+    ).toISOString();
+    const key = `${held.state.id}|${held.state.activeRound.id}|presentation|initial|${due}`;
+    await database
+      .collection('gameplay_runtimes')
+      .updateOne(
+        { _id: held._id as never },
+        { $set: { 'state.activeRound.startedAt': started } },
+      );
+    await converge(sessionId);
+    await waitForRuntime(
+      sessionId,
+      (d) => Boolean(d.state.presentationActivatedAt),
+      'first activation',
+    );
+    await giveItemsAudio(sessionId, [1]);
+    await expireDeadlineInMongo(sessionId);
+    await converge(sessionId);
+    const prepared = await waitForRuntime(
+      sessionId,
+      (d) => d.state.currentPresentation?.status === 'prepared',
+      'next presentation',
+    );
+    const generation = prepared.state.currentPresentation.generation;
+    const deadlineBefore = app
+      .get(GameplayDeadlineScheduler)
+      .armedKeyFor(sessionId);
+    await expect(
+      app.get(PresentationReady).executeDeadline(
+        {
+          sessionId,
+          actor: { kind: 'user', actorId: controllerId },
+          commandId: randomUUID(),
+          expectedSessionRevision: oldSessionRevision,
+          expectedRuntimeRevision: Number(held.state.revision),
+          forcePresentationActivation: true,
+        },
+        key,
+      ),
+    ).rejects.toThrow('no longer valid or due');
+    const after = (await rawRuntime(sessionId))!;
+    expect(after.state.revision).toBe(prepared.state.revision);
+    expect(after.state.currentPresentation.generation).toBe(generation);
+    expect(after.state.currentPresentation.status).toBe('prepared');
+    expect(app.get(GameplayDeadlineScheduler).armedKeyFor(sessionId)).toBe(
+      deadlineBefore,
+    );
+  }, 120_000);
 
   it('holds the first item unexposed and un-armed until every surface has acknowledged', async () => {
     // The regression, stated directly. Launching RYO is the only thing that

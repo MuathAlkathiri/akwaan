@@ -1,4 +1,7 @@
-import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
+import {
+  GameplayDeadlineScheduler,
+  pendingDeadline,
+} from './gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
 import { RYO_MODE_KEY } from '../domain/ryo-gameplay.plugin';
@@ -635,5 +638,65 @@ describe('GameplayDeadlineScheduler committed-state reuse', () => {
     expect(runtimes.findBySessionId).toHaveBeenCalledTimes(1);
     expect(scheduler.armedKeyFor('session-1')).toBe(armedForNewer);
     scheduler.onModuleDestroy();
+  });
+});
+
+describe('presentation deadline authority', () => {
+  it('requires the matching due deadline and a playable session', () => {
+    const state = runtimeState({
+      presentationActivatedAt: undefined,
+      startedAt: new Date(NOW),
+      activeRound: { ...runtimeState().activeRound!, startedAt: new Date(NOW) },
+    });
+    const { scheduler } = harness(state);
+    const session = {
+      id: 'session-1',
+      serialize: () => ({
+        status: 'active',
+        expiresAt: new Date(NOW + 3_600_000),
+      }),
+    };
+    const runtime = { serialize: () => state };
+    const pending = pendingDeadline(state, undefined, undefined, {
+      multiSurface: true,
+    })!;
+    const check = (
+      when: Date,
+      key = pending.key,
+      sessionValue = session,
+      generation?: number,
+    ) =>
+      scheduler.assertPresentationDeadline(
+        sessionValue as never,
+        runtime as never,
+        when,
+        key,
+        generation,
+        'activate',
+      );
+    expect(() => check(new Date(NOW + 46_000))).not.toThrow();
+    expect(() => check(new Date(NOW + 1_000))).toThrow();
+    expect(() => check(new Date(NOW + 46_000), 'wrong')).toThrow();
+    expect(() =>
+      check(new Date(NOW + 46_000), pending.key, session, 9),
+    ).toThrow();
+    expect(() =>
+      check(new Date(NOW + 46_000), pending.key, { ...session, id: 'other' }),
+    ).toThrow();
+    expect(() =>
+      check(new Date(NOW + 46_000), pending.key, {
+        ...session,
+        serialize: () => ({
+          status: 'completed',
+          expiresAt: new Date(NOW + 3_600_000),
+        }),
+      }),
+    ).toThrow();
+    expect(() =>
+      check(new Date(NOW + 46_000), pending.key, {
+        ...session,
+        serialize: () => ({ status: 'active', expiresAt: new Date(NOW) }),
+      }),
+    ).toThrow();
   });
 });

@@ -16,9 +16,8 @@ const TERMINAL_RUNTIME_STATUSES = ['completed', 'cancelled'];
  * Presence-only reads over `gameplay_runtimes`.
  *
  * Kept apart from `GameplayRuntimeRepository.findSessionIdsWithLiveRuntimes`
- * on purpose: the deadline scheduler's rearm deliberately sees every
- * non-terminal runtime, while presence reconciliation must not spend a pass on
- * a session nobody can play any more. These reads never restore a runtime
+ * on purpose: both select playable runtimes, but presence reconciliation also needs
+ * revision fingerprints for quarantine. These reads never restore a runtime
  * through its plugin, so an unrestorable document is still fingerprinted.
  */
 @Injectable()
