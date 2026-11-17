@@ -12,6 +12,7 @@ import {
   SAMPLE_TUTORIAL_SCENARIO,
   type TutorialScenario,
 } from "@/features/challenge-explainer";
+import { SAMPLE_CLOSEST_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/closest-demo-scenario";
 
 /**
  * The published tutorial the mechanic serves. `null` is the real no-content
@@ -383,13 +384,12 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-turn-chip").textContent).toBe(
       "أسود الشمال يبدأ",
     );
-    // The QR leads the joining card and readiness sits beneath it: the code has
-    // to stay scannable while the explainer plays, and "who has arrived" is the
-    // answer to the question this card asks, not a separate card above it.
+    // V6 Launch rail: readiness leads the rail and the collapsible join card
+    // sits directly beneath it so hosts immediately see who has arrived.
     expect(
       screen
-        .getByTestId("preflight-join-toggle")
-        .compareDocumentPosition(screen.getByTestId("preflight-readiness")) &
+        .getByTestId("preflight-readiness")
+        .compareDocumentPosition(screen.getByTestId("preflight-join-toggle")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
@@ -668,7 +668,8 @@ describe("challenge preflight", () => {
   });
 
   describe("GSAP-only explanation", () => {
-    it("renders the published GSAP demo inline without a modal entry point", async () => {
+    it("renders the published V6 integrated dual-iPhone RYO tutorial with intro and 4 stages", async () => {
+      const user = userEvent.setup();
       publishedTutorial = {
         mechanicKey: "read-your-opponent",
         revision: 1,
@@ -698,38 +699,106 @@ describe("challenge preflight", () => {
       expect(screen.queryByTestId("preflight-how-to-play")).toBeNull();
       expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
       expect(screen.queryByTestId("preflight-highlight")).toBeNull();
-      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
-      expect(screen.getByTestId("preflight-inline-tutorial-play")).toHaveAttribute(
-        "data-playing",
-        "false",
-      );
-      const playToggle = screen.getByTestId("preflight-inline-tutorial-play");
-      await userEvent.setup().click(playToggle);
-      expect(playToggle).toHaveAttribute("data-playing", "true");
-      await userEvent
-        .setup()
-        .click(screen.getByTestId("preflight-inline-tutorial-skip"));
-      expect(playToggle).toHaveAttribute("data-playing", "false");
-      expect(screen.getByRole("tab", { name: /النتيجة/ })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-      await userEvent
-        .setup()
-        .click(screen.getByRole("tab", { name: /السؤال/ }));
 
-      const next = screen.getByTestId("preflight-inline-tutorial-next");
-      await userEvent.setup().click(next);
-      expect(screen.getByRole("tab", { name: /الإجابة/ })).toHaveAttribute(
+      // Opens on the V6 intro card before advancing into stage 1.
+      const ryo = screen.getByTestId("ryo-explainer");
+      expect(ryo).toHaveAttribute("data-variant", "integrated");
+      expect(ryo).toHaveAttribute("data-step", "-1");
+      expect(ryo.textContent).toContain("بطاقة البداية");
+      expect(
+        screen.getByTestId("preflight-inline-tutorial-play"),
+      ).toHaveAttribute("data-playing", "false");
+
+      // Play/Start advances from intro into Stage 1 ("السؤال والإجابة") where
+      // the answering phone acts and reveal is still hidden.
+      const playToggle = screen.getByTestId("preflight-inline-tutorial-play");
+      await user.click(playToggle);
+      expect(playToggle).toHaveAttribute("data-playing", "true");
+      expect(
+        screen.getByRole("tab", { name: /السؤال والإجابة/ }),
+      ).toHaveAttribute("aria-selected", "true");
+      expect(
+        screen.getByTestId("explainer-phone-answering"),
+      ).toHaveAttribute("data-acting", "true");
+      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
+
+      // Step Next into Stage 2 ("قرار الخصم") where the opposing phone acts.
+      await user.click(screen.getByTestId("preflight-inline-tutorial-next"));
+      expect(screen.getByRole("tab", { name: /قرار الخصم/ })).toHaveAttribute(
         "aria-selected",
         "true",
       );
-      await userEvent.setup().click(screen.getByRole("tab", { name: /الكشف/ }));
-      expect(screen.getByRole("tab", { name: /الكشف/ })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
+      expect(
+        screen.getByTestId("explainer-phone-opposing"),
+      ).toHaveAttribute("data-acting", "true");
+      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
+
+      // Direct step into Stage 3 ("تثبيت القرار") locks both phones with zero answer leakage.
+      await user.click(screen.getByRole("tab", { name: /تثبيت القرار/ }));
+      expect(
+        screen.getByTestId("explainer-lock-answering"),
+      ).toHaveAttribute("data-locked", "true");
+      expect(
+        screen.getByTestId("explainer-lock-opposing"),
+      ).toHaveAttribute("data-locked", "true");
+      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
+
+      // Direct step into Stage 4 ("الكشف والنتيجة") reveals answer + opposing decision + payoff.
+      await user.click(screen.getByRole("tab", { name: /الكشف والنتيجة/ }));
       expect(screen.getByTestId("explainer-reveal")).toBeInTheDocument();
+
+      // Replay returns cleanly to the intro card.
+      await user.click(screen.getByTestId("preflight-inline-tutorial-replay"));
+      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
+        "data-step",
+        "-1",
+      );
+    });
+
+    it("renders all four RYO options and highlights selection of the fourth option without pre-reveal leakage", async () => {
+      const user = userEvent.setup();
+      publishedTutorial = {
+        mechanicKey: "read-your-opponent",
+        revision: 1,
+        scenario: {
+          ...SAMPLE_TUTORIAL_SCENARIO,
+          options: [
+            { id: "a", label: "خمسة" },
+            { id: "b", label: "ستة" },
+            { id: "c", label: "سبعة" },
+            { id: "d", label: "ثمانية" },
+          ],
+          correctOptionId: "d",
+          answeringSelectionOptionId: "d",
+        },
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "read-your-opponent",
+            challengeName: "اقرأ خصمك",
+          }),
+        }),
+      );
+
+      await user.click(screen.getByRole("tab", { name: /السؤال والإجابة/ }));
+      const controls = screen.getByTestId("explainer-phone-answer-controls");
+      for (const label of ["خمسة", "ستة", "سبعة", "ثمانية"]) {
+        expect(within(controls).getByText(new RegExp(label))).toBeInTheDocument();
+      }
+      const fourth = controls.querySelectorAll('[data-selected]')[3];
+      expect(fourth).toHaveAttribute("data-selected", "true");
+      expect(fourth.textContent).toContain("ثمانية");
+      expect(
+        screen.getByTestId("explainer-phone-opposing").textContent,
+      ).not.toContain("ثمانية");
+      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
+
+      await user.click(screen.getByRole("tab", { name: /الكشف والنتيجة/ }));
+      expect(screen.getByTestId("explainer-reveal").textContent).toContain(
+        "ثمانية",
+      );
     });
 
     it("shows an explicit unavailable state when no tutorial is published", () => {
@@ -755,7 +824,7 @@ describe("challenge preflight", () => {
       expect(screen.queryByTestId("preflight-highlight")).toBeNull();
     });
 
-    it("keeps one synchronized renderer while switching the compact mobile view", async () => {
+    it("shows both team phones and the shared stage in one integrated RYO frame without view switcher tabs", () => {
       publishedTutorial = {
         mechanicKey: "read-your-opponent",
         revision: 1,
@@ -771,30 +840,79 @@ describe("challenge preflight", () => {
         }),
       );
 
-      const tutorial = screen.getByTestId("preflight-inline-tutorial");
-      expect(tutorial).toHaveAttribute("data-tutorial-view", "screen");
-      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-variant",
-        "full",
-      );
-      const timelineInitCount = screen
-        .getByTestId("ryo-explainer")
-        .getAttribute("data-explainer-timeline-init-count");
-
-      await userEvent
-        .setup()
-        .click(screen.getByRole("tab", { name: "جوالات اللاعبين" }));
-
-      expect(tutorial).toHaveAttribute("data-tutorial-view", "phones");
-      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-variant",
-        "compact",
-      );
       expect(screen.getAllByTestId("ryo-explainer")).toHaveLength(1);
       expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-explainer-timeline-init-count",
-        timelineInitCount,
+        "data-variant",
+        "integrated",
       );
+      expect(screen.getByTestId("explainer-phone-opposing")).toBeInTheDocument();
+      expect(screen.getByTestId("explainer-phone-answering")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "جوالات اللاعبين" }),
+      ).toBeNull();
+    });
+
+    it("preserves non-RYO mechanics inside MechanicTutorialRenderer with their own stage counts and labels", async () => {
+      const user = userEvent.setup();
+      publishedTutorial = {
+        mechanicKey: "closest",
+        revision: 1,
+        scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "closest",
+            challengeName: "مين أقرب",
+          }),
+        }),
+      );
+
+      expect(screen.getByTestId("closest-explainer")).toBeInTheDocument();
+      expect(screen.queryByTestId("ryo-explainer")).toBeNull();
+      const tabs = within(
+        screen.getByRole("tablist", { name: "خطوات الشرح التوضيحي" }),
+      ).getAllByRole("tab");
+      expect(tabs).toHaveLength(4);
+      await user.click(screen.getByRole("tab", { name: /تقديرات الفريقين/ }));
+      expect(
+        screen.getByRole("tab", { name: /تقديرات الفريقين/ }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("shows a compact recap on repeated encounters and lets the host expand without delaying launch", async () => {
+      const user = userEvent.setup();
+      publishedTutorial = {
+        mechanicKey: "read-your-opponent",
+        revision: 1,
+        scenario: SAMPLE_TUTORIAL_SCENARIO,
+      };
+      const base = match({
+        stage: "preflight",
+        preflight: preflight({
+          ...readyPreflight(),
+          challengeKey: "read-your-opponent",
+          challengeName: "اقرأ خصمك",
+        }),
+      });
+      // Mark an earlier occurrence of read-your-opponent as already completed.
+      base.unified!.board.positions[0] = {
+        ...base.unified!.board.positions[0],
+        challengeKey: "read-your-opponent",
+        status: "completed",
+      };
+      renderRouter(base);
+
+      expect(
+        screen.getByTestId("preflight-inline-tutorial-recap"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("ryo-explainer")).toBeNull();
+      // Start stays enabled immediately on repeat encounters.
+      expect(screen.getByTestId("preflight-start")).not.toBeDisabled();
+
+      await user.click(screen.getByTestId("preflight-inline-tutorial-expand"));
+      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
     });
 
     it("places the joining panel before the tutorial in the preflight document order", () => {
@@ -870,6 +988,75 @@ describe("challenge preflight", () => {
       expect(within(teamA).getByText("أحمد")).toBeTruthy();
       // …and the dropped phone is labelled as not connected.
       expect(within(teamA).getByLabelText("غير متصل")).toBeTruthy();
+    });
+
+    it("renders participant character avatars from the live session snapshot when chosen", () => {
+      const state = match({ stage: "preflight", preflight: readyPreflight() });
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      render(
+        <QueryClientProvider client={client}>
+          <LiveSessionContext.Provider
+            value={
+              {
+                snapshot: {
+                  sessionId: "session-1",
+                  mode: { key: "core-timed-turns", version: 1 },
+                  status: "active",
+                  revision: 4,
+                  serverTimestamp: "2026-08-06T00:00:00.000Z",
+                  round: { number: 1 },
+                  teams: [
+                    { id: "team-a", name: "أسود الشمال", active: true },
+                    { id: "team-b", name: "صقور الرياض", active: true },
+                  ],
+                  participants: [
+                    {
+                      id: "p1",
+                      displayName: "أحمد",
+                      role: "team-player",
+                      teamId: "team-a",
+                      ready: true,
+                      joinedAt: "2026-08-06T00:00:00.000Z",
+                      connected: true,
+                      connectedDeviceCount: 1,
+                      lastSeenAt: "2026-08-06T00:00:00.000Z",
+                      presence: "connected",
+                      avatarKey: "astronaut",
+                    },
+                  ],
+                  availableActions: [],
+                  match: state,
+                },
+                connection: "connected",
+                command: vi.fn(),
+                gameplayCommand: vi.fn(),
+                resync: vi.fn(),
+              } as unknown as React.ContextType<typeof LiveSessionContext>
+            }
+          >
+            <MatchStageRouter actor="controller" />
+          </LiveSessionContext.Provider>
+        </QueryClientProvider>,
+      );
+
+      const teamA = screen.getByTestId("preflight-team-team-a");
+      expect(
+        teamA.querySelector('[data-character="astronaut"]'),
+      ).toBeInTheDocument();
+      // Connected state is exposed for assistive tech & E2E alongside visible name and character identity.
+      expect(within(teamA).getAllByLabelText("متصل")).toHaveLength(2);
+      expect(within(teamA).getByText("أحمد")).toBeInTheDocument();
+      expect(within(teamA).getByText("منى")).toBeInTheDocument();
+      // Back-to-board control trails the tutorial stage so mobile order stays clean.
+      expect(
+        screen
+          .getByTestId("preflight-explainer")
+          .compareDocumentPosition(
+            screen.getByRole("button", { name: "ارجع للوحة" }),
+          ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
   });
 
