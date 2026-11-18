@@ -12,7 +12,9 @@ import {
   SAMPLE_TUTORIAL_SCENARIO,
   type TutorialScenario,
 } from "@/features/challenge-explainer";
+import { SAMPLE_BOMB_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/bomb-demo-scenario";
 import { SAMPLE_CLOSEST_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/closest-demo-scenario";
+import { SAMPLE_TOP5_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/top5-demo-scenario";
 
 /**
  * The published tutorial the mechanic serves. `null` is the real no-content
@@ -879,6 +881,172 @@ describe("challenge preflight", () => {
       expect(
         screen.getByRole("tab", { name: /تقديرات الفريقين/ }),
       ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("plays Closest, Bomb, and Top 5 continuously through intermediate GSAP scenes without unexpected pauses and preserves V6 embedded chrome", async () => {
+      vi.useRealTimers();
+      const gsap = (await import("gsap")).default;
+      const user = userEvent.setup();
+
+      const cases = [
+        {
+          mechanicKey: "closest",
+          challengeName: "مين أقرب",
+          scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
+          intermediateScene: "2",
+          intermediateTabName: /تقديرات الفريقين/,
+          finalTabName: /النتيجة/,
+        },
+        {
+          mechanicKey: "bomb",
+          challengeName: "القنبلة",
+          scenario: SAMPLE_BOMB_TUTORIAL_SCENARIO,
+          intermediateScene: "1",
+          intermediateTabName: /بداية القنبلة/,
+          finalTabName: /انتهاء الوقت/,
+        },
+        {
+          mechanicKey: "top-5",
+          challengeName: "أفضل 5",
+          scenario: SAMPLE_TOP5_TUTORIAL_SCENARIO,
+          intermediateScene: "1",
+          intermediateTabName: /اختيار البطاقة/,
+          finalTabName: /النقاط/,
+        },
+      ] as const;
+
+      try {
+        gsap.globalTimeline.timeScale(35);
+
+        for (const item of cases) {
+          publishedTutorial = {
+            mechanicKey: item.mechanicKey,
+            revision: 1,
+            scenario: item.scenario,
+          };
+          const view = renderRouter(
+            match({
+              stage: "preflight",
+              preflight: preflight({
+                challengeKey: item.mechanicKey,
+                challengeName: item.challengeName,
+              }),
+            }),
+          );
+
+          // Starts on V6 intro card with embedded stage (no nested TV stand) and V6 iPhones.
+          expect(
+            screen.getByTestId("preflight-inline-tutorial-intro"),
+          ).toBeInTheDocument();
+          expect(
+            document.querySelector(
+              '[data-tutorial-surface="shared"][data-variant="v6-embedded"]',
+            ),
+          ).not.toBeNull();
+          expect(
+            screen.getByTestId("v6-dynamic-island-team-a"),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByTestId("v6-dynamic-island-team-b"),
+          ).toBeInTheDocument();
+          // Live match team names bind into the explainer stage.
+          expect(
+            screen.getByTestId("preflight-inline-tutorial").textContent,
+          ).toContain("أسود الشمال");
+          expect(
+            screen.getByTestId("preflight-inline-tutorial").textContent,
+          ).toContain("صقور الرياض");
+
+          const playToggle = screen.getByTestId(
+            "preflight-inline-tutorial-play",
+          );
+          await user.click(playToggle);
+          expect(playToggle).toHaveAttribute("data-playing", "true");
+
+          // Verify continuous progression through intermediate scenes without pausing!
+          await waitFor(
+            () => {
+              const wrapper = document.querySelector("[data-tutorial-scene]");
+              expect(
+                Number(wrapper?.getAttribute("data-tutorial-scene") ?? "0"),
+              ).toBeGreaterThanOrEqual(Number(item.intermediateScene));
+              expect(playToggle).toHaveAttribute("data-playing", "true");
+            },
+            { timeout: 3000 },
+          );
+
+          // Pause preserves exact current scene, Resume continues from it.
+          await user.click(playToggle);
+          expect(playToggle).toHaveAttribute("data-playing", "false");
+          const pausedScene = document
+            .querySelector("[data-tutorial-scene]")
+            ?.getAttribute("data-tutorial-scene");
+          expect(Number(pausedScene ?? "0")).toBeGreaterThanOrEqual(1);
+          await user.click(playToggle);
+          expect(playToggle).toHaveAttribute("data-playing", "true");
+
+          // User tab click seeks to the exact group boundary and pauses.
+          await user.click(
+            screen.getByRole("tab", { name: item.finalTabName }),
+          );
+          expect(playToggle).toHaveAttribute("data-playing", "false");
+          expect(
+            screen.getByRole("tab", { name: item.finalTabName }),
+          ).toHaveAttribute("aria-selected", "true");
+
+          // Replay returns cleanly to the V6 intro card.
+          await user.click(
+            screen.getByTestId("preflight-inline-tutorial-replay"),
+          );
+          expect(
+            screen.getByTestId("preflight-inline-tutorial-intro"),
+          ).toBeInTheDocument();
+
+          view.unmount();
+        }
+      } finally {
+        gsap.globalTimeline.timeScale(1);
+      }
+    });
+
+    it("keeps Closest estimates private on the shared screen until the canonical reveal stage", async () => {
+      const user = userEvent.setup();
+      publishedTutorial = {
+        mechanicKey: "closest",
+        revision: 1,
+        scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
+      };
+      renderRouter(
+        match({
+          stage: "preflight",
+          preflight: preflight({
+            challengeKey: "closest",
+            challengeName: "مين أقرب",
+          }),
+        }),
+      );
+
+      // Step into Stage 2 ("تقديرات الفريقين"): Team A phone shows its locked estimate,
+      // but the shared screen lock card keeps the numeric value secret until Reveal.
+      await user.click(
+        screen.getByRole("tab", { name: /تقديرات الفريقين/ }),
+      );
+      expect(
+        screen.getByTestId("closest-shared-screen").textContent,
+      ).not.toContain("١١٠");
+      expect(
+        screen.getByTestId("closest-shared-screen").textContent,
+      ).not.toContain("١٢٠");
+      expect(screen.queryByTestId("closest-tutorial-reveal")).toBeNull();
+
+      // Step into Stage 3 ("الكشف"): the target value and comparative distances appear.
+      await user.click(screen.getByRole("tab", { name: /الكشف/ }));
+      expect(
+        screen.getByTestId("closest-tutorial-reveal"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("closest-tutorial-reveal").textContent,
+      ).toContain("١٢٠");
     });
 
     it("shows a compact recap on repeated encounters and lets the host expand without delaying launch", async () => {
