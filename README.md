@@ -44,21 +44,21 @@
 ### Interactive Live Match Board
 *12-position game board spanning 3 chosen Worlds with 4 Scopes each, team turn bands, and dynamic score tracking.*
 
-<img src="frontend/e2e-screenshots/board-laptop-with-chrome.png" alt="Akwaan Live Match Board" width="85%" />
+<img src="docs/assets/board-laptop-with-chrome.png" alt="Akwaan Live Match Board" width="85%" />
 
 <br/><br/>
 
 ### Worlds & Scopes Catalog
 *Curated cultural worlds spanning Saudi heritage, Arabic cinema, puzzles, music, and general knowledge.*
 
-<img src="frontend/e2e-screenshots/home-laptop-chrome.png" alt="Akwaan Worlds Catalog" width="85%" />
+<img src="docs/assets/home-laptop-chrome.png" alt="Akwaan Worlds Catalog" width="85%" />
 
 <br/><br/>
 
 ### Pre-Match Setup Wizard
 *Host customization workflow allowing teams, game rules, and world selections before server match initialization.*
 
-<img src="frontend/e2e-screenshots/match-setup-laptop.png" alt="Match Setup Wizard" width="85%" />
+<img src="docs/assets/match-setup-laptop.png" alt="Match Setup Wizard" width="85%" />
 
 </div>
 
