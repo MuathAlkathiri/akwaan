@@ -274,6 +274,89 @@ describe('admin permanent deletion', () => {
     });
   });
 
+  describe('retired legacy deletion routes', () => {
+    it.each(['different operator', 'unset allowlist'])(
+      'rejects both routes and preserves records with %s',
+      async (setting) => {
+        const world = unwrap<{ id: string }>(
+          await bearer(http().post('/admin/worlds'))
+            .send({
+              name: 'Empty legacy world',
+              slug: `legacy-world-${randomUUID()}`,
+            })
+            .expect(201),
+        );
+        const parent = unwrap<{ id: string }>(
+          await bearer(http().post('/admin/worlds'))
+            .send({
+              name: 'Legacy scope world',
+              slug: `legacy-parent-${randomUUID()}`,
+            })
+            .expect(201),
+        );
+        const scope = unwrap<{ id: string }>(
+          await bearer(http().post(`/admin/worlds/${parent.id}/scopes`))
+            .send({
+              name: 'Empty legacy scope',
+              slug: `legacy-scope-${randomUUID()}`,
+            })
+            .expect(201),
+        );
+        const worldBefore = await database
+          .collection('worlds')
+          .findOne({ _id: oid(world.id) });
+        const scopeBefore = await database
+          .collection('scopes')
+          .findOne({ _id: oid(scope.id) });
+        const auditsBefore = await count('admin_deletion_log');
+        try {
+          if (setting === 'unset allowlist')
+            delete process.env.PERMANENT_DELETION_ADMIN_IDS;
+          else
+            process.env.PERMANENT_DELETION_ADMIN_IDS =
+              '700000000000000000000099';
+          for (const path of [
+            `/admin/worlds/${world.id}`,
+            `/admin/scopes/${scope.id}`,
+          ]) {
+            const response = await bearer(http().delete(path)).expect(410);
+            expect(response.body.code).toBe('LEGACY_DELETION_RETIRED');
+          }
+          for (const path of [
+            `/admin/worlds/${world.id}`,
+            `/admin/scopes/${scope.id}`,
+          ]) {
+            const plan = await preview(`${path}/deletion-preview`);
+            await execute(`${path}/permanent-delete`, {
+              previewFingerprint: plan.fingerprint,
+            }).expect(403);
+          }
+          expect(
+            await database.collection('worlds').findOne({ _id: oid(world.id) }),
+          ).toEqual(worldBefore);
+          expect(
+            await database.collection('scopes').findOne({ _id: oid(scope.id) }),
+          ).toEqual(scopeBefore);
+          expect(await count('admin_deletion_log')).toBe(auditsBefore);
+        } finally {
+          process.env.PERMANENT_DELETION_ADMIN_IDS = FIXTURE_ADMIN_ID;
+        }
+        for (const path of [
+          `/admin/worlds/${world.id}`,
+          `/admin/scopes/${scope.id}`,
+        ]) {
+          const plan = await preview(`${path}/deletion-preview`);
+          const requestId = randomUUID();
+          await execute(`${path}/permanent-delete`, {
+            previewFingerprint: plan.fingerprint,
+            requestId,
+          }).expect(201);
+          expect(await count('admin_deletion_log', { requestId })).toBe(1);
+        }
+      },
+    );
+  });
+
   describe('detach from World', () => {
     let subject: SeededWorld;
     let bystander: SeededWorld;

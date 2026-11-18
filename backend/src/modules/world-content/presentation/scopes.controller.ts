@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -82,8 +83,11 @@ export class ScopesController {
   }
 
   @Delete('scopes/:scopeId')
-  remove(@Param('scopeId') scopeId: string) {
-    return envelope(this.scopes.remove(scopeId));
+  remove() {
+    throw new GoneException({
+      code: 'LEGACY_DELETION_RETIRED',
+      message: 'Use the Scope deletion preview and permanent-delete workflow.',
+    });
   }
 
   /** Scope and its content: what permanent deletion would remove, keep and require. Read-only. */
