@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -124,8 +125,11 @@ export class WorldsController {
   }
 
   @Delete(':worldId')
-  remove(@Param('worldId') worldId: string) {
-    return envelope(this.worlds.remove(worldId));
+  remove() {
+    throw new GoneException({
+      code: 'LEGACY_DELETION_RETIRED',
+      message: 'Use the World deletion preview and permanent-delete workflow.',
+    });
   }
 
   /** World and everything it owns: what permanent deletion would remove, keep and require. Read-only. */
