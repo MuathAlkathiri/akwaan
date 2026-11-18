@@ -8,6 +8,7 @@ import { INestApplication } from '@nestjs/common';
 import express from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { parseTrustProxy } from './common/http/trust-proxy';
 import {
   configureApiApplication,
   createOpenApiDocument,
@@ -96,6 +97,17 @@ async function bootstrap() {
     NestFactory.create(AppModule),
   );
   const configService = app.get(ConfigService);
+
+  // Only when configured: unset keeps Express's default (trust no proxy).
+  const trustProxy = parseTrustProxy(configService.get<string>('TRUST_PROXY'));
+  if (trustProxy !== undefined) {
+    (app.getHttpAdapter().getInstance() as express.Express).set(
+      'trust proxy',
+      trustProxy,
+    );
+    Logger.log(`trust proxy = ${String(trustProxy)}`, 'Bootstrap');
+  }
+
   const uploadsRoot =
     configService.get<string>('UPLOADS_DIR') ?? join(process.cwd(), 'uploads');
 

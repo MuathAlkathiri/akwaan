@@ -55,6 +55,23 @@ describe('deployedCommit', () => {
     ).toBe(SHA);
   });
 
+  it('prefers the host-neutral APP_COMMIT_SHA over Render', () => {
+    expect(
+      deployedCommit({ APP_COMMIT_SHA: '402df01', RENDER_GIT_COMMIT: SHA }),
+    ).toBe('402df01');
+    expect(deployedCommit({ APP_COMMIT_SHA: SHA })).toBe(SHA);
+  });
+
+  it('falls back to Render when APP_COMMIT_SHA is blank', () => {
+    expect(
+      deployedCommit({ APP_COMMIT_SHA: '  ', RENDER_GIT_COMMIT: SHA }),
+    ).toBe(SHA);
+  });
+
+  it('validates APP_COMMIT_SHA like any other source', () => {
+    expect(deployedCommit({ APP_COMMIT_SHA: 'main' })).toBeNull();
+  });
+
   it.each([
     ['unset', undefined],
     ['empty', ''],

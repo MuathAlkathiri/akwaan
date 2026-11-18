@@ -61,12 +61,17 @@ export class OtpController {
  * The caller's IP, as far as it can be trusted.
  *
  * Render terminates TLS and proxies, so the socket address is the proxy's.
- * `request.ip` is the value Express derives, which respects `trust proxy` when
- * it is configured; the left-most `x-forwarded-for` entry is the fallback. This
+ * When TRUST_PROXY is configured, `request.ip` (derived from trusted hops only)
+ * is used. Otherwise the left-most `x-forwarded-for` entry is the fallback —
+ * client-controllable, which is why TRUST_PROXY should be set behind a proxy. This
  * is best-effort by nature — IP limiting is a speed bump here, and the
  * per-identifier limit is the control that actually holds.
  */
-function clientIp(request: Request): string | null {
+export function clientIp(request: Request): string | null {
+  // With TRUST_PROXY configured, Express has already derived the client
+  // address from the hops it trusts; the raw header's left-most entry is
+  // client-controlled and must not override it.
+  if (request.app?.get('trust proxy')) return request.ip || null;
   const forwarded = request.headers['x-forwarded-for'];
   const header = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   const first = header?.split(',')[0]?.trim();
