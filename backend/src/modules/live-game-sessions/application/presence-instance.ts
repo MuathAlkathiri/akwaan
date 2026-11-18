@@ -16,6 +16,6 @@ export interface PresenceInstance {
 export function createPresenceInstance(
   env: NodeJS.ProcessEnv = process.env,
 ): PresenceInstance {
-  const commit = env.RENDER_GIT_COMMIT?.trim();
+  const commit = env.APP_COMMIT_SHA?.trim() || env.RENDER_GIT_COMMIT?.trim();
   return { instanceId: randomUUID(), ...(commit ? { commit } : {}) };
 }

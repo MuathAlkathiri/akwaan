@@ -8,15 +8,16 @@ const GIT_SHA = /^[0-9a-f]{7,40}$/i;
 /**
  * The Git commit this process was deployed from, or null.
  *
- * Render sets RENDER_GIT_COMMIT ("the commit SHA for a service or deploy") for
- * every runtime. Only a well-formed SHA is reported — never the raw variable —
+ * APP_COMMIT_SHA is the host-neutral source (set it at deploy time on a VPS or
+ * any container host). Render's RENDER_GIT_COMMIT ("the commit SHA for a
+ * service or deploy") is the fallback, so Render keeps working unchanged. Only a well-formed SHA is reported — never the raw variable —
  * so a misconfigured value cannot leak anything else through /health. The
  * repository is public, so a commit SHA discloses nothing new.
  */
 export function deployedCommit(
   env: NodeJS.ProcessEnv = process.env,
 ): string | null {
-  const value = env.RENDER_GIT_COMMIT?.trim();
+  const value = env.APP_COMMIT_SHA?.trim() || env.RENDER_GIT_COMMIT?.trim();
   return value && GIT_SHA.test(value) ? value.toLowerCase() : null;
 }
 
