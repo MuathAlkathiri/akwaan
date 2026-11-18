@@ -525,6 +525,130 @@ describe("mechanic tutorial editor", () => {
     );
   });
 
+  it("authors and saves nextQuestion.media url and altText in BombTutorialEditor", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: {
+          ...bombScenario,
+          nextQuestion: {
+            prompt: "وش اسم هذا الكوكب؟",
+            acceptedAnswer: "زحل",
+          },
+        },
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountBomb();
+    await user.type(
+      screen.getByTestId("tutorial-bomb-next-question-media-url"),
+      "/brand/cosmic/luxurious_ringed_planet_illustration.webp",
+    );
+    await user.type(
+      screen.getByTestId("tutorial-bomb-next-question-media-alt"),
+      "رسم توضيحي لكوكب ذي حلقات",
+    );
+    await user.click(screen.getByTestId("tutorial-save"));
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "bomb",
+      expect.objectContaining({
+        nextQuestion: expect.objectContaining({
+          media: {
+            type: "image",
+            url: "/brand/cosmic/luxurious_ringed_planet_illustration.webp",
+            altText: "رسم توضيحي لكوكب ذي حلقات",
+          },
+        }),
+      }),
+    );
+  });
+
+  it("clears nextQuestion.media cleanly when url is emptied", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountBomb();
+    const urlInput = screen.getByTestId("tutorial-bomb-next-question-media-url");
+    const altInput = screen.getByTestId("tutorial-bomb-next-question-media-alt");
+    await user.clear(urlInput);
+    expect(altInput).toBeDisabled();
+
+    await user.click(screen.getByTestId("tutorial-save"));
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "bomb",
+      expect.objectContaining({
+        nextQuestion: expect.objectContaining({
+          media: undefined,
+        }),
+      }),
+    );
+  });
+
+  it("allows editing Top 5 entry ids explicitly while label edits preserve ids", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "top-5",
+        mechanicName: "أفضل 5",
+        draft: top5Scenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "top-5",
+        mechanicName: "أفضل 5",
+        draft: top5Scenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountTop5();
+    const labelInput = screen.getByTestId("tutorial-top5-entry-0");
+    const idInput = screen.getByTestId("tutorial-top5-id-0");
+    await user.clear(labelInput);
+    await user.type(labelInput, "روسيا");
+    expect(idInput).toHaveValue(top5Scenario.entries[0].id);
+
+    await user.clear(idInput);
+    await user.type(idInput, "russia");
+    await user.click(screen.getByTestId("tutorial-save"));
+
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "top-5",
+      expect.objectContaining({
+        entries: expect.arrayContaining([
+          expect.objectContaining({ id: "russia", label: "روسيا" }),
+        ]),
+      }),
+    );
+  });
+
   it("rehydrates and saves the Top 5 caption and decision instruction", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(
