@@ -4,20 +4,18 @@ import { useMemo, useState } from "react";
 import { ArrowDownUp, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ConfirmationDialog,
-  EmptyState,
-  SectionCard,
-} from "@/components/shared";
-import { showToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/utils";
+import { EmptyState, SectionCard } from "@/components/shared";
 
 import {
   useContentItems,
-  useDeleteContentItem,
   useScopes,
 } from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton, CountBadge } from "../shared";
+import {
+  EntityFormDialog,
+  PermanentDeletionDialog,
+  RowSkeleton,
+  CountBadge,
+} from "../shared";
 import {
   difficultyCoverage,
   difficultyDimensionsOf,
@@ -80,7 +78,6 @@ export function ContentItemSection({ worldId }: { worldId: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ContentItem | null>(null);
-  const deleteItem = useDeleteContentItem();
 
   return (
     <SectionCard
@@ -256,29 +253,17 @@ export function ContentItemSection({ worldId }: { worldId: string }) {
         )}
       </EntityFormDialog>
 
-      <ConfirmationDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
-        }}
-        title="حذف عنصر المحتوى"
-        description="هل تريد حذف هذا العنصر؟"
-        confirmLabel="حذف"
-        destructive
-        disabled={deleteItem.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          deleteItem.mutate(pendingDelete.id, {
-            onSuccess: () => setPendingDelete(null),
-            onError: (error) => {
-              showToast({
-                type: "error",
-                message: getApiErrorMessage(error, "تعذر حذف العنصر."),
-              });
-              setPendingDelete(null);
-            },
-          });
-        }}
+      <PermanentDeletionDialog
+        target={
+          pendingDelete
+            ? {
+                kind: "contentItem",
+                id: pendingDelete.id,
+                name: pendingDelete.prompt.ar,
+              }
+            : null
+        }
+        onClose={() => setPendingDelete(null)}
       />
     </SectionCard>
   );

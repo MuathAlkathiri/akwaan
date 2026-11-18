@@ -222,17 +222,6 @@ export class WorldChallengeConfigurationService {
     return this.summarize(updated, challengeType);
   }
 
-  async remove(id: string): Promise<{ id: string }> {
-    const existing = await this.require(id);
-    const worldId = String(existing.worldId);
-    await this.assertProjectionValid(worldId, (current) =>
-      current.filter((configuration) => configuration.id !== id),
-    );
-    await this.configurations.deleteById(id);
-    await this.assets.discard(existing.icon);
-    return { id };
-  }
-
   /**
    * Board edits are validated as a projection before anything is written, so a
    * live World is never left broken and nothing has to be rolled back. A World

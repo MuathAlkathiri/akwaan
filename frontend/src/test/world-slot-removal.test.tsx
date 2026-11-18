@@ -5,35 +5,31 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  release: vi.fn(),
-  preview: {
-    data: undefined as unknown,
-    isLoading: false,
-    error: undefined as unknown,
-  },
   board: {
     configurations: [] as unknown[],
     board: { blockers: [] as unknown[], warnings: [] as unknown[] },
   },
   showToast: vi.fn(),
+  get: vi.fn(),
+  post: vi.fn(),
+  delete: vi.fn(),
 }));
 
 vi.mock("@/components/ui/toast", () => ({ showToast: mocks.showToast }));
 
+// The detach dialog talks to the transport directly; only the board reads are
+// stubbed at the hook level.
+vi.mock("@/lib/api/client", () => ({
+  default: { get: mocks.get, post: mocks.post, delete: mocks.delete },
+}));
+
 vi.mock("@/features/world-management/hooks/use-world-content", () => ({
   useWorldBoard: () => ({ data: mocks.board, isLoading: false }),
   useWorldContentMetadata: () => ({ data: { boardSlotCount: 4 } }),
-  useWorldSlotRemovalPreview: (id?: string) =>
-    id
-      ? mocks.preview
-      : { data: undefined, isLoading: false, error: undefined },
-  useReleaseWorldSlot: () => ({
-    mutate: mocks.release,
-    isPending: false,
-  }),
   useChallengeTypes: () => ({ data: [], isLoading: false }),
   useCreateWorldChallengeConfiguration: () => ({ mutateAsync: vi.fn() }),
   useUpdateWorldChallengeConfiguration: () => ({ mutateAsync: vi.fn() }),
@@ -42,12 +38,11 @@ vi.mock("@/features/world-management/hooks/use-world-content", () => ({
 import { BoardSection } from "@/features/world-management/components/world-challenge-configurations/board-section";
 
 /**
- * Removing one mechanic from one World board position.
+ * Detaching one mechanic from one World board position (roadmap §19.1).
  *
- * Two things are load-bearing here. The counts on the confirmation are the
- * server's, because the browser cannot see other Worlds' content. And the two
- * destructive halves — content and binding — leave as a single request, so the
- * browser never orchestrates them.
+ * Detach removes the association only: the mechanic and every one of its
+ * questions are kept. The impact shown is the server's detach preview, and
+ * confirming sends one request carrying the reviewed fingerprint.
  */
 
 const COMBO_CONFIG = {
@@ -84,16 +79,32 @@ const otherSlot = (slotKey: string, name: string, id: string) => ({
   },
 });
 
-const previewOf = (total: number, ready: number, shared = 0) => ({
-  worldId: "world-anime",
-  worldName: "انمي",
-  slotKey: "slot_2",
-  challengeTypeId: "ct-combo",
-  challengeTypeSlug: "combo",
-  challengeTypeName: "الكومبو",
-  content: { total, ready, exclusive: total - shared, shared },
-  boardWillBecomeIncomplete: true,
-});
+const DETACH_PREVIEW = {
+  entity: {
+    kind: "configuration",
+    id: "cfg-combo",
+    name: "الكومبو",
+    key: "slot_2",
+  },
+  operation: "detach",
+  impact: {
+    worlds: 0,
+    scopes: 0,
+    configurations: 1,
+    tutorials: 0,
+    scopeExclusions: 0,
+    content: { toDelete: 0, toDeleteReady: 0, sharedPreserved: 0 },
+    external: {},
+    worldsBecomingIncomplete: [{ id: "world-anime", name: "انمي" }],
+  },
+  blockers: [],
+  safe: true,
+  safeWithHistoryPurge: true,
+  requiresHistoryPurge: false,
+  reversible: false,
+  fingerprint: "fp-detach",
+  generatedAt: "2026-11-18T00:00:00.000Z",
+};
 
 const fullBoard = () => [
   otherSlot("slot_1", "اقرأ خصمك", "ryo"),
@@ -102,197 +113,164 @@ const fullBoard = () => [
   otherSlot("slot_4", "ركّبها", "di"),
 ];
 
+const ok = <T,>(data: T) => Promise.resolve({ data: { data } });
+
+function renderBoard() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <BoardSection worldId="world-anime" />
+    </QueryClientProvider>,
+  );
+}
+
+const openDetach = () =>
+  fireEvent.click(
+    within(screen.getByTestId("configuration-slot_2")).getByLabelText(
+      "فصل عن العالم",
+    ),
+  );
+
 beforeEach(() => {
-  mocks.release.mockReset();
   mocks.showToast.mockReset();
+  mocks.get.mockReset().mockImplementation(() => ok(DETACH_PREVIEW));
+  mocks.post.mockReset().mockImplementation(() =>
+    ok({
+      requestId: "r",
+      auditId: "a",
+      entity: DETACH_PREVIEW.entity,
+      operation: "detach",
+      counts: { configurations: 1 },
+      unreferencedMediaCandidates: [],
+      replayed: false,
+    }),
+  );
+  mocks.delete.mockReset();
   mocks.board = {
     configurations: fullBoard(),
     board: { blockers: [], warnings: [] },
   };
-  mocks.preview = {
-    data: previewOf(12, 12),
-    isLoading: false,
-    error: undefined,
-  };
 });
 
-describe("removing a mechanic from one World slot", () => {
-  it("asks for confirmation instead of deleting on the first click", () => {
-    render(<BoardSection worldId="world-anime" />);
-    expect(screen.queryByTestId("slot-removal-dialog")).toBeNull();
+describe("detaching a mechanic from one World slot", () => {
+  it("asks for confirmation instead of detaching on the first click", async () => {
+    renderBoard();
+    expect(screen.queryByTestId("permanent-deletion-dialog")).toBeNull();
 
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
+    openDetach();
+
+    expect(
+      await screen.findByTestId("permanent-deletion-dialog"),
+    ).toBeInTheDocument();
+    await screen.findByTestId("deletion-preview");
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/admin/challenge-configurations/cfg-combo/detach-preview",
     );
-
-    expect(screen.getByTestId("slot-removal-dialog")).toBeInTheDocument();
     // Nothing destructive has been requested by merely opening it.
-    expect(mocks.release).not.toHaveBeenCalled();
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("shows the server's count, not a client guess", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
+  it("says the mechanic and its content are preserved", async () => {
+    renderBoard();
+    openDetach();
+    await screen.findByTestId("deletion-preview");
+
+    expect(screen.getByTestId("deletion-operation-copy")).toHaveTextContent(
+      "تبقى الميكانيكا وجميع أسئلتها محفوظة",
     );
-
-    expect(screen.getByTestId("slot-removal-total")).toHaveTextContent("12");
-    expect(screen.getByTestId("slot-removal-ready")).toHaveTextContent(
-      "الجاهزة: 12",
+    expect(screen.getByTestId("deletion-operation")).toHaveTextContent(
+      "فصل الارتباط فقط",
     );
-  });
-
-  it("names the mechanic and the World being changed", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
-
-    expect(screen.getByTestId("slot-removal-mechanic")).toHaveTextContent(
-      "الكومبو",
-    );
-    expect(screen.getByTestId("slot-removal-world")).toHaveTextContent("انمي");
-  });
-
-  it("warns that the World stops being playable until the slot is refilled", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
-
-    const warning = screen.getByTestId("slot-removal-warning");
-    expect(warning).toHaveTextContent("وإفراغ هذه الخانة");
-    expect(warning).toHaveTextContent("لن يكون العالم جاهزًا للعب");
-  });
-
-  it("does nothing at all on cancel", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
-    fireEvent.click(screen.getByTestId("slot-removal-cancel"));
-
-    expect(mocks.release).not.toHaveBeenCalled();
-    return waitFor(() =>
-      expect(screen.queryByTestId("slot-removal-dialog")).toBeNull(),
+    // Detach is not presented as an irreversible deletion.
+    expect(screen.queryByTestId("deletion-acknowledge")).toBeNull();
+    expect(screen.queryByTestId("deletion-impact-content")).toBeNull();
+    expect(screen.getByTestId("deletion-confirm")).toHaveTextContent(
+      "فصل عن العالم",
     );
   });
 
-  it("confirms through one operation carrying the expected mechanic", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
-    fireEvent.click(screen.getByTestId("slot-removal-confirm"));
+  it("warns that the World stops being selectable until the slot is refilled", async () => {
+    renderBoard();
+    openDetach();
+    expect(
+      await screen.findByTestId("deletion-worlds-incomplete"),
+    ).toHaveTextContent("انمي");
+  });
 
-    expect(mocks.release).toHaveBeenCalledTimes(1);
-    expect(mocks.release.mock.calls[0][0]).toEqual({
-      configurationId: "cfg-combo",
-      // The concurrency check: the mechanic the operator actually confirmed.
-      expectedChallengeTypeId: "ct-combo",
+  it("does nothing at all on cancel", async () => {
+    renderBoard();
+    openDetach();
+    await screen.findByTestId("deletion-preview");
+    fireEvent.click(screen.getByTestId("deletion-cancel"));
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.queryByTestId("permanent-deletion-dialog")).toBeNull(),
+    );
+  });
+
+  it("confirms through one detach request carrying the reviewed fingerprint", async () => {
+    renderBoard();
+    openDetach();
+    await screen.findByTestId("deletion-preview");
+    fireEvent.click(screen.getByTestId("deletion-confirm"));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(1));
+    expect(mocks.post.mock.calls[0][0]).toBe(
+      "/admin/challenge-configurations/cfg-combo/detach",
+    );
+    expect(mocks.post.mock.calls[0][1]).toMatchObject({
+      previewFingerprint: "fp-detach",
+      requestId: expect.any(String),
     });
-  });
-
-  it("still allows removing a mechanic that has no content", () => {
-    mocks.preview = {
-      data: previewOf(0, 0),
-      isLoading: false,
-      error: undefined,
-    };
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
+    // The retired endpoints are never used.
+    expect(mocks.delete).not.toHaveBeenCalled();
+    const urls = [...mocks.get.mock.calls, ...mocks.post.mock.calls].map(
+      (call) => call[0] as string,
     );
-
-    expect(screen.getByTestId("slot-removal-total")).toHaveTextContent("0");
-    // No ready/total breakdown for an empty mechanic — nothing to break down.
-    expect(screen.queryByTestId("slot-removal-ready")).toBeNull();
-    fireEvent.click(screen.getByTestId("slot-removal-confirm"));
-    expect(mocks.release).toHaveBeenCalledTimes(1);
-  });
-
-  it("says when content will survive because another mechanic shares it", () => {
-    mocks.preview = {
-      data: previewOf(12, 12, 4),
-      isLoading: false,
-      error: undefined,
-    };
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
+    expect(urls.some((url) => /removal-preview|\/release$/.test(url))).toBe(
+      false,
     );
-
-    expect(screen.getByTestId("slot-removal-shared")).toHaveTextContent(
-      "4 سؤال مشترك",
+    await waitFor(() =>
+      expect(screen.queryByTestId("permanent-deletion-dialog")).toBeNull(),
+    );
+    expect(mocks.showToast.mock.calls[0][0].message).toContain(
+      "تم فصل «الكومبو» عن العالم",
     );
   });
 
-  it("hides the shared note when nothing is shared", () => {
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
+  it("leaves the board untouched and the dialog open when the server refuses", async () => {
+    mocks.post.mockImplementation(() =>
+      Promise.reject({
+        isAxiosError: true,
+        response: { status: 409, data: { code: "BOARD_SLOT_REBOUND", message: "x" } },
+      }),
     );
-    expect(screen.queryByTestId("slot-removal-shared")).toBeNull();
-  });
+    renderBoard();
+    openDetach();
+    await screen.findByTestId("deletion-preview");
+    fireEvent.click(screen.getByTestId("deletion-confirm"));
 
-  it("leaves the board untouched when the server refuses", () => {
-    mocks.release.mockImplementation(
-      (_input: unknown, options: { onError: (error: unknown) => void }) => {
-        options.onError({
-          response: { data: { code: "BOARD_SLOT_REBOUND" } },
-        });
-      },
-    );
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
-    fireEvent.click(screen.getByTestId("slot-removal-confirm"));
-
-    // The dialog stays open — closing it would imply the removal happened.
-    expect(screen.getByTestId("slot-removal-dialog")).toBeInTheDocument();
-    expect(mocks.showToast).toHaveBeenCalled();
-    // And slot_2 is still shown as configured.
+    expect(await screen.findByTestId("deletion-failure")).toBeInTheDocument();
+    expect(screen.getByTestId("permanent-deletion-dialog")).toBeInTheDocument();
     expect(screen.queryByTestId("empty-slot-slot_2")).toBeNull();
   });
 
-  it("refuses to confirm before the server's count has arrived", () => {
-    mocks.preview = { data: undefined, isLoading: true, error: undefined };
-    render(<BoardSection worldId="world-anime" />);
-    fireEvent.click(
-      within(screen.getByTestId("configuration-slot_2")).getByLabelText(
-        "حذف الإعداد",
-      ),
-    );
+  it("refuses to confirm before the server's preview has arrived", () => {
+    mocks.get.mockImplementation(() => new Promise(() => {}));
+    renderBoard();
+    openDetach();
 
-    expect(screen.getByTestId("slot-removal-loading")).toBeInTheDocument();
-    expect(screen.getByTestId("slot-removal-confirm")).toBeDisabled();
+    expect(screen.getByTestId("deletion-preview-loading")).toBeInTheDocument();
+    expect(screen.getByTestId("deletion-confirm")).toBeDisabled();
   });
 });
 
-describe("the empty slot that removal leaves behind", () => {
+describe("the empty slot that detaching leaves behind", () => {
   beforeEach(() => {
-    // What the refreshed board looks like after slot_2 was released.
+    // What the refreshed board looks like after slot_2 was detached.
     mocks.board = {
       configurations: fullBoard().filter(
         (configuration) => configuration.slotKey !== "slot_2",
@@ -305,7 +283,7 @@ describe("the empty slot that removal leaves behind", () => {
   });
 
   it("keeps the position visible rather than dropping it from the board", () => {
-    render(<BoardSection worldId="world-anime" />);
+    renderBoard();
 
     const empty = screen.getByTestId("empty-slot-slot_2");
     expect(empty).toHaveTextContent("الخانة 2");
@@ -317,7 +295,7 @@ describe("the empty slot that removal leaves behind", () => {
   });
 
   it("offers assignment on that same position", () => {
-    render(<BoardSection worldId="world-anime" />);
+    renderBoard();
     const assign = screen.getByTestId("assign-slot-slot_2");
     expect(assign).toHaveTextContent("تعيين ميكانيكا");
     fireEvent.click(assign);
@@ -325,7 +303,7 @@ describe("the empty slot that removal leaves behind", () => {
   });
 
   it("reports the board as not ready while a position is empty", () => {
-    render(<BoardSection worldId="world-anime" />);
+    renderBoard();
     // The blocker the server returned is surfaced, not recomputed here.
     expect(screen.getByText(/تكوين اللوحة/)).toBeInTheDocument();
   });

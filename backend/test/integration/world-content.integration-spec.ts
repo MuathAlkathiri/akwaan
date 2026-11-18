@@ -365,18 +365,24 @@ describe('World Management HTTP integration', () => {
       readiness.board.slots.map((slot: { slotKey: string }) => slot.slotKey),
     ).toEqual(['slot_1', 'slot_2', 'slot_3', 'slot_4']);
 
-    // A valid board may not be regressed while the World is active.
+    // Detaching a mechanic from an active World is the operator's explicit
+    // choice (roadmap §19.1), so it is not refused — but the preview must say
+    // the board becomes incomplete, i.e. the World stops being selectable.
     const finalSlot = readiness.board.slots.find(
       (slot: { slotKey: string }) => slot.slotKey === 'slot_4',
     );
-    const refusedRemoval = await bearer(
-      authed().delete(
-        `/admin/challenge-configurations/${finalSlot.configurationId}`,
-      ),
-    ).expect(400);
-    expect(JSON.stringify(refusedRemoval.body)).toContain(
-      'BOARD_SLOT_COUNT_MISMATCH',
-    );
+    const detachPreview = (
+      await bearer(
+        authed().get(
+          `/admin/challenge-configurations/${finalSlot.configurationId}/detach-preview`,
+        ),
+      ).expect(200)
+    ).body.data;
+    expect(detachPreview.operation).toBe('detach');
+    expect(detachPreview.impact.content.toDelete).toBe(0);
+    expect(detachPreview.impact.worldsBecomingIncomplete).toEqual([
+      expect.objectContaining({ id: String(world.id) }),
+    ]);
 
     // Scope exclusions must not silently pass: dropping below four blocks the World.
     const breakingExclusion = await bearer(
@@ -865,17 +871,31 @@ describe('World Management HTTP integration', () => {
     expect(readiness.board.slots).toHaveLength(1);
   });
 
-  it('cascades authoring references when deleting a mechanic not used by a Match', async () => {
+  it('keeps permanent deletion fail-closed when no operator is authorised', async () => {
+    // This app configures no PERMANENT_DELETION_ADMIN_IDS, so even an Admin can
+    // review the impact but cannot execute it. The cascade itself is covered by
+    // admin-permanent-deletion.integration-spec.ts.
     const challengeTypes = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data;
     const sharedRyo = challengeTypes.find(
       (challengeType: { slug: string }) => challengeType.slug === RYO_MODE_KEY,
     );
-    expect(sharedRyo.worldConfigurationCount).toBeGreaterThan(0);
-    await bearer(
-      authed().delete(`/admin/challenge-types/${sharedRyo.id}`),
-    ).expect(200);
+    const preview = (
+      await bearer(
+        authed().get(`/admin/challenge-types/${sharedRyo.id}/deletion-preview`),
+      ).expect(200)
+    ).body.data;
+    expect(preview.actorMayExecute).toBe(false);
+    const refused = await bearer(
+      authed().post(`/admin/challenge-types/${sharedRyo.id}/permanent-delete`),
+    )
+      .send({
+        previewFingerprint: preview.fingerprint,
+        requestId: 'world-content-ryo-delete',
+      })
+      .expect(403);
+    expect(refused.body.code).toBe('PERMANENT_DELETION_NOT_PERMITTED');
     const remaining = (
       await bearer(authed().get('/admin/challenge-types')).expect(200)
     ).body.data;
@@ -883,6 +903,6 @@ describe('World Management HTTP integration', () => {
       remaining.some(
         (challengeType: { id: string }) => challengeType.id === sharedRyo.id,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });

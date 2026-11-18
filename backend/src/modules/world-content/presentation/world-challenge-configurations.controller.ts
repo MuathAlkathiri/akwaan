@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -17,8 +16,6 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { parseMultipartJsonBody } from '../../../common/pipes/multipart-json-body.parser';
 import { UserRole } from '../../users/schemas/user.schema';
 import { WorldChallengeConfigurationService } from '../application/world-challenge-configuration.service';
-import { WorldSlotMechanicRemovalService } from '../application/world-slot-mechanic-removal.service';
-import { ReleaseWorldSlotDto } from '../dto/world-challenge-configuration.dto';
 import {
   CreateWorldChallengeConfigurationDto,
   UpdateWorldChallengeConfigurationDto,
@@ -28,6 +25,13 @@ import {
   UploadedWorldContentAsset,
   worldContentAssetInterceptor,
 } from './world-content.http';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/auth.types';
+import { WorldContentDeletionService } from '../application/permanent-deletion/world-content-deletion.service';
+import {
+  deletionActor,
+  ExecutePermanentDeletionDto,
+} from '../dto/permanent-deletion.dto';
 
 @ApiTags('World Management')
 @ApiBearerAuth()
@@ -37,7 +41,7 @@ import {
 export class WorldChallengeConfigurationsController {
   constructor(
     private readonly configurations: WorldChallengeConfigurationService,
-    private readonly slotRemoval: WorldSlotMechanicRemovalService,
+    private readonly deletion: WorldContentDeletionService,
   ) {}
 
   @Get('worlds/:worldId/challenge-configurations')
@@ -77,36 +81,40 @@ export class WorldChallengeConfigurationsController {
     return envelope(this.configurations.update(configurationId, dto, asset));
   }
 
-  @Delete('challenge-configurations/:configurationId')
-  remove(@Param('configurationId') configurationId: string) {
-    return envelope(this.configurations.remove(configurationId));
-  }
-
   /**
-   * What releasing this board position would cost, counted server-side.
+   * Detach a mechanic from one World: what it would change. Read-only.
    *
-   * Read-only: opening the confirmation dialog must not change anything.
+   * Detach deletes the board binding only. The mechanic, its content and every
+   * other World are untouched (roadmap §19.1: removing a World association never
+   * deletes questions).
    */
-  @Get('challenge-configurations/:configurationId/removal-preview')
-  removalPreview(@Param('configurationId') configurationId: string) {
-    return envelope(this.slotRemoval.preview(configurationId));
-  }
-
-  /**
-   * Release one board position of one World, disposing of that World's content
-   * for the mechanic. Not ChallengeType deletion, and not any other World's
-   * content. One request, one transaction — the browser never orchestrates the
-   * two destructive halves separately.
-   */
-  @Post('challenge-configurations/:configurationId/release')
-  release(
+  @Get('challenge-configurations/:configurationId/detach-preview')
+  detachPreview(
     @Param('configurationId') configurationId: string,
-    @Body() dto: ReleaseWorldSlotDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return envelope(
-      this.slotRemoval.remove(configurationId, {
-        expectedChallengeTypeId: dto.expectedChallengeTypeId,
-      }),
+      this.deletion.preview(
+        'configuration',
+        configurationId,
+        deletionActor(user),
+      ),
+    );
+  }
+
+  @Post('challenge-configurations/:configurationId/detach')
+  detach(
+    @Param('configurationId') configurationId: string,
+    @Body() dto: ExecutePermanentDeletionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.execute(
+        'configuration',
+        configurationId,
+        dto,
+        deletionActor(user),
+      ),
     );
   }
 }

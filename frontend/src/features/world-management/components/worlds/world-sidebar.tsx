@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/shared";
-import { showToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/utils";
 
-import { useDeleteWorld } from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton, SearchToolbar } from "../shared";
+import {
+  EntityFormDialog,
+  PermanentDeletionDialog,
+  RowSkeleton,
+  SearchToolbar,
+} from "../shared";
 import { WorldCard } from "./world-card";
 import { WorldForm } from "./world-form";
 import type { World } from "../../types";
@@ -31,7 +32,6 @@ export function WorldSidebar({
   const [addOpen, setAddOpen] = useState(false);
   const [editingWorld, setEditingWorld] = useState<World | null>(null);
   const [pendingDelete, setPendingDelete] = useState<World | null>(null);
-  const deleteWorld = useDeleteWorld();
 
   const filteredWorlds = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -102,32 +102,13 @@ export function WorldSidebar({
         )}
       </EntityFormDialog>
 
-      <ConfirmationDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
-        }}
-        title="حذف العالم"
-        description={`هل تريد حذف "${pendingDelete?.name ?? ""}"؟ لا يمكن حذف عالم يحتوي على نطاقات أو تحديات أو محتوى.`}
-        confirmLabel="حذف"
-        destructive
-        disabled={deleteWorld.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          deleteWorld.mutate(pendingDelete.id, {
-            onSuccess: () => setPendingDelete(null),
-            onError: (error) => {
-              showToast({
-                type: "error",
-                message: getApiErrorMessage(
-                  error,
-                  "لا يمكن حذف عالم مرتبط بمحتوى آخر.",
-                ),
-              });
-              setPendingDelete(null);
-            },
-          });
-        }}
+      <PermanentDeletionDialog
+        target={
+          pendingDelete
+            ? { kind: "world", id: pendingDelete.id, name: pendingDelete.name }
+            : null
+        }
+        onClose={() => setPendingDelete(null)}
       />
     </div>
   );

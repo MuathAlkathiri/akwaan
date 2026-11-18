@@ -1,4 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import type { ClientSession } from 'mongoose';
+import { MatchCreationFence } from './match-creation.fence';
 import { randomInt, randomUUID } from 'crypto';
 import {
   LIVE_GAME_SESSION_REPOSITORY,
@@ -101,6 +103,8 @@ export class MatchUseCases {
     private readonly cancelRuntime: CancelGameplayRuntime,
     private readonly scoring: ScoringService,
     private readonly worldPresentation: WorldPresentationService,
+    // Always provided by DI; absent only in unit tests that build this by hand.
+    @Optional() private readonly creationFence?: MatchCreationFence,
   ) {}
 
   /**
@@ -112,7 +116,8 @@ export class MatchUseCases {
    * and the coin toss that decides who selects first. Only then is a single
    * document inserted, so a configuration that fails to validate leaves no Match
    * behind at all — there is no partial state to clean up and nothing to roll
-   * back, which is why this needs no transaction.
+   * back. The insert itself runs in a short transaction fenced per World, so
+   * Admin permanent deletion and Match creation serialise (MatchCreationFence).
    *
    * The coin toss is server-owned. No client may supply the starting team.
    */
@@ -134,17 +139,33 @@ export class MatchUseCases {
       );
     }
     const teams = this.playingTeams(session);
-    const setup = await this.unifiedSetup.validate(input.occurrences);
-    const now = this.clock.now();
-    const match = Match.createUnified({
-      liveSessionId: input.sessionId,
-      teams,
-      occurrences: setup.occurrences,
-      boardPositions: setup.boardPositions,
-      coinToss: this.tossCoin(teams, now),
-      now,
-    });
-    await this.matches.create(match);
+    // Validated once up front for clean errors, then again inside the fenced
+    // transaction so a concurrent Admin deletion cannot slip in between.
+    let setup = await this.unifiedSetup.validate(input.occurrences);
+    let match!: Match;
+    const persist = async (transaction?: ClientSession) => {
+      if (transaction) {
+        setup = await this.unifiedSetup.validate(input.occurrences);
+      }
+      const now = this.clock.now();
+      match = Match.createUnified({
+        liveSessionId: input.sessionId,
+        teams,
+        occurrences: setup.occurrences,
+        boardPositions: setup.boardPositions,
+        coinToss: this.tossCoin(teams, now),
+        now,
+      });
+      await this.matches.create(match, transaction);
+    };
+    if (this.creationFence) {
+      await this.creationFence.run(
+        [...new Set(input.occurrences.map((occurrence) => occurrence.worldId))],
+        persist,
+      );
+    } else {
+      await persist();
+    }
     this.transitions.publish(match, 'created');
     this.logger.log({
       event: 'match_created',

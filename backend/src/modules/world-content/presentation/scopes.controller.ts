@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -23,6 +24,13 @@ import {
   UploadedWorldContentAsset,
   worldContentAssetInterceptor,
 } from './world-content.http';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/auth.types';
+import { WorldContentDeletionService } from '../application/permanent-deletion/world-content-deletion.service';
+import {
+  deletionActor,
+  ExecutePermanentDeletionDto,
+} from '../dto/permanent-deletion.dto';
 
 @ApiTags('World Management')
 @ApiBearerAuth()
@@ -30,7 +38,10 @@ import {
 @Roles(UserRole.ADMIN)
 @Controller('admin')
 export class ScopesController {
-  constructor(private readonly scopes: ScopeService) {}
+  constructor(
+    private readonly scopes: ScopeService,
+    private readonly deletion: WorldContentDeletionService,
+  ) {}
 
   @Get('worlds/:worldId/scopes')
   listByWorld(@Param('worldId') worldId: string) {
@@ -72,7 +83,34 @@ export class ScopesController {
   }
 
   @Delete('scopes/:scopeId')
-  remove(@Param('scopeId') scopeId: string) {
-    return envelope(this.scopes.remove(scopeId));
+  remove() {
+    throw new GoneException({
+      code: 'LEGACY_DELETION_RETIRED',
+      message: 'Use the Scope deletion preview and permanent-delete workflow.',
+    });
+  }
+
+  /** Scope and its content: what permanent deletion would remove, keep and require. Read-only. */
+  @Get('scopes/:scopeId/deletion-preview')
+  deletionPreview(
+    @Param('scopeId') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(this.deletion.preview('scope', id, deletionActor(user)));
+  }
+
+  /**
+   * Permanently deletes the Scope and its content once the operator confirmed the preview.
+   * Refused with DELETION_PREVIEW_STALE if the impact changed since.
+   */
+  @Post('scopes/:scopeId/permanent-delete')
+  permanentDelete(
+    @Param('scopeId') id: string,
+    @Body() dto: ExecutePermanentDeletionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.execute('scope', id, dto, deletionActor(user)),
+    );
   }
 }

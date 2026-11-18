@@ -24,7 +24,6 @@ import {
   assertNoIssues,
   issue,
   withUniqueConstraint,
-  WorldContentConflictError,
 } from '../domain/world-content.errors';
 import {
   buildReadinessReport,
@@ -39,12 +38,9 @@ import {
 } from '../dto/challenge-type.dto';
 import { ChallengeTypeRepository } from '../persistence/challenge-type.repository';
 import { ContentItemRepository } from '../persistence/content-item.repository';
-import { ScopeRepository } from '../persistence/scope.repository';
-import { ProductionMechanicLifecycleRepository } from '../persistence/production-mechanic-lifecycle.repository';
 import { WorldChallengeConfigurationRepository } from '../persistence/world-challenge-configuration.repository';
 import { ChallengeType } from '../schemas/challenge-type.schema';
 import { WorldContentAssetMutator } from './world-content-asset.mutator';
-import { WorldContentReferenceRegistry } from './world-content-reference.registry';
 import { toChallengeTypeView } from './world-content.mapper';
 
 export interface ChallengeTypeSummary extends ChallengeTypeView {
@@ -55,20 +51,6 @@ export interface ChallengeTypeSummary extends ChallengeTypeView {
   worldConfigurationCount: number;
   contentItemCount: number;
   readiness: ReadinessReport;
-}
-
-export interface ChallengeTypeDeletionPreview {
-  challengeTypeId: string;
-  name: string;
-  historicalMatchUsageCount: number;
-  activeMatchUsageCount: number;
-  contentItemCount: number;
-  worldAssignmentCount: number;
-  scopeExclusionCount: number;
-  canHardDelete: boolean;
-  blockReason?: 'active_match' | 'unsafe_historical_snapshot';
-  historicalSnapshotSafe: boolean;
-  productionMechanic: boolean;
 }
 
 /**
@@ -111,12 +93,9 @@ export class ChallengeTypeService {
     private readonly challengeTypes: ChallengeTypeRepository,
     private readonly configurations: WorldChallengeConfigurationRepository,
     private readonly contentItems: ContentItemRepository,
-    private readonly scopes: ScopeRepository,
     private readonly policy: ChallengeTypePolicy,
     private readonly scoringRules: ScoringRuleRegistry,
     private readonly assets: WorldContentAssetMutator,
-    private readonly references: WorldContentReferenceRegistry,
-    private readonly lifecycle: ProductionMechanicLifecycleRepository,
   ) {}
 
   metadata(): WorldContentMetadata {
@@ -162,61 +141,6 @@ export class ChallengeTypeService {
 
   async readiness(id: string): Promise<ReadinessReport> {
     return this.evaluate(await this.require(id));
-  }
-
-  async deletionPreview(id: string): Promise<ChallengeTypeDeletionPreview> {
-    const challengeType = await this.require(id);
-    const [
-      historicalMatchUsageCount,
-      activeMatchUsageCount,
-      unsafeHistoricalMatchCount,
-      contentItemCount,
-      worldAssignmentCount,
-      scopeExclusionCount,
-    ] = await Promise.all([
-      this.references.countReferencesFrom(
-        'persisted-matches-historical',
-        'challengeType',
-        id,
-        { slug: challengeType.slug },
-      ),
-      this.references.countReferencesFrom(
-        'persisted-matches-active',
-        'challengeType',
-        id,
-        { slug: challengeType.slug },
-      ),
-      this.references.countReferencesFrom(
-        'persisted-matches-unsafe-history',
-        'challengeType',
-        id,
-        { slug: challengeType.slug },
-      ),
-      this.contentItems.countByChallengeType(id),
-      this.configurations.countByChallengeType(id),
-      this.scopes.countExcludingChallengeType(id),
-    ]);
-    const historicalSnapshotSafe = unsafeHistoricalMatchCount === 0;
-    const canHardDelete = activeMatchUsageCount === 0 && historicalSnapshotSafe;
-    return {
-      challengeTypeId: id,
-      name: challengeType.name,
-      historicalMatchUsageCount,
-      activeMatchUsageCount,
-      contentItemCount,
-      worldAssignmentCount,
-      scopeExclusionCount,
-      canHardDelete,
-      ...(activeMatchUsageCount > 0
-        ? { blockReason: 'active_match' as const }
-        : !historicalSnapshotSafe
-          ? { blockReason: 'unsafe_historical_snapshot' as const }
-          : {}),
-      historicalSnapshotSafe,
-      productionMechanic: Boolean(
-        productionMechanicDefinition(challengeType.slug),
-      ),
-    };
   }
 
   async create(
@@ -305,46 +229,6 @@ export class ChallengeTypeService {
       },
     });
     return this.summarize(updated);
-  }
-
-  async remove(id: string): Promise<{ id: string }> {
-    const existing = await this.require(id);
-    const activeMatchUsageCount = await this.references.countReferencesFrom(
-      'persisted-matches-active',
-      'challengeType',
-      id,
-      { slug: existing.slug },
-    );
-    if (activeMatchUsageCount > 0) {
-      throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_IN_ACTIVE_MATCH',
-        `This mechanic is referenced by ${activeMatchUsageCount} active Match(es)`,
-      );
-    }
-    const unsafeHistoricalMatchCount =
-      await this.references.countReferencesFrom(
-        'persisted-matches-unsafe-history',
-        'challengeType',
-        id,
-        { slug: existing.slug },
-      );
-    if (unsafeHistoricalMatchCount > 0) {
-      throw new WorldContentConflictError(
-        'CHALLENGE_TYPE_HISTORY_SNAPSHOT_UNSAFE',
-        `${unsafeHistoricalMatchCount} completed Match(es) lack a self-contained mechanic snapshot`,
-      );
-    }
-    if (productionMechanicDefinition(existing.slug)) {
-      await this.lifecycle.markDeleted(existing.slug, id);
-    }
-    // Standalone Mongo has no transactions. References are removed first and
-    // the root last, so a failure cannot leave a dangling reference.
-    await this.configurations.deleteByChallengeType(id);
-    await this.contentItems.deleteByChallengeType(id);
-    await this.scopes.removeChallengeTypeFromExclusions(id);
-    await this.challengeTypes.deleteById(id);
-    await this.assets.discard(existing.icon);
-    return { id };
   }
 
   private toCandidate(

@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ClientSession } from 'mongoose';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { Match, MatchState } from '../domain/match';
 import { MatchSetupMode, MatchStatus } from '../domain/match.constants';
@@ -31,7 +31,13 @@ export class MongooseMatchRepository implements MatchRepository {
     private readonly scoring: ScoringService,
   ) {}
 
-  async create(match: Match): Promise<void> {
+  async create(match: Match, session?: ClientSession): Promise<void> {
+    if (session) {
+      await this.model.create([this.toDocument(match.serialize())], {
+        session,
+      });
+      return;
+    }
     await this.model.create(this.toDocument(match.serialize()));
   }
 

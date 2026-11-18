@@ -3,6 +3,7 @@ import {
   WorldContentConflictError,
   WorldContentReferenceDetail,
 } from '../domain/world-content.errors';
+import type { WorldContentDeletionParticipant } from './permanent-deletion/world-content-deletion.types';
 
 export type WorldContentReferenceKind = 'world' | 'scope' | 'challengeType';
 
@@ -36,12 +37,44 @@ export interface WorldContentReferenceGuard {
 export class WorldContentReferenceRegistry {
   private readonly logger = new Logger(WorldContentReferenceRegistry.name);
   private readonly guards: WorldContentReferenceGuard[] = [];
+  private readonly deletionParticipants: WorldContentDeletionParticipant[] = [];
 
   register(guard: WorldContentReferenceGuard): void {
     if (this.guards.some((existing) => existing.source === guard.source))
       return;
     this.guards.push(guard);
     this.logger.log(`Registered external reference guard "${guard.source}"`);
+  }
+
+  /**
+   * A module that holds data about World content and must take part in a
+   * permanent deletion: report its impact, and clean its own records inside the
+   * deletion transaction. Same dependency direction as `register`.
+   */
+  registerDeletionParticipant(
+    participant: WorldContentDeletionParticipant,
+  ): void {
+    if (
+      this.deletionParticipants.some(
+        (existing) => existing.source === participant.source,
+      )
+    )
+      return;
+    this.deletionParticipants.push(participant);
+    this.logger.log(
+      `Registered permanent-deletion participant "${participant.source}"`,
+    );
+  }
+
+  participants(): readonly WorldContentDeletionParticipant[] {
+    return this.deletionParticipants;
+  }
+
+  /** Guards other than the given sources (e.g. legacy reference guards only). */
+  guardsExcept(
+    sources: readonly string[],
+  ): readonly WorldContentReferenceGuard[] {
+    return this.guards.filter((guard) => !sources.includes(guard.source));
   }
 
   async assertUnreferenced(
