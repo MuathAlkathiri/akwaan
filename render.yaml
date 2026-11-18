@@ -70,17 +70,10 @@ services:
         sync: false
 
       # Off unless explicitly turned on. Swagger documents every admin
-      # mutation; AI generation and YouTube ingest cost money and CPU that a
-      # free instance does not have.
+      # mutation.
       - key: SWAGGER_ENABLED
         value: "false"
-      - key: AI_QUESTION_GENERATION_ENABLED
-        value: "false"
-      - key: ALLOW_YOUTUBE_ASSET_DOWNLOADS
-        value: "false"
 
-      - key: MUSIC_QUESTION_CATEGORY_SLUG
-        value: songs
       - key: WIGOLO_EXECUTABLE_PATH
         value: /app/node_modules/.bin/wigolo
       - key: WIGOLO_CACHE_FILE
@@ -109,7 +102,3 @@ services:
       # SMS_OTP_NOT_AVAILABLE. The flag is here so enabling it later is config.
       - key: SMS_OTP_ENABLED
         value: "false"
-
-      # Set only if you turn AI generation on later.
-      - key: GEMINI_API_KEY
-        sync: false

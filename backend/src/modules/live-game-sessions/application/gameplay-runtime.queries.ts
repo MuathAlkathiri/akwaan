@@ -27,10 +27,6 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
-import {
-  PARENT_GAME_ACCESS,
-  ParentGameAccess,
-} from './parent-game-access.port';
 
 @Injectable()
 export class CreateGameplayRuntime {
@@ -46,8 +42,6 @@ export class CreateGameplayRuntime {
     private readonly executor: GameplayRuntimeExecutor,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
-    @Inject(PARENT_GAME_ACCESS)
-    private readonly parentGames: ParentGameAccess,
   ) {}
 
   async execute(input: {
@@ -90,20 +84,14 @@ export class CreateGameplayRuntime {
       );
     }
     const now = this.clock.now();
-    const setup = state.parentGameId
-      ? await this.parentGames.gameplaySetup(
-          state.parentGameId,
-          state.parentGameQuestionId,
-        )
-      : undefined;
     const runtime = GameplayRuntime.create({
       id: randomUUID(),
       sessionId: input.sessionId,
       plugin: this.modes.resolve(
-        setup?.runtimeModeKey ?? input.modeKey ?? 'core-round-runtime',
-        setup?.runtimeModeVersion ?? input.modeVersion ?? 1,
+        input.modeKey ?? 'core-round-runtime',
+        input.modeVersion ?? 1,
       ),
-      initialState: setup?.initialRuntimeState ?? input.initialState,
+      initialState: input.initialState,
       commandId: input.commandId,
       actorId: input.actor.actorId,
       now,

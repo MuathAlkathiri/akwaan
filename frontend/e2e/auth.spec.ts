@@ -20,8 +20,8 @@ test("prevents a standard user from opening administrator screens", async ({
   page,
 }) => {
   await login(page, "user");
-  await page.goto("/admin/questions");
-  await expect(page).not.toHaveURL(/\/admin\/questions$/);
+  await page.goto("/admin/worlds");
+  await expect(page).not.toHaveURL(/\/admin\/worlds$/);
 });
 
 test("does not trust a cached user without a token", async ({ page }) => {

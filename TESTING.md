@@ -47,35 +47,15 @@ long, brittle UI loop.
 ## Integration and live-provider boundaries
 
 Backend Jest suites mock AI and asset-provider infrastructure. Live AI is intentionally
-excluded from verification and must never persist content by default. Media integration
-requires FFmpeg/FFprobe and belongs in an isolated Docker test environment. Test fixture
+excluded from verification and must never persist content by default. Test fixture
 work must use a database name ending in `_test`; production seeds are not test fixtures.
 
 Backend integration fixtures can only target database names ending in `_test`:
 `npm run test:fixtures:seed`, `npm run test:fixtures:reset`, and
-`npm run test:backend:integration`. The HTTP integration suites cover auth and catalogs,
-the admin/public Questions CRUD and approval lifecycle, deterministic primary/cover
-asset resolution, the Games board, reveal, scoring, skip, finish, subscription,
-ownership and persistence lifecycle, Music upload/list/update/answer/soft-delete and
-cleanup behavior, and reviewed AI generation/save behavior. They use the real Nest
-modules, MongoDB repositories, guards, validation, orchestration, agents, prompt
-builders, knowledge loading, repair, and response mappers.
-
-Music HTTP tests replace only local audio storage, inspection, and snippet processing
-with deterministic recording fakes. They cover default and custom snippet timing,
-multipart validation, safe generated names, draft Question creation, normalized Arabic
-answers, compensation, and response safety. Real FFmpeg/FFprobe execution remains in
-the separate media integration suite.
-
-AI HTTP tests inject a queued fake `LlmClientService` and deterministic `AssetService`.
-They verify the generator → asset planner → asset reviewer → question reviewer order,
-default count, knowledge fallback metadata, wrong-answer repair success/failure/empty
-behavior, gameplay normalization, timeout and unavailable errors, independent primary
-and cover failures, generation/persistence separation, partial and duplicate save-draft
-reporting, legacy endpoint compatibility, and debug-tools authorization without calling
-external providers. Fake-provider call counts prove fatal failures do not continue into
-asset work. Live AI remains a separate opt-in check; broader browser coverage remains
-Playwright debt and is intentionally outside this phase.
+`npm run test:backend:integration`. The HTTP integration suites cover auth and users,
+World content, Match and live-session lifecycles for each mechanic, presence, and the
+Content Engine. They use the real Nest modules, MongoDB repositories, guards,
+validation and response mappers.
 
 ## Match setup modes
 
@@ -136,16 +116,9 @@ backend-integration`; the current baseline is 5 suites and 31 tests (about 5 sec
 after MongoDB is healthy). They remain in
 `verify:full` rather than the offline `verify` command because they require MongoDB.
 
-Run the real synthetic-tone suite locally when FFmpeg/FFprobe exist, or with
-`npm run test:media:integration:docker`. `npm run verify:full` uses the Docker
-integration and media runners before Playwright, so it does not depend on host FFmpeg.
-
 OpenAPI generation uses a controller-only documentation module and performs no MongoDB,
 storage, media, seed, or AI initialization. `npm run api:check` proves this with an
 unreachable MongoDB URI and a 15-second bound before validating byte-for-byte drift.
-
-`npm run test:ai:live` is skipped unless all explicit `LIVE_AI_*` variables are set;
-it requests one reviewed draft and never calls the save-drafts endpoint.
 
 ## Known Next.js workspace warning
 

@@ -245,9 +245,7 @@ test.describe("@visual Akwaan identity", () => {
     await login(page);
     await page.goto("/");
 
-    const carousel = page.getByTestId("featured-worlds-carousel");
-    await carousel.hover();
-    const worldLink = carousel.getByRole("link", { name: /ادخل عالم/ });
+    const worldLink = page.locator("a[href^='/matches/new?worldId=']").first();
     await expect(worldLink).toBeVisible({ timeout: 30_000 });
     const worldHref = await worldLink.getAttribute("href");
     expect(worldHref).toMatch(/^\/matches\/new\?worldId=/);

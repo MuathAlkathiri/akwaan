@@ -48,7 +48,7 @@ describe("apiClient request interceptor", () => {
     formData.append("file", new File(["test"], "test.png"));
 
     const config = {
-      url: "/admin/questions/1/media/image",
+      url: "/admin/content-items/upload-asset",
       method: "POST",
       data: formData,
       headers: new AxiosHeaders({

@@ -1,6 +1,5 @@
 export { RyoExplainer, type ExplainerMode } from "./components/ryo-explainer";
 export { ExplainerControls } from "./components/explainer-controls";
-export { ExplainerDisclosure } from "./components/explainer-disclosure";
 export { RyoExplainerDialog } from "./components/explainer-dialog";
 export { MechanicTutorialDialog } from "./components/explainer-dialog";
 export { InlineMechanicTutorial } from "./components/inline-mechanic-tutorial";

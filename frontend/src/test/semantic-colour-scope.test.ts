@@ -192,7 +192,6 @@ describe("no component holds a raw colour", () => {
       "src/features/worlds/components/world-card.tsx",
       "src/features/live-game-session/components/ryo-gameplay-panel.tsx",
       "src/features/live-game-session/match/components/match-shell.tsx",
-      "src/features/live-game-session/match/components/match-score-display.tsx",
     ]) {
       expect(read(path), path).not.toMatch(RAW_PALETTE);
     }

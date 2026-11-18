@@ -38,17 +38,6 @@ export class MongooseLiveGameSessionRepository implements LiveGameSessionReposit
     return this.restore(document?.state as LiveGameSessionState | undefined);
   }
 
-  async findByParentQuestion(
-    parentGameId: string,
-    parentGameQuestionId: string,
-  ): Promise<LiveGameSession | null> {
-    const document = await this.model
-      .findOne({ parentGameId, parentGameQuestionId })
-      .lean()
-      .exec();
-    return this.restore(document?.state as LiveGameSessionState | undefined);
-  }
-
   async findOwnedSessionRefs(
     controllerActorId: string,
   ): Promise<OwnedSessionRef[]> {

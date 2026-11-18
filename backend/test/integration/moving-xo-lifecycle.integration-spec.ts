@@ -109,8 +109,6 @@ describe('moving xo lifecycle integration', () => {
     app = await createIntegrationTestApp({
       env: {
         MONGODB_URI: isolatedTestDatabaseUri('moving-xo-lifecycle'),
-        AI_PROVIDER: 'lmstudio',
-        LMSTUDIO_BASE_URL: 'http://127.0.0.1:9/v1',
       },
     });
     token = await loginForToken(app, fixtureCredentials.admin);

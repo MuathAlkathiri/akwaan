@@ -86,7 +86,6 @@ flowchart TB
         LiveSessionModule["Live Game Sessions<br/>(Room Lifecycle & Auth)"]
         MatchModule["Match State Engine<br/>(Revision Fencing & Scopes)"]
         WorldContentModule["World Content<br/>(Mechanics & Challenges)"]
-        MusicModule["Music & Audio Service<br/>(FFmpeg / Snippet Processing)"]
     end
 
     subgraph PersistenceLayer["Persistence & Storage"]
@@ -114,12 +113,11 @@ flowchart TB
     RestAPI --> LiveSessionModule
     RestAPI --> MatchModule
     RestAPI --> WorldContentModule
-    RestAPI --> MusicModule
 
     LiveSessionModule --> MongoAtlas
     MatchModule --> MongoAtlas
     WorldContentModule --> MongoAtlas
-    MusicModule --> CloudflareR2
+    WorldContentModule --> CloudflareR2
 
     CandidateGen --> DeterministicScreen --> FactVerification --> QualityJudge --> ReviewStudio
     ReviewStudio -->|"Approved Content"| WorldContentModule

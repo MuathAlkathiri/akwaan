@@ -49,9 +49,7 @@ test.describe("@closeout every user-facing Akwaan surface", () => {
     expect(homeText).not.toMatch(/\d+\s+نطاق\b/);
     await shoot(page, "home-laptop");
 
-    const featured = page.getByTestId("featured-worlds-carousel");
-    await featured.hover();
-    await featured.getByRole("link", { name: /ادخل عالم/ }).click();
+    await page.locator("a[href^='/matches/new?worldId=']").first().click();
     await page.waitForURL(/\/matches\/new\?worldId=/, { timeout: 30_000 });
     await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("match-setup-wizard")).toHaveAttribute(

@@ -11,18 +11,12 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { AuthResponse, LoginPayload, RegisterPayload, User } from "@/types";
+import { AuthResponse, User } from "@/types";
 import {
   authKeys,
   fetchCurrentUser,
   useCurrentUser,
-  useLoginMutation,
-  useRegisterMutation,
 } from "../hooks/use-auth-session";
-import {
-  toLoginRequest,
-  toRegisterRequest,
-} from "../mappers/auth-request.mapper";
 import { authStorage } from "../storage/auth-storage";
 import { verifyOtp } from "../api/otp-api";
 
@@ -31,10 +25,8 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (data: LoginPayload) => Promise<AuthResponse>;
-  /** Passwordless sign-in. Establishes exactly the same session as `login`. */
+  /** Passwordless sign-in: the only way the app establishes a session. */
   loginWithOtp: (identifier: string, code: string) => Promise<AuthResponse>;
-  register: (data: RegisterPayload) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
 }
@@ -45,8 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const client = useQueryClient();
   const [hydrated, setHydrated] = useState(false);
-  const loginMutation = useLoginMutation();
-  const registerMutation = useRegisterMutation();
   useEffect(() => setHydrated(true), []);
   const currentUser = useCurrentUser(hydrated);
   const user = currentUser.data ?? null;
@@ -59,35 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [client, currentUser.data, currentUser.isError]);
 
-  const login = useCallback(
-    async (data: LoginPayload) => {
-      const response = await loginMutation.mutateAsync(toLoginRequest(data));
-      authStorage.setToken(response.accessToken);
-      authStorage.setUser(response.user);
-      client.setQueryData(authKeys.currentUser, response.user);
-      return response;
-    },
-    [client, loginMutation],
-  );
-
   const loginWithOtp = useCallback(
     async (identifier: string, code: string) => {
       const response = await verifyOtp(identifier, code);
-      // Deliberately the same three lines as `login`: one place decides what a
-      // session is, so guards, interceptors and refresh keep working untouched.
+      // One place decides what a session is, so guards, interceptors and
+      // refresh keep working untouched.
       authStorage.setToken(response.accessToken);
       authStorage.setUser(response.user);
       client.setQueryData(authKeys.currentUser, response.user);
       return response;
     },
     [client],
-  );
-
-  const register = useCallback(
-    async (data: RegisterPayload) => {
-      await registerMutation.mutateAsync(toRegisterRequest(data));
-    },
-    [registerMutation],
   );
 
   const refreshUser = useCallback(async () => {
@@ -110,9 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: !hydrated || currentUser.isLoading,
       isAuthenticated: Boolean(user),
       isAdmin: user?.role === "admin",
-      login,
       loginWithOtp,
-      register,
       refreshUser,
       logout,
     }),
@@ -121,8 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       hydrated,
       currentUser.isLoading,
-      login,
-      register,
       refreshUser,
       logout,
     ],

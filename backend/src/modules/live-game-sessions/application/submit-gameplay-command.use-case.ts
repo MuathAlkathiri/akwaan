@@ -29,10 +29,6 @@ import {
   LiveGameSession,
   LiveGameSessionState,
 } from '../domain/live-game-session';
-import {
-  PARENT_GAME_ACCESS,
-  ParentGameAccess,
-} from './parent-game-access.port';
 import { ScoringService } from '../../scoring/application/scoring.service';
 import { SCORING_RULE_IDS } from '../../scoring/domain/scoring-rule';
 import {
@@ -149,8 +145,6 @@ export class SubmitGameplayCommand {
     private readonly gameplaySnapshots: GameplayRuntimeSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
-    @Inject(PARENT_GAME_ACCESS)
-    private readonly parentGames: ParentGameAccess,
     private readonly scoring: ScoringService,
     private readonly observers: GameplayObserverRegistry,
   ) {}
@@ -491,25 +485,6 @@ export class SubmitGameplayCommand {
           movingXoTerminal,
       };
     });
-
-    const terminalState = result.session.serialize();
-    if (
-      result.terminal &&
-      terminalState.parentGameId &&
-      terminalState.parentGameQuestionId &&
-      terminalState.result?.winnerTeamId
-    ) {
-      const winnerTeamIndex = terminalState.teams.findIndex(
-        (team) => team.id === terminalState.result?.winnerTeamId,
-      );
-      if (winnerTeamIndex >= 0) {
-        await this.parentGames.finalizeBombQuestion(
-          terminalState.parentGameId,
-          terminalState.parentGameQuestionId,
-          winnerTeamIndex,
-        );
-      }
-    }
 
     const snapshot = this.sessionSnapshots.toSnapshot(
       result.session,

@@ -17,7 +17,6 @@ export async function createIntegrationTestApp(options?: {
   process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'integration-test-secret';
   delete process.env.ADMIN_EMAIL;
   delete process.env.ADMIN_PASSWORD;
-  process.env.EXTERNAL_INTEGRATIONS_DISABLED = 'true';
   Object.assign(process.env, options?.env);
 
   const { AppModule } = await import('../../src/app.module');

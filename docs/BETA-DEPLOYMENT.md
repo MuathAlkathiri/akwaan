@@ -127,10 +127,9 @@ Verify these after import:
 | Instance Type | **Free** |
 | Auto-Deploy | On |
 
-Docker rather than a native Node build because the backend shells out to
-`ffmpeg`, `ffprobe` and `yt-dlp` for audio and video snippets. `backend/Dockerfile`
-installs all three and already understands the npm-workspace layout. A native
-build would install and then fail on the first media upload.
+Docker rather than a native Node build because `backend/Dockerfile` already
+understands the npm-workspace layout and ships the `ai/.opencode` authoring assets
+and `python3` that the Content Engine's Wigolo client uses.
 
 Do **not** add a Render disk and do **not** add a Render database. Storage is
 Atlas and R2.
@@ -151,8 +150,6 @@ R2_ACCESS_KEY_ID=<set in dashboard>
 R2_SECRET_ACCESS_KEY=<set in dashboard>
 MEDIA_PUBLIC_BASE_URL=<set in dashboard>
 SWAGGER_ENABLED=false
-AI_QUESTION_GENERATION_ENABLED=false
-ALLOW_YOUTUBE_ASSET_DOWNLOADS=false
 ```
 
 `JWT_SECRET` must be a new random value, at least 32 bytes. Generate it with
@@ -436,9 +433,6 @@ Confirm each of these:
       Anyone who can guess a development password gets admin on a public
       instance. Rotate them in Atlas, or delete the accounts you do not need,
       before sharing the link.
-- [ ] `AI_QUESTION_GENERATION_ENABLED` and `ALLOW_YOUTUBE_ASSET_DOWNLOADS` are
-      `false` — both are admin-gated, but both spend money and CPU a free
-      instance does not have.
 
 Registration is open to anyone and always creates a plain `USER`; there is no
 role escalation path through it. Admin mutations require a JWT plus the admin

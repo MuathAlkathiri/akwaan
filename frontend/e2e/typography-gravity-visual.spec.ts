@@ -16,7 +16,6 @@ test("typography and Gravity Stars visual journey", async ({ page, browser }) =>
   await login(page);
 
   await page.goto("/");
-  await expect(page.getByTestId("akwaan-starfield")).toBeVisible();
   await shot(page, "01-home-1440");
 
   const worldLink = page.getByRole("link", { name: /فيديو قيمز/ }).first();
@@ -53,7 +52,6 @@ test("typography and Gravity Stars visual journey", async ({ page, browser }) =>
   await page.getByTestId("preflight-start").click();
   await expect(page.getByText("السؤال 1 من 3").first()).toBeVisible({ timeout: 60_000 });
   await shot(page, "06-closest-gameplay-1440");
-  await expect(phones[0].getByTestId("akwaan-starfield")).toHaveCount(0);
   await shot(phones[0], "07-phone-gameplay-390");
 
   for (let round = 0; round < 3; round += 1) {
