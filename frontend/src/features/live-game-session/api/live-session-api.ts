@@ -8,8 +8,6 @@ import type {
 } from "../model";
 
 export interface CreateLiveSessionInput {
-  parentGameId?: string;
-  parentGameQuestionId?: string;
   modeKey?: string;
   modeVersion?: number;
   teamNames: string[];
@@ -177,13 +175,6 @@ export async function createGameplayRuntime(
       modeKey: "core-round-runtime",
       modeVersion: 1,
     },
-  );
-  return response.data;
-}
-
-export async function startBombGameplay(sessionId: string) {
-  const response = await apiClient.post<LiveSessionSnapshot>(
-    `/live-game-sessions/${sessionId}/runtime/bomb/start`,
   );
   return response.data;
 }

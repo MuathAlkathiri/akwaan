@@ -1,12 +1,4 @@
-import {
-  Boxes,
-  ClipboardList,
-  LayoutDashboard,
-  Sparkles,
-  ScanSearch,
-  Users,
-  Network,
-} from "lucide-react";
+import { LayoutDashboard, ScanSearch, Users, Network } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
 export interface AdminNavigationItem {
@@ -28,38 +20,6 @@ export const adminNavigation: AdminNavigationItem[] = [
     dashboardTitle: "World Management",
     dashboardDescription:
       "إدارة العوالم والنطاقات والمكانيكا وعناصر المحتوى.",
-  },
-  {
-    label: "الكتالوجات",
-    href: "/admin/catalogs",
-    icon: Boxes,
-    showOnDashboard: true,
-    dashboardTitle: "Catalogs management",
-    dashboardDescription: "تنظيم الفئات داخل كتالوجات واضحة.",
-  },
-  {
-    label: "الفئات",
-    href: "/admin/categories",
-    icon: Boxes,
-    showOnDashboard: true,
-    dashboardTitle: "Categories management",
-    dashboardDescription: "إضافة وتعديل فئات الأسئلة المتاحة.",
-  },
-  {
-    label: "الأسئلة",
-    href: "/admin/questions",
-    icon: ClipboardList,
-    showOnDashboard: true,
-    dashboardTitle: "Questions management",
-    dashboardDescription: "مراجعة الأسئلة واعتماد المحتوى.",
-  },
-  {
-    label: "توليد الأسئلة",
-    href: "/admin/ai-generator",
-    icon: Sparkles,
-    showOnDashboard: true,
-    dashboardTitle: "Generate Questions",
-    dashboardDescription: "توليد أسئلة كمسودات للمراجعة قبل الحفظ.",
   },
   {
     label: "مراجعة المحتوى",

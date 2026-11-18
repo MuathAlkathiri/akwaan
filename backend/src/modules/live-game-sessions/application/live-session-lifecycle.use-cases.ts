@@ -1,12 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   LiveSessionCommand,
   LiveSessionCommandExecutor,
 } from './live-session-command.base';
-import {
-  PARENT_GAME_ACCESS,
-  ParentGameAccess,
-} from './parent-game-access.port';
 
 @Injectable()
 export class MarkSessionReady {
@@ -22,23 +18,13 @@ export class MarkSessionReady {
 
 @Injectable()
 export class StartLiveGameSession {
-  constructor(
-    private readonly commands: LiveSessionCommandExecutor,
-    @Inject(PARENT_GAME_ACCESS)
-    private readonly parentGames: ParentGameAccess,
-  ) {}
+  constructor(private readonly commands: LiveSessionCommandExecutor) {}
   async execute(command: LiveSessionCommand) {
     const snapshot = await this.commands.execute(
       'live-session:state-changed',
       command,
       (s, n) => s.start(n),
     );
-    if (snapshot.parentGameId && snapshot.parentGameQuestionId) {
-      await this.parentGames.markQuestionStarted(
-        snapshot.parentGameId,
-        snapshot.parentGameQuestionId,
-      );
-    }
     return snapshot;
   }
 }
@@ -52,23 +38,13 @@ export class StartLiveGameSession {
  */
 @Injectable()
 export class BeginLiveGameSession {
-  constructor(
-    private readonly commands: LiveSessionCommandExecutor,
-    @Inject(PARENT_GAME_ACCESS)
-    private readonly parentGames: ParentGameAccess,
-  ) {}
+  constructor(private readonly commands: LiveSessionCommandExecutor) {}
   async execute(command: LiveSessionCommand) {
     const snapshot = await this.commands.execute(
       'live-session:state-changed',
       command,
       (s, n) => s.begin(n),
     );
-    if (snapshot.parentGameId && snapshot.parentGameQuestionId) {
-      await this.parentGames.markQuestionStarted(
-        snapshot.parentGameId,
-        snapshot.parentGameQuestionId,
-      );
-    }
     return snapshot;
   }
 }

@@ -34,9 +34,11 @@ FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
+# python3 stays for wigolo (content-engine evidence retrieval), which shells out
+# to it for its optional SearXNG backend and falls back to its core backend
+# without it. ffmpeg and yt-dlp left with the legacy audio pipeline.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates ffmpeg python3 python3-pip tini \
-  && python3 -m pip install --no-cache-dir --break-system-packages --upgrade yt-dlp \
+  && apt-get install -y --no-install-recommends ca-certificates python3 tini \
   && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
@@ -61,7 +63,7 @@ EXPOSE 3000
 # tini is PID 1, not Node: a PID 1 process ignores any signal it has no
 # handler for, so a SIGTERM during startup (before the presence handler is
 # installed) or with PRESENCE_SIGTERM_RELEASE=false would otherwise wait for
-# Render's SIGKILL. tini forwards signals and reaps orphaned ffmpeg/yt-dlp
-# children. Node is started directly, not through npm, so it receives them.
+# Render's SIGKILL. tini forwards signals and reaps orphaned children (such as
+# wigolo's). Node is started directly, not through npm, so it receives them.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "backend/dist/main.js"]

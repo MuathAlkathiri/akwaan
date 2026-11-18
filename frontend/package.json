@@ -14,11 +14,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:admin": "playwright test --grep @admin",
     "test:e2e:game": "playwright test --grep @game",
-    "test:e2e:ai": "playwright test --grep @ai",
     "test:e2e:install": "playwright install chromium",
     "api:generate": "orval --config orval.config.ts && node scripts/generated-manifest.mjs --write",
-    "api:generate:check": "orval --config orval.config.ts && node scripts/generated-manifest.mjs",
-    "api:migration:check": "node scripts/check-catalog-migration.mjs"
+    "api:generate:check": "orval --config orval.config.ts && node scripts/generated-manifest.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

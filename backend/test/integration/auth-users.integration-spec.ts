@@ -12,7 +12,7 @@ import {
 } from '../fixtures/integration.fixture';
 import { loginForToken } from '../helpers/auth-helper';
 
-describe('Auth, catalogs, and categories HTTP integration', () => {
+describe('Auth and users HTTP integration', () => {
   let app: INestApplication;
   let database: Connection;
 
@@ -74,21 +74,5 @@ describe('Auth, catalogs, and categories HTTP integration', () => {
       .expect(200);
     expect(response.body.length).toBeGreaterThanOrEqual(3);
     expect(JSON.stringify(response.body)).not.toMatch(/password|__v/);
-  });
-
-  it('lists deterministic catalog and category relationships safely', async () => {
-    const catalogs = await request(app.getHttpServer())
-      .get('/catalogs')
-      .expect(200);
-    expect(catalogs.body.data).toHaveLength(1);
-    expect(catalogs.body.data[0].slug).toBe('integration-tests');
-    expect(JSON.stringify(catalogs.body)).not.toMatch(/"path"|__v/);
-
-    const categories = await request(app.getHttpServer())
-      .get('/categories')
-      .expect(200);
-    expect(categories.body.data).toHaveLength(6);
-    expect(categories.body.data[0].gameplayConfig).toBeDefined();
-    expect(JSON.stringify(categories.body)).not.toMatch(/"path"|__v/);
   });
 });

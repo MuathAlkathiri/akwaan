@@ -1,60 +1,41 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import { BadRequestException } from '@nestjs/common';
 import { AllExceptionsFilter } from './http-exception.filter';
-import { createZeroDraftGenerationException } from '../../modules/ai-agent/application/reviewed-generation-error.factory';
 
-describe('AllExceptionsFilter structured generation errors', () => {
-  it('preserves allowlisted diagnostics during exception serialization', () => {
+describe('AllExceptionsFilter structured errors', () => {
+  it('preserves allowlisted diagnostics and drops everything else', () => {
     const json = jest.fn();
     const status = jest.fn(() => ({ json }));
     const host = {
       switchToHttp: () => ({
         getResponse: () => ({ status }),
-        getRequest: () => ({ url: '/admin/ai-generator/generate-reviewed' }),
+        getRequest: () => ({ url: '/admin/worlds' }),
       }),
     } as unknown as ArgumentsHost;
-    const exception = createZeroDraftGenerationException({
-      sourceSummary: { requested: 1, returned: 0, sourceRequired: true },
-      sourceDiagnostics: [{ code: 'SOURCE_TIMEOUT', sourceId: 'source' }],
-      candidateDiagnostics: [
-        {
-          sourceId: 'source',
-          sourceQuestionId: 'q1',
-          sourceQuestion: 'Question',
-          sourceAnswer: 'Answer',
-          curatedQuestion: null,
-          curatedAnswer: null,
-          semanticFingerprint: 'fp',
-          duplicateScore: 0,
-          validationResult: {
-            status: 'FAIL',
-            issueCodes: ['PIPELINE_SLOT_FAILED'],
-          },
-          outcome: 'FAILED',
-          rejectionReason: 'PIPELINE_SLOT_FAILED',
-        },
-      ],
-      slotDiagnostics: [],
-    });
 
-    new AllExceptionsFilter().catch(exception, host);
+    new AllExceptionsFilter().catch(
+      new BadRequestException({
+        error: 'Bad Request',
+        message: 'Validation failed',
+        issueCodes: ['SCOPE_REQUIRED'],
+        meta: { attempted: 1 },
+        internalTrace: 'must not leak',
+      }),
+      host,
+    );
 
     expect(status).toHaveBeenCalledWith(400);
-    expect(json).toHaveBeenCalledWith(
+    const body = json.mock.calls[0][0] as Record<string, unknown>;
+    expect(body).toEqual(
       expect.objectContaining({
         statusCode: 400,
         error: 'Bad Request',
-        message: 'AI pipeline produced no drafts',
-        issueCodes: ['PIPELINE_SLOT_FAILED', 'SOURCE_TIMEOUT'],
-        sourceSummary: expect.objectContaining({ requested: 1, returned: 0 }),
-        candidateDiagnostics: [
-          expect.objectContaining({ sourceQuestionId: 'q1' }),
-        ],
-        meta: expect.objectContaining({
-          candidateDiagnostics: expect.any(Array),
-        }),
+        message: 'Validation failed',
+        issueCodes: ['SCOPE_REQUIRED'],
+        meta: { attempted: 1 },
       }),
     );
+    expect(body).not.toHaveProperty('internalTrace');
   });
 });
 

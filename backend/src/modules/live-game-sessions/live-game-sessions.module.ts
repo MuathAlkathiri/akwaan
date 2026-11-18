@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
-import { GamesModule } from '../games/games.module';
 import { CreateLiveGameSession } from './application/create-live-game-session.use-case';
 import { GetLiveGameSession } from './application/get-live-game-session.use-case';
 import { LiveSessionCommandExecutor } from './application/live-session-command.base';
@@ -29,7 +28,6 @@ import {
 } from './application/live-session-clock';
 import { LiveGameSessionSnapshotMapper } from './application/live-game-session.snapshot';
 import { LIVE_SESSION_TRANSITION_PUBLISHER } from './application/live-session-transition.publisher';
-import { PARENT_GAME_ACCESS } from './application/parent-game-access.port';
 import { PARTICIPANT_PRESENCE } from './application/participant-presence.port';
 import { MongooseParticipantPresenceRepository } from './infrastructure/mongoose-participant-presence.repository';
 import {
@@ -63,7 +61,6 @@ import {
 } from './infrastructure/live-game-session.schema';
 import { MongooseLiveGameSessionRepository } from './infrastructure/mongoose-live-game-session.repository';
 import { SocketLiveSessionPublisher } from './infrastructure/socket-live-session.publisher';
-import { ClassicGameAccessAdapter } from './infrastructure/classic-game-access.adapter';
 import {
   LiveSessionJoinAccessDocument,
   LiveSessionJoinAccessSchema,
@@ -231,7 +228,6 @@ const applicationProviders = [
   imports: [
     AuthModule,
     UsersModule,
-    GamesModule,
     ScoringModule,
     WorldContentModule,
     MongooseModule.forFeature([
@@ -322,11 +318,6 @@ const applicationProviders = [
     {
       provide: PARTICIPANT_PRESENCE,
       useExisting: MongooseParticipantPresenceRepository,
-    },
-    ClassicGameAccessAdapter,
-    {
-      provide: PARENT_GAME_ACCESS,
-      useExisting: ClassicGameAccessAdapter,
     },
     SocketLiveSessionPublisher,
     PublicJoinRateLimiter,

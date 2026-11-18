@@ -25,31 +25,11 @@ services:
       TEST_MONGODB_URI: mongodb://mongodb-test:27017/akwaan_integration_test?replicaSet=rs0
       MONGODB_URI: mongodb://mongodb-test:27017/akwaan_integration_test?replicaSet=rs0
       JWT_SECRET: docker-integration-only-secret
-      EXTERNAL_INTEGRATIONS_DISABLED: "true"
-      # The default provider (gemini) refuses to boot without a key. Suites bind
-      # their own fake engine providers; this dead endpoint just lets the app
-      # start and makes any accidental model call fail fast and offline.
-      AI_PROVIDER: lmstudio
-      LMSTUDIO_BASE_URL: http://127.0.0.1:9/v1
       NODE_PATH: /workspace/backend/node_modules:/workspace/node_modules
     command: npm run test:backend:integration
     depends_on:
       mongodb-test: { condition: service_healthy }
     profiles: ["integration"]
-
-  media-integration:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-      target: build
-    working_dir: /app
-    # The backend image is Debian (node:20-bookworm-slim), not Alpine, so the
-    # `apk` this used to run never existed and the profile could not start at
-    # all. Note this does not explain the music suite: ffmpeg and ffprobe are
-    # both present in the integration container and music still fails there,
-    # so its 500 has a different cause than the one on record.
-    command: sh -c "apt-get update && apt-get install -y --no-install-recommends ffmpeg && npm run test:media:integration"
-    profiles: ["media"]
 
   backend-e2e:
     build:
@@ -62,11 +42,8 @@ services:
       TEST_MONGODB_URI: mongodb://mongodb-test:27017/akwaan_e2e_test?replicaSet=rs0
       MONGODB_URI: mongodb://mongodb-test:27017/akwaan_e2e_test?replicaSet=rs0
       JWT_SECRET: docker-e2e-only-secret
-      EXTERNAL_INTEGRATIONS_DISABLED: "true"
       PORT: 3000
       NODE_PATH: /app/backend/node_modules:/app/node_modules
-      AI_PROVIDER: lmstudio
-      LMSTUDIO_BASE_URL: http://127.0.0.1:9/v1
       CORS_ORIGINS: http://127.0.0.1:3201
     command: sh -c "npm run test:fixtures:seed --workspace backend && npm run start --workspace backend"
     ports: ["127.0.0.1:3100:3000"]

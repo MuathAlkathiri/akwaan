@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  Boxes,
-  ClipboardList,
-  LayoutDashboard,
-  Users,
-} from "lucide-react";
+import { LayoutDashboard, Users } from "lucide-react";
 import { useUsers } from "@/features/users";
-import { useCatalogs } from "@/features/catalogs";
-import { useCategories } from "@/features/categories";
-import { useQuestions } from "@/features/questions";
 import { DashboardCard } from "./dashboard-card";
 import { StatsCard } from "./stats-card";
 import { adminNavigation } from "@/config/admin-navigation";
@@ -21,9 +13,6 @@ export function AdminDashboard() {
 }
 
 function AdminDashboardContent() {
-  const { data: catalogs } = useCatalogs();
-  const { data: categories } = useCategories();
-  const { data: questions } = useQuestions();
   const { data: users } = useUsers();
 
   return (
@@ -40,28 +29,13 @@ function AdminDashboardContent() {
               Admin Dashboard
             </h1>
             <p className="mt-3 max-w-2xl text-muted-foreground">
-              لوحة عملية لإدارة الألعاب والفئات والأسئلة ومراجعة المحتوى المولد.
+              لوحة عملية لإدارة العوالم ومراجعة المحتوى والمستخدمين.
             </p>
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatsCard
-          label="Total catalogs"
-          value={catalogs?.length ?? 0}
-          icon={Boxes}
-        />
-        <StatsCard
-          label="Total categories"
-          value={categories?.length ?? 0}
-          icon={Boxes}
-        />
-        <StatsCard
-          label="Total questions"
-          value={questions?.length ?? 0}
-          icon={ClipboardList}
-        />
         <StatsCard
           label="Users"
           value={users?.length ?? 0}
@@ -93,7 +67,6 @@ function AdminDashboardContent() {
           ))}
         </div>
       </section>
-
     </div>
   );
 }

@@ -26,23 +26,18 @@
     "test:backend:integration:docker": "docker compose -f docker-compose.test.yml run --rm backend-integration",
     "test:fixtures:seed": "npm run test:fixtures:seed --workspace backend",
     "test:fixtures:reset": "npm run test:fixtures:reset --workspace backend",
-    "test:media:integration": "npm run test:media:integration --workspace backend",
-    "test:media:integration:docker": "docker compose -f docker-compose.test.yml --profile media run --rm media-integration",
-    "test:ai:live": "npm run test:ai:live --workspace backend",
     "test:e2e:install": "npm run test:e2e:install --workspace frontend",
     "test:e2e": "npm run test:e2e --workspace frontend",
     "test:e2e:ui": "npm run test:e2e:ui --workspace frontend",
     "test:e2e:admin": "npm run test:e2e:admin --workspace frontend",
     "test:e2e:game": "npm run test:e2e:game --workspace frontend",
-    "test:e2e:ai": "npm run test:e2e:ai --workspace frontend",
     "api:openapi": "npm run api:openapi --workspace backend",
     "api:validate": "npm run api:validate --workspace backend",
     "api:check": "npm run api:check --workspace backend",
     "api:generate": "npm run api:generate --workspace frontend",
     "api:generate:check": "npm run api:generate:check --workspace frontend",
-    "api:migration:check": "npm run api:migration:check --workspace frontend",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run api:check && npm run api:generate:check && npm run api:migration:check && npm run build",
-    "verify:full": "npm run verify && npm run test:backend:integration:docker && npm run test:media:integration:docker && npm run test:e2e"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run api:check && npm run api:generate:check && npm run build",
+    "verify:full": "npm run verify && npm run test:backend:integration:docker && npm run test:e2e"
   },
   "devDependencies": {
     "@nestjs/platform-express": "10.4.22"

@@ -38,9 +38,6 @@ class MemorySessionRepository implements LiveGameSessionRepository {
   async findById() {
     return this.session ?? null;
   }
-  async findByParentQuestion() {
-    return this.session ?? null;
-  }
   async findSessionIdsInBombCountdown() {
     return [];
   }
@@ -128,24 +125,11 @@ describe('a live session plays challenges in sequence', () => {
     runtimes = new MemoryRuntimeRepository();
     const snapshots = new LiveGameSessionSnapshotMapper();
     const publisher = { publish: jest.fn(), publishEvent: jest.fn() };
-    const parentGames = {
-      assertAccessible: jest.fn(),
-      gameplaySetup: jest.fn().mockResolvedValue({
-        sessionModeKey: 'core-timed-turns',
-        sessionModeVersion: 1,
-        runtimeModeKey: 'core-round-runtime',
-        runtimeModeVersion: 1,
-      }),
-      markQuestionStarted: jest.fn(),
-      finalizeBombQuestion: jest.fn(),
-    };
-
     const created = await new CreateLiveGameSession(
       sessions,
       clock,
       new LiveGameModeRegistry(),
       snapshots,
-      parentGames,
     ).execute({
       actor,
       modeKey: CORE_TIMED_TURNS_MODE.key,
@@ -167,7 +151,7 @@ describe('a live session plays challenges in sequence', () => {
       commandId: '00000000-0000-4000-8000-0000000000a1',
       expectedRevision: sessions.session!.revision,
     });
-    await new StartLiveGameSession(commands, parentGames).execute({
+    await new StartLiveGameSession(commands).execute({
       sessionId,
       actorId: 'host',
       commandId: '00000000-0000-4000-8000-0000000000a2',
@@ -192,7 +176,6 @@ describe('a live session plays challenges in sequence', () => {
         } as never,
       ),
       publisher as never,
-      { ...parentGames, gameplaySetup: jest.fn().mockResolvedValue(undefined) },
     );
   });
 

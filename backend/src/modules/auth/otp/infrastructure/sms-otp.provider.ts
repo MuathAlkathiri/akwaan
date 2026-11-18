@@ -56,32 +56,3 @@ export class DisabledSmsOtpProvider implements OtpDeliveryProvider {
     );
   }
 }
-
-/**
- * Test/development only, and structurally unable to run in production.
- *
- * Returning a code from an API is the kind of shortcut that ships by accident,
- * so this refuses to construct when `NODE_ENV=production` — an accidental
- * registration fails at boot instead of quietly exposing codes.
- */
-@Injectable()
-export class CapturingSmsOtpProvider implements OtpDeliveryProvider {
-  readonly channel = 'phone' as const;
-  readonly sent: OtpDeliveryRequest[] = [];
-
-  constructor() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        'CapturingSmsOtpProvider must never be registered in production',
-      );
-    }
-  }
-
-  isEnabled(): boolean {
-    return process.env.NODE_ENV !== 'production';
-  }
-
-  async send(request: OtpDeliveryRequest): Promise<void> {
-    this.sent.push(request);
-  }
-}

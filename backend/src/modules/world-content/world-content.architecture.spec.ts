@@ -159,9 +159,6 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/domain/top5-keep-or-give.plugin.ts',
       'modules/live-game-sessions/live-game-sessions.module.ts',
       'modules/live-game-sessions/presentation/gameplay-runtime.dto.ts',
-      'modules/questions/application/legacy-question-world-reference.guard.ts',
-      'modules/questions/questions.module.ts',
-      'modules/questions/questions.service.ts',
     ]);
   });
 });

@@ -22,20 +22,7 @@ services:
       # LEGACY_PERSISTED_IDENTIFIER: `lammah-quiz` is the live database name and
       # predates the Akwaan rename. Do not "fix" it — see the volumes note below.
       MONGODB_URI: ${BACKEND_MONGODB_URI:-mongodb://mongodb:27017/lammah-quiz?replicaSet=rs0}
-      LMSTUDIO_BASE_URL: ${BACKEND_LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
-      LM_STUDIO_BASE_URL: ${BACKEND_LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
       UPLOADS_DIR: /app/uploads
-      MUSIC_QUESTION_CATEGORY_SLUG: ${MUSIC_QUESTION_CATEGORY_SLUG:-songs}
-      MUSIC_DELETE_ORIGINAL_AFTER_SNIPPET: ${MUSIC_DELETE_ORIGINAL_AFTER_SNIPPET:-false}
-      ALLOW_YOUTUBE_ASSET_DOWNLOADS: ${ALLOW_YOUTUBE_ASSET_DOWNLOADS:-true}
-      AI_QUESTION_GENERATION_ENABLED: ${AI_QUESTION_GENERATION_ENABLED:-false}
-      AI_ALIAS_DIAGNOSTICS: ${BACKEND_AI_ALIAS_DIAGNOSTICS:-false}
-      AUDIO_AUTO_SELECT_FIRST_CANDIDATE: ${AUDIO_AUTO_SELECT_FIRST_CANDIDATE:-false}
-      JIKAN_PROVIDER_ENABLED: ${JIKAN_PROVIDER_ENABLED:-true}
-      JIKAN_API_BASE_URL: ${JIKAN_API_BASE_URL:-https://api.jikan.moe/v4}
-      JIKAN_REQUEST_TIMEOUT_MS: ${JIKAN_REQUEST_TIMEOUT_MS:-10000}
-      JIKAN_CACHE_TTL_MS: ${JIKAN_CACHE_TTL_MS:-86400000}
-      JIKAN_NEGATIVE_CACHE_TTL_MS: ${JIKAN_NEGATIVE_CACHE_TTL_MS:-600000}
       WIGOLO_EXECUTABLE_PATH: /app/node_modules/.bin/wigolo
       WIGOLO_CACHE_FILE: /app/.cache/entity-verification.json
     ports:

@@ -29,9 +29,6 @@ class MemoryRepository implements LiveGameSessionRepository {
   async findById() {
     return this.session ?? null;
   }
-  async findByParentQuestion() {
-    return this.session ?? null;
-  }
   async findSessionIdsInBombCountdown() {
     return [];
   }
@@ -70,17 +67,6 @@ describe('live session application use cases', () => {
       clock,
       new LiveGameModeRegistry(),
       snapshots,
-      {
-        assertAccessible: jest.fn(),
-        gameplaySetup: jest.fn().mockResolvedValue({
-          sessionModeKey: 'core-timed-turns',
-          sessionModeVersion: 1,
-          runtimeModeKey: 'core-round-runtime',
-          runtimeModeVersion: 1,
-        }),
-        markQuestionStarted: jest.fn(),
-        finalizeBombQuestion: jest.fn(),
-      },
     );
     getSession = new GetLiveGameSession(repository, clock, {
       compose: (
@@ -130,12 +116,7 @@ describe('live session application use cases', () => {
       expectedRevision: 0,
       commandId: '00000000-0000-4000-8000-000000000001',
     });
-    const active = await new StartLiveGameSession(executor, {
-      assertAccessible: jest.fn(),
-      gameplaySetup: jest.fn(),
-      markQuestionStarted: jest.fn(),
-      finalizeBombQuestion: jest.fn(),
-    }).execute({
+    const active = await new StartLiveGameSession(executor).execute({
       ...base,
       expectedRevision: ready.revision,
       commandId: '00000000-0000-4000-8000-000000000002',
@@ -195,12 +176,7 @@ describe('live session application use cases', () => {
     const duplicate = await ready.execute(command);
     expect(duplicate.revision).toBe(first.revision);
     await expect(
-      new StartLiveGameSession(executor, {
-        assertAccessible: jest.fn(),
-        gameplaySetup: jest.fn(),
-        markQuestionStarted: jest.fn(),
-        finalizeBombQuestion: jest.fn(),
-      }).execute({
+      new StartLiveGameSession(executor).execute({
         ...command,
         commandId: '00000000-0000-4000-8000-000000000009',
       }),

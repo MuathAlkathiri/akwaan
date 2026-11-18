@@ -18,7 +18,7 @@ describe("orvalMutator multipart handling", () => {
     data.append("file", new File(["image"], "question.png"));
 
     await orvalMutator({
-      url: "/admin/questions/question-1/media/image",
+      url: "/admin/content-items/upload-asset",
       method: "POST",
       data,
       headers: { "Content-Type": "multipart/form-data" },
@@ -38,7 +38,7 @@ describe("orvalMutator multipart handling", () => {
     data.append("file", new File(["audio"], "question.mp3"));
 
     await orvalMutator({
-      url: "/admin/questions/question-1/audio/upload",
+      url: "/admin/content-items/upload-asset",
       method: "POST",
       data,
       headers: { "Content-Type": "multipart/form-data" },
@@ -53,7 +53,7 @@ describe("orvalMutator multipart handling", () => {
     const data = { question: "test", category: "science" };
 
     await orvalMutator({
-      url: "/questions",
+      url: "/admin/worlds",
       method: "POST",
       data,
       headers: { "Content-Type": "application/json" },
@@ -73,7 +73,7 @@ describe("orvalMutator multipart handling", () => {
 
     await orvalMutator(
       {
-        url: "/admin/questions/question-1/media/image",
+        url: "/admin/content-items/upload-asset",
         method: "POST",
         data,
         headers: { "Content-Type": "multipart/form-data" },

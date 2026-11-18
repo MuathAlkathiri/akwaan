@@ -50,9 +50,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
           // admin UI can show them together instead of one per round-trip.
           'issues',
           'meta',
-          'sourceDiagnostics',
-          'sourceSummary',
-          'candidateDiagnostics',
           'details',
           // A blocked delete names the records that block it, so the admin can
           // act instead of being told only that something references it.

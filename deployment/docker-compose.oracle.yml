@@ -35,12 +35,6 @@ services:
       ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Akwaan Admin}
       UPLOADS_DIR: /app/uploads
       SWAGGER_ENABLED: "false"
-      AI_QUESTION_GENERATION_ENABLED: "false"
-      AUDIO_AUTO_SELECT_FIRST_CANDIDATE: "false"
-      ALLOW_YOUTUBE_ASSET_DOWNLOADS: "false"
-      AI_ALIAS_DIAGNOSTICS: "false"
-      JIKAN_PROVIDER_ENABLED: "true"
-      JIKAN_API_BASE_URL: https://api.jikan.moe/v4
       WIGOLO_CACHE_FILE: /app/.cache/entity-verification.json
     volumes:
       - backend_uploads:/app/uploads

@@ -28,10 +28,6 @@ export interface OwnedSessionRef {
 export interface LiveGameSessionRepository {
   create(session: LiveGameSession): Promise<void>;
   findById(sessionId: string): Promise<LiveGameSession | null>;
-  findByParentQuestion(
-    parentGameId: string,
-    parentGameQuestionId: string,
-  ): Promise<LiveGameSession | null>;
   /**
    * Every session this account controls, as lightweight refs. This is the one
    * owner-authoritative query behind "My Games": ownership is the persisted

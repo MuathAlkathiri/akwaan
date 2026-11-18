@@ -1,9 +1,0 @@
-{
-  "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": "..",
-  "testRegex": "test/media/.*\\.integration-spec\\.ts$",
-  "transform": { "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "tsconfig.test.json" }] },
-  "testEnvironment": "node",
-  "testTimeout": 30000,
-  "maxWorkers": 1
-}

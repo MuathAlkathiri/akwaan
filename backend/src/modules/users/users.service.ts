@@ -117,13 +117,6 @@ export class UsersService {
     return (await this.users.findAll()).map(mapUserResponse);
   }
 
-  async incrementFreeGamesUsed(id: string | Types.ObjectId): Promise<void> {
-    await this.users.updateById(id, {
-      $inc: { freeGamesUsed: 1 },
-      updatedAt: new Date(),
-    });
-  }
-
   async updateSubscription(
     id: string,
     subscriptionStatus: SubscriptionStatus,

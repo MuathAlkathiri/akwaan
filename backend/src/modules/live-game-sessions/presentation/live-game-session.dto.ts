@@ -17,14 +17,6 @@ import {
 import { PLAYER_AVATAR_KEYS } from '../domain/player-avatars';
 
 export class CreateLiveGameSessionDto {
-  @IsOptional()
-  @IsString()
-  parentGameId?: string;
-
-  @IsOptional()
-  @IsString()
-  parentGameQuestionId?: string;
-
   @IsString()
   modeKey!: string;
 

@@ -132,7 +132,6 @@ npm run verify
 3. `npm run test` — Frontend Vitest unit/mapper tests and backend Jest domain/application tests.
 4. `npm run api:check` — OpenAPI specification drift and structural validation.
 5. `npm run api:generate:check` — Orval generated client SHA-256 manifest integrity check.
-6. `npm run api:migration:check` — Catalog migration and database schema consistency guards.
-7. `npm run build` — Production compilation of both frontend (Next.js) and backend (NestJS).
+6. `npm run build` — Production compilation of both frontend (Next.js) and backend (NestJS).
 
 Extended verification (`npm run verify:full`) runs dockerized integration suites and full Playwright browser E2E test suites against ephemeral databases (`akwaan_e2e_test`).
