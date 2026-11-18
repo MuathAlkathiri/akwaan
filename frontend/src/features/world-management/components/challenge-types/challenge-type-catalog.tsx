@@ -4,24 +4,18 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ConfirmationDialog,
-  EmptyState,
-  SectionCard,
-} from "@/components/shared";
-import { showToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/utils";
-import { presentChallengeTypeDeletion } from "../../utils/challenge-type-deletion.presenter";
+import { EmptyState, SectionCard } from "@/components/shared";
 
+import { useChallengeTypes } from "../../hooks/use-world-content";
 import {
-  useChallengeTypes,
-  useChallengeTypeDeletionPreview,
-  useDeleteChallengeType,
-} from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton, SearchToolbar } from "../shared";
+  EntityFormDialog,
+  PermanentDeletionDialog,
+  RowSkeleton,
+  SearchToolbar,
+} from "../shared";
 import { ChallengeTypeCard } from "./challenge-type-card";
 import { ChallengeTypeForm } from "./challenge-type-form";
-import type { ChallengeType, ChallengeTypeDeletionPreview } from "../../types";
+import type { ChallengeType } from "../../types";
 
 const EMPTY_CHALLENGE_TYPES: ChallengeType[] = [];
 
@@ -36,30 +30,6 @@ export function ChallengeTypeCatalog() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ChallengeType | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChallengeType | null>(null);
-  const [deletePreview, setDeletePreview] =
-    useState<ChallengeTypeDeletionPreview | null>(null);
-  const deleteChallengeType = useDeleteChallengeType();
-  const previewChallengeType = useChallengeTypeDeletionPreview();
-
-  const closeDeleteDialog = () => {
-    setPendingDelete(null);
-    setDeletePreview(null);
-  };
-
-  const requestDelete = (challengeType: ChallengeType) => {
-    setPendingDelete(challengeType);
-    setDeletePreview(null);
-    previewChallengeType.mutate(challengeType.id, {
-      onSuccess: setDeletePreview,
-      onError: (error) => {
-        showToast({
-          type: "error",
-          message: getApiErrorMessage(error, "تعذر تحميل تفاصيل الحذف."),
-        });
-        closeDeleteDialog();
-      },
-    });
-  };
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -70,10 +40,6 @@ export function ChallengeTypeCatalog() {
         challengeType.slug.includes(query),
     );
   }, [challengeTypes, search]);
-  const deletionPresentation =
-    pendingDelete && deletePreview
-      ? presentChallengeTypeDeletion(pendingDelete.name, deletePreview)
-      : null;
 
   return (
     <SectionCard
@@ -124,7 +90,7 @@ export function ChallengeTypeCatalog() {
                 key={challengeType.id}
                 challengeType={challengeType}
                 onEdit={() => setEditing(challengeType)}
-                onDelete={() => requestDelete(challengeType)}
+                onDelete={() => setPendingDelete(challengeType)}
               />
             ))}
           </div>
@@ -155,44 +121,19 @@ export function ChallengeTypeCatalog() {
         )}
       </EntityFormDialog>
 
-      <ConfirmationDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => {
-          if (!open) closeDeleteDialog();
-        }}
-        title={deletionPresentation?.title ?? "فحص إمكانية الحذف"}
-        description={
-          !deletePreview ? (
-            "جاري فحص سجل المباريات والارتباطات..."
-          ) : (
-            <span className="whitespace-pre-line">
-              {deletionPresentation?.description}
-            </span>
-          )
+      {/* Blocked deletions (live Matches, running engine jobs, …) are explained
+          by the dialog's server-side blockers, not decided here. */}
+      <PermanentDeletionDialog
+        target={
+          pendingDelete
+            ? {
+                kind: "challengeType",
+                id: pendingDelete.id,
+                name: pendingDelete.name,
+              }
+            : null
         }
-        confirmLabel={deletionPresentation?.confirmLabel}
-        destructive={deletionPresentation?.destructive}
-        disabled={
-          !deletePreview ||
-          !deletionPresentation?.canConfirm ||
-          deleteChallengeType.isPending
-        }
-        onConfirm={() => {
-          if (!pendingDelete || !deletePreview) return;
-          deleteChallengeType.mutate(pendingDelete.id, {
-            onSuccess: closeDeleteDialog,
-            onError: (error) => {
-              showToast({
-                type: "error",
-                message: getApiErrorMessage(
-                  error,
-                  "تعذر حذف الميكانيكا.",
-                ),
-              });
-              closeDeleteDialog();
-            },
-          });
-        }}
+        onClose={() => setPendingDelete(null)}
       />
     </SectionCard>
   );

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -28,6 +27,13 @@ import {
   UploadedWorldContentAsset,
   worldContentAssetInterceptor,
 } from './world-content.http';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/auth.types';
+import { WorldContentDeletionService } from '../application/permanent-deletion/world-content-deletion.service';
+import {
+  deletionActor,
+  ExecutePermanentDeletionDto,
+} from '../dto/permanent-deletion.dto';
 
 @ApiTags('World Management')
 @ApiBearerAuth()
@@ -38,6 +44,7 @@ export class ContentItemsController {
   constructor(
     private readonly contentItems: ContentItemService,
     private readonly assets: WorldContentAssetMutator,
+    private readonly deletion: WorldContentDeletionService,
   ) {}
 
   @Post('upload-asset')
@@ -76,8 +83,29 @@ export class ContentItemsController {
     return envelope(this.contentItems.update(contentItemId, dto));
   }
 
-  @Delete(':contentItemId')
-  remove(@Param('contentItemId') contentItemId: string) {
-    return envelope(this.contentItems.remove(contentItemId));
+  /** content item: what permanent deletion would remove, keep and require. Read-only. */
+  @Get(':contentItemId/deletion-preview')
+  deletionPreview(
+    @Param('contentItemId') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.preview('contentItem', id, deletionActor(user)),
+    );
+  }
+
+  /**
+   * Permanently deletes the content item once the operator confirmed the preview.
+   * Refused with DELETION_PREVIEW_STALE if the impact changed since.
+   */
+  @Post(':contentItemId/permanent-delete')
+  permanentDelete(
+    @Param('contentItemId') id: string,
+    @Body() dto: ExecutePermanentDeletionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.execute('contentItem', id, dto, deletionActor(user)),
+    );
   }
 }

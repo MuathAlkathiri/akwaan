@@ -1,13 +1,14 @@
 import apiClient from "@/lib/api/client";
 import type {
   ChallengeType,
-  ChallengeTypeDeletionPreview,
   ContentItem,
+  DeletionEntityKind,
+  DeletionExecuteInput,
+  DeletionPreview,
+  DeletionResult,
   Scope,
   World,
   WorldBoard,
-  WorldSlotRemovalPreview,
-  WorldSlotRemovalResult,
   WorldChallengeConfiguration,
   WorldContentMetadata,
 } from "../types";
@@ -45,10 +46,6 @@ export const updateWorld = (worldId: string, data: Payload, file?: File) =>
     apiClient.patch(`/admin/worlds/${worldId}`, body("world", data, file)),
   );
 
-export const deleteWorld = async (worldId: string) => {
-  await apiClient.delete(`/admin/worlds/${worldId}`);
-};
-
 /**
  * The World's 16:9 question backdrop (roadmap §30.22 Track A). It has its own
  * endpoints because the World write already carries one image for the banner,
@@ -85,10 +82,6 @@ export const updateScope = (scopeId: string, data: Payload, file?: File) =>
     apiClient.patch(`/admin/scopes/${scopeId}`, body("scope", data, file)),
   );
 
-export const deleteScope = async (scopeId: string) => {
-  await apiClient.delete(`/admin/scopes/${scopeId}`);
-};
-
 /* Global challenge types */
 
 export const fetchChallengeTypes = () =>
@@ -114,15 +107,6 @@ export const updateChallengeType = (
       `/admin/challenge-types/${challengeTypeId}`,
       body("challengeType", data, file),
     ),
-  );
-
-export const deleteChallengeType = async (challengeTypeId: string) => {
-  await apiClient.delete(`/admin/challenge-types/${challengeTypeId}`);
-};
-
-export const fetchChallengeTypeDeletionPreview = (challengeTypeId: string) =>
-  unwrap<ChallengeTypeDeletionPreview>(
-    apiClient.get(`/admin/challenge-types/${challengeTypeId}/deletion-preview`),
   );
 
 /* World-specific challenge configurations */
@@ -207,36 +191,6 @@ export const updateWorldChallengeConfiguration = (
     ),
   );
 
-export const deleteWorldChallengeConfiguration = async (
-  configurationId: string,
-) => {
-  await apiClient.delete(`/admin/challenge-configurations/${configurationId}`);
-};
-
-/** What releasing one board position would cost, counted by the server. */
-export const fetchWorldSlotRemovalPreview = (configurationId: string) =>
-  unwrap<WorldSlotRemovalPreview>(
-    apiClient.get(
-      `/admin/challenge-configurations/${configurationId}/removal-preview`,
-    ),
-  );
-
-/**
- * Release one board position and dispose of that World's content for the
- * mechanic — one request, so the browser never orchestrates the two destructive
- * halves separately. `expectedChallengeTypeId` is rejected if the slot moved on.
- */
-export const releaseWorldSlot = (
-  configurationId: string,
-  expectedChallengeTypeId: string,
-) =>
-  unwrap<WorldSlotRemovalResult>(
-    apiClient.post(
-      `/admin/challenge-configurations/${configurationId}/release`,
-      { expectedChallengeTypeId },
-    ),
-  );
-
 /* Content items */
 
 export const fetchContentItems = (params: {
@@ -261,6 +215,52 @@ export const updateContentItem = (contentItemId: string, data: Payload) =>
     apiClient.patch(`/admin/content-items/${contentItemId}`, data),
   );
 
-export const deleteContentItem = async (contentItemId: string) => {
-  await apiClient.delete(`/admin/content-items/${contentItemId}`);
+/* Permanent deletion and detach (roadmap §19.1) */
+
+/**
+ * Where each entity's preview and execute endpoints live. A board slot is never
+ * deleted from here: it is *detached*, which removes the association only.
+ */
+const DELETION_ROUTES: Record<
+  DeletionEntityKind,
+  (id: string) => { preview: string; execute: string }
+> = {
+  world: (id) => ({
+    preview: `/admin/worlds/${id}/deletion-preview`,
+    execute: `/admin/worlds/${id}/permanent-delete`,
+  }),
+  scope: (id) => ({
+    preview: `/admin/scopes/${id}/deletion-preview`,
+    execute: `/admin/scopes/${id}/permanent-delete`,
+  }),
+  challengeType: (id) => ({
+    preview: `/admin/challenge-types/${id}/deletion-preview`,
+    execute: `/admin/challenge-types/${id}/permanent-delete`,
+  }),
+  contentItem: (id) => ({
+    preview: `/admin/content-items/${id}/deletion-preview`,
+    execute: `/admin/content-items/${id}/permanent-delete`,
+  }),
+  configuration: (id) => ({
+    preview: `/admin/challenge-configurations/${id}/detach-preview`,
+    execute: `/admin/challenge-configurations/${id}/detach`,
+  }),
 };
+
+/** Read-only: what deleting (or detaching) this record would change. */
+export const fetchDeletionPreview = (kind: DeletionEntityKind, id: string) =>
+  unwrap<DeletionPreview>(apiClient.get(DELETION_ROUTES[kind](id).preview));
+
+/**
+ * Execute exactly the reviewed plan. The server refuses with
+ * `DELETION_PREVIEW_STALE` if the impact changed since `previewFingerprint`, and
+ * replays (never repeats) a `requestId` it has already executed.
+ */
+export const executeDeletion = (
+  kind: DeletionEntityKind,
+  id: string,
+  input: DeletionExecuteInput,
+) =>
+  unwrap<DeletionResult>(
+    apiClient.post(DELETION_ROUTES[kind](id).execute, input),
+  );

@@ -1,3 +1,5 @@
+import { MatchDeletionParticipant } from './application/match-deletion.participant';
+import { MatchCreationFence } from './application/match-creation.fence';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
@@ -96,6 +98,8 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     MyMatchesController,
   ],
   providers: [
+    MatchDeletionParticipant,
+    MatchCreationFence,
     FirstNoteChallengeLauncher,
     SystemMatchClock,
     { provide: MATCH_CLOCK, useExisting: SystemMatchClock },

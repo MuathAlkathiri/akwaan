@@ -167,12 +167,6 @@ export class ContentItemService {
     return this.summarize(updated);
   }
 
-  async remove(id: string): Promise<{ id: string }> {
-    await this.require(id);
-    await this.contentItems.deleteById(id);
-    return { id };
-  }
-
   /**
    * One gate for every write: legacy fields are refused, and a `ready` item must
    * satisfy the full compatibility policy (roadmap 14).

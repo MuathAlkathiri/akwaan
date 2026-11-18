@@ -211,6 +211,7 @@ export class WorldService {
     }
     await this.references.assertUnreferenced('world', id);
     await this.worlds.deleteById(id);
+    await this.assets.discard(existing.icon);
     await this.assets.discard(existing.banner);
     await this.assets.discard(existing.questionFallback ?? undefined);
     return { id };

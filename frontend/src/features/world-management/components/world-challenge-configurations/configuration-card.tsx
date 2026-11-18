@@ -1,5 +1,5 @@
 "use client";
-import { Pencil, Trash2 } from "lucide-react";
+import { Link2Off, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,14 @@ import type { WorldChallengeConfiguration } from "../../types";
 interface ConfigurationCardProps {
   configuration: WorldChallengeConfiguration;
   onEdit: () => void;
-  onDelete: () => void;
+  /** Detach the mechanic from this World; the mechanic and its content stay. */
+  onDetach: () => void;
 }
 
 export function ConfigurationCard({
   configuration,
   onEdit,
-  onDelete,
+  onDetach,
 }: ConfigurationCardProps) {
   const { challengeType } = configuration;
   const timer = challengeType.defaultPresentation.timerSeconds;
@@ -71,10 +72,11 @@ export function ConfigurationCard({
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label="حذف الإعداد"
-            onClick={onDelete}
+            aria-label="فصل عن العالم"
+            title="فصل عن العالم"
+            onClick={onDetach}
           >
-            <Trash2 className="size-3.5 text-destructive" />
+            <Link2Off className="size-3.5 text-destructive" />
           </Button>
         </div>
       </div>

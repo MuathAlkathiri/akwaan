@@ -4,16 +4,14 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ConfirmationDialog,
-  EmptyState,
-  SectionCard,
-} from "@/components/shared";
-import { showToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/utils";
+import { EmptyState, SectionCard } from "@/components/shared";
 
-import { useDeleteScope, useScopes } from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton } from "../shared";
+import { useScopes } from "../../hooks/use-world-content";
+import {
+  EntityFormDialog,
+  PermanentDeletionDialog,
+  RowSkeleton,
+} from "../shared";
 import { ScopeCard } from "./scope-card";
 import { ScopeForm } from "./scope-form";
 import type { Scope } from "../../types";
@@ -23,7 +21,6 @@ export function ScopeSection({ worldId }: { worldId: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editingScope, setEditingScope] = useState<Scope | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Scope | null>(null);
-  const deleteScope = useDeleteScope();
 
   return (
     <SectionCard
@@ -81,32 +78,13 @@ export function ScopeSection({ worldId }: { worldId: string }) {
         )}
       </EntityFormDialog>
 
-      <ConfirmationDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
-        }}
-        title="حذف نطاق المحتوى"
-        description={`هل تريد حذف "${pendingDelete?.name ?? ""}"؟ لا يمكن حذف نطاق يحتوي على عناصر محتوى.`}
-        confirmLabel="حذف"
-        destructive
-        disabled={deleteScope.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          deleteScope.mutate(pendingDelete.id, {
-            onSuccess: () => setPendingDelete(null),
-            onError: (error) => {
-              showToast({
-                type: "error",
-                message: getApiErrorMessage(
-                  error,
-                  "لا يمكن حذف نطاق مرتبط بمحتوى.",
-                ),
-              });
-              setPendingDelete(null);
-            },
-          });
-        }}
+      <PermanentDeletionDialog
+        target={
+          pendingDelete
+            ? { kind: "scope", id: pendingDelete.id, name: pendingDelete.name }
+            : null
+        }
+        onClose={() => setPendingDelete(null)}
       />
     </SectionCard>
   );

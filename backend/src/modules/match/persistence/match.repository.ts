@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import { Match } from '../domain/match';
 
 export const MATCH_REPOSITORY = Symbol('MATCH_REPOSITORY');
@@ -42,7 +43,8 @@ export interface MatchListPage {
 }
 
 export interface MatchRepository {
-  create(match: Match): Promise<void>;
+  /** `session`: insert inside the caller's transaction (fenced creation). */
+  create(match: Match, session?: ClientSession): Promise<void>;
   findById(matchId: string): Promise<Match | null>;
   /** The draft or active Match wrapping a live session, if any. */
   findActiveBySessionId(sessionId: string): Promise<Match | null>;

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -26,6 +25,13 @@ import {
   UploadedWorldContentAsset,
   worldContentAssetInterceptor,
 } from './world-content.http';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/auth.types';
+import { WorldContentDeletionService } from '../application/permanent-deletion/world-content-deletion.service';
+import {
+  deletionActor,
+  ExecutePermanentDeletionDto,
+} from '../dto/permanent-deletion.dto';
 
 /** Global mechanic definitions — deliberately not nested under a World. */
 @ApiTags('World Management')
@@ -34,7 +40,10 @@ import {
 @Roles(UserRole.ADMIN)
 @Controller('admin/challenge-types')
 export class ChallengeTypesController {
-  constructor(private readonly challengeTypes: ChallengeTypeService) {}
+  constructor(
+    private readonly challengeTypes: ChallengeTypeService,
+    private readonly deletion: WorldContentDeletionService,
+  ) {}
 
   @Get()
   list() {
@@ -72,11 +81,6 @@ export class ChallengeTypesController {
     return envelope(this.challengeTypes.readiness(challengeTypeId));
   }
 
-  @Get(':challengeTypeId/deletion-preview')
-  deletionPreview(@Param('challengeTypeId') challengeTypeId: string) {
-    return envelope(this.challengeTypes.deletionPreview(challengeTypeId));
-  }
-
   @Patch(':challengeTypeId')
   @UseInterceptors(worldContentAssetInterceptor)
   @ApiConsumes('multipart/form-data', 'application/json')
@@ -93,8 +97,29 @@ export class ChallengeTypesController {
     return envelope(this.challengeTypes.update(challengeTypeId, dto, asset));
   }
 
-  @Delete(':challengeTypeId')
-  remove(@Param('challengeTypeId') challengeTypeId: string) {
-    return envelope(this.challengeTypes.remove(challengeTypeId));
+  /** mechanic (exclusive content deleted, shared content kept): what permanent deletion would remove, keep and require. Read-only. */
+  @Get(':challengeTypeId/deletion-preview')
+  deletionPreview(
+    @Param('challengeTypeId') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.preview('challengeType', id, deletionActor(user)),
+    );
+  }
+
+  /**
+   * Permanently deletes the mechanic (exclusive content deleted, shared content kept) once the operator confirmed the preview.
+   * Refused with DELETION_PREVIEW_STALE if the impact changed since.
+   */
+  @Post(':challengeTypeId/permanent-delete')
+  permanentDelete(
+    @Param('challengeTypeId') id: string,
+    @Body() dto: ExecutePermanentDeletionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.execute('challengeType', id, dto, deletionActor(user)),
+    );
   }
 }

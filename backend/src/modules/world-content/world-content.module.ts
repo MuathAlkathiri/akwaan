@@ -7,7 +7,6 @@ import { ContentItemService } from './application/content-item.service';
 import { PlayerCatalogService } from './application/player-catalog.service';
 import { ScopeService } from './application/scope.service';
 import { WorldChallengeConfigurationService } from './application/world-challenge-configuration.service';
-import { WorldSlotMechanicRemovalService } from './application/world-slot-mechanic-removal.service';
 import { WorldContentAssetMutator } from './application/world-content-asset.mutator';
 import { WorldPresentationService } from './application/world-presentation.service';
 import { WorldContentClassificationService } from './application/world-content-classification.service';
@@ -57,6 +56,12 @@ import {
   ScopedMechanicTutorialSchema,
 } from './schemas/scoped-mechanic-tutorial.schema';
 import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-tutorial.repository';
+import { WorldContentDeletionService } from './application/permanent-deletion/world-content-deletion.service';
+import { WorldContentFenceService } from './application/permanent-deletion/world-content-fence.service';
+import {
+  AdminDeletionLog,
+  AdminDeletionLogSchema,
+} from './schemas/admin-deletion-log.schema';
 
 /**
  * World -> Scope -> ChallengeType -> ContentItem.
@@ -80,6 +85,7 @@ import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-
         name: ScopedMechanicTutorial.name,
         schema: ScopedMechanicTutorialSchema,
       },
+      { name: AdminDeletionLog.name, schema: AdminDeletionLogSchema },
     ]),
   ],
   controllers: [
@@ -119,7 +125,8 @@ import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-
     ScopeService,
     ChallengeTypeService,
     WorldChallengeConfigurationService,
-    WorldSlotMechanicRemovalService,
+    WorldContentDeletionService,
+    WorldContentFenceService,
     ContentItemService,
     PlayerCatalogService,
     WorldReadinessService,
@@ -137,6 +144,8 @@ import { ScopedMechanicTutorialRepository } from './persistence/scoped-mechanic-
     // The Match reads a World's question backdrop when it launches a challenge.
     WorldPresentationService,
     WorldContentReferenceRegistry,
+    // Match creation takes the same per-World fence as permanent deletion.
+    WorldContentFenceService,
     MatchWorldSelectionPolicy,
     ContentItemCompatibilityPolicy,
     ContentItemRepository,

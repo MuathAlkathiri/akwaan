@@ -26,6 +26,13 @@ import {
   UploadedWorldContentAsset,
   worldContentAssetInterceptor,
 } from './world-content.http';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/auth.types';
+import { WorldContentDeletionService } from '../application/permanent-deletion/world-content-deletion.service';
+import {
+  deletionActor,
+  ExecutePermanentDeletionDto,
+} from '../dto/permanent-deletion.dto';
 
 export class ValidateMatchWorldSelectionDto {
   @IsArray() @IsMongoId({ each: true }) worldIds: string[];
@@ -40,6 +47,7 @@ export class WorldsController {
   constructor(
     private readonly worlds: WorldService,
     private readonly readiness: WorldReadinessService,
+    private readonly deletion: WorldContentDeletionService,
   ) {}
 
   @Get()
@@ -118,5 +126,29 @@ export class WorldsController {
   @Delete(':worldId')
   remove(@Param('worldId') worldId: string) {
     return envelope(this.worlds.remove(worldId));
+  }
+
+  /** World and everything it owns: what permanent deletion would remove, keep and require. Read-only. */
+  @Get(':worldId/deletion-preview')
+  deletionPreview(
+    @Param('worldId') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(this.deletion.preview('world', id, deletionActor(user)));
+  }
+
+  /**
+   * Permanently deletes the World and everything it owns once the operator confirmed the preview.
+   * Refused with DELETION_PREVIEW_STALE if the impact changed since.
+   */
+  @Post(':worldId/permanent-delete')
+  permanentDelete(
+    @Param('worldId') id: string,
+    @Body() dto: ExecutePermanentDeletionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      this.deletion.execute('world', id, dto, deletionActor(user)),
+    );
   }
 }

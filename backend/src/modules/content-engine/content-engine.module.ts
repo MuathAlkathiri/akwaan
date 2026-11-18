@@ -1,3 +1,4 @@
+import { ContentEngineDeletionParticipant } from './application/content-engine-deletion.participant';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -125,6 +126,7 @@ import {
   ],
   controllers: [ContentEngineReviewController, ContentEngineJobsController],
   providers: [
+    ContentEngineDeletionParticipant,
     {
       // The engine's own slot. See ENGINE_AI_PROVIDER for why this is not the
       // global AI_PROVIDER_TOKEN.

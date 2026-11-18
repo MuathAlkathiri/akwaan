@@ -193,35 +193,6 @@ export interface WorldChallengeConfiguration {
   >;
 }
 
-/** Server-counted impact of releasing one World board position. */
-export interface WorldSlotRemovalPreview {
-  worldId: string;
-  worldName: string;
-  slotKey: WorldChallengeSlotKey;
-  challengeTypeId: string;
-  challengeTypeSlug: string;
-  challengeTypeName: string;
-  content: {
-    total: number;
-    ready: number;
-    /** Items no other mechanic can play; these are deleted. */
-    exclusive: number;
-    /** Items another mechanic can still play; these only lose a relationship. */
-    shared: number;
-  };
-  boardWillBecomeIncomplete: boolean;
-}
-
-export interface WorldSlotRemovalResult {
-  worldId: string;
-  slotKey: WorldChallengeSlotKey;
-  challengeTypeId: string;
-  deletedContentItems: number;
-  detachedSharedItems: number;
-  slotNowEmpty: boolean;
-  boardReady: boolean;
-}
-
 export interface WorldBoard {
   worldId: string;
   configurations: WorldChallengeConfiguration[];
@@ -471,16 +442,82 @@ export interface FirstNotePayload {
   clueLabel?: LocalizedText;
 }
 
-export interface ChallengeTypeDeletionPreview {
-  challengeTypeId: string;
+/* Permanent deletion and detach (roadmap §19.1) */
+
+export type DeletionEntityKind =
+  | "world"
+  | "scope"
+  | "challengeType"
+  | "contentItem"
+  | "configuration";
+
+/** `detach` removes an association only; `permanent_delete` removes records. */
+export type DeletionOperation = "permanent_delete" | "detach";
+
+export interface DeletionEntity {
+  kind: DeletionEntityKind;
+  id: string;
   name: string;
-  historicalMatchUsageCount: number;
-  activeMatchUsageCount: number;
-  contentItemCount: number;
-  worldAssignmentCount: number;
-  scopeExclusionCount: number;
-  canHardDelete: boolean;
-  blockReason?: "active_match" | "unsafe_historical_snapshot";
-  historicalSnapshotSafe: boolean;
-  productionMechanic: boolean;
+  /** Slug for Worlds, Scopes and ChallengeTypes; slot key for configurations. */
+  key?: string;
+  status?: string;
+}
+
+export interface DeletionBlocker {
+  code: string;
+  message: string;
+  count: number;
+  sample?: Array<{ id: string; label: string }>;
+  /** True when ticking "remove disposable test history" clears this blocker. */
+  clearedByHistoryPurge?: boolean;
+}
+
+/** What one entity's deletion (or detach) would change, counted by the server. */
+export interface DeletionPreview {
+  entity: DeletionEntity;
+  operation: DeletionOperation;
+  impact: {
+    worlds: number;
+    scopes: number;
+    configurations: number;
+    tutorials: number;
+    scopeExclusions: number;
+    content: {
+      toDelete: number;
+      toDeleteReady: number;
+      sharedPreserved: number;
+    };
+    external: Record<string, Record<string, number>>;
+    /** ACTIVE Worlds whose board this leaves incomplete (no longer selectable). */
+    worldsBecomingIncomplete: Array<{ id: string; name: string }>;
+  };
+  blockers: DeletionBlocker[];
+  /** Executable without the history purge. */
+  safe: boolean;
+  /** Executable once disposable test history is purged in the same request. */
+  safeWithHistoryPurge: boolean;
+  requiresHistoryPurge: boolean;
+  reversible: false;
+  /** Whether this operator may execute it (permanent deletion is allow-listed). */
+  actorMayExecute?: boolean;
+  fingerprint: string;
+  generatedAt: string;
+}
+
+export interface DeletionExecuteInput {
+  previewFingerprint: string;
+  requestId: string;
+  purgeDisposableHistory?: boolean;
+}
+
+export interface DeletionResult {
+  requestId: string;
+  auditId: string;
+  entity: DeletionEntity;
+  operation: DeletionOperation;
+  counts: Record<string, number>;
+  /** Media no remaining ContentItem uses. Informational: never deleted here. */
+  unreferencedMediaCandidates: string[];
+  /** True when this request id had already been executed. */
+  replayed: boolean;
 }

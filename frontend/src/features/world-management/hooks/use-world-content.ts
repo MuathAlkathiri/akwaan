@@ -53,14 +53,6 @@ export function useUpdateWorld() {
   });
 }
 
-export function useDeleteWorld() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (worldId: string) => api.deleteWorld(worldId),
-    onSuccess: invalidate,
-  });
-}
-
 /* Scopes */
 
 export function useScopes(worldId?: string) {
@@ -97,14 +89,6 @@ export function useUpdateScope() {
       data: Record<string, unknown>;
       file?: File;
     }) => api.updateScope(id, data, file),
-    onSuccess: invalidate,
-  });
-}
-
-export function useDeleteScope() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (scopeId: string) => api.deleteScope(scopeId),
     onSuccess: invalidate,
   });
 }
@@ -154,22 +138,6 @@ export function useUpdateChallengeType() {
       file?: File;
     }) => api.updateChallengeType(id, data, file),
     onSuccess: invalidate,
-  });
-}
-
-export function useDeleteChallengeType() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (challengeTypeId: string) =>
-      api.deleteChallengeType(challengeTypeId),
-    onSuccess: invalidate,
-  });
-}
-
-export function useChallengeTypeDeletionPreview() {
-  return useMutation({
-    mutationFn: (challengeTypeId: string) =>
-      api.fetchChallengeTypeDeletionPreview(challengeTypeId),
   });
 }
 
@@ -225,46 +193,6 @@ export function useUpdateWorldChallengeConfiguration() {
   });
 }
 
-export function useDeleteWorldChallengeConfiguration() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (configurationId: string) =>
-      api.deleteWorldChallengeConfiguration(configurationId),
-    onSuccess: invalidate,
-  });
-}
-
-/**
- * The removal impact, fetched only while a confirmation dialog is open.
- *
- * Never cached across dialogs: the count is the basis for a destructive decision,
- * so it is re-read from the server each time rather than reused.
- */
-export function useWorldSlotRemovalPreview(configurationId?: string) {
-  return useQuery({
-    queryKey: ["world-slot-removal-preview", configurationId],
-    queryFn: () => api.fetchWorldSlotRemovalPreview(configurationId!),
-    enabled: Boolean(configurationId),
-    staleTime: 0,
-    gcTime: 0,
-  });
-}
-
-export function useReleaseWorldSlot() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (input: {
-      configurationId: string;
-      expectedChallengeTypeId: string;
-    }) =>
-      api.releaseWorldSlot(
-        input.configurationId,
-        input.expectedChallengeTypeId,
-      ),
-    onSuccess: invalidate,
-  });
-}
-
 /* Content items */
 
 export function useContentItems(filters: {
@@ -293,14 +221,6 @@ export function useUpdateContentItem() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       api.updateContentItem(id, data),
-    onSuccess: invalidate,
-  });
-}
-
-export function useDeleteContentItem() {
-  const invalidate = useInvalidateWorldContent();
-  return useMutation({
-    mutationFn: (contentItemId: string) => api.deleteContentItem(contentItemId),
     onSuccess: invalidate,
   });
 }

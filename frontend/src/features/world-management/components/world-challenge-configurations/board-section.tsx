@@ -5,20 +5,20 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState, SectionCard } from "@/components/shared";
-import { showToast } from "@/components/ui/toast";
-import { getApiErrorMessage } from "@/lib/utils";
 
 import {
-  useReleaseWorldSlot,
   useWorldBoard,
   useWorldContentMetadata,
 } from "../../hooks/use-world-content";
-import { EntityFormDialog, RowSkeleton } from "../shared";
+import {
+  EntityFormDialog,
+  PermanentDeletionDialog,
+  RowSkeleton,
+} from "../shared";
 import { ReadinessPanel } from "../readiness";
 import { SLOT_KEY_LABEL } from "../../utils/world-content.labels";
 import { ConfigurationCard } from "./configuration-card";
 import { ConfigurationForm } from "./configuration-form";
-import { SlotRemovalDialog } from "./slot-removal-dialog";
 import type {
   WorldChallengeConfiguration,
   WorldChallengeSlotKey,
@@ -27,7 +27,7 @@ import type {
 /**
  * The four board positions always exist as positions.
  *
- * Releasing a mechanic unbinds a slot; it does not remove the slot. Rendering the
+ * Detaching a mechanic unbinds a slot; it does not remove the slot. Rendering the
  * fixed four means an empty position stays visible and directly assignable rather
  * than silently vanishing from the board.
  */
@@ -45,11 +45,10 @@ export function BoardSection({ worldId }: { worldId: string }) {
   const [editing, setEditing] = useState<WorldChallengeConfiguration | null>(
     null,
   );
-  const [pendingDelete, setPendingDelete] =
+  const [pendingDetach, setPendingDetach] =
     useState<WorldChallengeConfiguration | null>(null);
   const [assigningSlot, setAssigningSlot] =
     useState<WorldChallengeSlotKey | null>(null);
-  const releaseSlot = useReleaseWorldSlot();
 
   const configurations = data?.configurations ?? [];
   const enabledCount = configurations.filter(
@@ -90,7 +89,7 @@ export function BoardSection({ worldId }: { worldId: string }) {
                   key={slotKey}
                   configuration={configuration}
                   onEdit={() => setEditing(configuration)}
-                  onDelete={() => setPendingDelete(configuration)}
+                  onDetach={() => setPendingDetach(configuration)}
                 />
               );
             }
@@ -182,35 +181,19 @@ export function BoardSection({ worldId }: { worldId: string }) {
         )}
       </EntityFormDialog>
 
-      <SlotRemovalDialog
-        configuration={pendingDelete}
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
-        }}
-        pending={releaseSlot.isPending}
-        onConfirm={(configuration) =>
-          releaseSlot.mutate(
-            {
-              configurationId: configuration.id,
-              expectedChallengeTypeId: configuration.challengeTypeId,
-            },
-            {
-              onSuccess: () => setPendingDelete(null),
-              onError: (error) => {
-                // The dialog stays open on failure: the board is unchanged, and
-                // closing it would imply the removal happened.
-                showToast({
-                  type: "error",
-                  message: getApiErrorMessage(
-                    error,
-                    "تعذر إزالة الميكانيكا من العالم.",
-                  ),
-                });
-              },
-            },
-          )
+      {/* Detach removes the board binding only: the mechanic and every one of
+          its questions are kept (roadmap §19.1). */}
+      <PermanentDeletionDialog
+        target={
+          pendingDetach
+            ? {
+                kind: "configuration",
+                id: pendingDetach.id,
+                name: pendingDetach.effectiveName,
+              }
+            : null
         }
+        onClose={() => setPendingDetach(null)}
       />
     </SectionCard>
   );
