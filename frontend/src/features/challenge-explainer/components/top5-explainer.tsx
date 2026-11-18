@@ -9,6 +9,7 @@ import { ChallengeFrame } from "@/features/live-game-session/match/components/ch
 import {
   PhoneFrame,
   SharedScreenFrame,
+  useTutorialStagePresentation,
 } from "@/features/how-to-play/components/device-frames";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -191,13 +192,19 @@ export function Top5Explainer({
     return () => context.revert();
   }, [isReveal, timeline.reducedMotion, step.id]);
 
+  const { embedded, teamNames: stageTeams } = useTutorialStagePresentation();
+  const displayTeamNames: Record<"team-a" | "team-b", string> = {
+    "team-a": stageTeams?.blueFull ?? teamNames["team-a"],
+    "team-b": stageTeams?.redFull ?? teamNames["team-b"],
+  };
+
   return (
     <div
       ref={scope}
       dir="rtl"
       data-testid="top5-explainer"
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact || embedded ? "space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -215,37 +222,51 @@ export function Top5Explainer({
 
       <div
         className={cn(
-          "grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] lg:gap-6",
-          compact && "gap-3",
+          "grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:gap-4",
+          (compact || embedded) && "gap-3",
           isOutcome && "lg:grid-cols-1",
         )}
       >
         {isOutcome ? (
-          <FinalResultScene scenario={scenario} />
+          <FinalResultScene
+            scenario={scenario}
+            displayTeamNames={displayTeamNames}
+          />
         ) : (
           <>
-            <SharedScreenFrame stand={!compact}>
+            <SharedScreenFrame stand={!compact && !embedded}>
               <ChallengeFrame
                 title={scenario.title}
                 progressValue={(decidedCount / 10) * 100}
-                compact={compact}
-                className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}
+                compact={compact || embedded}
+                className={
+                  compact || embedded ? "w-full" : "mx-auto w-full max-w-3xl"
+                }
               >
-                <div className={compact ? "space-y-3" : "space-y-5"}>
-                  <div className="rounded-xl border-2 border-border bg-card p-3 text-center sm:p-5">
-                    <div className="mb-2 flex items-center justify-center gap-2 text-xs font-black text-muted-foreground">
-                      <ListOrdered className="size-4" aria-hidden />
+                <div className={compact || embedded ? "space-y-3" : "space-y-5"}>
+                  <div
+                    className={cn(
+                      "rounded-xl border-2 border-border bg-card text-center",
+                      embedded ? "p-2.5 sm:p-3.5" : "p-3 sm:p-4",
+                    )}
+                  >
+                    <div className="mb-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-muted-foreground">
+                      <ListOrdered className="size-3.5" aria-hidden />
                       {scenario.rankingBasis}
                     </div>
                     <h2
                       className={cn(
                         "font-black leading-snug text-foreground",
-                        compact ? "text-lg" : "text-xl sm:text-2xl",
+                        embedded
+                          ? "text-base sm:text-xl"
+                          : compact
+                            ? "text-base sm:text-xl"
+                            : "text-xl sm:text-2xl",
                       )}
                     >
                       <BidiText>{scenario.prompt}</BidiText>
                     </h2>
-                    <p className="mt-2 text-xs font-bold text-muted-foreground">
+                    <p className="mt-1 text-xs font-bold text-muted-foreground">
                       {isReveal
                         ? step.id === "reveal-ranked"
                           ? "كشف أفضل 5"
@@ -258,9 +279,11 @@ export function Top5Explainer({
                     <>
                       <div
                         className={cn(
-                          "rounded-xl bg-brand-gold/15 text-center",
-                          compact ? "p-3" : "p-4",
-                          isOwnership && "border-2 border-sem-success/30",
+                          "rounded-xl border-2 text-center transition-colors",
+                          compact || embedded ? "p-3" : "p-4",
+                          isOwnership
+                            ? "border-sem-success/40 bg-sem-success/10"
+                            : "border-brand-gold/55 bg-brand-gold/15",
                         )}
                         data-testid="top5-current-card"
                         data-top5-ownership-moving={
@@ -272,8 +295,10 @@ export function Top5Explainer({
                         </p>
                         <p
                           className={cn(
-                            "mt-1 font-black text-foreground",
-                            compact ? "text-2xl" : "text-2xl sm:text-3xl",
+                            "mt-1 font-black text-brand-navy",
+                            compact || embedded
+                              ? "text-xl sm:text-2xl"
+                              : "text-2xl sm:text-3xl",
                           )}
                         >
                           {card?.label}
@@ -283,46 +308,50 @@ export function Top5Explainer({
                             className="mt-2 text-sm font-black text-sem-success"
                             data-testid="top5-current-owner"
                           >
-                            انتقلت إلى {teamNames[owner]}
+                            {actionCopy(action)} ← انتقلت إلى {displayTeamNames[owner]}
                           </p>
                         ) : (
-                          <p className="mt-2 text-xs font-bold text-muted-foreground">
-                            الرتبة مخفية حتى الكشف النهائي
+                          <p className="mt-1.5 text-xs font-bold text-muted-foreground">
+                            {displayTeamNames[activeTeam]} يختار «خلّها» أو «عطها للخصم» — الرتبة مخفية
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs font-black">
-                        {teamIds.map((team) => (
-                          <div
-                            key={team}
-                            className={cn(
-                              "rounded-lg border-2 p-2 text-center",
-                              teamIdentity(team).border,
-                              team === activeTeam
-                                ? teamIdentity(team).surface
-                                : "bg-muted/40",
-                            )}
-                          >
-                            {teamNames[team]}
-                            {team === activeTeam
-                              ? isOwnership
-                                ? " · القرار اعتمد"
-                                : " · صاحب القرار"
-                              : " · ينتظر"}
-                          </div>
-                        ))}
-                      </div>
+                      {!embedded && (
+                        <div className="grid grid-cols-2 gap-2 text-xs font-black">
+                          {teamIds.map((team) => (
+                            <div
+                              key={team}
+                              className={cn(
+                                "rounded-lg border-2 p-2 text-center",
+                                teamIdentity(team).border,
+                                team === activeTeam
+                                  ? teamIdentity(team).surface
+                                  : "bg-muted/40",
+                              )}
+                            >
+                              {displayTeamNames[team]}
+                              {team === activeTeam
+                                ? isOwnership
+                                  ? " · القرار اعتمد"
+                                  : " · صاحب القرار"
+                                : " · ينتظر"}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {visibleOwnership.length > 0 && (
                         <OwnershipRail
                           ownership={visibleOwnership}
-                          compact={compact}
+                          compact={compact || embedded}
+                          displayTeamNames={displayTeamNames}
                         />
                       )}
                     </>
                   ) : isSimulation ? (
                     <SimulationSummary
                       ownership={ownership.slice(2)}
-                      compact={compact}
+                      compact={compact || embedded}
+                      displayTeamNames={displayTeamNames}
                     />
                   ) : (
                     <div
@@ -337,6 +366,7 @@ export function Top5Explainer({
                             (entry) => entry.rank !== null,
                           )}
                           ownership={ownership}
+                          displayTeamNames={displayTeamNames}
                         />
                         {(step.id !== "reveal-ranked" || isOutcome) && (
                           <RevealGroup
@@ -345,6 +375,7 @@ export function Top5Explainer({
                               (entry) => entry.rank === null,
                             )}
                             ownership={ownership}
+                            displayTeamNames={displayTeamNames}
                           />
                         )}
                       </div>
@@ -370,6 +401,7 @@ export function Top5Explainer({
                 <Top5Phone
                   key={team}
                   team={team}
+                  teamName={displayTeamNames[team]}
                   active={team === activeTeam && !isReveal}
                   card={card}
                   action={action}
@@ -378,6 +410,7 @@ export function Top5Explainer({
                   selected={isDecision}
                   isReveal={isReveal}
                   isSimulation={isSimulation}
+                  embedded={embedded}
                 />
               ))}
             </div>
@@ -388,7 +421,13 @@ export function Top5Explainer({
   );
 }
 
-function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
+function FinalResultScene({
+  scenario,
+  displayTeamNames,
+}: {
+  scenario: Top5TutorialScenario;
+  displayTeamNames: Record<"team-a" | "team-b", string>;
+}) {
   const firstTeamScore = scenario.outcome.top5Counts["team-a"];
   const secondTeamScore = scenario.outcome.top5Counts["team-b"];
 
@@ -425,7 +464,7 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
               "text-foreground",
             )}
           >
-            {teamNames["team-a"]} · {firstTeamScore}
+            {displayTeamNames["team-a"]} · {firstTeamScore}
           </div>
           <div
             className={cn(
@@ -435,12 +474,12 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
               "text-foreground",
             )}
           >
-            {teamNames["team-b"]} · {secondTeamScore}
+            {displayTeamNames["team-b"]} · {secondTeamScore}
           </div>
         </div>
 
         <p className="mt-3 text-lg font-black sm:text-xl">
-          {teamNames[scenario.outcome.winnerTeam]} يفوز بالتحدي
+          {displayTeamNames[scenario.outcome.winnerTeam]} يفوز بالتحدي
         </p>
         <p className="mt-1 text-base font-black text-foreground sm:text-lg">
           +{scenario.outcome.matchPointDelta} نقطة في المباراة
@@ -456,6 +495,7 @@ function FinalResultScene({ scenario }: { scenario: Top5TutorialScenario }) {
 function OwnershipRail({
   ownership,
   compact,
+  displayTeamNames,
 }: {
   ownership: Array<{
     entry: Top5TutorialEntry;
@@ -463,6 +503,7 @@ function OwnershipRail({
     action: "keep" | "give";
   }>;
   compact: boolean;
+  displayTeamNames: Record<"team-a" | "team-b", string>;
 }) {
   return (
     <div
@@ -482,7 +523,7 @@ function OwnershipRail({
                 teamIdentity(team).text,
               )}
             >
-              {teamNames[team]} · {cards.length}
+              {displayTeamNames[team]} · {cards.length}
             </p>
             <div className="flex min-h-8 flex-wrap justify-center gap-1">
               {cards.length ? (
@@ -510,6 +551,7 @@ function OwnershipRail({
 function SimulationSummary({
   ownership,
   compact,
+  displayTeamNames,
 }: {
   ownership: Array<{
     entry: Top5TutorialEntry;
@@ -518,6 +560,7 @@ function SimulationSummary({
     action: "keep" | "give";
   }>;
   compact: boolean;
+  displayTeamNames: Record<"team-a" | "team-b", string>;
 }) {
   return (
     <div
@@ -548,7 +591,7 @@ function SimulationSummary({
             </p>
             <p className="mt-0.5 text-[0.58rem] font-bold text-muted-foreground">
               {record.action === "keep" ? "خلّاه" : "عطاه"} ·{" "}
-              {teamNames[record.owner]}
+              {displayTeamNames[record.owner]}
             </p>
           </div>
         ))}
@@ -564,6 +607,7 @@ function RevealGroup({
   title,
   entries,
   ownership,
+  displayTeamNames,
 }: {
   title: string;
   entries: Top5TutorialEntry[];
@@ -572,6 +616,7 @@ function RevealGroup({
     owner: "team-a" | "team-b";
     action: "keep" | "give";
   }>;
+  displayTeamNames: Record<"team-a" | "team-b", string>;
 }) {
   return (
     <section className="space-y-1.5">
@@ -585,7 +630,7 @@ function RevealGroup({
               : entry.rank === null && record.action === "keep"
                 ? "احتفاظ بفخ"
                 : entry.rank !== null && record.action === "give"
-                  ? "دسّ بطاقة رابحة"
+                  ? "دسّ رابحة"
                   : null
             : null;
           return (
@@ -594,24 +639,29 @@ function RevealGroup({
               data-top5-reveal-row
               className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-2.5 py-2 text-xs font-black"
             >
-              <span className="min-w-0 truncate">
-                {entry.rank ? `${entry.rank}. ` : ""}
-                {entry.label}
+              <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <span className="truncate">
+                  {entry.rank ? `${entry.rank}. ` : ""}
+                  {entry.label}
+                </span>
                 {note && (
-                  <span className="mr-1 text-[0.62rem] font-bold text-muted-foreground">
-                    ({note})
+                  <span className="rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    {note}
                   </span>
                 )}
               </span>
               <span
                 className={cn(
-                  "shrink-0",
-                  record?.owner === "team-a"
-                    ? "text-blue-700"
-                    : "text-rose-700",
+                  "shrink-0 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-black text-foreground",
+                  record
+                    ? cn(
+                        teamIdentity(record.owner).border,
+                        teamIdentity(record.owner).surface,
+                      )
+                    : "border-border bg-background",
                 )}
               >
-                {record ? teamNames[record.owner] : "—"}
+                {record ? displayTeamNames[record.owner] : "—"}
               </span>
             </li>
           );
@@ -623,6 +673,7 @@ function RevealGroup({
 
 function Top5Phone({
   team,
+  teamName,
   active,
   card,
   action,
@@ -631,8 +682,10 @@ function Top5Phone({
   selected,
   isReveal,
   isSimulation,
+  embedded,
 }: {
   team: "team-a" | "team-b";
+  teamName: string;
   active: boolean;
   card: Top5TutorialEntry;
   action: "keep" | "give";
@@ -641,24 +694,41 @@ function Top5Phone({
   selected: boolean;
   isReveal: boolean;
   isSimulation: boolean;
+  embedded: boolean;
 }) {
   const identity = teamIdentity(team);
   const isOwner = phase === "ownership" && team === owner;
+  const statusLabel = isReveal
+    ? "كشف الترتيب"
+    : isSimulation
+      ? "محاكاة سريعة"
+      : active
+        ? "صاحب القرار"
+        : "ينتظر";
+
   return (
     <div className="space-y-1.5" data-testid={`top5-phone-${team}`}>
-      <p
-        className={cn(
-          "rounded-lg border-2 px-1.5 py-1 text-center text-[0.65rem] font-black",
-          identity.border,
-          identity.surface,
-          // Navy on the team tint; the border and tint carry the team.
-          "text-foreground",
-        )}
+      {!embedded && (
+        <p
+          className={cn(
+            "rounded-lg border-2 px-1.5 py-1 text-center text-[0.65rem] font-black",
+            identity.border,
+            identity.surface,
+            // Navy on the team tint; the border and tint carry the team.
+            "text-foreground",
+          )}
+        >
+          {teamName} {active ? "· صاحب القرار" : "· ينتظر"}
+        </p>
+      )}
+      <PhoneFrame
+        team={team}
+        teamLabel={teamName}
+        statusLabel={statusLabel}
+        acting={active}
+        className="mx-auto w-full max-w-[195px]"
       >
-        {teamNames[team]} {active ? "· صاحب القرار" : "· ينتظر"}
-      </p>
-      <PhoneFrame className="mx-auto w-full max-w-[190px]">
-        <div className="flex min-h-[16rem] flex-col justify-center gap-2 text-center">
+        <div className="flex min-h-[11rem] w-full flex-col justify-center gap-2 text-center">
           <p className="text-[0.65rem] font-black text-muted-foreground">
             أفضل 5
           </p>
@@ -707,7 +777,7 @@ function Top5Phone({
                     selected && action === "keep" ? true : undefined
                   }
                   className={cn(
-                    "h-9 gap-1 px-1 text-[0.65rem] font-black disabled:opacity-100",
+                    "h-8 gap-1 px-1 text-[0.65rem] font-black disabled:opacity-100",
                     selected && action === "keep"
                       ? "bg-sem-success text-white"
                       : "bg-brand-navy text-white",
@@ -726,7 +796,7 @@ function Top5Phone({
                     selected && action === "give" ? true : undefined
                   }
                   className={cn(
-                    "h-9 gap-1 px-1 text-[0.65rem] font-black disabled:opacity-100",
+                    "h-8 gap-1 px-1 text-[0.65rem] font-black disabled:opacity-100",
                     selected &&
                       action === "give" &&
                       "border-brand-gold bg-brand-gold/30 text-foreground",

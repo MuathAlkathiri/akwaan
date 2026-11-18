@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   SharedScreenFrame,
   PhoneFrame,
+  useTutorialStagePresentation,
 } from "@/features/how-to-play/components/device-frames";
 import { cn } from "@/lib/utils";
 import { CLOSEST_DEMO_STEPS } from "../closest-demo-scenario";
@@ -197,6 +198,10 @@ export function ClosestExplainer({
     return () => context.revert();
   }, [finished, timeline.reducedMotion]);
 
+  const { embedded, teamNames: stageTeams } = useTutorialStagePresentation();
+  const teamAName = stageTeams?.blueFull ?? "الفريق الأول";
+  const teamBName = stageTeams?.redFull ?? "الفريق الثاني";
+
   const min = Math.min(
     scenario.teamAEstimate,
     scenario.teamBEstimate,
@@ -234,26 +239,34 @@ export function ClosestExplainer({
       <div
         data-testid="closest-scene-stage"
         className={cn(
-          "grid min-h-[29rem] content-start gap-3 lg:min-h-0",
-          !compact && "lg:grid-cols-[1.6fr_1fr]",
+          "grid content-start gap-3",
+          embedded
+            ? "lg:grid-cols-[1.35fr_1fr] lg:items-center"
+            : cn("min-h-[29rem] lg:min-h-0", !compact && "lg:grid-cols-[1.6fr_1fr]"),
         )}
       >
         <SharedScreenFrame
-          stand={!compact}
+          stand={!compact && !embedded}
           className={cn(mobileScene === "answers" ? "hidden lg:flex" : "flex")}
         >
           <div
             data-mobile-scene={
               mobileScene === "question" ? "question" : "reveal"
             }
-            className="space-y-2 p-2 text-center sm:space-y-4 sm:p-4"
+            className="space-y-2.5 p-2.5 text-center sm:space-y-3.5 sm:p-4"
             data-testid="closest-shared-screen"
           >
-            <p className="text-xs font-black text-muted-foreground">مين أقرب</p>
+            <span className="inline-flex rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-black text-muted-foreground">
+              مين أقرب · تقدير رقمي
+            </span>
             <h3
               className={cn(
-                "font-black",
-                compact ? "text-lg" : "text-xl sm:text-2xl",
+                "font-display font-black text-brand-navy",
+                embedded
+                  ? "text-lg sm:text-2xl"
+                  : compact
+                    ? "text-base sm:text-xl"
+                    : "text-xl sm:text-2xl",
               )}
             >
               {scenario.prompt}
@@ -261,30 +274,28 @@ export function ClosestExplainer({
             {!revealed ? (
               <div className="grid grid-cols-2 gap-2">
                 <LockState
-                  name="الفريق الأول"
+                  name={teamAName}
                   team="team-a"
                   locked={teamAControl.confirmed}
-                  value={scenario.teamAEstimate}
-                  unit={scenario.unit}
                 />
                 <LockState
-                  name="الفريق الثاني"
+                  name={teamBName}
                   team="team-b"
                   locked={teamBControl.confirmed}
-                  value={scenario.teamBEstimate}
-                  unit={scenario.unit}
                 />
               </div>
             ) : (
               <div
                 ref={reveal}
-                className="space-y-2 sm:space-y-4"
+                className="space-y-2 sm:space-y-3.5"
                 data-testid="closest-tutorial-reveal"
               >
-                <div className="rounded-xl bg-brand-gold/15 p-2 sm:p-3">
-                  <Target className="mx-auto size-5" />
-                  <p className="text-xs font-bold">الإجابة الصحيحة</p>
-                  <p className="akwaan-numeral text-2xl font-black sm:text-3xl">
+                <div className="rounded-xl border border-brand-gold/40 bg-brand-gold/15 p-2 sm:p-3">
+                  <Target className="mx-auto size-5 text-brand-navy" />
+                  <p className="text-xs font-bold text-foreground">
+                    الإجابة الصحيحة
+                  </p>
+                  <p className="akwaan-numeral text-2xl font-black text-brand-navy sm:text-3xl">
                     {shown(scenario.correctValue, scenario.unit)}
                   </p>
                 </div>
@@ -299,7 +310,7 @@ export function ClosestExplainer({
                       id: "a",
                       value: scenario.teamAEstimate,
                       color: "bg-blue-500",
-                      label: "الأول",
+                      label: embedded ? (stageTeams?.blueShort ?? teamAName) : "الأول",
                       labelPosition: "bottom-0",
                     },
                     {
@@ -313,7 +324,7 @@ export function ClosestExplainer({
                       id: "b",
                       value: scenario.teamBEstimate,
                       color: "bg-rose-500",
-                      label: "الثاني",
+                      label: embedded ? (stageTeams?.redShort ?? teamBName) : "الثاني",
                       labelPosition: "bottom-0",
                     },
                   ].map((marker) => (
@@ -341,13 +352,31 @@ export function ClosestExplainer({
                     </span>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm font-black">
-                  <p>
-                    الأول: يبعد{" "}
+                <div className="grid grid-cols-2 gap-2 text-xs font-black sm:text-sm">
+                  <p
+                    className={cn(
+                      "rounded-lg border px-2 py-1.5 transition-colors",
+                      finished &&
+                        !scenario.outcome.tie &&
+                        scenario.outcome.winnerTeam === "team-a"
+                        ? "border-sem-success/50 bg-sem-success/10 text-brand-navy"
+                        : "border-border bg-background/70 text-foreground",
+                    )}
+                  >
+                    {teamAName}: يبعد{" "}
                     {shown(scenario.outcome.teamADistance, scenario.unit)}
                   </p>
-                  <p>
-                    الثاني: يبعد{" "}
+                  <p
+                    className={cn(
+                      "rounded-lg border px-2 py-1.5 transition-colors",
+                      finished &&
+                        !scenario.outcome.tie &&
+                        scenario.outcome.winnerTeam === "team-b"
+                        ? "border-sem-success/50 bg-sem-success/10 text-brand-navy"
+                        : "border-border bg-background/70 text-foreground",
+                    )}
+                  >
+                    {teamBName}: يبعد{" "}
                     {shown(scenario.outcome.teamBDistance, scenario.unit)}
                   </p>
                 </div>
@@ -364,7 +393,7 @@ export function ClosestExplainer({
                     <p className="text-base">
                       {scenario.outcome.tie
                         ? "تعادل — لا تُضاف نقطة إلى حصيلة التحدي"
-                        : `${scenario.outcome.winnerTeam === "team-a" ? "الفريق الأول" : "الفريق الثاني"} هو الأقرب`}
+                        : `${scenario.outcome.winnerTeam === "team-a" ? teamAName : teamBName} هو الأقرب`}
                     </p>
                     {!scenario.outcome.tie && (
                       <p className="mt-1 text-sm text-foreground">
@@ -385,32 +414,34 @@ export function ClosestExplainer({
           data-testid="closest-answer-scene"
           data-mobile-scene="answers"
           className={cn(
-            "grid-cols-2 gap-2",
+            "grid-cols-2 gap-2 sm:gap-3",
             mobileScene === "answers" ? "grid" : "hidden lg:grid",
           )}
         >
-          <div className="col-span-2 rounded-xl border bg-muted/40 p-3 text-center lg:hidden">
+          <div className="col-span-2 rounded-xl border bg-card p-2.5 text-center lg:hidden">
             <p className="text-[0.65rem] font-black text-muted-foreground">
               مين أقرب
             </p>
-            <p className="mt-1 text-base font-black leading-6">
+            <p className="mt-1 text-sm font-black leading-6 text-brand-navy sm:text-base">
               {scenario.prompt}
             </p>
-            <p className="mt-1 text-xs font-bold text-muted-foreground">
+            <p className="mt-0.5 text-xs font-bold text-muted-foreground">
               يثبّت كل فريق تقديره بسرية
             </p>
           </div>
           <EstimatePhone
-            name="الفريق الأول"
+            name={teamAName}
             team="team-a"
             unit={scenario.unit}
             estimate={teamAControl}
+            acting={at === idx["team-a-locked"] && !revealed}
           />
           <EstimatePhone
-            name="الفريق الثاني"
+            name={teamBName}
             team="team-b"
             unit={scenario.unit}
             estimate={teamBControl}
+            acting={at === idx["team-b-locked"] && !revealed}
           />
         </div>
       </div>
@@ -422,27 +453,28 @@ function LockState({
   name,
   team,
   locked,
-  value,
-  unit,
 }: {
   name: string;
   team: "team-a" | "team-b";
   locked: boolean;
-  value: number;
-  unit?: string;
 }) {
   return (
     <div
       data-lock-card={team}
       className={cn(
         "rounded-xl border p-2 transition-colors",
-        locked && "border-sem-success/40 bg-sem-success/10",
+        locked
+          ? "border-sem-success/40 bg-sem-success/10"
+          : "border-border bg-background/80",
       )}
     >
-      <p className="text-xs font-bold">{name}</p>
-      <p className="font-black">{locked ? "تم التثبيت" : "يفكر…"}</p>
+      <p className="text-xs font-bold text-foreground">{name}</p>
+      <p className="mt-0.5 flex items-center justify-center gap-1 font-black text-foreground">
+        {locked && <Lock className="size-3.5 text-sem-success" aria-hidden />}
+        {locked ? "تم التثبيت" : "يفكر…"}
+      </p>
       <p className="text-xs text-muted-foreground">
-        {locked ? shown(value, unit) : "التقدير سري"}
+        {locked ? "تم قفل التقدير بسرية" : "التقدير سري"}
       </p>
     </div>
   );
@@ -453,34 +485,46 @@ function EstimatePhone({
   team,
   unit,
   estimate,
+  acting = false,
 }: {
   name: string;
   team: "team-a" | "team-b";
   unit?: string;
   estimate: DemoEstimate;
+  acting?: boolean;
 }) {
   const displayedValue = estimate.value ?? seedEstimate;
   const progress = sliderPercent(displayedValue);
+  const statusLabel = estimate.confirmed
+    ? "تم التثبيت"
+    : estimate.moving || acting
+      ? "يحدّد التقدير"
+      : "تقدير سري";
 
   return (
-    <PhoneFrame>
+    <PhoneFrame
+      team={team}
+      teamLabel={name}
+      statusLabel={statusLabel}
+      acting={acting || estimate.moving}
+      className="w-full"
+    >
       <div
         data-lock-card={team}
         data-testid={`closest-phone-${team}`}
         data-slider-moving={estimate.moving ? "true" : "false"}
         data-estimate-confirmed={estimate.confirmed ? "true" : "false"}
-        className="w-full space-y-2 px-1.5 text-center"
+        className="w-full space-y-2 px-1 text-center"
       >
-        <p className="text-xs font-black">{name}</p>
-        <div className="rounded-lg bg-[#fff6df] px-2 py-2 text-[#10253f]">
-          <p className="text-[0.62rem] font-bold text-[#10253f]/70">
+        <div className="rounded-lg bg-[#fff6df] px-2 py-2.5 text-[#10253f]">
+          <p className="text-[0.65rem] font-bold text-[#10253f]/75">
             حرّك المؤشر ثم أكّد
           </p>
-          <div className="relative pt-10">
+          <div className="relative pt-9">
             {estimate.value !== null && (
               <div
                 data-testid={`closest-slider-value-${team}`}
-                className="akwaan-numeral absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#10253f] px-2 py-1 text-[0.68rem] font-black text-white shadow-md"
+                className="akwaan-numeral absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#10253f] px-2.5 py-1 text-xs font-black text-white shadow-md sm:text-sm"
                 style={{ left: `${Math.min(82, Math.max(18, progress))}%` }}
               >
                 {shown(estimate.value, unit)}
@@ -502,7 +546,7 @@ function EstimatePhone({
               value={displayedValue}
               readOnly
               data-testid={`closest-tutorial-slider-${team}`}
-              className="closest-slider h-10 w-full pointer-events-none"
+              className="closest-slider pointer-events-none h-9 w-full"
               style={
                 {
                   "--closest-progress": `${progress}%`,

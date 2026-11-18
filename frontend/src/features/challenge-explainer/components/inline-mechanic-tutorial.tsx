@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RYO_DECISION_PRESENTATION } from "@/features/live-game-session/match/ryo-decision.presentation";
+import { TutorialStagePresentationProvider } from "@/features/how-to-play/components/device-frames";
 import { teamIdentity, type TeamSlot } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { BOMB_DEMO_STEPS } from "../bomb-demo-scenario";
@@ -67,8 +68,8 @@ export interface InlineMechanicTutorialProps {
 
 const STEP_SCENES: Record<TutorialKind, readonly number[]> = {
   ryo: [0, 1, 2, 3, 4],
-  closest: [0, 1, 3, 5],
-  bomb: [0, 2, 5, 9, 11],
+  closest: [0, 1, 4, 5],
+  bomb: [0, 4, 5, 9, 11],
   "one-clue": [0, 1, 3, 6, 9],
   "top-5": [0, 2, 4, 5, 7],
   combo: [0, 2, 3, 5, 7],
@@ -295,6 +296,7 @@ export function InlineMechanicTutorial({
         <RepeatEncounterRecap
           challengeName={challengeName}
           description={description}
+          kind={kind}
           isRyo={isRyo}
           blueShort={teamNames.blueShort}
           redShort={teamNames.redShort}
@@ -312,7 +314,11 @@ export function InlineMechanicTutorial({
       ) : (
         <GenericV6TutorialSection
           scenario={tutorial.scenario}
+          challengeName={challengeName}
           launching={launching}
+          repeatEncounter={repeatEncounter}
+          autoStartFromExpand={expandedOverride === true}
+          teamNames={teamNames}
         />
       )}
     </section>
@@ -322,6 +328,7 @@ export function InlineMechanicTutorial({
 function RepeatEncounterRecap({
   challengeName,
   description,
+  kind,
   isRyo,
   blueShort,
   redShort,
@@ -329,6 +336,7 @@ function RepeatEncounterRecap({
 }: {
   challengeName: string;
   description?: string;
+  kind: TutorialKind | null;
   isRyo: boolean;
   blueShort: string;
   redShort: string;
@@ -336,6 +344,32 @@ function RepeatEncounterRecap({
 }) {
   const stealLabel = RYO_DECISION_PRESENTATION.steal.revealLabel;
   const trustLabel = RYO_DECISION_PRESENTATION.trust.revealLabel;
+
+  const recapChips = isRyo
+    ? [
+        `① ${blueShort} يجاوب`,
+        `② ${redShort} يقرر «${stealLabel}» أو «${trustLabel}»`,
+        "③ القرارين يقفلون ثم تنكشف النتيجة",
+      ]
+    : kind === "closest"
+      ? [
+          `① ${blueShort} و${redShort} يقدّران الرقم بسرية`,
+          "② يُقفل التقديران ثم ينكشف الرقم الصحيح",
+          "③ الأقرب يكسب جولة داخلية نحو نقطة المباراة",
+        ]
+      : kind === "bomb"
+        ? [
+            "① ساعة مستمرة لكل فريق مع حامل القنبلة",
+            "② الإجابة الصحيحة تنقل القنبلة بدون تصفير الوقت",
+            "③ التخطي يخصم 5 ثوانٍ وانتهاء الوقت يحسم التحدي",
+          ]
+        : kind === "top-5"
+          ? [
+              "① 10 بطاقات مخفية الرتبة (5 صحيحة و5 فخاخ)",
+              "② صاحب الدور يختار «خلّها» أو «عطها للخصم»",
+              "③ تنكشف الرتب في النهاية وتُحتسب بطاقات أفضل 5 فقط",
+            ]
+          : null;
 
   return (
     <div
@@ -349,17 +383,16 @@ function RepeatEncounterRecap({
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         سبق لكم لعبه في هالمباراة، فبنختصر عليكم الشرح.
       </p>
-      {isRyo ? (
+      {recapChips ? (
         <div className="my-3.5 flex flex-wrap gap-2">
-          <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground">
-            ① {blueShort} يجاوب
-          </span>
-          <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground">
-            ② {redShort} يقرر «{stealLabel}» أو «{trustLabel}»
-          </span>
-          <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground">
-            ③ القرارين يقفلون ثم تنكشف النتيجة
-          </span>
+          {recapChips.map((chip) => (
+            <span
+              key={chip}
+              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground"
+            >
+              {chip}
+            </span>
+          ))}
         </div>
       ) : description ? (
         <p className="my-3 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold leading-6 text-foreground">
@@ -470,8 +503,13 @@ function V6RyoIntegratedSection({
       userInteractedRef.current = true;
       const clamped = Math.min(Math.max(nextStep, -1), RYO_V6_STEPS.length - 1);
       setActiveStep(clamped);
-      if (clamped < 0 && timelineControls?.playing) {
-        timelineControls.toggle();
+      if (clamped < 0) {
+        if (timelineControls?.playing) {
+          timelineControls.toggle();
+        }
+        timelineControls?.goTo(0);
+      } else {
+        timelineControls?.goTo(clamped);
       }
     },
     [timelineControls],
@@ -1372,16 +1410,30 @@ function PhoneOutcomeBox({
  */
 function GenericV6TutorialSection({
   scenario,
+  challengeName,
   launching,
+  repeatEncounter,
+  autoStartFromExpand,
+  teamNames,
 }: {
   scenario: TutorialScenario;
+  challengeName: string;
   launching: boolean;
+  repeatEncounter: boolean;
+  autoStartFromExpand: boolean;
+  teamNames: ReturnType<typeof resolveDisplayTeams>;
 }) {
+  const scenes = useMemo(() => scenesFor(scenario), [scenario]);
   const steps = useMemo(() => inlineSteps(scenario), [scenario]);
-  const [activeStep, setActiveStep] = useState(0);
+  const [introActive, setIntroActive] = useState<boolean>(
+    () => !autoStartFromExpand,
+  );
+  const [activeScene, setActiveScene] = useState(0);
   const [timelineControls, setTimelineControls] =
     useState<ExplainerTimelineControls | null>(null);
   const [compact, setCompact] = useState(false);
+  const userInteractedRef = useRef(autoStartFromExpand);
+  const pendingExpandPlayRef = useRef(autoStartFromExpand);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
@@ -1392,45 +1444,154 @@ function GenericV6TutorialSection({
     return () => media.removeEventListener("change", sync);
   }, []);
 
+  const activeStep = useMemo(() => {
+    let matched = 0;
+    for (let index = 0; index < steps.length; index += 1) {
+      if (steps[index].sceneIndex <= activeScene) {
+        matched = index;
+      } else {
+        break;
+      }
+    }
+    return matched;
+  }, [activeScene, steps]);
+
   const current = steps[Math.min(activeStep, Math.max(steps.length - 1, 0))];
 
+  useEffect(() => {
+    if (
+      !introActive ||
+      repeatEncounter ||
+      autoStartFromExpand ||
+      launching ||
+      userInteractedRef.current ||
+      !timelineControls ||
+      timelineControls.reducedMotion
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (userInteractedRef.current) return;
+      setIntroActive(false);
+      setActiveScene(0);
+      if (!timelineControls.playing) {
+        timelineControls.toggle();
+      }
+    }, INTRO_AUTO_ADVANCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    autoStartFromExpand,
+    introActive,
+    launching,
+    repeatEncounter,
+    timelineControls,
+  ]);
+
+  useEffect(() => {
+    if (!pendingExpandPlayRef.current || !timelineControls) return;
+    pendingExpandPlayRef.current = false;
+    if (!timelineControls.reducedMotion && !timelineControls.playing) {
+      timelineControls.toggle();
+    }
+  }, [timelineControls]);
+
+  const handleTimelineSelect = useCallback((sceneIndex: number) => {
+    setActiveScene(sceneIndex);
+  }, []);
+
   const selectStep = useCallback(
-    (index: number) => {
-      setActiveStep(
-        Math.min(Math.max(index, 0), Math.max(steps.length - 1, 0)),
+    (nextStep: number) => {
+      userInteractedRef.current = true;
+      if (nextStep < 0) {
+        setIntroActive(true);
+        setActiveScene(0);
+        timelineControls?.goTo(0);
+        return;
+      }
+      const clamped = Math.min(
+        Math.max(nextStep, 0),
+        Math.max(steps.length - 1, 0),
       );
+      const targetScene = steps[clamped]?.sceneIndex ?? 0;
+      setIntroActive(false);
+      setActiveScene(targetScene);
+      timelineControls?.goTo(targetScene);
     },
-    [steps.length],
+    [steps, timelineControls],
   );
 
-  const selectScene = useCallback(
-    (sceneIndex: number) => {
-      if (!steps.length) return;
-      let nearest = 0;
-      steps.forEach((step, index) => {
-        if (
-          Math.abs(step.sceneIndex - sceneIndex) <
-          Math.abs(steps[nearest].sceneIndex - sceneIndex)
-        ) {
-          nearest = index;
-        }
-      });
-      setActiveStep(nearest);
+  const startFromIntro = useCallback(() => {
+    userInteractedRef.current = true;
+    setIntroActive(false);
+    setActiveScene(0);
+    if (
+      timelineControls &&
+      !timelineControls.reducedMotion &&
+      !timelineControls.playing
+    ) {
+      timelineControls.toggle();
+    }
+  }, [timelineControls]);
+
+  const handleTogglePlay = useCallback(() => {
+    userInteractedRef.current = true;
+    if (introActive) {
+      startFromIntro();
+      return;
+    }
+    timelineControls?.toggle();
+  }, [introActive, startFromIntro, timelineControls]);
+
+  const handleReplay = useCallback(() => {
+    userInteractedRef.current = true;
+    setIntroActive(true);
+    setActiveScene(0);
+    timelineControls?.goTo(0);
+  }, [timelineControls]);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent, index: number) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        const next = Math.min(steps.length - 1, index + 1);
+        selectStep(next);
+        document
+          .getElementById(`preflight-inline-tutorial-step-${next}`)
+          ?.focus();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        const prev = Math.max(0, index - 1);
+        selectStep(prev);
+        document
+          .getElementById(`preflight-inline-tutorial-step-${prev}`)
+          ?.focus();
+      }
     },
-    [steps],
+    [selectStep, steps.length],
   );
 
   if (!current) return null;
 
   const progressRatio =
-    steps.length <= 1 ? 0 : activeStep / (steps.length - 1);
+    introActive || steps.length <= 1 ? 0 : activeStep / (steps.length - 1);
   const progressPercent = `${progressRatio * ((steps.length - 1) / steps.length) * 100}%`;
   const reducedMotion = timelineControls?.reducedMotion ?? false;
   const playing = timelineControls?.playing ?? false;
+  const activeCaption = introActive
+    ? "هذا مجرد شرح لطريقة اللعب — ما راح تظهر أسئلة التحدي الحقيقي هنا."
+    : scenes[activeScene]?.caption ?? current.caption;
+  const positionLabel = introActive
+    ? "بطاقة البداية"
+    : `${activeStep + 1} / ${steps.length}`;
 
   return (
-    <div>
-      <div className="rounded-[20px] bg-brand-navy p-2.5 shadow-[0_5px_14px_hsl(var(--brand-navy)/0.16)] sm:p-4">
+    <div
+      data-tutorial-step={introActive ? "-1" : String(activeStep)}
+      data-tutorial-scene={String(activeScene)}
+    >
+      <div className="v6-tv-bezel rounded-[20px] bg-brand-navy p-2.5 shadow-[0_5px_14px_hsl(var(--brand-navy)/0.16)] sm:p-4">
         <div className="mb-1.5 flex min-h-[24px] items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-[11px] font-bold text-white/80">
             <span
@@ -1453,29 +1614,68 @@ function GenericV6TutorialSection({
               شرح توضيحي · مو السؤال الحقيقي
             </span>
             <span className="akwaan-numeral whitespace-nowrap text-brand-gold">
-              {activeStep + 1} / {steps.length}
+              {positionLabel}
             </span>
           </div>
 
           <div
             id="preflight-inline-tutorial-panel"
             role="tabpanel"
-            aria-labelledby={`preflight-inline-tutorial-step-${activeStep}`}
-            className="min-w-0 p-2 sm:p-3"
+            aria-labelledby={
+              !introActive
+                ? `preflight-inline-tutorial-step-${activeStep}`
+                : undefined
+            }
+            className="relative min-w-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--card))_0%,hsl(var(--background))_75%)] p-2.5 sm:p-4"
           >
+            {introActive && (
+              <div
+                data-testid="preflight-inline-tutorial-intro"
+                className="mb-3 flex flex-col items-center justify-center gap-2 rounded-2xl border border-brand-gold/40 bg-card/95 px-3 py-3 text-center shadow-sm sm:flex-row sm:justify-between sm:px-4"
+              >
+                <div className="flex flex-col items-center gap-1 text-center sm:items-start sm:text-right">
+                  <span className="inline-flex rounded-full border border-border bg-background px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    بطاقة البداية · شرح في {steps.length} خطوات
+                  </span>
+                  <h2 className="font-display text-base font-bold leading-snug text-brand-navy sm:text-lg">
+                    {challengeName}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className="hidden text-[11px] font-bold text-muted-foreground md:inline">
+                    ما راح يبدأ التحدي — هذا عرض بس
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="preflight-inline-tutorial-intro-start"
+                    aria-label="ابدأ الشرح الآن"
+                    onClick={startFromIntro}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full border-2 border-brand-navy bg-brand-gold px-3.5 text-xs font-bold text-brand-navy shadow-[0_3px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Play className="size-4 fill-current" aria-hidden />
+                    ابدأ الشرح
+                  </button>
+                </div>
+              </div>
+            )}
             <ExplainerTimelineSelectionProvider
-              selectedIndex={current.sceneIndex}
-              onSelect={selectScene}
+              selectedIndex={activeScene}
+              onSelect={handleTimelineSelect}
               autoPlay={false}
               onControlsReady={setTimelineControls}
             >
-              <div className="min-w-0 [&_[data-testid='explainer-caption']]:hidden [&_[data-testid='explainer-controls']]:hidden">
-                <MechanicTutorialRenderer
-                  scenario={scenario}
-                  compact={compact || launching}
-                  mode="player"
-                />
-              </div>
+              <TutorialStagePresentationProvider
+                embedded
+                teamNames={teamNames}
+              >
+                <div className="min-w-0 [&_[data-testid='explainer-caption']]:hidden [&_[data-testid='explainer-controls']]:hidden">
+                  <MechanicTutorialRenderer
+                    scenario={scenario}
+                    compact={compact || launching}
+                    mode="player"
+                  />
+                </div>
+              </TutorialStagePresentationProvider>
             </ExplainerTimelineSelectionProvider>
           </div>
         </div>
@@ -1490,7 +1690,7 @@ function GenericV6TutorialSection({
         aria-live="polite"
         className="mt-2.5 grid min-h-[44px] place-items-center px-1 text-center text-sm font-semibold leading-relaxed text-foreground sm:text-[15px]"
       >
-        {current.caption}
+        {activeCaption}
       </p>
 
       <div className="relative mt-1 px-2 sm:px-4">
@@ -1519,8 +1719,8 @@ function GenericV6TutorialSection({
             }}
           />
           {steps.map((step, index) => {
-            const isCurrent = activeStep === index;
-            const isDone = activeStep > index;
+            const isCurrent = !introActive && activeStep === index;
+            const isDone = !introActive && activeStep > index;
             return (
               <button
                 key={`${step.sceneIndex}-${step.label}`}
@@ -1530,8 +1730,18 @@ function GenericV6TutorialSection({
                 aria-selected={isCurrent}
                 aria-current={isCurrent ? "step" : undefined}
                 aria-controls="preflight-inline-tutorial-panel"
-                tabIndex={isCurrent ? 0 : -1}
+                aria-label={`انتقل إلى خطوة ${index + 1}: ${step.label}`}
+                tabIndex={
+                  introActive
+                    ? index === 0
+                      ? 0
+                      : -1
+                    : isCurrent
+                      ? 0
+                      : -1
+                }
                 onClick={() => selectStep(index)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={cn(
                   "relative z-[2] flex min-h-[44px] flex-col items-center gap-2 border-0 bg-transparent px-0.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isCurrent
@@ -1558,7 +1768,7 @@ function GenericV6TutorialSection({
           })}
         </div>
         <p className="mt-1 min-h-[18px] text-center text-xs font-bold text-foreground sm:hidden">
-          الآن: {current.label}
+          {introActive ? "ابدأ الشرح" : `الآن: ${current.label}`}
         </p>
       </div>
 
@@ -1567,7 +1777,7 @@ function GenericV6TutorialSection({
           type="button"
           data-testid="preflight-inline-tutorial-prev"
           aria-label="الخطوة السابقة"
-          disabled={activeStep === 0 || !timelineControls}
+          disabled={introActive || !timelineControls}
           onClick={() => selectStep(activeStep - 1)}
           className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -1581,7 +1791,7 @@ function GenericV6TutorialSection({
             data-playing={playing ? "true" : "false"}
             aria-label={playing ? "إيقاف الشرح" : "تشغيل الشرح"}
             disabled={!timelineControls}
-            onClick={() => timelineControls?.toggle()}
+            onClick={handleTogglePlay}
             className="grid size-[60px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[0_5px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {playing ? (
@@ -1596,8 +1806,11 @@ function GenericV6TutorialSection({
           type="button"
           data-testid="preflight-inline-tutorial-next"
           aria-label="الخطوة التالية"
-          disabled={activeStep === steps.length - 1 || !timelineControls}
-          onClick={() => selectStep(activeStep + 1)}
+          disabled={
+            (!introActive && activeStep >= steps.length - 1) ||
+            !timelineControls
+          }
+          onClick={() => selectStep(introActive ? 0 : activeStep + 1)}
           className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronLeft className="size-5" aria-hidden />
@@ -1607,7 +1820,7 @@ function GenericV6TutorialSection({
           type="button"
           data-testid="preflight-inline-tutorial-replay"
           disabled={!timelineControls}
-          onClick={() => timelineControls?.replay()}
+          onClick={handleReplay}
           className="inline-flex min-h-[44px] items-center gap-1 px-2 text-[11px] font-bold text-muted-foreground transition-colors hover:text-foreground sm:absolute sm:left-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <RotateCcw className="size-3.5" aria-hidden />

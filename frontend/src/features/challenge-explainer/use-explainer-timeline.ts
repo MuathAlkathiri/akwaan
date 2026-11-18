@@ -146,6 +146,7 @@ export function useExplainerTimeline(
   const reducedMotion = usePrefersReducedMotion();
   const selection = useContext(ExplainerTimelineSelectionContext);
   const selectionRef = useRef(selection);
+  const internalIndexRef = useRef(0);
   const [index, setIndex] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
@@ -213,6 +214,7 @@ export function useExplainerTimeline(
             }
           }
           const duration = holds[step] || 1;
+          internalIndexRef.current = step;
           setIndex(step);
           selectionRef.current?.onSelect?.(step);
           setStepProgress(
@@ -221,7 +223,15 @@ export function useExplainerTimeline(
         },
       });
       holds.forEach((hold, step) => {
-        timeline.call(() => setIndex(step), undefined, step === 0 ? 0 : ">");
+        timeline.call(
+          () => {
+            internalIndexRef.current = step;
+            setIndex(step);
+            selectionRef.current?.onSelect?.(step);
+          },
+          undefined,
+          step === 0 ? 0 : ">",
+        );
         timeline.to({}, { duration: hold });
       });
       timeline.to({}, { duration: EXPLAINER_LOOP_HOLD_SECONDS });
@@ -256,7 +266,8 @@ export function useExplainerTimeline(
   useEffect(() => {
     if (selection === null || starts.length === 0) return;
     const clamped = Math.min(Math.max(selection.selectedIndex, 0), last);
-    if (clamped === index) return;
+    if (clamped === internalIndexRef.current) return;
+    internalIndexRef.current = clamped;
     setIndex(clamped);
     setStepProgress(0);
     if (selection.autoPlay === false) setManualPlaying(false);
@@ -265,7 +276,7 @@ export function useExplainerTimeline(
       timeline.pause();
       timeline.time(starts[clamped] ?? 0);
     }
-  }, [index, last, selection, starts]);
+  }, [last, selection, selection?.autoPlay, selection?.selectedIndex, starts]);
 
   /** Visibility: only play what someone can actually see. */
   useEffect(() => {
@@ -322,15 +333,21 @@ export function useExplainerTimeline(
   }, []);
 
   const replay = useCallback(() => {
+    internalIndexRef.current = 0;
     setIndex(0);
     setStepProgress(0);
-    if (selection?.autoPlay === false) setManualPlaying(false);
-    else setUserPaused(false);
-    timelineRef.current?.restart(true);
+    if (selection?.autoPlay === false) {
+      setManualPlaying(false);
+      timelineRef.current?.pause(0);
+    } else {
+      setUserPaused(false);
+      timelineRef.current?.restart(true);
+    }
     selection?.onSelect?.(0);
   }, [selection]);
 
   const skip = useCallback(() => {
+    internalIndexRef.current = last;
     setIndex(last);
     setStepProgress(1);
     selection?.onSelect?.(last);
@@ -350,6 +367,7 @@ export function useExplainerTimeline(
   const goTo = useCallback(
     (next: number) => {
       const clamped = Math.min(Math.max(next, 0), last);
+      internalIndexRef.current = clamped;
       setIndex(clamped);
       setStepProgress(clamped === last ? 1 : 0);
       if (selection?.autoPlay === false) setManualPlaying(false);
