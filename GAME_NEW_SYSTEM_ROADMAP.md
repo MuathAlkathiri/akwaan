@@ -40,10 +40,73 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-11-16 (later) · BOMB SUBMISSION RELIABILITY (F1–F3) — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN RELEASE PR (`fix/bomb-submission-reliability`) · ⬜ NOT YET DEPLOYED
+### Where things stand — 2026-11-18 · PRE-LAUNCH CLEANUP, LEGACY REMOVAL & ADMIN PERMANENT DELETION — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN REVIEW (five stacked PRs) · ⬜ NOT MERGED · ⬜ NOT DEPLOYED
+
+**New Product Owner decisions (2026-11-18):**
+- **Target public launch: 2026-12-01.**
+- **Retention policy:** essential = approved Worlds, Scopes, mechanics and their configuration, canonical ContentItems,
+  media and rights, authoring knowledge, content provenance/audit, necessary config. **Disposable** = old
+  sessions/Matches/runtimes, test accounts and participants, scoring/presence/exposure history, test analytics,
+  abandoned prototypes, canceled mechanics and their exclusive content. Production deletions still need
+  separate authorisation against an exact manifest.
+- **Admin permanent deletion is required** (World, Scope, mechanic, ContentItem, World detach, disposable history),
+  with impact preview, explicit confirmation without typing the name, and audit.
+- **Production database name:** `lammah-quiz` → **`Akwaan-prd`**, as the **last** pre-launch cutover. Not created,
+  not migrated; plan in `docs/operations/DATABASE_MIGRATION_PLAN.md`.
+
+**Implemented in five stacked PRs on `main` `71261a2` (hygiene → legacy removal → permanent deletion →
+operations → roadmap):**
+- **Legacy (Lammah-era) system removed** per §0.2: classic game (`games`, `question-history`, parent-game port),
+  `questions`, `categories`, `catalogs`, `music`, the old AI question generator and research subsystem, the
+  audio (ffmpeg/yt-dlp) pipeline, frontend classic game and legacy admin pages, password-login UI (backend auth
+  endpoints kept). OpenAPI/Orval contract regenerated (Auth, Users, Subscriptions only). ~880 files, ~−87k lines.
+  Stored `parentGameId` fields stay readable on sessions; `/uploads/**` URLs keep being served.
+- **Admin permanent deletion (§19.1) — ✅ implemented & verified locally** (details in §19.1); execution is
+  fail-closed behind `PERMANENT_DELETION_ADMIN_IDS` until the PO names the operators.
+- **Repository hygiene:** the unused Lammah logo, dead frontend files, ad-hoc probe/push scripts and pre-Akwaan
+  docs removed; `ts-loader` dropped with the legacy dependencies. (The committed Playwright screenshots were
+  removed separately on main by #65, `71261a2`.)
+- **VPS portability:** `TRUST_PROXY` (unset = unchanged behaviour; verified through a real proxy hop, spoofed headers
+  ignored with `1`, never use `true`; OTP per-IP limiting follows it) and host-neutral `APP_COMMIT_SHA` (falls back
+  to `RENDER_GIT_COMMIT`). Provider-neutral readiness matrix and checklist: `docs/operations/VPS_DEPLOYMENT_READINESS.md`.
+- **Disposable test-data tooling:** `backend/src/scripts/cleanup-disposable-test-data.ts` — dry run by default,
+  explicit environment + database, refuses to delete in Production. Local dry run matched the inventory
+  exactly; execution rehearsed on a **copy** of the local DB (idempotent, 0 dangling references); the shared
+  local `lammah-quiz` and Production were not modified.
+
+**Validation (isolated worktree):** backend tsc/build ✅, unit 212 suites / 3,578 tests ✅; frontend tsc/build ✅,
+lint ✅; full real-Mongo integration **41/41 suites, 662/662 tests** ✅ (baseline 45 suites: legacy suites removed with
+their systems), including the new `admin-permanent-deletion` suite (13 scenarios incl. creation/deletion race and rollback). Pre-existing, unchanged: backend Prettier debt (213 errors in
+content-engine files) and one stale frontend expectation (`content-engine-overlap-acknowledgment` #1, red since #61).
+
+**Still open before launch:** Production read-only dry run + separately authorised test-data cleanup; VPS
+provisioning decisions (Atlas tier/backups, frontend host, region); production compose/backups/monitoring;
+`TRUST_PROXY` on the live host (Render very likely collapses client IPs today); subscriptions decision (no longer
+enforced anywhere); e2e login helper still drives the removed password form; dead classic-Bomb launch path in
+live-game-sessions; physical-device QA (#38, #41); final `Akwaan-prd` migration.
+
+
+### Where things stand — 2026-11-18 · CONTENT ENGINE QUICK REVIEW + GAMEPLAY RECOVERY + PREFLIGHT V6 RELEASE
+
+| Release | Implementation and local validation | Git and deployment | Production verification / limits |
+|---|---|---|---|
+| [PR #61](https://github.com/MuathAlkathiri/akwaan/pull/61) — Quick Human Review + authorized READY publication | ✅ Implemented & locally verified: 146 isolated MongoDB Content Engine integration, 53 focused backend and 59 frontend tests; typechecks, builds and isolated Chromium workflows. Eligible RYO/Closest candidates use authenticated `HUMAN_DIRECT_REVIEW` decisions with durable attribution, standard rejection reasons, and Quick or Detailed Review; authorized approval creates/reconciles canonical DRAFT then promotes to READY through `ContentItemService` readiness, compatibility, revision and audit gates. Contradiction, deduplication/overlap, inventory, media and rights safeguards remain; retries reconcile partial or uncertain outcomes. This is human judgment, not operationally reliable machine fact verification. | ✅ Merged `235cf6f5566b0f17ad5cd6f06be252f419603233`. Vercel Production deployment succeeded; Render manually deployed that backend commit before PR #62. The release bundles the official Noto Kufi Arabic variable font with SIL OFL, preserving `--font-display` and weights 600–700 to avoid the Next.js Google font-loader failure; Readex Pro is unchanged. | ⚠️ Authenticated Production approve-to-READY E2E remains untested. READY requires explicit authorization and eligibility; code deployment alone does not make content available. Existing Football DRAFT items were not automatically promoted; any canonical promotion is separately authorized. |
+| [PR #62](https://github.com/MuathAlkathiri/akwaan/pull/62) — gameplay recovery | ✅ Implemented & locally verified: 23 RYO real-Mongo lifecycle, 12 ownership/reconnect integration and 168 focused unit tests; backend typecheck, build, lint and diff checks passed. Newest runtime is selected before terminal/expiry filtering. Server-internal `PresentationReady.executeDeadline` revalidates persisted deadline identity, due time, generation, revisions, expiry, policy and lifecycle in the transaction; initial multi-surface timeouts activate through the canonical transition. Ordinary client acknowledgements remain socket-authenticated; client `readiness-timeout` is rejected in both DTOs and ordinary execution. Stale callback bookkeeping, replay, duplicate dispatch and socket/deadline interleavings are covered. The client timeout exploit failed before the security fix and passed afterward. | ✅ Feature `76ed22fc0c9ccd4ba4f03affeace3188d82f82c8`, security follow-up `3fb0dc993abe4d31278ad8cc95969c6dfd051ffe`; merged `26fd54c866751feb22f39139ad93ba8a68e60bc6`. Vercel skipped an unaffected frontend build. Render manual deployment `dep-dbue1u8m7kps73c4m1u0` built that commit and reported it live; startup diagnostics show MongoDB connected, presence, scheduler and convergence bootstrap, and Nest startup. The supplied startup log reports no scheduler retry exhaustion or socket-only timeout failure. | ✅ Independent read-only `/health` on 2026-11-18 reports `status: ok`, database connected and exact commit `26fd54c866751feb22f39139ad93ba8a68e60bc6`. ⚠️ This is not a gameplay transaction or multi-device reconnect smoke; affected session identities and player impact remain unknown. No historical runtime repair was performed. |
+| [PR #63](https://github.com/MuathAlkathiri/akwaan/pull/63) — Preflight V6 challenge launch experience (§22.1.1) | ✅ Design approved (Preflight V6). ✅ Implemented & verified locally across 3 frontend files (`challenge-preflight.tsx`, `inline-mechanic-tutorial.tsx`, `unified-preflight.test.tsx`): `tsc`, `lint`, and `next build` (38/38 routes) passed; V6-focused suites passed (9/9 files, 140/140 tests; all 19 tutorial/explainer frontend files, 205/205 tests pass); real local multiplayer browser QA (1 host + 4 phones, join/readiness/reconnect, 3-item RYO, repeat-encounter recap) reported passing. ⚠️ Full frontend test suite is not entirely green due to separately tracked concurrent WIP and jsdom timeline-raf timing debt. | ✅ Feature commit `5eebe19b30082ddf7451caaa6ea356639890f637` (`5eebe19`) on `feat/preflight-v6-release`, merged into `main` as `9f2121f9b3319748a818cf3acfd4ed3e6df496cd` (`9f2121f`). ✅ Vercel Production deployment `7867859525` succeeded (`https://akwaan-frontend.vercel.app`); backend was not changed by this release. Rollback target: Vercel deployment `7860975776` (`235cf6f`). | ✅ Public read-only production smoke passed: `/`, `/how-to-play`, `/matches/000000000000000000000000` returned HTTP 200 (`/dev/explainer/ryo` 404 as expected in production); live chunks `2022-08a07961ce6ef8b6.js` and `5497-89d8d600c4f30250.js` verified carrying V6 markers; desktop (`1440×900`) and mobile (`390×844`) Playwright checks on `/` and `/how-to-play` passed with 0 console/page errors and 0 horizontal overflow. ⬜ Authenticated Production multiplayer smoke (creating a live Match with 4 phones) was not performed to avoid mutating production data. |
+
+- **New workstream opened (2026-11-18) — Universal Interactive Mechanic Tutorials — V6 Experience Expansion (§22.1.2):** 🟡 Product direction approved; 🚧 implementation and Production publication in progress. Every eligible playable mechanic will use the approved V6 stage language, canonical GSAP timeline architecture, and Admin-managed example scenarios (`worldId + challengeTypeId` → generic mechanic fallback → no tutorial) with server-derived outcomes. RYO V6 is live in Production; 10 additional mechanics already have Codex-authored GSAP explainers, scenario types, backend policies, and Admin editors on `main`, but still require V6 stage/phone alignment, `GenericV6TutorialSection` timeline-playback synchronization, `OddPieceTutorialEditor` V2 scoped authoring support, and authorized Production tutorial publication (plus `Moving XO` tutorial implementation once its final Arabic name/choreography is approved). See §22.1.2.
+
+⚠️ **Release follow-ups:** authenticated Production approve-to-READY smoke; multi-device Fair-Start/reconnect
+smoke; authenticated Production multiplayer Preflight V6 smoke; investigation of unidentified historical rearm failures; deterministic deadline retry classification;
+post-commit exposure-observer crash/reconciliation window; Jest integration `--forceExit` and open test handles.
+Production health, deployed Git code, production gameplay behavior and historical data correction are separate facts.
+
+### Where things stand — 2026-11-16 (later) · BOMB SUBMISSION RELIABILITY (F1–F3) — HISTORICAL LOCAL SNAPSHOT
 
 The Bomb end-to-end audit (2026-11-16) found three ways a player could type an answer and still lose the turn.
-All three are fixed **in the frontend only**; Production (`98ee362`) still has them until this release ships.
+At this milestone all three were fixed **locally, frontend only**, while Production (`98ee362`) still had them.
+**Later release:** PR #59 merged as `c4181e0`; Vercel Production `235cf6f` includes it. Physical-device QA
+remains open; deployment is not proof the affected gameplay was exercised in Production.
 
 | # | Confirmed root cause | Local fix |
 |---|---|---|
@@ -3575,7 +3638,7 @@ Not implemented. Not scheduled.
 | 6 | Session-command deadline path still fully persistence-backed (3 ops) | Optional performance | Holds committed *session* state but no runtime state, so it cannot use Batch B's hint API without its own freshness proof. |
 | 7 | Per-snapshot content-scope lookups (2 ops per distinct World) | Optional performance | Purely to resolve display names that never change for a Match. Not viewer-sensitive, so safe to cache. |
 | 8 | Compound `{status, currentChallenge.runtimeId}` index on `matches` | Optional performance | Measured: would cut the sweeper candidate scan from 118 examined docs to 39. Declined as a schema change taxing every Match write. |
-| 9 | Two archived legacy ChallengeTypes retain **36 residual ready items** | Catalog hygiene | `mechanic-1785789172264` (12) and `mechanic-1785872224173` (24). Harmless but should be reconciled or purged. |
+| 9 | Two archived legacy ChallengeTypes retain **36 residual ready items** | Catalog hygiene | `mechanic-1785789172264` (12) and `mechanic-1785872224173` (24). Under the 2026-11-18 retention policy these are canceled-mechanic content: purge them with Admin permanent deletion (their only blockers are disposable history Matches) once the feature is deployed and the PO confirms. |
 | 10 | **Production deployment smoke never executed** | Verification gap | **LOCAL rebuilt-stack verification: ✅ complete (2026-08-27).** The full stack was rebuilt from the current working tree and passed Final Release QA + Release Gate Cleanup (see "Where things stand — 2026-08-27", §K, §22). The remaining gap is a genuine **production deployment** smoke: nothing has been committed, pushed, or deployed, so no release-side result exists. Tracked as the open deployment items in §K; do **not** mark done from local evidence. |
 | 11 | ~~**الكومبو has no production content**~~ | Resolved 2026-08-21 | Closed. الكومبو has **84 authored items across all 7 Anime Scopes** in the local/dev runtime — 12 per Scope, 3 per stage — and no item carries the old fixture stamp. What remains is not content: it is that none of it is committed or deployed (item 12). §16.4. |
 | 12 | **الكومبو exists only in the local runtime** | Release gap | ChallengeType, Anime `slot_2` binding and content live on the developer machine. No commit, no push, no deployment. Reproducing this on any other environment currently requires re-running the rollout by hand. §16.4. |
@@ -3594,45 +3657,75 @@ Not implemented. Not scheduled.
 | 25 | **Six authored Scopes are not in any runtime** | Product / content rollout | Video Games (`minecraft`, `god-of-war`, `resident-evil`) and Puzzles (`patterns-sequences`, `lateral-thinking`, `visual-puzzles`) have committed taxonomy assets and authored content, but **no runtime Scope and no promoted content**. Each World is gated on its 45 Bomb media items first. Must not be described as implemented, active, Admin-visible, runtime-ready or DB-promoted. *(Was nine; Football's three were promoted on 2026-08-21.)* §C.1. |
 | 26 | **Bomb media outstanding for two Worlds** | Content / media | 45 items each for Video Games and Puzzles — **90** media items — each needing production, subject-by-subject pairing (§5.6), attachment and manual product review before its World can be promoted. Video Games is the immediate next content phase (§20). *(Was 135 across three Worlds; Football's 45 are complete.)* |
 | 27 | **The whole content expansion is local/dev only** | Release gap | **261** promoted items across **six** runtime Scopes (Anime 135, Football 126) and **90** media binaries exist on one developer machine. The push (`4fdab19`, `25141bd`, `fcf70ee`) carried **taxonomy, knowledge bases and tooling only** — not content documents, not `ai/output` packs (gitignored), not the media binaries under `uploads/question-assets/images/` (deliberately untracked). Reproducing the runtime state elsewhere means re-running the promotions. |
-| 28 | **Historical gameplay runtimes that cannot be restored** | Data debt | At least six abandoned, non-terminal production runtimes lack `teamActionJson`, so plugin validation rejects every load (`INVALID_TEAM_ACTION_STATE`). Observed 2026-11-07. They are now past `expiresAt` and excluded from presence reconciliation (#42), and an unexpired one would be quarantined, not retried endlessly. They remain stored: repairing, closing or deleting them needs a separate, supervised decision. |
+| 28 | **Historical gameplay runtimes that cannot be restored** | Data debt | At least six abandoned, non-terminal production runtimes lack `teamActionJson`, so plugin validation rejects every load (`INVALID_TEAM_ACTION_STATE`). Observed 2026-11-07. They are now past `expiresAt` and excluded from presence reconciliation (#42), and an unexpired one would be quarantined, not retried endlessly. They remain stored: repairing, closing or deleting them needs a separate, supervised decision. A registered RYO real-Mongo test confirms missing `teamActionJson` fails restoration without modifying the runtime; the identities and actual impact of the six later rearm failures are unknown and not linked by evidence. |
 | 29 | **`faf6436` Render deployment failure remains unexplained** | Operational | On 2026-11-06 the `faf6436` auto-deploy was cancelled after 35m 37s and the manual deploy failed after 18m 42s ("Timed out"); the root cause was never established. Later deploys of `9b36835` and `0e9a445` built in ~1 min and completed startup in ~30 s. Startup diagnostics (#40) are now in production to localise the stage if it recurs. Non-blocking. |
 | 30 | **Shared-answer overlap false positives** | Content Engine policy | Different facts can share one answer. Observed 2026-11-08: a READY «من أنا؟» club-identification item (Old Trafford / Red Devils / Ferguson clues), «which club ended Arsenal's 49-match unbeaten run» and «first Premier League champion (1992-93)» all answer Manchester United but test different facts. The current policy still raises actionable `POTENTIAL_OVERLAP` (`UNCERTAIN_FACTUAL_RELATIONSHIP`) for a shared answer with differing descriptions. That is safe, since reviewers can acknowledge it, but noisy. Future: distinguish shared answer identity from shared factual-question identity. Policy unchanged for now (§30.23.7). |
 | 31 | **In-batch screening is directional (documented contract)** | Content Engine / documentation | Screening compares each candidate only with batch siblings screened before it (`seenBatchCandidates`), so a pair can first appear only on the later candidate (observed: Arsenal → 1992-93). An existing integration test asserts this (“no earlier sibling in its batch”). Approval revalidation also screens against approved, unpublished candidates, same job included, so whichever of the pair is approved second meets the overlap. Intended behaviour, not a defect; recorded so reviewers are not surprised. |
 | 32 | **Content Engine Admin responsive debt** | UI | At 390 px the candidate-list badge row (`flex flex-wrap … shrink-0` in `content-engine-review-workspace.tsx`) cannot shrink, so it never wraps and `<main>` clips the deduplication badge. This has been the case since `65c4352`, before PR #48. On desktop, about 12 px of horizontal overflow comes from the Admin header's logout button and decorative background ellipses. Unrelated to the deduplication release. |
 | 33 | **READY item reports `readiness: not_ready`** | Data / content integrity | Observed 2026-11-08 (read-only): the production READY «من أنا؟» item referenced in #30 has `status: ready` but `readiness.readiness: not_ready` with blocker `RAKKIBHA_STRUCTURE_REQUIRED`. Root cause not investigated; whether other items are affected is unknown. |
-| 34 | **Startup deadline recovery re-drives abandoned runtimes** | Gameplay lifecycle | Every boot rearms deadlines for all non-terminal runtimes (logged “44 of 50” on every boot for ≥7 days to 2026-11-08). Since the boot at 2026-11-07 ~15:35 UTC, each boot also exhausts exactly **10** deadlines (“Team … has no connected player to act for it”, 6 attempts, then “will not be retried”), each logged with `gameplay_transaction_aborted`. The burst lasts ~13 s, with no further errors afterwards. It predates PR #47; the onset deploy (`7cef238`) changed no gameplay code. The rearm query (`findSessionIdsWithLiveRuntimes`) does not exclude expired runtimes, unlike presence reconciliation. Whether the sessions are test matches is **not confirmed**. Related: #2, #28. |
-| 35 | **Permanent mechanic deletion** | 🟡 Design approved — implementation deferred | The approved requirements and the open implementation dependencies are recorded in §19.1. Not implemented. Separate from the narrower challenge-type deletion lifecycle already in main (`bb94504`). |
+| 34 | **Startup deadline recovery and impact verification** | Gameplay lifecycle | Historical: every boot rearmed all non-terminal runtimes (44 of 50 for ≥7 days to 2026-11-08), and from 2026-11-07 ~15:35 UTC ten deadlines repeatedly exhausted six attempts, predating PR #47. A later deployment reported 35 of 41 rearmed, six unidentified rearm failures and a distinct deadline exhausting six attempts; their relationship to #28 is unproven. ✅ PR #62 selects the newest runtime before filtering terminal/expired state, locally verified and deployed as `26fd54c`. The latest supplied startup log shows clean scheduler bootstrap, but does not establish the outcome or player impact of those unidentified sessions. ⚠️ Production gameplay/reconnect and recovery-impact verification remain open; no historical data was repaired. |
+| 35 | **Permanent mechanic deletion** | ✅ Implemented & verified locally (2026-11-18) · 🚧 in review (stacked PR 3/5) · ⬜ not merged/deployed | §19.1. Replaces the `bb94504` lifecycle, which deleted shared content. |
 | 36 | ~~**Combo captain policy undecided**~~ | Resolved 2026-11-16 | Approved and implemented (§16.11): the question holder answers and owns تثبيت / كمل; كسر الكومبو stays open to any connected opponent. |
 | 37 | **`player-catalog` integration suite fails (9 tests)** | Working-tree debt | World activation returns 400 in `test/integration/player-catalog`. Traced to uncommitted World Readiness work in the working tree, not to committed code or to §16.11. Must be resolved with that work, before it is committed. |
 | 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Deployed to Production 2026-11-16 (`98ee362`). Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
 | 39 | **Lobby too wide on phones when the join QR is shown** | UI (pre-existing) | The join-code row (seven `w-11` tiles + gaps + card padding ≈ 392 px) sets the single-column width, so the host lobby overflows by ~50 px at 360 px and ~20 px at 390 px. Unchanged from `HEAD`; found during the captain visual pass. |
 | 40 | **Countdown warning and critical share one icon** | UI (deferred — UI freeze) | Colour, the stage beat and the digits distinguish them, but under reduced motion on the compact chip the two differ by colour alone. Visual change deferred to the Challenge Page redesign. |
-| 41 | **Bomb submission reliability fixes not yet released** | Release gap | F1–F3 (dead connection, device-clock skew, stale-retry reporting) are implemented and verified locally only; Production `98ee362` still has them. Physical-device confirmation also outstanding. |
+| 41 | **Bomb submission reliability physical-device verification** | Verification gap | F1–F3 (dead connection, device-clock skew, stale-retry reporting) were locally verified, merged in PR #59 (`c4181e0`) and included in Vercel Production `235cf6f`. Physical-device and real-network confirmation remains outstanding; no Production gameplay result is implied. |
 | 42 | **Bomb answer aliases** | Content | Bomb matches answers exactly after normalisation (`bomb-gameplay.plugin.ts`): partial names, transliterations and Arabic-Indic digits are judged wrong. Content/alias review, separate from transport; tolerant matching stays off. |
+| 43 | **Deadline retry classification** | Gameplay reliability | Deterministic invalid states and transient failures still share bounded retry behavior; classify safely without masking active-game failures. No historical runtime repair is authorized by PR #62. |
+| 44 | **Exposure observer after transaction** | Gameplay reliability | Exposure recording follows the runtime transaction; a crash between commit and observer/reconciliation remains a window to evaluate and recover. |
+| 45 | **Integration test process handles** | Test infrastructure | PR #62 real-Mongo suites passed with Jest `--forceExit`; investigate outstanding test-process handles. |
+| 46 | **Production Quick Review publication smoke** | Verification gap | Authenticated approval → canonical READY has not been independently exercised in Production; deployment is not proof that eligible content exists or is playable. |
+| 47 | **Production recovery / multi-device smoke** | Verification gap | PR #62 backend health and startup are verified, but real gameplay, Fair-Start and reconnect across devices and the impact on unidentified sessions remain unverified. |
+| 48 | **Historical Football DRAFT inventory** | Content / release | Existing Football DRAFT items were not promoted by PR #61; inspect readiness and seek separate authorization for canonical promotion. |
 
-### 19.1 Permanent mechanic deletion — 🟡 DESIGN APPROVED — IMPLEMENTATION DEFERRED
+### 19.1 Permanent mechanic deletion — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-11-18) · 🚧 IN REVIEW · ⬜ NOT MERGED · ⬜ NOT DEPLOYED
 
-Product decisions approved in earlier discussions; recorded here 2026-11-09. **Not implemented, and not ready to
-implement**: final cascade rules are not decided.
+Design approved 2026-11-09; implementation required by the Product Owner 2026-11-18. *Historical note:* the
+`bb94504` lifecycle hard-deleted a mechanic **and every item compatible with it, shared items included**, and the
+shipped "remove mechanic from World" release flow deleted that World's items — both contradicted this section and
+both are retired.
 
-**Existing behaviour in main (narrower, unchanged):** the challenge-type deletion lifecycle from `bb94504`
-(2026-08-12). It hard-deletes a mechanic only when no persisted Match references it, and archives it otherwise.
-It is not the design below.
+**Implemented (`WorldContentDeletionService`, world-content):**
+- One preview → confirm flow for **World, Scope, mechanic, ContentItem**, and **Detach from World** (binding only;
+  mechanic and questions untouched). Archive/disable stays the existing status edit.
+- **Cascades:** mechanic → its exclusive ContentItems (global), bindings, scoped tutorials, scope exclusions,
+  exposure rows; **shared items are kept** and only lose the mechanic; production mechanics are tombstoned.
+  Scope/World → everything they own (content never crosses Worlds). Global mechanics are never touched by
+  World/Scope deletion.
+- **Impact preview** counts every affected record, shared content preserved, Matches (live / abandoned /
+  finished), content-engine jobs and publications, legacy references, and ACTIVE Worlds left incomplete.
+- **Stale-preview protection:** the plan is recomputed inside the transaction; a different fingerprint →
+  `409 DELETION_PREVIEW_STALE`, nothing changed.
+- **Race safety (resolves the Match-creation dependency):** a per-World fence (`world_content_fences`) written
+  first by both deletion and Match creation (`MatchCreationFence`; validation + insert now run in one fenced
+  transaction). Proven by a concurrent create-vs-delete integration test.
+- **Historical sessions (resolved by the disposable-history policy):** a **live** Match always blocks; abandoned
+  Matches (session ended/expired) and finished history that cannot stand alone block only until the operator
+  ticks "remove disposable test history", which deletes those Matches, their runtimes and reservations in the
+  same transaction. The `exposed` no-repeat ledger is kept for surviving content.
+- **Media ownership (resolved by deferral):** ContentItem media is never deleted; URLs left unused are reported
+  in the result and audit row. Record-owned single uploads (icons, banners, fallback, Scope image) are discarded
+  after commit only if nothing else references them (also fixes the World-icon leak).
+- **Shared content / World detach never deletes questions:** enforced by the cascade rules above.
+- Running content-engine jobs and legacy references block; engine records are kept as provenance.
+- **Audit + idempotency:** `admin_deletion_log` row written inside the transaction; a repeated `requestId`
+  returns the stored result.
+- **Authorization (safety review 2026-11-18):** permanent deletion is **fail-closed** — only user ids in
+  `PERMANENT_DELETION_ADMIN_IDS` may execute it (unset = nobody; previews stay visible to Admins with
+  `actorMayExecute: false`). Detach (binding only) stays an Admin action. No SYSTEM_ADMIN role exists; **who is on
+  the list is a Product Owner decision** and the list must be set before the feature is usable after deployment.
+- **Live re-reading mechanics:** deleting a ContentItem is blocked while a live المرحلة or Moving XO Match in its
+  World can re-read items by id mid-game. World deletion also captures items owned through its Scopes.
+- **Browser QA (local, isolated data, headless Chromium):** World/Scope/mechanic previews, shared content preserved
+  (2 shared items survived مين أقرب's deletion), real Detach (bindings 4→3, questions unchanged), abandoned-Match
+  purge gating, stale refusal with re-confirmation, mobile 390 px without overflow.
+- **UI:** one `PermanentDeletionDialog` for all entry points; no typed-name confirmation; irreversibility,
+  shared-preserved and blockers shown; history-purge checkbox when relevant.
 
-**Approved requirements:**
-- **Flexible deletion dialog:** shows the available operations and the affected record counts.
-- **World-only removal:** detaches the mechanic from the selected World and does **not** delete its questions.
-- **Historical Match cleanup:** represented explicitly in the deletion workflow.
-- **Permanent mechanic deletion:** deletes questions used **only** by that mechanic.
-- **Shared questions:** preserved and detached from the deleted mechanic.
-- **Confirmation:** no typed mechanic-name confirmation, but clear confirmation and impact information are still
-  required.
-
-**Unresolved implementation dependencies (block implementation):**
-- Preventing races with new Match creation during deletion.
-- Safely handling shared historical sessions.
-- Establishing media asset ownership before any asset is deleted.
-- Guaranteeing that removing a World association never deletes questions unintentionally.
+**Remaining decisions:** who is on `PERMANENT_DELETION_ADMIN_IDS` (or a dedicated role instead); whether detaching
+from an ACTIVE World should be refused (today: allowed with an "incomplete board" warning, as the retired release
+flow allowed; reversible by re-binding).
 
 ---
 
@@ -3950,6 +4043,44 @@ activation, privacy and the full authoritative deadline.
 
 **Observations:** One earlier Start rejection and one empty QR decode were isolated and unconfirmed; neither recurred
 in the closeout runs. Their causes remain unknown and they are not established product defects.
+
+#### Preflight V6 Release Closeout (PR #63 · 2026-11-17)
+
+- **✅ V6 design approved:** Cream-first pre-challenge stage shell (`#FFFDF7`), navy TV frame, gold-bordered demonstration bar (`شرح توضيحي · مو السؤال الحقيقي`), integrated dual-iPhone RYO stage (Red opposing phone on the right, Blue answering phone on the left in RTL), all 4 canonical RYO options rendered without truncation, intro card (`بطاقة البداية`) + 4 synchronized stages, readiness-first launch rail with collapsible scan-once QR card, and repeat-encounter compact recap card.
+- **✅ Implemented and verified locally:** `frontend/src/features/live-game-session/match/components/challenge-preflight.tsx`, `frontend/src/features/challenge-explainer/components/inline-mechanic-tutorial.tsx`, and `frontend/src/test/unified-preflight.test.tsx`. Frontend `tsc`, `lint`, and `next build` (38/38 routes) passed; V6-focused Vitest suites passed (9/9 files, 140/140 tests; all 19 tutorial/explainer frontend test files, 205/205 tests pass; 5/5 backend tutorial unit suites, 63/63 tests pass). Real local multiplayer browser QA (isolated Mongo replica set + NestJS + rebuilt Next.js, 1 host shared screen + 4 phones, join/readiness/reconnect, 3-item RYO, repeat-encounter recap) reported passing.
+- **✅ Git committed, pushed, and merged:** Feature commit `5eebe19b30082ddf7451caaa6ea356639890f637` (`5eebe19`) on `feat/preflight-v6-release`, merged into `main` via [PR #63](https://github.com/MuathAlkathiri/akwaan/pull/63) as `9f2121f9b3319748a818cf3acfd4ed3e6df496cd` (`9f2121f`). Backend was not changed by this release.
+- **✅ Frontend deployed to Vercel Production:** Deployment `7867859525` (`https://akwaan-frontend-lxmv4pkkj-muaths-projects-b32b0e77.vercel.app`, public alias `https://akwaan-frontend.vercel.app`) succeeded. Rollback target: Vercel deployment `7860975776` (`235cf6f`).
+- **✅ Public production smoke completed (read-only scope):** HTTP 200 verified on `/`, `/how-to-play`, and `/matches/000000000000000000000000` (`/dev/explainer/ryo` returns 404 in production as expected); deployed chunks `2022-08a07961ce6ef8b6.js` and `5497-89d8d600c4f30250.js` verified containing V6 markers (`explainer-phone-opposing`, `explainer-phone-answering`, `preflight-inline-tutorial-recap`, `بطاقة البداية`, `تثقون باختيارهم`, `preflight-readiness`); headless Playwright checks on `/` and `/how-to-play` at `1440×900` (desktop) and `390×844` (mobile) passed with 0 console/page errors and 0 horizontal overflow.
+- **⬜ Authenticated Production multiplayer smoke not performed:** Creating a real Match, authenticating a host, and joining 4 phones in Production were not executed to avoid mutating production data.
+- **⚠️ Independent existing test/timeline/reconnect debt:** (1) Full frontend `npm test` is not completely green due to separately tracked concurrent working-tree WIP (`content-engine-overlap-acknowledgment.test.tsx`, `live-session-resume-revalidation.test.tsx`) and a jsdom parallel-run `requestAnimationFrame` race in `use-explainer-timeline.ts` (`refreshAfterMount` against 0-height rects); (2) `GenericV6TutorialSection` in `inline-mechanic-tutorial.tsx` pauses non-RYO GSAP timelines when `STEP_SCENES[kind]` skips intermediate beat indices (tracked under §22.1.2); (3) deterministic backend real-socket regression for initial RYO pre-activation disconnect/reconnect remains open.
+
+### 22.1.2 Universal Interactive Mechanic Tutorials — V6 Experience Expansion — 🟡 PRODUCT DIRECTION APPROVED · 🚧 IN PROGRESS (2026-11-18)
+
+**Approved product direction:** Every eligible playable mechanic must have a clear, mechanic-native interactive GSAP explanation using the approved Preflight V6 visual language (navy TV bezel, cream `#FFFDF7` stage surface, modern integrated iPhone frames where phone interaction occurs, persistent demonstration banner, step timeline rail, play/pause/prev/next/replay transport, repeat-encounter compact recap, and reduced-motion manual navigation) and the existing Admin-managed tutorial example architecture (`worldId + challengeTypeId` scoped tutorials with revision history/restore/withdraw → generic mechanic tutorial fallback → fallback copy when unpublished).
+
+**Core governance rule:** **Admin controls the example content; the game engine controls the mechanic rules.** Admin authors example prompts, options/accepted answers, illustrative team actions, captions, and required tutorial media; the backend (`mechanic-tutorial.policy.ts`, `scoped-mechanic-tutorial.policy.ts`, `mechanic-tutorial.service.ts`) enforces `SCOPED_TUTORIAL_FIELD_CLASSIFICATION` (`EXAMPLE_EDITABLE` vs `FLOW_LOCKED` vs `DERIVED_OR_VALIDATED`), derives outcomes using canonical runtime scoring/grading rules, blocks competitive-catalog overlap (`TUTORIAL_OVERLAPS_COMPETITIVE_CONTENT`), and serves only published projections (`GET /mechanics/:mechanicKey/tutorial` and `GET /worlds/:worldId/mechanics/:mechanicKey/tutorial`).
+
+**Current repository, runtime, and Production state (audited 2026-11-18):**
+- **Category A — Fully implemented in V6, verified, and published in Production:** `read-your-opponent` (`اقرأ خصمك`). Integrated V6 dual-iPhone renderer (`V6RyoIntegratedSection`), generic published tutorial (`rev=1`) + World-scoped published tutorials in Production for Anime (`6a6e54159e10fe3b881da006`, `rev=1`) and Football (`6a6e46a747bc63bdaf2e3800`, `rev=1`).
+- **Category B/C — Existing Codex GSAP explainers, scenario contracts, backend validators, and Admin editors on `main`, behind V6 presentation + blocked by `GenericV6TutorialSection` playback bug + unpublished in Production:**
+  - `closest` (`مين أقرب`), `bomb` (`القنبلة`), `top-5` (`أفضل 5`), `combo` (`الكومبو`), `marhala` (`المرحلة`), `first-note` (`من أول نغمة`), `odd-piece` (`القطعة الدخيلة` — V2 hotspot explainer on `main`, but `OddPieceTutorialEditor` still initializes V1 4-piece draft and lacks V2 hotspot fields, causing `SCOPED_TUTORIAL_VERSION_LOCKED` on World-scoped saves), `ekshifni` (`اكشفني` — clear-window explainer on `main`, blocked on rights-cleared real-person tutorial photo in R2), `laqatha` (`القطها` — ChallengeType not yet provisioned in Production DB, `404`), and `la-tahriqha` (`لا تحرقها` — ChallengeType not yet provisioned in Production DB, `404`).
+  - **Shared technical defects across these 10 mechanics:** (1) `GenericV6TutorialSection` (`inline-mechanic-tutorial.tsx`) passes sparse `STEP_SCENES[kind]` indices to `ExplainerTimelineSelectionProvider` (`autoPlay={false}`), causing `useExplainerTimeline` (lines 256–268) to pause playback whenever GSAP advances into an intermediate beat not listed in `STEP_SCENES[kind]`; (2) each explainer renders its own legacy `SharedScreenFrame` + `PhoneFrame` inside V6's outer TV frame, producing a double-nested TV bezel and legacy white phone boxes instead of V6's unified cream surface and modern iPhone chrome; (3) `GenericV6TutorialSection` does not forward live Match team names (`resolveDisplayTeams(teams)`).
+- **Category E — Active mechanic genuinely missing tutorial implementation:** `moving-xo` (`Moving XO`, Puzzles Signature, §23.11 / §32). Has no scenario type, demo scenario, GSAP explainer, backend tutorial policy, or Admin editor; also absent from Production DB (`404`) and awaiting final Arabic display name / choreography sign-off.
+- **Category F — Excluded / retired / gated:** `one-clue` (`بدليل واحد` — legacy explainer and editor component exist in source, intentionally excluded from `SUPPORTED_TUTORIAL_MECHANIC_KEYS` and `SCOPED_TUTORIAL_MECHANIC_KEYS`); `rakkibha` / `distributed-information` (`ركّبها` — retired from Puzzles product direction per §32; no tutorial to build).
+
+#### Batch 1 — Closest (`مين أقرب`), Bomb (`القنبلة`), Top 5 (`أفضل 5`) *(2026-11-18)*
+
+- **✅ Implementation completed locally** across 7 frontend files (`use-explainer-timeline.ts`, `device-frames.tsx`, `inline-mechanic-tutorial.tsx`, `closest-explainer.tsx`, `bomb-explainer.tsx`, `top5-explainer.tsx`, `unified-preflight.test.tsx`):
+  - Fixed `GenericV6TutorialSection` ↔ `useExplainerTimeline` synchronization (`internalIndexRef` + `activeScene` / `STEP_SCENES` alignment) so continuous GSAP playback runs without pausing on intermediate beats while preserving tab seek, Previous/Next, Pause/Resume, Replay to V6 Intro Card, and Reduced Motion manual stepping.
+  - Added `TutorialStagePresentationProvider` (`v6-embedded` shared screen + modern V6 iPhone frames with Dynamic Island and live Match team names) without breaking standalone `/how-to-play` or RYO V6.
+  - Enforced `Closest` pre-reveal shared-screen answer privacy, heightened `Bomb` countdown/holder/pause emphasis, and decluttered `Top 5` Keep/Give hierarchy and semantic colour tokens.
+- **✅ Targeted frontend and backend validation passed:** Frontend Vitest focused tutorial/preflight/standards suites **11/11 files, 192/192 tests PASS** (earlier 22-suite batch **22/22 files, 226/226 tests PASS**); `tsc --noEmit` ✅ · `eslint` ✅ (0 errors) · `next build` ✅ (38/38 routes); backend tutorial unit suites **5/5 suites, 63/63 PASS** and HTTP integration suites **2/2 suites, 25/25 PASS**. Full frontend suite: **186/188 files, 2190/2192 PASS** (the 2 failures are pre-existing unrelated `content-engine-overlap-acknowledgment.test.tsx` + `live-session-resume-revalidation.test.tsx` WIP and the parallel-run `ryo-explainer.test.tsx` offscreen timing check, which passes **52/52** in isolation).
+- **✅ Four-phone local browser QA passed** against an isolated local replica-set stack (`1440×900`, `1366×768`, `390×844`, `360×780`, 0 horizontal overflow, RYO V6 preserved, Admin Draft → Validate → Overlap Guard → Publish → Public Retrieval verified).
+- **✅ GSAP continuous playback verified:** `closest` (`6/6` scenes), `bomb` (`12/12` scenes), `top-5` (`8/8` scenes).
+- **✅ Product-owner screenshot visual review approved on 2026-11-18** (review package: `ai/review/universal-tutorials-batch-1/final-polish/`).
+- **⚠️ Natural-speed video behavior** is supported by Gemini QA `.webm` recordings (desktop `1440×900` and mobile `390×844` for each mechanic), distinct from the product owner's screenshot review.
+- **✅ Production code release status:** Batch 1 frontend code committed & squashed into `main` via [PR #64](https://github.com/MuathAlkathiri/akwaan/pull/64) (`83b50dd` on `feat/universal-tutorials-batch-1` → `4c5ad410e82656307c2eac09d906599b1ffde514` on `main`), and deployed to Vercel Production (`7894084801`, `https://akwaan-frontend.vercel.app`, verified chunks `8901-947293c28434c42a.js` and `2022-4bbe8fce33d5c7c2.js`, 0 horizontal overflow on `/` & `/how-to-play` at `1440×900` & `390×844`). Backend untouched.
+- **⬜ Production tutorial example publication:** remains separate and unapproved. Read-only Production API check confirmed `GET /mechanics/{closest,bomb,top-5}/tutorial` and World-resolved endpoints return `data: null` (unpublished), whereas `read-your-opponent` returns `revision: 1`.
 
 ### 22.2 QA evidence (Release Gate Cleanup, 2026-08-27)
 
@@ -6007,6 +6138,12 @@ time **without** weakening quality, fairness or factual defensibility.
 | 4 | Odd Piece specialization, including mask-bounded localized editing behind a flag | ⬜ NOT STARTED |
 | 5 | Scale safeguards | ⬜ NOT STARTED |
 
+> **Later status (2026-11-18):** the phase table above preserves its 2026-10-15/16 milestone, not the
+> current Studio publication state. PR #61 subsequently implemented and deployed human-authorized canonical
+> DRAFT → READY publication, verified in isolated tests and Chromium; authenticated Production workflow smoke
+> remains open. This does not establish that machine factual verification is operational or that all other
+> Phase 1 work is complete.
+
 ### 30.4 Deliberately open — not decided by this record
 
 Model provider and per-role model selection; benchmark acceptance thresholds (any figure used in the pilot is
@@ -6044,7 +6181,7 @@ canonical DRAFT through the existing `ContentItemService` runs end to end agains
 database, with idempotent republication. Backend and frontend typecheck, lint and build; the engine and
 world-content suites pass.
 
-**What is NOT true, stated plainly:**
+**What was NOT true at the 2026-10-16 milestone** (historical snapshot; later releases and pilots above supersede deployment/publication statements):
 
 - ⬜ **Nothing is committed.** Every engine file is untracked working-tree content. No branch, no push, no PR.
 - ⬜ **Nothing is deployed.** No Render or Vercel build has ever carried this code. The public site is unaffected.
@@ -6684,19 +6821,21 @@ without the existing authoritative human and lifecycle gates.
 - Atomic CAS concurrency protection (`reviewRevision`) across edit, assess, approve, reject, and draft creation.
 - Idempotent canonical `ContentItem` DRAFT creation through transactional publication records.
 
-#### Phase D: NOT STARTED
+#### Phase D: NOT STARTED at this historical milestone
+*Later status:* bounded pilots and a production rescreen have since occurred (§30.23.7); authenticated approval
+and publication remain unverified in Production.
 - Controlled live pilot.
 - Provider, model, pricing, and budget authorization.
 - Real generation and human review under production conditions.
 - Production rollout decisions and operational handover.
 
-#### Operational Boundaries Confirmed
-- ⬜ **No live paid generation has been verified.** Local verification exercised isolated mocked providers, deterministic fixtures, and disabled backend states.
-- ⬜ **No production deployment has been verified.** All code remains local on the feature branch.
-- ⬜ **No automatic READY promotion or publication exists in the Studio workflow.** Output is strictly canonical `ContentItem` in `DRAFT` status; publication to active gameplay requires the existing canonical READY pipeline.
+#### Operational Boundaries Confirmed — historical Phase A–D snapshot
+- ⬜ **No live paid generation had been verified at this milestone.** Local verification exercised isolated mocked providers, deterministic fixtures, and disabled backend states; later pilots have their own evidence (§30.23.7).
+- At this historical milestone code was local and no Production deployment had been verified. **Superseded for Quick Review/READY:** PR #61 is merged and deployed; see the 2026-11-18 release status above.
+- At this historical milestone the Studio produced canonical DRAFT only. **Superseded:** eligible, explicitly authorized Quick and Detailed Review can now create/reconcile DRAFT and promote it to READY via canonical gates; historical DRAFT items are not automatically promoted.
 - ✅ **Existing canonical review policy remains authoritative:** human approval is last and authoritative, and must be renewed after any post-approval candidate edit.
 
-#### Quick Human Review and authorized READY publication — ✅ IMPLEMENTED & VERIFIED LOCALLY · ⬜ UNCOMMITTED · ⬜ NOT DEPLOYED (2026-11-17)
+#### Quick Human Review and authorized READY publication — ✅ IMPLEMENTED & VERIFIED LOCALLY · ✅ MERGED & DEPLOYED · ⚠️ PRODUCTION WORKFLOW SMOKE PENDING (2026-11-17; release 2026-11-18)
 
 The Product Owner approved direct human review when automated factual evidence is absent or inconclusive, and
 subsequently approved **اعتماد ونشر** to initiate human approval → canonical DRAFT → canonical READY. This
@@ -6712,14 +6851,15 @@ claim of independent automated fact verification.
 Review Studio **59/59**, and both typechecks passed. Chromium against isolated fixtures verified one-click RYO,
 Closest and Detailed Review publication to persisted READY; rejection, blocked contradiction, failed READY and
 retry, lost response reconciliation, stale revision, double clicks and desktop/mobile behavior were also checked.
-A clean snapshot of locally known `origin/main` (`c4181e0`) plus the feature patch passed the same focused checks
-and the MongoDB suite; the shared checkout remains at `f919e0d` with unrelated changes. The release patch must
-include only the feature hunks of the concurrently modified ContentItem repository.
+At the 2026-11-17 local-validation milestone, a clean snapshot of `origin/main` (`c4181e0`) plus the feature
+patch passed the same focused checks and MongoDB suite; the shared checkout was at `f919e0d` with unrelated
+changes, so the release patch was scoped to the feature hunks of the concurrent ContentItem repository.
 
-**Boundaries and follow-up:** no commit, push, deployment, Production DB mutation or historical DRAFT promotion
-was performed. A READY item still depends on World/Scope activation and the existing Match selection rules to
+**Boundaries and follow-up:** the local validation above did not mutate Production or promote historical DRAFTs.
+PR #61 subsequently merged and deployed as recorded in the 2026-11-18 status. Authenticated Production
+approve-to-READY remains unexercised. A READY item still depends on World/Scope activation and the existing Match selection rules to
 appear in live gameplay; this change does not activate either. Claim-associated evidence entry in Detailed
-Review remains a separate known UI issue (§30.23.8). Production and physical-device verification remain open.
+Review remains a separate known UI issue (§30.23.8). Production workflow and physical-device verification remain open.
 
 ### 30.22 Content Engine Media Architecture & Fallback System — 🚧 IN PROGRESS · Track B Phases 1–2, 3A, 3B-1, 3B-3, 3C-1 ✅ VERIFIED LOCALLY · UNCOMMITTED, NOT DEPLOYED (2026-11-12)
 
@@ -6997,7 +7137,7 @@ and no production DB, R2 object, live download, Wigolo call, or paid provider ca
 - ⬜ **Track B Phase 3C-2+ (media intents in generation, `AssetService`/Wigolo discovery, AI generation, localized
   editing): NOT STARTED.** Media intents in the generation schema would change the prompt contract and therefore
   every request hash and pinned plan, so the prompt-version bump is a deliberate decision to be taken on its own.
-- ⬜ Existing implementation statuses, historical records, and unresolved issues are preserved in full. Output remains canonical `ContentItem` in `DRAFT` status.
+- Existing implementation statuses, historical records, and unresolved media work remain preserved. At this media milestone output stopped at canonical `DRAFT`; PR #61 later added explicitly authorized READY publication through the existing canonical gates (2026-11-18 status).
 - 🟡 **Media-aware content identity — DESIGN APPROVED, NOT IMPLEMENTED.** Identity for media-native questions
   must consider the complete mechanic-native gameplay stimulus: identical generic prompts with distinct required
   images or audio may represent distinct content. An unresolved media intent is not proof of distinctness; required
