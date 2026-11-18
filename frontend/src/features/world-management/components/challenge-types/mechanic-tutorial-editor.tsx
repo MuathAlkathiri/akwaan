@@ -1664,49 +1664,71 @@ function Top5TutorialEditor({
       <div className="grid gap-2 sm:grid-cols-2">
         {top5.entries.map((entry, index) => (
           <div
-            key={entry.id}
-            className="grid grid-cols-[minmax(0,1fr)_5rem] gap-2 rounded-lg border p-2"
+            key={index}
+            className="grid grid-cols-1 gap-2 rounded-lg border p-2"
           >
-            <div className="space-y-1">
-              <FieldLabel
-                htmlFor={`tutorial-top5-entry-${index}`}
-              >{`البطاقة ${index + 1}`}</FieldLabel>
-              <Input
-                id={`tutorial-top5-entry-${index}`}
-                data-testid={`tutorial-top5-entry-${index}`}
-                value={entry.label}
-                onChange={(event) =>
-                  update({
-                    entries: top5.entries.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, label: event.target.value }
-                        : item,
+            <div className="grid grid-cols-[minmax(0,1fr)_5rem] gap-2">
+              <div className="space-y-1">
+                <FieldLabel
+                  htmlFor={`tutorial-top5-entry-${index}`}
+                >{`البطاقة ${index + 1}`}</FieldLabel>
+                <Input
+                  id={`tutorial-top5-entry-${index}`}
+                  data-testid={`tutorial-top5-entry-${index}`}
+                  value={entry.label}
+                  onChange={(event) =>
+                    update({
+                      entries: top5.entries.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, label: event.target.value }
+                          : item,
+                      ),
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <FieldLabel htmlFor={`tutorial-top5-rank-${index}`}>
+                  الرتبة
+                </FieldLabel>
+                <Input
+                  id={`tutorial-top5-rank-${index}`}
+                  data-testid={`tutorial-top5-rank-${index}`}
+                  type="number"
+                  placeholder="فخ"
+                  value={entry.rank ?? ""}
+                  onChange={(event) =>
+                    update({
+                      entries: top5.entries.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? {
+                              ...item,
+                              rank:
+                                event.target.value === ""
+                                  ? null
+                                  : Number(event.target.value),
+                            }
+                          : item,
                     ),
-                  })
-                }
-              />
+                    })
+                  }
+                />
+              </div>
             </div>
             <div className="space-y-1">
-              <FieldLabel htmlFor={`tutorial-top5-rank-${index}`}>
-                الرتبة
+              <FieldLabel htmlFor={`tutorial-top5-id-${index}`}>
+                معرّف البطاقة
               </FieldLabel>
               <Input
-                id={`tutorial-top5-rank-${index}`}
-                data-testid={`tutorial-top5-rank-${index}`}
-                type="number"
-                placeholder="فخ"
-                value={entry.rank ?? ""}
+                id={`tutorial-top5-id-${index}`}
+                data-testid={`tutorial-top5-id-${index}`}
+                dir="ltr"
+                value={entry.id}
                 onChange={(event) =>
                   update({
                     entries: top5.entries.map((item, itemIndex) =>
                       itemIndex === index
-                        ? {
-                            ...item,
-                            rank:
-                              event.target.value === ""
-                                ? null
-                                : Number(event.target.value),
-                          }
+                        ? { ...item, id: event.target.value }
                         : item,
                     ),
                   })
@@ -2481,6 +2503,47 @@ function BombTutorialEditor({
                 acceptedAnswer: event.target.value,
               })
             }
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-next-question-media-url">
+            رابط صورة سؤال الفريق الثاني (اختياري)
+          </FieldLabel>
+          <Input
+            id="tutorial-next-question-media-url"
+            data-testid="tutorial-bomb-next-question-media-url"
+            dir="ltr"
+            placeholder="/brand/cosmic/luxurious_ringed_planet_illustration.webp"
+            value={draft.nextQuestion?.media?.url ?? ""}
+            onChange={(event) => {
+              const url = event.target.value;
+              const altText = draft.nextQuestion?.media?.altText ?? "";
+              updateQuestion("nextQuestion", {
+                media: url.trim()
+                  ? { type: "image", url, altText }
+                  : undefined,
+              });
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <FieldLabel htmlFor="tutorial-next-question-media-alt">
+            وصف صورة سؤال الفريق الثاني
+          </FieldLabel>
+          <Input
+            id="tutorial-next-question-media-alt"
+            data-testid="tutorial-bomb-next-question-media-alt"
+            disabled={!draft.nextQuestion?.media?.url?.trim()}
+            value={draft.nextQuestion?.media?.altText ?? ""}
+            onChange={(event) => {
+              const altText = event.target.value;
+              const url = draft.nextQuestion?.media?.url ?? "";
+              updateQuestion("nextQuestion", {
+                media: url.trim()
+                  ? { type: "image", url, altText }
+                  : undefined,
+              });
+            }}
           />
         </div>
         <div className="space-y-1">
