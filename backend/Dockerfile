@@ -5,7 +5,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-RUN npm ci
+# ONNX Runtime 1.21 bundles CPU binaries; skip its optional CUDA download.
+RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip npm ci
 
 FROM node:20-bookworm-slim AS build
 
@@ -27,7 +28,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-RUN npm ci --omit=dev
+RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip npm ci --omit=dev
 RUN npm prune --omit=dev
 
 FROM node:20-bookworm-slim AS runner
