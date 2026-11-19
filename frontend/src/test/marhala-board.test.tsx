@@ -664,15 +664,14 @@ describe("the 4×4 board reads as a board game", () => {
       />,
     );
 
-  it("lays sixteen squares out in four rows of four", () => {
+  it("lays sixteen stations out in four rows of four", () => {
     renderBoard();
-    const rects = [
-      ...document.querySelectorAll("[data-tile-kind] rect"),
-    ].filter(
-      (node) => node.getAttribute("width") === node.getAttribute("height"),
-    );
-    // Every tile face is a square, and there are sixteen of them.
-    expect(rects.length).toBeGreaterThanOrEqual(MARHALA_FINISH_POSITION);
+    const discs = [
+      ...document.querySelectorAll("[data-tile-kind] circle"),
+    ].filter((node) => Number(node.getAttribute("r")) > 0);
+    // Every station is a disc, and there are sixteen of them. Discs rather
+    // than squares: the run is printed underneath and shows between them.
+    expect(discs.length).toBeGreaterThanOrEqual(MARHALA_FINISH_POSITION);
     for (let position = 1; position <= MARHALA_FINISH_POSITION; position += 1) {
       expect(screen.getByTestId(`marhala-tile-${position}`)).toHaveTextContent(
         String(position),

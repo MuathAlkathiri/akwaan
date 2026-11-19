@@ -36,6 +36,22 @@ export interface MarhalaBoardTeam {
  * Nothing here resolves gameplay: the board draws the positions it is given.
  */
 
+/** Station discs sit inside their cell: the gap is where the run shows. */
+const DISC = 77;
+const DISC_FINISH = 86;
+
+/** Fixed dust, so a re-render never reshuffles the sky behind the board. */
+const DUST = Array.from({ length: 46 }, (_unused, i) => {
+  const noise = (salt: number) =>
+    Math.abs((Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453) % 1);
+  return {
+    x: Math.round(noise(1) * 978 + 11),
+    y: Math.round(noise(7) * 978 + 11),
+    r: Number((1.6 + noise(3) * 2.4).toFixed(1)),
+    o: Number((0.25 + noise(5) * 0.5).toFixed(2)),
+  };
+});
+
 /** One square viewBox, so the board scales to any screen without re-deriving. */
 const BOX = 1000;
 const MARGIN = 24;
@@ -258,6 +274,16 @@ export function MarhalaBoard({
       prominent: activeRoute?.from === route.from,
     });
   }
+  // The printed run, in the order a team walks it.
+  const track = tiles
+    .map((tile) => centreOf(tile))
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+
+  // Squares a token is standing on: their route is the one the players need to
+  // see right now, so it is the one that gets drawn.
+  const occupied = new Set(Object.values(positions));
+
   // Long routes lie down first so the short local ones stay on top and legible,
   // and whichever route is firing is drawn last of all.
   drawn.sort((left, right) => {
@@ -297,24 +323,6 @@ export function MarhalaBoard({
             <stop offset="70%" stopColor="hsl(40 85% 60%)" />
             <stop offset="100%" stopColor="hsl(35 72% 48%)" />
           </linearGradient>
-          <radialGradient id="marhala-trap-mouth">
-            <stop offset="0%" stopColor="hsl(350 72% 13%)" />
-            <stop offset="62%" stopColor="hsl(352 68% 22%)" />
-            <stop offset="100%" stopColor="hsl(var(--destructive))" />
-          </radialGradient>
-          <filter
-            id="marhala-rocket-glow"
-            x="-40%"
-            y="-40%"
-            width="180%"
-            height="180%"
-          >
-            <feGaussianBlur stdDeviation="7" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
           {drawn.map((route) => (
             <linearGradient
               key={`grad-${route.from.position}`}
@@ -332,7 +340,7 @@ export function MarhalaBoard({
                     ? "hsl(var(--brand-gold))"
                     : "hsl(var(--destructive))"
                 }
-                stopOpacity={route.kind === "boost" ? 0.7 : 0.78}
+                stopOpacity={1}
               />
               <stop
                 offset="100%"
@@ -363,25 +371,87 @@ export function MarhalaBoard({
           rx={46}
           fill="url(#marhala-board-rim)"
         />
-        <rect
-          x={3}
-          y={3}
-          width={BOX - 6}
-          height={BOX - 6}
-          rx={46}
+
+        {/* Orbital rings and dust: a place, quietly, under everything. */}
+        <circle
+          cx={BOX / 2}
+          cy={BOX / 2}
+          r={436}
+          fill="none"
+          stroke="hsl(43 32% 82%)"
+          strokeWidth={3}
+        />
+        <circle
+          cx={BOX / 2}
+          cy={BOX / 2}
+          r={293}
+          fill="none"
+          stroke="hsl(43 32% 82%)"
+          strokeWidth={3}
+          strokeDasharray="13 20"
+        />
+        {DUST.map((speck, index) => (
+          <circle
+            key={index}
+            cx={speck.x}
+            cy={speck.y}
+            r={speck.r}
+            fill="hsl(43 26% 78%)"
+            opacity={speck.o}
+          />
+        ))}
+
+        {/* Tactical grid. */}
+        <g
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={2}
+          opacity={0.055}
+          fill="none"
+        >
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+            <path
+              key={n}
+              d={`M 0 ${n * 125} H ${BOX} M ${n * 125} 0 V ${BOX}`}
+            />
+          ))}
+        </g>
+
+        {/* Corner brackets: the frame of a heads-up display. */}
+        <g
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={6}
+          fill="none"
+          opacity={0.3}
+          strokeLinecap="round"
+        >
+          <path d="M 31 89 V 44 a 13 13 0 0 1 13 -13 h 45" />
+          <path d={`M ${BOX - 89} 31 h 45 a 13 13 0 0 1 13 13 v 45`} />
+          <path
+            d={`M ${BOX - 31} ${BOX - 89} v 45 a 13 13 0 0 1 -13 13 h -45`}
+          />
+          <path d={`M 89 ${BOX - 31} H 44 a 13 13 0 0 1 -13 -13 v -45`} />
+        </g>
+
+        {/* The run itself, 1 → 16, laid down before anything stands on it: the
+            printed track a board game turns at the end of every row. */}
+        <path
+          d={track}
           fill="none"
           stroke="hsl(var(--brand-navy))"
-          strokeWidth={9}
+          strokeWidth={77}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.055}
         />
-        <rect
-          x={13}
-          y={13}
-          width={BOX - 26}
-          height={BOX - 32}
-          rx={37}
+        <path
+          d={track}
           fill="none"
-          stroke="hsl(var(--brand-navy) / 0.1)"
-          strokeWidth={2}
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={4.5}
+          strokeDasharray="7 23"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.3}
         />
 
         {/* Faces first — the squares the objects lie on. */}
@@ -396,21 +466,22 @@ export function MarhalaBoard({
           />
         ))}
 
-        {/* Then the routes: a rocket or a rail lies *on* the board, the way a
-            ladder does. Each carries its own casing, so where two cross you see
-            one object passing over another instead of two lines meeting. */}
+        {/* Then the routes: every tube and band is on the board at rest, the
+            way a ladder is, so the shape of the race reads at a glance. Each
+            carries its own casing, so where two cross you see one object
+            passing over another instead of two lines meeting. */}
         {drawn.map((route) =>
           route.kind === "boost" ? (
             <RocketRoute
               key={`source-${route.from.position}`}
               route={route}
-              sourceOnly={!activeRoute || !route.prominent}
+              sourceOnly={!route.prominent && !occupied.has(route.from.position)}
             />
           ) : (
             <TrapRoute
               key={`source-${route.from.position}`}
               route={route}
-              sourceOnly={!activeRoute || !route.prominent}
+              sourceOnly={!route.prominent && !occupied.has(route.from.position)}
             />
           ),
         )}
@@ -474,11 +545,12 @@ export function MarhalaBoard({
 }
 
 /**
- * A boost, drawn as the launch it is.
+ * A boost, drawn as the tube it carries you through.
  *
- * The exhaust is widest at the square you leave and tapers to the nose, which
- * sits on the square you arrive at pointing the way it travelled — so the pair
- * of squares is legible from the object alone, with no number to read.
+ * One continuous gold pipe from the station you leave to the station you land
+ * on, cased in brand navy like every other object on this board. The head at
+ * the far end says which way it runs, so the pair of stations reads without a
+ * number.
  */
 function RocketRoute({
   route,
@@ -488,18 +560,14 @@ function RocketRoute({
   sourceOnly: boolean;
 }) {
   const { a, b, c, prominent } = route;
-  // Calm rockets stay inside their source tile; replay expands the same object.
   const scale = prominent ? 1.72 : 1.2;
-  const band = taperedBand(a, c, b, 0.08, 0.76, 30 * scale, 10 * scale);
-  // Keep the vehicle visibly rooted in the launch square. Its nose supplies
-  // the direction; the small star at the far end supplies the landing.
-  const nose = quadPoint(a, c, b, 0.2);
-  const heading = angleAt(a, c, b, 0.2);
-  const flame = quadPoint(a, c, b, 0.13);
-  const flameHeading = angleAt(a, c, b, 0.13);
-  const sparkles = [0.38, 0.53, 0.67].map((t, index) => ({
+  const band = taperedBand(a, c, b, 0.05, 0.9, 30 * scale, 23 * scale);
+  const spine = `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`;
+  const head = quadPoint(a, c, b, 0.9);
+  const heading = angleAt(a, c, b, 0.9);
+  const sparkles = [0.3, 0.5, 0.7].map((t, index) => ({
     ...quadPoint(a, c, b, t),
-    size: [8, 5, 7][index],
+    size: [7, 5, 6][index],
   }));
   return (
     <g
@@ -513,108 +581,88 @@ function RocketRoute({
       data-route-scale={scale}
       data-route-full={!sourceOnly ? "true" : undefined}
       className="transition-all duration-slow ease-akwaan"
-      opacity={1}
+      opacity={sourceOnly ? 0 : 1}
+      aria-hidden={sourceOnly || undefined}
     >
-      {!sourceOnly && (
+      {(
         <path
           d={band}
           fill="hsl(var(--brand-navy) / 0.22)"
           stroke={SURFACE}
           strokeWidth={13}
           strokeLinejoin="round"
-          opacity={prominent ? 1 : 0.08}
+          opacity={prominent ? 0.4 : 0.3}
         />
       )}
-      {!sourceOnly && (
+      {(
         <path
           d={band}
           fill={`url(#marhala-trail-${route.from.position})`}
-          stroke="hsl(35 88% 38% / 0.7)"
-          strokeWidth={3}
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={6}
           strokeLinejoin="round"
-          opacity={prominent ? 1 : 0.1}
+          opacity={prominent ? 1 : 0.62}
         />
       )}
-      {!sourceOnly && (
-        <path
-          d={`M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`}
-          fill="none"
-          stroke="hsl(49 100% 78%)"
-          strokeWidth={prominent ? 10 : 6}
-          strokeLinecap="round"
-          opacity={prominent ? 0.9 : 0.06}
-          filter="url(#marhala-rocket-glow)"
-        />
+      {(
+        <>
+          <path
+            d={spine}
+            fill="none"
+            stroke="hsl(var(--brand-navy))"
+            strokeWidth={49}
+            strokeLinecap="round"
+          />
+          <path
+            d={spine}
+            fill="none"
+            stroke="hsl(40 70% 72%)"
+            strokeWidth={29}
+            strokeLinecap="round"
+          />
+          <path
+            d={spine}
+            fill="none"
+            stroke="hsl(43 100% 93%)"
+            strokeWidth={8}
+            strokeLinecap="round"
+            opacity={0.8}
+          />
+        </>
       )}
-      {!sourceOnly &&
-        sparkles.map((sparkle, index) => (
+      {sparkles.map((sparkle, index) => (
           <path
             key={index}
             data-boost-spark={index + 1}
-            d={`M ${sparkle.x} ${sparkle.y - sparkle.size} L ${sparkle.x + sparkle.size * 0.32} ${sparkle.y - sparkle.size * 0.32} L ${sparkle.x + sparkle.size} ${sparkle.y} L ${sparkle.x + sparkle.size * 0.32} ${sparkle.y + sparkle.size * 0.32} L ${sparkle.x} ${sparkle.y + sparkle.size} L ${sparkle.x - sparkle.size * 0.32} ${sparkle.y + sparkle.size * 0.32} L ${sparkle.x - sparkle.size} ${sparkle.y} L ${sparkle.x - sparkle.size * 0.32} ${sparkle.y - sparkle.size * 0.32} Z`}
-            fill="hsl(48 100% 74%)"
-            stroke="white"
-            strokeWidth={2}
-            opacity={prominent ? 1 : 0.3}
+            d={`M ${sparkle.x} ${sparkle.y - sparkle.size} L ${sparkle.x + sparkle.size * 0.34} ${sparkle.y - sparkle.size * 0.34} L ${sparkle.x + sparkle.size} ${sparkle.y} L ${sparkle.x + sparkle.size * 0.34} ${sparkle.y + sparkle.size * 0.34} L ${sparkle.x} ${sparkle.y + sparkle.size} L ${sparkle.x - sparkle.size * 0.34} ${sparkle.y + sparkle.size * 0.34} L ${sparkle.x - sparkle.size} ${sparkle.y} L ${sparkle.x - sparkle.size * 0.34} ${sparkle.y - sparkle.size * 0.34} Z`}
+            fill="hsl(45 86% 92%)"
+            stroke="hsl(var(--brand-navy))"
+            strokeWidth={2.5}
+            opacity={prominent ? 1 : 0.6}
           />
         ))}
-      {!sourceOnly && (
-        <g
-          transform={`translate(${flame.x} ${flame.y}) rotate(${flameHeading}) scale(${scale})`}
-          opacity={prominent ? 1 : 0.78}
-        >
-          <path
-            d="M -37 0 Q -17 -18 2 0 Q -17 18 -37 0 Z"
-            fill="hsl(38 100% 58%)"
-            stroke="hsl(24 92% 50%)"
-            strokeWidth={3}
-          />
-          <path
-            d="M -24 0 Q -11 -8 1 0 Q -11 8 -24 0 Z"
-            fill="hsl(48 100% 88%)"
-          />
-        </g>
-      )}
       <g
-        transform={`translate(${nose.x} ${nose.y}) rotate(${heading}) scale(${scale})`}
-        opacity={prominent ? 1 : 0.9}
+        transform={`translate(${head.x} ${head.y}) rotate(${heading}) scale(${scale})`}
+        opacity={prominent ? 1 : 0.85}
       >
         <path
-          d="M -25 -15 L -38 -31 L -8 -18 Z M -25 15 L -38 31 L -8 18 Z"
-          fill="hsl(34 96% 55%)"
-          stroke="hsl(var(--brand-navy) / 0.65)"
-          strokeWidth={4}
-          strokeLinejoin="round"
-        />
-        <path
-          d="M -29 -16 Q -23 -23 -10 -24 L 12 -19 Q 30 -11 42 0 Q 30 11 12 19 L -10 24 Q -23 23 -29 16 Q -21 0 -29 -16 Z"
-          fill="hsl(42 70% 97%)"
-          stroke="hsl(var(--brand-navy) / 0.82)"
+          d="M -14 -20 L 20 0 L -14 20 L -7 0 Z"
+          fill="hsl(40 62% 66%)"
+          stroke="hsl(var(--brand-navy))"
           strokeWidth={4.5}
           strokeLinejoin="round"
         />
-        <path d="M 18 -16 Q 33 -9 42 0 Q 33 9 18 16 Z" fill="hsl(39 96% 55%)" />
-        <circle
-          cx={2}
-          cy={0}
-          r={10}
-          fill="hsl(213 68% 55%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={3}
-        />
-        <circle cx={-1} cy={-3} r={3.5} fill="white" opacity={0.8} />
       </g>
       <g
         data-route-destination-marker="landing-star"
         transform={`translate(${b.x} ${b.y}) scale(${prominent ? 1.18 : 1})`}
-        opacity={prominent ? 1 : 0.55}
+        opacity={prominent ? 1 : 0.7}
       >
-        <circle r={22} fill="hsl(45 100% 72% / 0.28)" />
         <path
           d="M 0 -16 L 5 -6 L 16 -5 L 8 3 L 10 14 L 0 9 L -10 14 L -8 3 L -16 -5 L -5 -6 Z"
-          fill="hsl(43 100% 58%)"
-          stroke="hsl(29 88% 45%)"
-          strokeWidth={3}
+          fill="hsl(40 62% 66%)"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={3.5}
           strokeLinejoin="round"
         />
       </g>
@@ -623,11 +671,11 @@ function RocketRoute({
 }
 
 /**
- * A trap, drawn as the rail it drops you down.
+ * A trap, drawn as the arrow it drags you back along.
  *
- * Broad and railed where you fall in, narrowing and losing its rungs as it
- * collapses, ending in a chevron on the square it puts you back on. Rose rather
- * than red: a setback in the race, not an alarm.
+ * The same cased band as a boost but in the red half of the team palette, cut
+ * into separate slabs so it still reads as a fall rather than a ride when the
+ * colour is gone, and pointed at the station it puts you back on.
  */
 function TrapRoute({
   route,
@@ -638,15 +686,16 @@ function TrapRoute({
 }) {
   const { a, b, c, prominent } = route;
   const scale = prominent ? 1.3 : 1.08;
-  const w0 = 35 * scale;
-  const w1 = 16 * scale;
-  // Separate slabs and open gaps make a falling/collapsing silhouette even
-  // without colour. This deliberately shares no continuous body with rockets.
+  const w0 = 30 * scale;
+  const w1 = 22 * scale;
+  const spine = `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`;
+  const head = quadPoint(a, c, b, 0.88);
+  const heading = angleAt(a, c, b, 0.88);
   const fragments = [
-    [0.12, 0.27],
-    [0.33, 0.47],
-    [0.54, 0.67],
-    [0.75, 0.86],
+    [0.1, 0.27],
+    [0.32, 0.48],
+    [0.53, 0.68],
+    [0.73, 0.86],
   ] as const;
   return (
     <g
@@ -660,97 +709,88 @@ function TrapRoute({
       data-route-scale={scale}
       data-route-full={!sourceOnly ? "true" : undefined}
       className="transition-all duration-slow ease-akwaan"
-      opacity={1}
+      opacity={sourceOnly ? 0 : 1}
+      aria-hidden={sourceOnly || undefined}
     >
-      {!sourceOnly &&
-        fragments.map(([t0, t1], index) => {
+      {fragments.map(([t0, t1], index) => {
           const widthAt = (t: number) => w0 + (w1 - w0) * t;
-          const fragment = taperedBand(
-            a,
-            c,
-            b,
-            t0,
-            t1,
-            widthAt(t0),
-            widthAt(t1),
-          );
+          const fragment = taperedBand(a, c, b, t0, t1, widthAt(t0), widthAt(t1));
           return (
             <g key={t0} data-trap-fragment={index + 1}>
               <path
                 d={fragment}
                 fill="hsl(var(--brand-navy) / 0.2)"
                 stroke={SURFACE}
-                strokeWidth={14}
-                strokeLinejoin="bevel"
-                opacity={prominent ? 1 : 0.08}
+                strokeWidth={13}
+                strokeLinejoin="round"
+                opacity={prominent ? 1 : 0.5}
               />
               <path
                 d={fragment}
                 fill={`url(#marhala-trail-${route.from.position})`}
-                stroke="hsl(350 45% 28%)"
-                strokeWidth={4}
-                strokeLinejoin="bevel"
-                opacity={prominent ? 1 : 0.1}
+                stroke="hsl(var(--brand-navy))"
+                strokeWidth={6}
+                strokeLinejoin="round"
+                opacity={prominent ? 1 : 0.62}
               />
             </g>
           );
         })}
-      <ellipse
-        data-trap-rim="broken-floor"
-        cx={a.x}
-        cy={a.y}
-        rx={50 * scale}
-        ry={34 * scale}
-        fill="hsl(222 24% 24%)"
-        stroke="hsl(35 25% 46%)"
-        strokeWidth={7}
-        strokeDasharray={`${18 * scale} ${7 * scale}`}
-        opacity={prominent ? 1 : 0.96}
-      />
-      <ellipse
-        cx={a.x}
-        cy={a.y + 7}
-        rx={42 * scale}
-        ry={27 * scale}
-        fill="hsl(var(--brand-navy) / 0.28)"
-        opacity={prominent ? 1 : 0.72}
-      />
-      <ellipse
-        cx={a.x}
-        cy={a.y}
-        rx={34 * scale}
-        ry={21 * scale}
-        fill="url(#marhala-trap-mouth)"
-        stroke="hsl(351 65% 39%)"
-        strokeWidth={5}
-        opacity={prominent ? 1 : 0.96}
+      <path
+        d={spine}
+        fill="none"
+        stroke="hsl(var(--brand-navy))"
+        strokeWidth={40}
+        strokeLinecap="round"
       />
       <path
-        d={`M ${a.x - 25 * scale} ${a.y - 12 * scale} l ${-13 * scale} ${-11 * scale} M ${a.x + 2 * scale} ${a.y - 18 * scale} l ${5 * scale} ${-17 * scale} M ${a.x + 26 * scale} ${a.y - 9 * scale} l ${14 * scale} ${-8 * scale}`}
-        stroke="hsl(351 56% 35%)"
-        strokeWidth={6}
+        d={spine}
+        fill="none"
+        stroke="hsl(358 71% 58%)"
+        strokeWidth={22}
         strokeLinecap="round"
+      />
+      <g
+        transform={`translate(${head.x} ${head.y}) rotate(${heading}) scale(${scale})`}
         opacity={prominent ? 1 : 0.85}
-      />
-      <path
-        data-trap-warning="setback-cross"
-        d={`M ${a.x - 10 * scale} ${a.y - 9 * scale} L ${a.x + 10 * scale} ${a.y + 9 * scale} M ${a.x + 10 * scale} ${a.y - 9 * scale} L ${a.x - 10 * scale} ${a.y + 9 * scale}`}
-        stroke="hsl(12 88% 72%)"
-        strokeWidth={5}
-        strokeLinecap="round"
-        opacity={prominent ? 0.95 : 0.72}
-      />
-      {!sourceOnly && (
+      >
+        <path
+          d="M -14 -20 L 20 0 L -14 20 L -7 0 Z"
+          fill="hsl(358 66% 60%)"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={4.5}
+          strokeLinejoin="round"
+        />
+      </g>
+      <g opacity={prominent ? 1 : 0.9}>
+        <circle
+          data-trap-rim="broken-floor"
+          cx={a.x}
+          cy={a.y}
+          r={30 * scale}
+          fill="hsl(356 60% 89%)"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={6}
+          strokeDasharray={`${17 * scale} ${8 * scale}`}
+        />
+        <path
+          data-trap-warning="setback-cross"
+          d={`M ${a.x - 11 * scale} ${a.y - 11 * scale} L ${a.x + 11 * scale} ${a.y + 11 * scale} M ${a.x + 11 * scale} ${a.y - 11 * scale} L ${a.x - 11 * scale} ${a.y + 11 * scale}`}
+          stroke="hsl(358 66% 52%)"
+          strokeWidth={7}
+          strokeLinecap="round"
+        />
+      </g>
+      {(
         <g
           data-route-destination-marker="impact-crack"
           transform={`translate(${b.x} ${b.y}) scale(${scale})`}
           opacity={prominent ? 1 : 0.78}
         >
-          <circle r={17} fill="hsl(350 60% 36% / 0.14)" />
           <path
             d="M 0 -15 L -3 -4 L 7 0 L -4 5 L 1 16 M -3 -4 L -13 -9 M -4 5 L -14 10 M 7 0 L 15 -6"
             fill="none"
-            stroke="hsl(350 62% 34%)"
+            stroke="hsl(358 66% 52%)"
             strokeWidth={5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -783,11 +823,13 @@ function TileFace({
   // of a board whose real signal is which squares are special; a square now
   // carries colour only when it does something.
   const fill = finish
-    ? "url(#marhala-tile-finish)"
+    ? "hsl(40 55% 63%)"
     : tile.kind === "boost"
-      ? "hsl(43 72% 86%)"
+      ? "hsl(43 76% 78%)"
       : tile.kind === "trap"
-        ? "hsl(356 60% 89%)"
+        ? "hsl(358 80% 84%)"
+        : tile.safe
+          ? "hsl(156 55% 83%)"
         : "url(#marhala-tile-cream)";
   return (
     <g
@@ -798,26 +840,27 @@ function TileFace({
       {/* A hard, unblurred shadow: the «ملصق» treatment the team colours use,
           which is what makes a square read as a piece set on the board rather
           than a shape printed into it. */}
-      <rect
-        x={x}
-        y={y + 9}
-        width={TILE}
-        height={TILE}
-        rx={22}
+      <circle
+        cx={x + TILE / 2}
+        cy={y + TILE / 2 + 11}
+        r={finish ? DISC_FINISH : DISC}
         fill="hsl(var(--brand-navy))"
       />
-      <rect x={x} y={y} width={TILE} height={TILE} rx={22} fill={fill} />
+      <circle
+        cx={x + TILE / 2}
+        cy={y + TILE / 2}
+        r={finish ? DISC_FINISH : DISC}
+        fill={fill}
+      />
       {/* One navy outline for every square, special or not: the colour inside
           it is what says what the square does. Same rule as the team colours. */}
-      <rect
-        x={x}
-        y={y}
-        width={TILE}
-        height={TILE}
-        rx={22}
+      <circle
+        cx={x + TILE / 2}
+        cy={y + TILE / 2}
+        r={finish ? DISC_FINISH : DISC}
         fill="none"
         stroke={emphasised ? accent : "hsl(var(--brand-navy))"}
-        strokeWidth={finish || emphasised ? 7 : 4}
+        strokeWidth={finish || emphasised ? 8 : 5}
       />
     </g>
   );
@@ -863,23 +906,26 @@ function TileSquare({
     >
       {/* The square itself, already painted below; kept here without a fill so
           the tile's bounds travel with its label and its accessible name. */}
-      <rect x={x} y={y} width={TILE} height={TILE} rx={22} fill="none" />
+      <circle
+        cx={x + TILE / 2}
+        cy={y + TILE / 2}
+        r={DISC}
+        fill="none"
+      />
       {emphasised && (
-        <rect
-          x={x - 8}
-          y={y - 8}
-          width={TILE + 16}
-          height={TILE + 16}
-          rx={30}
+        <circle
+          cx={x + TILE / 2}
+          cy={y + TILE / 2}
+          r={DISC + 12}
           fill="none"
           stroke={accent}
-          strokeWidth={3}
-          opacity={0.55}
+          strokeWidth={4}
+          opacity={0.6}
         />
       )}
       {finish && (
         <path
-          d={`M ${x + TILE / 2 - 42} ${y + 70} l 20 18 22 -36 22 36 20 -18 -8 56 h -88 Z`}
+          d={`M ${x + TILE / 2 - 42} ${y + TILE / 2 - 26} l 20 18 22 -36 22 36 20 -18 -8 56 h -88 Z`}
           fill="hsl(45 95% 64%)"
           stroke="hsl(var(--brand-navy) / 0.45)"
           strokeWidth={4}
@@ -891,7 +937,7 @@ function TileSquare({
           data-testid={`marhala-source-mark-${tile.position}`}
           data-testid-destination-badge={`marhala-destination-badge-${tile.position}`}
           data-source-direction={tile.kind === "boost" ? "forward" : "backward"}
-          transform={`translate(${x + TILE - 34} ${y + 34})`}
+          transform={`translate(${x + TILE / 2 + 54} ${y + TILE / 2 - 54})`}
         >
           <circle
             r={22}
@@ -943,8 +989,8 @@ function TileSquare({
       {/* A cream halo behind the numeral, so it stays crisp even where a route
           runs under it. */}
       <text
-        x={x + 30}
-        y={y + 46}
+        x={x + TILE / 2}
+        y={y + TILE / 2 + 15}
         textAnchor="middle"
         className="akwaan-numeral"
         fontSize={40}
@@ -961,7 +1007,7 @@ function TileSquare({
       {finish && (
         <text
           x={x + TILE / 2}
-          y={y + TILE - 23}
+          y={y + TILE - 46}
           textAnchor="middle"
           fontSize={25}
           fontWeight={900}
@@ -977,7 +1023,7 @@ function TileSquare({
       {start && (
         <text
           x={x + TILE / 2}
-          y={y + TILE - 22}
+          y={y + TILE - 45}
           textAnchor="middle"
           fontSize={23}
           fontWeight={900}
