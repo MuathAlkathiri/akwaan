@@ -1,0 +1,87 @@
+{
+  "football": {
+    "q1_messi": {
+      "url": "/uploads/question-assets/images/football_laliga_lionel_messi.webp",
+      "source": "Existing Akwaan Production asset (HTTP 200 verified)",
+      "visualQA": "PASS — clear portrait of Lionel Messi, no answer text"
+    },
+    "q2_anfield": {
+      "url": "/tutorial-media/bomb/football/anfield.jpg",
+      "source": "Wikimedia Commons — File:Anfield Football Stadium - geograph.org.uk - 6297560.jpg",
+      "visualQA": "PASS — Anfield pitch and stands (L.F.C.), no 'Anfield' text"
+    },
+    "q3_ronaldo": {
+      "url": "/uploads/question-assets/images/football_laliga_cristiano_ronaldo.webp",
+      "source": "Existing Akwaan Production asset (HTTP 200 verified)",
+      "visualQA": "PASS — clear portrait of Cristiano Ronaldo, no answer text"
+    }
+  },
+  "anime": {
+    "q1_naruto": {
+      "url": "/tutorial-media/bomb/anime/naruto.jpg",
+      "source": "Generated editorial anime character illustration (fictional character, no real-person likeness)",
+      "visualQA": "PASS — clear Naruto Uzumaki portrait, no text"
+    },
+    "q2_luffy": {
+      "url": "/tutorial-media/bomb/anime/luffy.webp",
+      "source": "Copied from canonical local asset backend/uploads/question-assets/images/monkey-d-luffy-89fbb2ab-6040-45c3-a511-097d2cdcfebb.webp",
+      "visualQA": "PASS — clear Monkey D. Luffy illustration, no text"
+    },
+    "q3_goku": {
+      "url": "/tutorial-media/bomb/anime/goku.webp",
+      "source": "Copied from canonical local asset backend/uploads/question-assets/images/goku-super-saiyan-64a7269f.webp",
+      "visualQA": "PASS — clear Goku illustration, no text"
+    }
+  },
+  "video-games": {
+    "q1_kratos": {
+      "url": "/tutorial-media/bomb/video-games/kratos.webp",
+      "source": "Copied from canonical local asset backend/uploads/question-assets/images/video_games_gow_kratos.webp",
+      "visualQA": "PASS — clear Kratos illustration, no text"
+    },
+    "q2_creeper": {
+      "url": "/tutorial-media/bomb/video-games/creeper.webp",
+      "source": "Copied from canonical local asset backend/uploads/question-assets/images/video_games_minecraft_creeper.webp",
+      "visualQA": "PASS — clear Minecraft Creeper illustration, no text"
+    },
+    "q3_mario": {
+      "url": "/tutorial-media/bomb/video-games/mario.jpg",
+      "source": "Generated editorial 3D character illustration (fictional character, no real-person likeness)",
+      "visualQA": "PASS — clear Super Mario illustration, no text"
+    }
+  },
+  "cars": {
+    "q1_mustang": {
+      "url": "/tutorial-media/bomb/cars/ford-mustang.jpg",
+      "source": "Wikimedia Commons — File:1966 Ford Mustang coupe white 001.jpg",
+      "visualQA": "PASS — classic 1966 Ford Mustang coupe, no model badge text"
+    },
+    "q2_porsche_911": {
+      "url": "/tutorial-media/bomb/cars/porsche-911.jpg",
+      "source": "Wikimedia Commons — File:2013 Porsche 911 Carrera 4S (991) (9626546987).jpg",
+      "visualQA": "PASS — Porsche 911 Carrera 4S, no model text"
+    },
+    "q3_toyota_supra": {
+      "url": "/tutorial-media/bomb/cars/toyota-supra.jpg",
+      "source": "Wikimedia Commons — File:Toyota Supra Monrepos 2019 IMG 1898.jpg",
+      "visualQA": "PASS — Toyota GR Supra, no 'Supra' text"
+    }
+  },
+  "music": {
+    "q1_mohammed_abdu": {
+      "url": "/tutorial-media/bomb/music/mohammed-abdu.jpg",
+      "source": "Wikimedia Commons — File:Mohammed Abdu.jpg (authentic photograph)",
+      "visualQA": "PASS — clear authentic portrait of Mohammed Abdu, no text"
+    },
+    "q2_fairuz": {
+      "url": "/tutorial-media/bomb/music/fairuz.jpg",
+      "source": "Wikimedia Commons — File:Fairuz 1971.jpg (authentic photograph)",
+      "visualQA": "PASS — clear authentic portrait of Fairuz, no text"
+    },
+    "q3_michael_jackson": {
+      "url": "/tutorial-media/bomb/music/michael-jackson.jpg",
+      "source": "Wikimedia Commons — File:Michael Jackson (20589951783) (cropped).jpg (authentic photograph)",
+      "visualQA": "PASS — clear authentic concert photo of Michael Jackson, no text"
+    }
+  }
+}

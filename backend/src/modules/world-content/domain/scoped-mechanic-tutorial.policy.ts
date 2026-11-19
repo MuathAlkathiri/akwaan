@@ -355,12 +355,9 @@ export function validateScopedTutorialFlow(
       );
     } else {
       const value = input as Extract<TutorialScenarioInput, { kind: 'combo' }>;
-      locked(
-        issues,
-        'stages.stage',
-        value.stages.map((stage) => stage.stage),
-        [1, 2, 3],
-      );
+      const actualStages = value.stages.map((stage) => stage.stage);
+      const expectedStages = actualStages.length === 4 ? [1, 2, 3, 4] : [1, 2, 3];
+      locked(issues, 'stages.stage', actualStages, expectedStages);
     }
   }
 

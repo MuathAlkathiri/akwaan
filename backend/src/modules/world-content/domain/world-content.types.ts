@@ -351,15 +351,20 @@ export interface OddPieceNormalizedPoint {
 }
 
 export type OddPieceDifficulty = 'easy' | 'medium' | 'hard';
-export type OddPieceAssetOrigin = 'authentic' | 'ai-edited';
+export type OddPieceAssetOrigin = 'authentic' | 'ai-edited' | 'ai-generated';
 
 /** Provenance recorded on every V2 image; rights remain an advisory concern. */
 export interface OddPieceMediaProvenance {
   assetOrigin: OddPieceAssetOrigin;
-  sourceUrl: string;
+  sourceUrl?: string;
   licenceNote?: string;
   editedRegion?: string;
   editModel?: string;
+  generationModel?: string;
+  generationPrompt?: string;
+  generationRecord?: string;
+  transformationSteps?: string;
+  assetSha256?: string;
 }
 
 /** One V2 image, with the source dimensions needed to interpret normalized taps. */
@@ -383,12 +388,17 @@ export interface OddPieceHotspotPayload {
   originalImage: OddPieceHotspotImage;
   targetVehicleIdentity: string;
   targetVehicleLabel: string;
-  intruderVehicleIdentity: string;
-  intruderVehicleLabel: string;
+  intruderType?: 'known-donor' | 'unattributed-design';
+  intruderVehicleIdentity?: string;
+  intruderVehicleLabel?: string;
   intruderPartIdentity: string;
   intruderPartLabel: string;
+  targetIdentityEvidence?: string;
+  intruderIdentityEvidence?: string;
+  intruderDesignRationale?: string;
   hotspot: {
     polygon: OddPieceNormalizedPoint[];
+    secondaryPolygon?: OddPieceNormalizedPoint[];
     tolerance: number;
   };
 }
@@ -661,7 +671,7 @@ export interface StoredTop5TutorialScenario {
 }
 
 export interface StoredComboTutorialStage {
-  stage: 1 | 2 | 3;
+  stage: 1 | 2 | 3 | 4;
   prompt: string;
   correctAnswer: string;
   submittedAnswer: string;
@@ -676,10 +686,10 @@ export interface StoredComboTutorialScenario {
   caption?: string;
   outcome: {
     decision: 'continue-combo';
-    breakArmedAtStage: 2;
-    forcedQuestionStage: 3;
-    correctStagesBeforeBreak: 2;
-    unbankedPointsBeforeForcedQuestion: 2;
+    breakArmedAtStage: 2 | 3;
+    forcedQuestionStage: 3 | 4;
+    correctStagesBeforeBreak: 2 | 3;
+    unbankedPointsBeforeForcedQuestion: 2 | 3;
     forcedQuestionEarned: 0;
     bankedPoints: 0;
     endedBy: 'combo-break';

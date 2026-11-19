@@ -197,7 +197,7 @@ export interface Top5TutorialScenarioInput {
 }
 
 export interface ComboTutorialStageInput {
-  stage: 1 | 2 | 3;
+  stage: 1 | 2 | 3 | 4;
   prompt: string;
   correctAnswer: string;
   submittedAnswer: string;
@@ -615,10 +615,10 @@ export interface Top5TutorialOutcome {
 
 export interface ComboTutorialOutcome {
   decision: 'continue-combo';
-  breakArmedAtStage: 2;
-  forcedQuestionStage: 3;
-  correctStagesBeforeBreak: 2;
-  unbankedPointsBeforeForcedQuestion: 2;
+  breakArmedAtStage: 2 | 3;
+  forcedQuestionStage: 3 | 4;
+  correctStagesBeforeBreak: 2 | 3;
+  unbankedPointsBeforeForcedQuestion: 2 | 3;
   forcedQuestionEarned: 0;
   bankedPoints: 0;
   endedBy: 'combo-break';
@@ -1545,33 +1545,32 @@ export function deriveTop5TutorialOutcome(
 export function deriveComboTutorialOutcome(
   input: ComboTutorialScenarioInput,
 ): ComboTutorialOutcome {
-  // The approved teaching path is intentionally deterministic: Q1 and Q2 are
-  // answered correctly, the opponent's one break charge is spent before Q2,
-  // and the forced Q3 is missed. The values below are derived from Combo's
-  // canonical +1 scoring and its +1 survival bonus (which is not paid on a
-  // failed forced question), never authored by the editor.
+  // The approved teaching path is intentionally deterministic: stages before
+  // the forced question are answered correctly, the opponent's one break charge
+  // is spent before the forced stage, and the forced final question is missed.
   const stages = input.stages;
-  const firstTwoCorrect = stages
-    .slice(0, 2)
+  const beforeBreakCount = stages.length - 1;
+  const priorCorrect = stages
+    .slice(0, beforeBreakCount)
     .every(
       (stage) =>
         normalizeArabicText(stage.correctAnswer) ===
         normalizeArabicText(stage.submittedAnswer),
     );
   const forcedQuestionMissed =
-    normalizeArabicText(stages[2]?.correctAnswer ?? '') !==
-    normalizeArabicText(stages[2]?.submittedAnswer ?? '');
-  if (!firstTwoCorrect || !forcedQuestionMissed) {
+    normalizeArabicText(stages[beforeBreakCount]?.correctAnswer ?? '') !==
+    normalizeArabicText(stages[beforeBreakCount]?.submittedAnswer ?? '');
+  if (!priorCorrect || !forcedQuestionMissed) {
     // Structural validation reports the actionable issue; this guard keeps the
     // derived contract impossible to construct with a contradictory outcome.
     throw new Error('Combo tutorial path does not match the approved sequence');
   }
   return {
     decision: 'continue-combo',
-    breakArmedAtStage: 2,
-    forcedQuestionStage: 3,
-    correctStagesBeforeBreak: 2,
-    unbankedPointsBeforeForcedQuestion: 2,
+    breakArmedAtStage: beforeBreakCount as 2 | 3,
+    forcedQuestionStage: stages.length as 3 | 4,
+    correctStagesBeforeBreak: beforeBreakCount as 2 | 3,
+    unbankedPointsBeforeForcedQuestion: beforeBreakCount as 2 | 3,
     forcedQuestionEarned: 0,
     bankedPoints: 0,
     endedBy: 'combo-break',
@@ -1586,13 +1585,22 @@ export function validateComboTutorialScenario(
   const add = (code: string, message: string) => issues.push({ code, message });
   if (input.version !== 1)
     add('TUTORIAL_VERSION_UNSUPPORTED', 'نسخة شرح الكومبو غير مدعومة.');
-  if (!Array.isArray(input.stages) || input.stages.length !== 3) {
-    add('TUTORIAL_COMBO_STAGE_COUNT', 'شرح الكومبو يحتاج ثلاثة أسئلة متتابعة.');
+  if (
+    !Array.isArray(input.stages) ||
+    (input.stages.length !== 3 && input.stages.length !== 4)
+  ) {
+    add(
+      'TUTORIAL_COMBO_STAGE_COUNT',
+      'شرح الكومبو يحتاج ثلاثة أو أربعة أسئلة متتابعة.',
+    );
     return issues;
   }
   const stages = input.stages;
   if (stages.some((stage, index) => stage?.stage !== COMBO_STAGES[index])) {
-    add('TUTORIAL_COMBO_STAGE_ORDER', 'مراحل الكومبو يجب أن تكون 1 ثم 2 ثم 3.');
+    add(
+      'TUTORIAL_COMBO_STAGE_ORDER',
+      'مراحل الكومبو يجب أن تكون متسلسلة بدءًا من 1.',
+    );
   }
   if (
     stages.some(
@@ -1611,22 +1619,23 @@ export function validateComboTutorialScenario(
   if (new Set(prompts).size !== prompts.length) {
     add('TUTORIAL_COMBO_PROMPTS_DUPLICATED', 'أسئلة مراحل الكومبو مكررة.');
   }
-  const firstTwoCorrect = stages
-    .slice(0, 2)
+  const beforeBreakCount = stages.length - 1;
+  const priorCorrect = stages
+    .slice(0, beforeBreakCount)
     .every(
       (stage) =>
         normalizeArabicText(stage.correctAnswer) ===
         normalizeArabicText(stage.submittedAnswer),
     );
-  if (!firstTwoCorrect) {
+  if (!priorCorrect) {
     add(
       'TUTORIAL_COMBO_DECISION_PATH_INVALID',
-      'المسار التعليمي يحتاج إجابة صحيحة في المرحلتين الأولى والثانية قبل المخاطرة.',
+      'المسار التعليمي يحتاج إجابات صحيحة في المراحل التي تسبق السؤال الإجباري.',
     );
   }
   if (
-    normalizeArabicText(stages[2]?.correctAnswer ?? '') ===
-    normalizeArabicText(stages[2]?.submittedAnswer ?? '')
+    normalizeArabicText(stages[beforeBreakCount]?.correctAnswer ?? '') ===
+    normalizeArabicText(stages[beforeBreakCount]?.submittedAnswer ?? '')
   ) {
     add(
       'TUTORIAL_COMBO_FORCED_OUTCOME_INVALID',
@@ -1759,11 +1768,26 @@ export function validateBombTutorialScenario(
       'TUTORIAL_BOMB_EXPIRY_INVALID',
       'عرض انتهاء القنبلة يجب أن ينتهي عند صفر.',
     );
-  for (const [name, question] of [
-    ['nextQuestion', input.nextQuestion],
-    ['returnQuestion', input.returnQuestion],
+  if (!input.media?.url?.trim() || !input.media?.altText?.trim()) {
+    add(
+      'TUTORIAL_BOMB_INITIAL_MEDIA_REQUIRED',
+      'السؤال الأول في شرح القنبلة يتطلب صورة ووصفًا توضيحيًا.',
+    );
+  } else if (input.media.type !== 'image') {
+    add('TUTORIAL_BOMB_MEDIA_TYPE_INVALID', 'وسائط القنبلة غير مدعومة.');
+  }
+
+  for (const [name, label, question] of [
+    ['nextQuestion', 'سؤال الفريق الثاني', input.nextQuestion],
+    ['returnQuestion', 'سؤال العودة', input.returnQuestion],
   ] as const) {
-    if (!question) continue;
+    if (!question) {
+      add(
+        'TUTORIAL_BOMB_FOLLOW_UP_REQUIRED',
+        `${label} (${name}) مطلوب مع صورة توضيحية.`,
+      );
+      continue;
+    }
     if (!question.prompt?.trim())
       add(
         'TUTORIAL_BOMB_FOLLOW_UP_PROMPT_REQUIRED',
@@ -1774,21 +1798,17 @@ export function validateBombTutorialScenario(
         'TUTORIAL_BOMB_FOLLOW_UP_ANSWER_REQUIRED',
         `${name} يحتاج إجابة مقبولة.`,
       );
-    if (question.media) {
-      if (question.media.type !== 'image')
-        add(
-          'TUTORIAL_BOMB_MEDIA_TYPE_INVALID',
-          `${name} يحتوي نوع وسائط غير مدعوم.`,
-        );
-      if (!question.media.url?.trim() || !question.media.altText?.trim())
-        add('TUTORIAL_BOMB_MEDIA_INCOMPLETE', `${name} يحتوي وسائط ناقصة.`);
+    if (!question.media?.url?.trim() || !question.media?.altText?.trim()) {
+      add(
+        'TUTORIAL_BOMB_MEDIA_REQUIRED',
+        `${label} (${name}) يتطلب صورة ووصفًا توضيحيًا.`,
+      );
+    } else if (question.media.type !== 'image') {
+      add(
+        'TUTORIAL_BOMB_MEDIA_TYPE_INVALID',
+        `${name} يحتوي نوع وسائط غير مدعوم.`,
+      );
     }
-  }
-  if (input.media) {
-    if (input.media.type !== 'image')
-      add('TUTORIAL_BOMB_MEDIA_TYPE_INVALID', 'وسائط القنبلة غير مدعومة.');
-    if (!input.media.url?.trim() || !input.media.altText?.trim())
-      add('TUTORIAL_BOMB_MEDIA_INCOMPLETE', 'وسائط القنبلة ناقصة.');
   }
   return issues;
 }

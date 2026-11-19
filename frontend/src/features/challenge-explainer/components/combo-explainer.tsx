@@ -44,11 +44,12 @@ export function ComboExplainer({
   const isDecision = step.id === "decision" || step.id === "continue";
   const isForcedReveal = step.id === "forced-reveal";
   const isForcedQuestion = step.id === "forced-question";
+  const lastStageIndex = Math.max(0, scenario.stages.length - 1);
   const stageIndex =
     isForcedQuestion || isOutcome
-      ? 2
+      ? lastStageIndex
       : step.id === "continue" || step.id === "second-reveal" || isForcedReveal
-        ? 1
+        ? Math.min(1, lastStageIndex)
         : 0;
   const stage = scenario.stages[stageIndex];
   const points =
@@ -148,7 +149,10 @@ export function ComboExplainer({
                 />
               )}
               {isOutcome ? (
-                <ComboOutcome answer={scenario.stages[2].correctAnswer} />
+                <ComboOutcome
+                  answer={scenario.stages[lastStageIndex].correctAnswer}
+                  unbankedPoints={scenario.outcome.unbankedPointsBeforeForcedQuestion}
+                />
               ) : isDecision ? (
                 <ComboDecision
                   points={points}
@@ -193,7 +197,7 @@ function ComboStreak({
   compact,
 }: {
   points: number;
-  stage: 1 | 2 | 3;
+  stage: 1 | 2 | 3 | 4;
   compact: boolean;
 }) {
   return (
@@ -369,7 +373,13 @@ function ComboDecision({
   );
 }
 
-function ComboOutcome({ answer }: { answer: string }) {
+function ComboOutcome({
+  answer,
+  unbankedPoints,
+}: {
+  answer: string;
+  unbankedPoints: number;
+}) {
   return (
     <section
       className="rounded-xl border-2 border-sem-error/25 bg-sem-error/10 p-4 text-center"
@@ -384,7 +394,7 @@ function ComboOutcome({ answer }: { answer: string }) {
             غير المثبّت
           </p>
           <p className="akwaan-numeral text-lg font-black text-sem-error">
-            2 → 0
+            {unbankedPoints} → 0
           </p>
         </div>
         <div className="rounded-lg border border-sem-success/30 bg-background/70 p-2">
@@ -397,8 +407,11 @@ function ComboOutcome({ answer }: { answer: string }) {
         </div>
       </div>
       <p className="mt-2 text-xs font-bold text-foreground">
-        ضاعت النقطتان غير المثبتتين. نقاط الكومبو لا تُضاف إلى نتيجة المباراة؛
-        فائز التحدي يُحسم من جولتي الفريقين.
+        {unbankedPoints === 2
+          ? "ضاعت النقطتان غير المثبتتين."
+          : `ضاعت النقاط (${unbankedPoints}) غير المثبتة.`}{" "}
+        نقاط الكومبو لا تُضاف إلى نتيجة المباراة؛ فائز التحدي يُحسم من جولتي
+        الفريقين.
       </p>
       <p
         className="mt-2 rounded-lg border border-border bg-background/70 p-2 text-xs font-black"

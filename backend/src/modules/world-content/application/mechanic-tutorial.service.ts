@@ -453,7 +453,11 @@ export class MechanicTutorialService {
     return this.getScopedForAdmin(worldId, mechanicKey);
   }
 
-  /** World-aware public resolver. Drafts and revision history never escape. */
+  /**
+   * World-aware public resolver. Drafts and revision history never escape, and
+   * Worlds without a published World-specific tutorial never fall back to an
+   * unrelated generic example.
+   */
   async getPublishedForWorld(worldId: string, mechanicKey: string) {
     try {
       const pair = await this.requireScopedPair(worldId, mechanicKey);
@@ -461,34 +465,16 @@ export class MechanicTutorialService {
         worldId,
         String(pair.mechanic._id),
       );
-      if (record?.published) {
-        return {
-          source: 'world' as const,
-          worldId,
-          mechanicKey: pair.mechanic.slug,
-          revision: record.publishedRevision,
-          scenario: record.published,
-        };
-      }
-      const generic = pair.mechanic.tutorial?.published;
-      return generic
-        ? {
-            source: 'generic' as const,
-            worldId: null,
-            mechanicKey: pair.mechanic.slug,
-            revision: pair.mechanic.tutorial?.publishedRevision ?? 0,
-            scenario: generic,
-          }
-        : null;
+      if (!record?.published) return null;
+      return {
+        source: 'world' as const,
+        worldId,
+        mechanicKey: pair.mechanic.slug,
+        revision: record.publishedRevision,
+        scenario: record.published,
+      };
     } catch {
-      try {
-        const generic = await this.getPublished(mechanicKey);
-        return generic
-          ? { ...generic, source: 'generic' as const, worldId: null }
-          : null;
-      } catch {
-        return null;
-      }
+      return null;
     }
   }
 

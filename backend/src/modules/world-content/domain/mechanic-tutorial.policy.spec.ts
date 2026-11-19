@@ -824,18 +824,64 @@ describe('generalized mechanic tutorial policy', () => {
     });
   });
 
-  it('validates a mechanic-native Bomb scenario', () => {
+  it('validates a mechanic-native Bomb scenario when all three questions include image media', () => {
     expect(
       validateMechanicTutorialScenario('bomb', {
         kind: 'bomb',
         version: 1,
-        prompt: 'وش هذا؟',
-        acceptedAnswer: 'المريخ',
-        nextPrompt: 'وش التالي؟',
+        prompt: 'من اللاعب؟',
+        acceptedAnswer: 'ميسي',
+        media: {
+          type: 'image',
+          url: '/uploads/question-assets/images/football_laliga_lionel_messi.webp',
+          altText: 'صورة اللاعب',
+        },
+        nextPrompt: 'ما اسم الملعب؟',
+        nextQuestion: {
+          prompt: 'ما اسم الملعب؟',
+          acceptedAnswer: 'أنفيلد',
+          media: {
+            type: 'image',
+            url: '/tutorial-media/bomb/football/anfield.jpg',
+            altText: 'صورة الملعب',
+          },
+        },
+        returnQuestion: {
+          prompt: 'من اللاعب؟',
+          acceptedAnswer: 'رونالدو',
+          media: {
+            type: 'image',
+            url: '/uploads/question-assets/images/football_laliga_cristiano_ronaldo.webp',
+            altText: 'صورة اللاعب الثالث',
+          },
+        },
         startingTeam: 'team-a',
         correctAtSecondsRemaining: 18,
         opponentExpiresAtSecondsRemaining: 0,
       }),
     ).toEqual([]);
+  });
+
+  it('rejects Bomb scenarios missing image media on any of the three questions', () => {
+    const issues = validateMechanicTutorialScenario('bomb', {
+      kind: 'bomb',
+      version: 1,
+      prompt: 'وش هذا؟',
+      acceptedAnswer: 'المريخ',
+      nextPrompt: 'وش التالي؟',
+      nextQuestion: {
+        prompt: 'وش التالي؟',
+        acceptedAnswer: 'زحل',
+      },
+      startingTeam: 'team-a',
+      correctAtSecondsRemaining: 18,
+      opponentExpiresAtSecondsRemaining: 0,
+    });
+
+    expect(issues.map((item) => item.code)).toEqual([
+      'TUTORIAL_BOMB_INITIAL_MEDIA_REQUIRED',
+      'TUTORIAL_BOMB_MEDIA_REQUIRED',
+      'TUTORIAL_BOMB_FOLLOW_UP_REQUIRED',
+    ]);
   });
 });

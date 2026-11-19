@@ -1834,6 +1834,7 @@ function ComboTutorialEditor({
       { stage: 1, prompt: "", correctAnswer: "", submittedAnswer: "" },
       { stage: 2, prompt: "", correctAnswer: "", submittedAnswer: "" },
       { stage: 3, prompt: "", correctAnswer: "", submittedAnswer: "" },
+      { stage: 4, prompt: "", correctAnswer: "", submittedAnswer: "" },
     ],
     caption: "",
   };
@@ -2341,6 +2342,61 @@ function OneClueTutorialEditor({
   );
 }
 
+function BombMediaInputs({
+  idPrefix,
+  testIdPrefix,
+  urlLabel,
+  altLabel,
+  media,
+  onChange,
+}: {
+  idPrefix: string;
+  testIdPrefix: string;
+  urlLabel: string;
+  altLabel: string;
+  media?: { type: "image"; url: string; altText: string };
+  onChange: (
+    media: { type: "image"; url: string; altText: string } | undefined,
+  ) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-1">
+        <FieldLabel htmlFor={`${idPrefix}-url`}>{urlLabel}</FieldLabel>
+        <Input
+          id={`${idPrefix}-url`}
+          data-testid={`${testIdPrefix}-url`}
+          dir="ltr"
+          placeholder="/brand/cosmic/luxurious_ringed_planet_illustration.webp"
+          value={media?.url ?? ""}
+          onChange={(event) => {
+            const url = event.target.value;
+            onChange(
+              url.trim()
+                ? { type: "image", url, altText: media?.altText ?? "" }
+                : undefined,
+            );
+          }}
+        />
+      </div>
+      <div className="space-y-1">
+        <FieldLabel htmlFor={`${idPrefix}-alt`}>{altLabel}</FieldLabel>
+        <Input
+          id={`${idPrefix}-alt`}
+          data-testid={`${testIdPrefix}-alt`}
+          disabled={!media?.url?.trim()}
+          value={media?.altText ?? ""}
+          onChange={(event) => {
+            const altText = event.target.value;
+            const url = media?.url ?? "";
+            onChange(url.trim() ? { type: "image", url, altText } : undefined);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function BombTutorialEditor({
   mechanicKey,
   worldId,
@@ -2465,6 +2521,14 @@ function BombTutorialEditor({
             }
           />
         </div>
+        <BombMediaInputs
+          idPrefix="tutorial-bomb-media"
+          testIdPrefix="tutorial-bomb-media"
+          urlLabel="رابط صورة السؤال الأول"
+          altLabel="وصف صورة السؤال الأول"
+          media={draft.media}
+          onChange={(media) => setDraft((current) => ({ ...current, media }))}
+        />
         <NumberField
           id="tutorial-correct-seconds"
           label="الوقت المتبقي عند الإجابة"
@@ -2505,47 +2569,14 @@ function BombTutorialEditor({
             }
           />
         </div>
-        <div className="space-y-1">
-          <FieldLabel htmlFor="tutorial-next-question-media-url">
-            رابط صورة سؤال الفريق الثاني (اختياري)
-          </FieldLabel>
-          <Input
-            id="tutorial-next-question-media-url"
-            data-testid="tutorial-bomb-next-question-media-url"
-            dir="ltr"
-            placeholder="/brand/cosmic/luxurious_ringed_planet_illustration.webp"
-            value={draft.nextQuestion?.media?.url ?? ""}
-            onChange={(event) => {
-              const url = event.target.value;
-              const altText = draft.nextQuestion?.media?.altText ?? "";
-              updateQuestion("nextQuestion", {
-                media: url.trim()
-                  ? { type: "image", url, altText }
-                  : undefined,
-              });
-            }}
-          />
-        </div>
-        <div className="space-y-1">
-          <FieldLabel htmlFor="tutorial-next-question-media-alt">
-            وصف صورة سؤال الفريق الثاني
-          </FieldLabel>
-          <Input
-            id="tutorial-next-question-media-alt"
-            data-testid="tutorial-bomb-next-question-media-alt"
-            disabled={!draft.nextQuestion?.media?.url?.trim()}
-            value={draft.nextQuestion?.media?.altText ?? ""}
-            onChange={(event) => {
-              const altText = event.target.value;
-              const url = draft.nextQuestion?.media?.url ?? "";
-              updateQuestion("nextQuestion", {
-                media: url.trim()
-                  ? { type: "image", url, altText }
-                  : undefined,
-              });
-            }}
-          />
-        </div>
+        <BombMediaInputs
+          idPrefix="tutorial-next-question-media"
+          testIdPrefix="tutorial-bomb-next-question-media"
+          urlLabel="رابط صورة سؤال الفريق الثاني"
+          altLabel="وصف صورة سؤال الفريق الثاني"
+          media={draft.nextQuestion?.media}
+          onChange={(media) => updateQuestion("nextQuestion", { media })}
+        />
         <div className="space-y-1">
           <FieldLabel htmlFor="tutorial-return-question-prompt">
             سؤال العودة للفريق الأول
@@ -2574,6 +2605,14 @@ function BombTutorialEditor({
             }
           />
         </div>
+        <BombMediaInputs
+          idPrefix="tutorial-return-question-media"
+          testIdPrefix="tutorial-bomb-return-question-media"
+          urlLabel="رابط صورة سؤال العودة"
+          altLabel="وصف صورة سؤال العودة"
+          media={draft.returnQuestion?.media}
+          onChange={(media) => updateQuestion("returnQuestion", { media })}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button
