@@ -103,9 +103,9 @@ export class Top5TutorialDecisionDto {
 }
 
 export class ComboTutorialStageDto {
-  @ApiProperty({ enum: [1, 2, 3] })
-  @IsIn([1, 2, 3])
-  stage: 1 | 2 | 3;
+  @ApiProperty({ enum: [1, 2, 3, 4] })
+  @IsIn([1, 2, 3, 4])
+  stage: 1 | 2 | 3 | 4;
 
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(400) prompt: string;
 
@@ -248,11 +248,19 @@ export class OddPieceTutorialImageMediaDto {
 }
 
 export class OddPieceTutorialProvenanceDto {
-  @ApiProperty({ enum: ['authentic', 'ai-edited'] })
-  @IsIn(['authentic', 'ai-edited'])
-  assetOrigin: 'authentic' | 'ai-edited';
+  @ApiProperty({ enum: ['authentic', 'ai-edited', 'ai-generated'] })
+  @IsIn(['authentic', 'ai-edited', 'ai-generated'])
+  assetOrigin: 'authentic' | 'ai-edited' | 'ai-generated';
 
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(500) sourceUrl: string;
+  @ApiPropertyOptional()
+  @ValidateIf(
+    (value: OddPieceTutorialProvenanceDto) =>
+      value.assetOrigin !== 'ai-generated' || value.sourceUrl !== undefined,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  sourceUrl?: string;
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -268,6 +276,31 @@ export class OddPieceTutorialProvenanceDto {
   @IsString()
   @MaxLength(160)
   editModel?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  generationModel?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  generationPrompt?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  generationRecord?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  transformationSteps?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  assetSha256?: string;
 }
 
 export class OddPieceTutorialHotspotImageDto {

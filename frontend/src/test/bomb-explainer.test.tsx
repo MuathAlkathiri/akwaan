@@ -57,9 +57,9 @@ describe("BombExplainer", () => {
       <BombExplainer scenario={SAMPLE_BOMB_TUTORIAL_SCENARIO} mode="preview" />,
     );
     await user.click(screen.getByTestId("explainer-next"));
-    expect(screen.getByTestId("bomb-phone-answer")).toHaveValue("المريخ");
+    expect(screen.getByTestId("bomb-phone-answer")).toHaveValue("إجابة خاطئة");
     await user.click(screen.getByTestId("explainer-next"));
-    expect(screen.getByText(/خاطئة، الدور مستمر/)).toBeInTheDocument();
+    expect(screen.getByText(/خاطئة — الدور مستمر/)).toBeInTheDocument();
     for (let index = 0; index < 5; index += 1) {
       await user.click(screen.getByTestId("explainer-next"));
     }
@@ -189,6 +189,50 @@ describe("BombExplainer", () => {
     );
     expect(fallback).toHaveTextContent("تعذّر تحميل الصورة");
     expect(fallback).not.toHaveTextContent("المشتري");
+  });
+
+  it("resolves backend /uploads images and resets failed-media state when url changes", async () => {
+    reduceMotion();
+    const user = userEvent.setup();
+    render(
+      <BombExplainer
+        scenario={{
+          ...SAMPLE_BOMB_TUTORIAL_SCENARIO,
+          prompt: "من اللاعب؟",
+          acceptedAnswer: "ميسي",
+          media: {
+            type: "image",
+            url: "/uploads/question-assets/images/football_laliga_lionel_messi.webp",
+            altText: "صورة ميسي",
+          },
+          returnQuestion: {
+            prompt: "من اللاعب؟",
+            acceptedAnswer: "رونالدو",
+            media: {
+              type: "image",
+              url: "/uploads/question-assets/images/football_laliga_cristiano_ronaldo.webp",
+              altText: "صورة رونالدو",
+            },
+          },
+        }}
+        mode="preview"
+      />,
+    );
+
+    const firstImg = screen.getByRole("img", { name: "صورة ميسي" });
+    expect(firstImg.getAttribute("src")).toContain(
+      "/uploads/question-assets/images/football_laliga_lionel_messi.webp",
+    );
+    fireEvent.error(firstImg);
+    expect(screen.getByTestId("bomb-media-fallback")).toBeInTheDocument();
+
+    for (let i = 0; i < 8; i += 1) {
+      await user.click(screen.getByTestId("explainer-next"));
+    }
+    expect(screen.queryByTestId("bomb-media-fallback")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "صورة رونالدو" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the first clock balance through handoff and applies the exact skip penalty", async () => {

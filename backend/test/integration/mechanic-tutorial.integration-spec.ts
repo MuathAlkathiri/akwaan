@@ -76,7 +76,30 @@ describe('Mechanic tutorial HTTP integration', () => {
     version: 1,
     prompt: 'وش اسم الكوكب الأحمر؟',
     acceptedAnswer: 'المريخ',
+    media: {
+      type: 'image',
+      url: '/brand/cosmic/mars.webp',
+      altText: 'صورة الكوكب الأحمر',
+    },
     nextPrompt: 'وش اسم أكبر كوكب؟',
+    nextQuestion: {
+      prompt: 'وش اسم أكبر كوكب؟',
+      acceptedAnswer: 'المشتري',
+      media: {
+        type: 'image',
+        url: '/brand/cosmic/jupiter.webp',
+        altText: 'صورة أكبر كوكب',
+      },
+    },
+    returnQuestion: {
+      prompt: 'وش اسم الكوكب ذي الحلقات؟',
+      acceptedAnswer: 'زحل',
+      media: {
+        type: 'image',
+        url: '/brand/cosmic/luxurious_ringed_planet_illustration.webp',
+        altText: 'صورة كوكب ذي حلقات',
+      },
+    },
     startingTeam: 'team-a',
     correctAtSecondsRemaining: 18,
     opponentExpiresAtSecondsRemaining: 0,

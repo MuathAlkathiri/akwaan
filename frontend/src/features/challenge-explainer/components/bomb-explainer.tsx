@@ -10,6 +10,7 @@ import {
   useTutorialStagePresentation,
 } from "@/features/how-to-play/components/device-frames";
 import { cn } from "@/lib/utils";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { teamIdentity } from "@/lib/team-identity";
 import { BOMB_DEMO_STEPS } from "../bomb-demo-scenario";
 import type { BombTutorialScenario } from "../tutorial-scenario";
@@ -103,7 +104,7 @@ export function BombExplainer({
   const [mediaFailed, setMediaFailed] = useState(false);
   const answerForStep =
     typingIncorrect || incorrect
-      ? "المريخ"
+      ? "إجابة خاطئة"
       : typingCorrect || correct
         ? scenario.acceptedAnswer
         : typingOpponentCorrect || opponentCorrect
@@ -116,7 +117,7 @@ export function BombExplainer({
   }, [at, answerForStep, incorrect, correct, opponentCorrect]);
   useEffect(() => {
     setMediaFailed(false);
-  }, [currentQuestion.prompt]);
+  }, [currentQuestion.prompt, currentQuestion.media?.url]);
   useEffect(() => {
     if (!bomb.current || timeline.reducedMotion) return;
     const ctx = gsap.context(() => {
@@ -238,7 +239,11 @@ export function BombExplainer({
             <div className="w-full max-w-2xl">
               {currentQuestion.media?.type === "image" && !mediaFailed ? (
                 <Image
-                  src={currentQuestion.media.url}
+                  src={
+                    currentQuestion.media.url.startsWith("/uploads/")
+                      ? getMediaUrl(currentQuestion.media.url)
+                      : currentQuestion.media.url
+                  }
                   alt={currentQuestion.media.altText}
                   onError={() => setMediaFailed(true)}
                   width={480}
@@ -268,7 +273,7 @@ export function BombExplainer({
             {incorrect && (
               <div className="flex items-center gap-2 rounded-full bg-destructive/12 px-3.5 py-1.5 text-xs font-black text-destructive sm:text-sm">
                 <XCircle className="size-4 sm:size-5" />
-                المريخ — خاطئة، الدور مستمر
+                إجابة خاطئة — الدور مستمر
               </div>
             )}
             {correct && (

@@ -156,4 +156,30 @@ describe("Combo mechanic tutorial", () => {
     expect(contextSpy).toHaveBeenCalled();
     contextSpy.mockRestore();
   });
+
+  it("renders a four-stage Anime Combo tutorial cleanly including stage 4 forced outcome", async () => {
+    const fourStageScenario = {
+      ...SAMPLE_COMBO_TUTORIAL_SCENARIO,
+      stages: [
+        { stage: 1 as const, prompt: "من قائد قراصنة قبعة القش؟", correctAnswer: "لوفي", submittedAnswer: "لوفي" },
+        { stage: 2 as const, prompt: "ما اسم قرية ناروتو؟", correctAnswer: "كونوها", submittedAnswer: "كونوها" },
+        { stage: 3 as const, prompt: "من يمتلك العملاق المدرع؟", correctAnswer: "راينر براون", submittedAnswer: "راينر براون" },
+        { stage: 4 as const, prompt: "ما الاسم الحقيقي لشخصية باين في ناروتو؟", correctAnswer: "ناغاتو", submittedAnswer: "إيتاتشي" },
+      ],
+      outcome: {
+        ...SAMPLE_COMBO_TUTORIAL_SCENARIO.outcome,
+        breakArmedAtStage: 3 as const,
+        forcedQuestionStage: 4 as const,
+        correctStagesBeforeBreak: 3 as const,
+        unbankedPointsBeforeForcedQuestion: 3 as const,
+      },
+    };
+    render(<ComboExplainer scenario={fourStageScenario} mode="preview" />);
+    expect(screen.getByTestId("combo-tutorial-question")).toHaveTextContent(
+      "من قائد قراصنة قبعة القش؟",
+    );
+    await userEvent.setup().click(screen.getByTestId("explainer-skip"));
+    expect(screen.getByTestId("combo-tutorial-outcome")).toHaveTextContent("ناغاتو");
+    expect(screen.getByTestId("combo-tutorial-outcome")).toHaveTextContent("0 نقاط مثبتة");
+  });
 });

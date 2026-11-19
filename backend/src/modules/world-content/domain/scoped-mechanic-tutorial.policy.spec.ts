@@ -301,4 +301,44 @@ describe('scoped mechanic tutorial flow contract', () => {
       ),
     ).toContain('dishCount');
   });
+
+  it('accepts four-stage scoped Combo scenarios even against a three-stage baseline while locking stage order', () => {
+    const threeStageBaseline = {
+      kind: 'combo' as const,
+      version: 1 as const,
+      stages: [
+        { stage: 1 as const, prompt: 'س1', correctAnswer: 'ج1', submittedAnswer: 'ج1' },
+        { stage: 2 as const, prompt: 'س2', correctAnswer: 'ج2', submittedAnswer: 'ج2' },
+        { stage: 3 as const, prompt: 'س3', correctAnswer: 'ج3', submittedAnswer: 'خطأ' },
+      ],
+    };
+    const fourStageScoped = {
+      kind: 'combo' as const,
+      version: 1 as const,
+      stages: [
+        { stage: 1 as const, prompt: 'من قائد قراصنة قبعة القش؟', correctAnswer: 'لوفي', submittedAnswer: 'لوفي' },
+        { stage: 2 as const, prompt: 'ما اسم قرية ناروتو؟', correctAnswer: 'كونوها', submittedAnswer: 'كونوها' },
+        { stage: 3 as const, prompt: 'من يمتلك العملاق المدرع؟', correctAnswer: 'راينر براون', submittedAnswer: 'راينر براون' },
+        { stage: 4 as const, prompt: 'ما الاسم الحقيقي لشخصية باين في ناروتو؟', correctAnswer: 'ناغاتو', submittedAnswer: 'إيتاتشي' },
+      ],
+    };
+    expect(
+      validateScopedTutorialFlow('combo', fourStageScoped, threeStageBaseline),
+    ).toEqual([]);
+
+    const outOfOrder = {
+      ...fourStageScoped,
+      stages: [
+        fourStageScoped.stages[0],
+        fourStageScoped.stages[2],
+        fourStageScoped.stages[1],
+        fourStageScoped.stages[3],
+      ],
+    };
+    expect(
+      validateScopedTutorialFlow('combo', outOfOrder, threeStageBaseline).map(
+        (item) => item.code,
+      ),
+    ).toEqual(['SCOPED_TUTORIAL_FLOW_LOCKED']);
+  });
 });

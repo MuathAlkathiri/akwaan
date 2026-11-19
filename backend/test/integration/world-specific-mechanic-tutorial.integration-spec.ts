@@ -188,8 +188,8 @@ describe('World-specific mechanic tutorial HTTP integration', () => {
       .expect(200);
     expect(withdrawn.body.data).toBeNull();
 
-    // A generic published tutorial remains the compatibility fallback after a
-    // scoped withdrawal; the scoped record must not overwrite it.
+    // A generic published tutorial must NOT fall back into a World that has no
+    // published World-specific tutorial (including after scoped withdrawal).
     const genericBase = '/admin/mechanics/read-your-opponent/tutorial';
     await request(app.getHttpServer())
       .put(`${genericBase}/draft`)
@@ -204,7 +204,6 @@ describe('World-specific mechanic tutorial HTTP integration', () => {
     const genericFallback = await request(app.getHttpServer())
       .get(`/worlds/${worldId}/mechanics/read-your-opponent/tutorial`)
       .expect(200);
-    expect(genericFallback.body.data.source).toBe('generic');
-    expect(genericFallback.body.data.scenario.prompt).toBe('المثال العام');
+    expect(genericFallback.body.data).toBeNull();
   });
 });

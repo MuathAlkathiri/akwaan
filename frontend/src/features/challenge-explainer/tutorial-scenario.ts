@@ -170,7 +170,7 @@ export interface Top5TutorialScenario {
 }
 
 export interface ComboTutorialStage {
-  stage: 1 | 2 | 3;
+  stage: 1 | 2 | 3 | 4;
   prompt: string;
   correctAnswer: string;
   submittedAnswer: string;
@@ -184,10 +184,10 @@ export interface ComboTutorialScenario {
   caption?: string;
   outcome: {
     decision: "continue-combo";
-    breakArmedAtStage: 2;
-    forcedQuestionStage: 3;
-    correctStagesBeforeBreak: 2;
-    unbankedPointsBeforeForcedQuestion: 2;
+    breakArmedAtStage: 2 | 3;
+    forcedQuestionStage: 3 | 4;
+    correctStagesBeforeBreak: 2 | 3;
+    unbankedPointsBeforeForcedQuestion: 2 | 3;
     forcedQuestionEarned: 0;
     bankedPoints: 0;
     endedBy: "combo-break";

@@ -609,6 +609,80 @@ describe("mechanic tutorial editor", () => {
     );
   });
 
+  it("authors, saves, and clears initial media and returnQuestion.media in BombTutorialEditor", async () => {
+    const user = userEvent.setup();
+    api.fetchAdminTutorial.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: {
+          ...bombScenario,
+          media: undefined,
+          returnQuestion: {
+            prompt: "من اللاعب؟",
+            acceptedAnswer: "رونالدو",
+          },
+        },
+      }),
+    );
+    api.saveTutorialDraft.mockResolvedValue(
+      state({
+        mechanicKey: "bomb",
+        mechanicName: "القنبلة",
+        draft: bombScenario,
+        hasUnpublishedChanges: true,
+      }),
+    );
+
+    await mountBomb();
+    expect(screen.getByTestId("tutorial-bomb-media-alt")).toBeDisabled();
+    expect(
+      screen.getByTestId("tutorial-bomb-return-question-media-alt"),
+    ).toBeDisabled();
+
+    await user.type(
+      screen.getByTestId("tutorial-bomb-media-url"),
+      "/uploads/question-assets/images/football_laliga_lionel_messi.webp",
+    );
+    await user.type(screen.getByTestId("tutorial-bomb-media-alt"), "صورة ميسي");
+    await user.type(
+      screen.getByTestId("tutorial-bomb-return-question-media-url"),
+      "/uploads/question-assets/images/football_laliga_cristiano_ronaldo.webp",
+    );
+    await user.type(
+      screen.getByTestId("tutorial-bomb-return-question-media-alt"),
+      "صورة رونالدو",
+    );
+
+    await user.click(screen.getByTestId("tutorial-save"));
+    expect(api.saveTutorialDraft).toHaveBeenCalledWith(
+      "bomb",
+      expect.objectContaining({
+        media: {
+          type: "image",
+          url: "/uploads/question-assets/images/football_laliga_lionel_messi.webp",
+          altText: "صورة ميسي",
+        },
+        returnQuestion: expect.objectContaining({
+          media: {
+            type: "image",
+            url: "/uploads/question-assets/images/football_laliga_cristiano_ronaldo.webp",
+            altText: "صورة رونالدو",
+          },
+        }),
+      }),
+    );
+
+    await user.clear(screen.getByTestId("tutorial-bomb-media-url"));
+    await user.clear(
+      screen.getByTestId("tutorial-bomb-return-question-media-url"),
+    );
+    expect(screen.getByTestId("tutorial-bomb-media-alt")).toBeDisabled();
+    expect(
+      screen.getByTestId("tutorial-bomb-return-question-media-alt"),
+    ).toBeDisabled();
+  });
+
   it("allows editing Top 5 entry ids explicitly while label edits preserve ids", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(
