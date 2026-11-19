@@ -83,11 +83,12 @@ describe('Scoring foundation (roadmap 8, 16)', () => {
       correctAnswer: 'option-a',
     };
 
+    // One question decides the deciding team's payoff: was its read right?
     it.each([
-      ['TRUST', true, 'team-a', 1, 'ryo.trust.correct'],
-      ['TRUST', false, 'team-b', 1, 'ryo.trust.wrong'],
       ['STEAL', true, 'team-b', 1, 'ryo.steal.correct'],
       ['STEAL', false, 'team-b', -1, 'ryo.steal.failed'],
+      ['TRUST', false, 'team-b', 1, 'ryo.trust.correct'],
+      ['TRUST', true, 'team-b', -1, 'ryo.trust.wrong'],
     ] as const)(
       '%s + correct=%s scores the exact signed payoff',
       (decision, correct, teamId, delta, reason) => {
@@ -104,6 +105,38 @@ describe('Scoring foundation (roadmap 8, 16)', () => {
         });
       },
     );
+
+    it('pays the answering team too when it is doubted and right anyway', () => {
+      const events = scoring.score(
+        SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+        { ...base, decision: 'TRUST', correct: true },
+        context,
+      );
+      expect(events).toHaveLength(2);
+      expect(events[0]).toMatchObject({ teamId: 'team-b', delta: -1 });
+      expect(events[1]).toMatchObject({
+        teamId: 'team-a',
+        delta: 1,
+        reason: 'ryo.trust.vindicated',
+      });
+    });
+
+    it('pays exactly one team in every other cell', () => {
+      const cells = [
+        { decision: 'STEAL', correct: true },
+        { decision: 'STEAL', correct: false },
+        { decision: 'TRUST', correct: false },
+      ] as const;
+      for (const cell of cells) {
+        expect(
+          scoring.score(
+            SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+            { ...base, ...cell },
+            context,
+          ),
+        ).toHaveLength(1);
+      }
+    });
   });
 
   describe('perfect clear bonus', () => {
