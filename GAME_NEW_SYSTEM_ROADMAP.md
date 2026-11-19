@@ -94,6 +94,10 @@ live-game-sessions; physical-device QA (#38, #41); final `Akwaan-prd` migration.
 | [PR #62](https://github.com/MuathAlkathiri/akwaan/pull/62) — gameplay recovery | ✅ Implemented & locally verified: 23 RYO real-Mongo lifecycle, 12 ownership/reconnect integration and 168 focused unit tests; backend typecheck, build, lint and diff checks passed. Newest runtime is selected before terminal/expiry filtering. Server-internal `PresentationReady.executeDeadline` revalidates persisted deadline identity, due time, generation, revisions, expiry, policy and lifecycle in the transaction; initial multi-surface timeouts activate through the canonical transition. Ordinary client acknowledgements remain socket-authenticated; client `readiness-timeout` is rejected in both DTOs and ordinary execution. Stale callback bookkeeping, replay, duplicate dispatch and socket/deadline interleavings are covered. The client timeout exploit failed before the security fix and passed afterward. | ✅ Feature `76ed22fc0c9ccd4ba4f03affeace3188d82f82c8`, security follow-up `3fb0dc993abe4d31278ad8cc95969c6dfd051ffe`; merged `26fd54c866751feb22f39139ad93ba8a68e60bc6`. Vercel skipped an unaffected frontend build. Render manual deployment `dep-dbue1u8m7kps73c4m1u0` built that commit and reported it live; startup diagnostics show MongoDB connected, presence, scheduler and convergence bootstrap, and Nest startup. The supplied startup log reports no scheduler retry exhaustion or socket-only timeout failure. | ✅ Independent read-only `/health` on 2026-11-18 reports `status: ok`, database connected and exact commit `26fd54c866751feb22f39139ad93ba8a68e60bc6`. ⚠️ This is not a gameplay transaction or multi-device reconnect smoke; affected session identities and player impact remain unknown. No historical runtime repair was performed. |
 | [PR #63](https://github.com/MuathAlkathiri/akwaan/pull/63) — Preflight V6 challenge launch experience (§22.1.1) | ✅ Design approved (Preflight V6). ✅ Implemented & verified locally across 3 frontend files (`challenge-preflight.tsx`, `inline-mechanic-tutorial.tsx`, `unified-preflight.test.tsx`): `tsc`, `lint`, and `next build` (38/38 routes) passed; V6-focused suites passed (9/9 files, 140/140 tests; all 19 tutorial/explainer frontend files, 205/205 tests pass); real local multiplayer browser QA (1 host + 4 phones, join/readiness/reconnect, 3-item RYO, repeat-encounter recap) reported passing. ⚠️ Full frontend test suite is not entirely green due to separately tracked concurrent WIP and jsdom timeline-raf timing debt. | ✅ Feature commit `5eebe19b30082ddf7451caaa6ea356639890f637` (`5eebe19`) on `feat/preflight-v6-release`, merged into `main` as `9f2121f9b3319748a818cf3acfd4ed3e6df496cd` (`9f2121f`). ✅ Vercel Production deployment `7867859525` succeeded (`https://akwaan-frontend.vercel.app`); backend was not changed by this release. Rollback target: Vercel deployment `7860975776` (`235cf6f`). | ✅ Public read-only production smoke passed: `/`, `/how-to-play`, `/matches/000000000000000000000000` returned HTTP 200 (`/dev/explainer/ryo` 404 as expected in production); live chunks `2022-08a07961ce6ef8b6.js` and `5497-89d8d600c4f30250.js` verified carrying V6 markers; desktop (`1440×900`) and mobile (`390×844`) Playwright checks on `/` and `/how-to-play` passed with 0 console/page errors and 0 horizontal overflow. ⬜ Authenticated Production multiplayer smoke (creating a live Match with 4 phones) was not performed to avoid mutating production data. |
 
+- **Shipped (2026-11-19) — المرحلة board redrawn on the approved station map ([PR #74](https://github.com/MuathAlkathiri/akwaan/pull/74)):** ✅ Design approved and merged to `main`; Vercel Production deployed. Squares became discs sized to leave the serpentine run visible between them, numerals returned to disc centres, safe tiles carry checkpoint green, and the surface gained the approved artboard's orbital ground, tactical grid, corner brackets and the printed 1 → 16 run. Routes were rebuilt as the four-layer tube (halo · navy casing · gold or red core · highlight) and now mount only where they currently mean something — a token on the source tile, or the square firing mid-replay — because eleven routes converge on five destination tiles and drawing them all at rest buried the board; the destination badge carries the route until the tube is worth seeing. The tile-face test's square assertion was updated to count discs. ⚠️ The pre-merge test run was executed from the repo root, where `@/` does not resolve, so it reported "no tests" rather than passing; the suite was re-run from `frontend/` after the merge.
+
+- **In progress (2026-11-19) — RYO payoff matrix made symmetric (§6.1, §8):** 🟡 Product direction approved; 🚧 backend implemented on `feat/ryo-payoff`, not yet merged or deployed. `RyoPayoffMatrixRule` now resolves one question — did the deciding team's read match the outcome — paying `+1` when it did and `−1` when it did not, and emits a second event (`ryo.trust.vindicated`) paying the answering team `+1` when it was doubted and right anyway. Existing reason codes are deliberately unchanged: `ryo-demo-scenario.ts` and the explainer suites key off them and are under concurrent authorship. ⬜ Player-facing copy — the explainer and the `شاكك فيهم`/`متأكد منهم` option descriptions in `ryo-decision.presentation.ts`, which still describe the old payoff — is owned by the concurrent tutorial workstream and is **not** covered by this change. ⬜ Backend suite not yet run (fresh worktree without `node_modules`).
+
 - **New workstream opened (2026-11-18) — Universal Interactive Mechanic Tutorials — V6 Experience Expansion (§22.1.2):** 🟡 Product direction approved; 🚧 implementation and Production publication in progress. Every eligible playable mechanic will use the approved V6 stage language, canonical GSAP timeline architecture, and Admin-managed example scenarios (`worldId + challengeTypeId` → generic mechanic fallback → no tutorial) with server-derived outcomes. RYO V6 is live in Production; 10 additional mechanics already have Codex-authored GSAP explainers, scenario types, backend policies, and Admin editors on `main`, but still require V6 stage/phone alignment, `GenericV6TutorialSection` timeline-playback synchronization, `OddPieceTutorialEditor` V2 scoped authoring support, and authorized Production tutorial publication (plus `Moving XO` tutorial implementation once its final Arabic name/choreography is approved). See §22.1.2.
 
 ⚠️ **Release follow-ups:** authenticated Production approve-to-READY smoke; multi-device Fair-Start/reconnect
@@ -1539,14 +1543,18 @@ RYO is not a layer wrapped around questions. **It is the format that replaces th
 3. Simultaneous reveal: answer, correctness, and the opponent's choice appear together.
 4. Score resolves automatically. No host action.
 
-**Payoff matrix (balanced — do not simplify):**
+**Payoff matrix (symmetric — revised 2026-11-19, do not simplify):**
 
 | Opponent's choice | Answering team correct | Answering team wrong |
 |---|---|---|
-| **Steal** | Opponent **+1** | Opponent **−1** |
-| **Trust** | Answering team **+1** | Opponent **+1** |
+| **Steal** — «متأكد منهم» | Opponent **+1** | Opponent **−1** |
+| **Trust** — «شاكك فيهم» | Opponent **−1**, answering team **+1** | Opponent **+1** |
 
-The `−1` on a failed steal is load-bearing. Without it, Steal carries no downside, dominates every decision, and the mind-game collapses into a free option. With it, both teams face a real blind simultaneous choice — and the answering team gains a genuine reason to deliberately answer wrong when it suspects a steal.
+One question decides the deciding team's payoff: **was the read right?** Right read `+1`, wrong read `−1`, in all four cells. The whole matrix states the challenge's own name.
+
+The previous matrix put the `−1` on a failed steal only, which left Trust with no losing cell at all. Its break-even sat at **p = 2/3**: Steal was worth pressing only when a team was more than two thirds sure its opponent would answer correctly, so a counting player pressed Trust every round and the decision collapsed into a free option. Making both reads cost a point moves the break-even to **p = 1/2** — above it Steal, below it Trust — which is the balance the old text was reaching for and did not have.
+
+The answering team's `+1` when doubted and right anyway is load-bearing in the other direction: without it the answering team has no stake in its own answer, and answering wrong on purpose becomes unconditionally correct play. With it, the answering team wants to be right when it reads doubt and wrong when it reads confidence — the same blind mind-game, mirrored.
 
 Across 3 items, teams build a read on each other. This is why 3 items matters (§3.3).
 
@@ -1926,10 +1934,10 @@ Related principle worth preserving: **randomness that adds reads as a gift; rand
 
 | Source | Points |
 |---|---|
-| RYO — Trust + correct | +1 answering team |
-| RYO — Trust + wrong | +1 opposing team |
-| RYO — Steal + correct | +1 opposing team |
-| RYO — Steal + wrong | −1 opposing team |
+| RYO — Steal + correct (read right) | +1 opposing team |
+| RYO — Steal + wrong (read wrong) | −1 opposing team |
+| RYO — Trust + wrong (read right) | +1 opposing team |
+| RYO — Trust + correct (read wrong) | −1 opposing team, **and** +1 answering team |
 | Co-op success | +1 per item |
 | Relational match/consensus | +1 per item |
 | Signature mechanic | Declared per mechanic in the scoring registry (§4.1) |
