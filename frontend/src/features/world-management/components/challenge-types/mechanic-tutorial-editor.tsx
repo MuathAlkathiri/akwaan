@@ -19,10 +19,12 @@ import {
   type LaqathaTutorialScenario,
   type FirstNoteTutorialScenario,
   type LaTahriqhaTutorialScenario,
+  type OddPieceHotspotTutorialScenario,
   type OddPieceLegacyTutorialScenario,
   type EkshifniTutorialScenario,
   type TutorialScenario,
   SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO,
+  SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
   SAMPLE_ONE_CLUE_TUTORIAL_SCENARIO,
   SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
   SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
@@ -746,13 +748,17 @@ function OddPieceTutorialEditor({
   worldId?: string;
 }) {
   const initial = stripOutcome(
-    SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO,
+    worldId
+      ? SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO
+      : SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO,
   ) as TutorialScenarioDraft;
   const [state, setState] = useState<AdminTutorialState | null>(null);
   const [draft, setDraft] = useState<TutorialScenarioDraft>(initial);
   const [validation, setValidation] = useState<TutorialValidation | null>(null);
   const [busy, setBusy] = useState(false);
-  const odd = draft as Omit<OddPieceLegacyTutorialScenario, "outcome">;
+  const isV2 = draft.version === 2;
+  const oddV1 = draft as Omit<OddPieceLegacyTutorialScenario, "outcome">;
+  const oddV2 = draft as Omit<OddPieceHotspotTutorialScenario, "outcome">;
   useEffect(() => {
     let active = true;
     fetchAdminTutorial(mechanicKey, worldId)
@@ -784,16 +790,22 @@ function OddPieceTutorialEditor({
       setBusy(false);
     }
   };
-  const update = (patch: Partial<typeof odd>) =>
+  const update = (patch: Partial<typeof oddV1> | Partial<typeof oddV2>) =>
     setDraft((current) => ({ ...current, ...patch }) as TutorialScenarioDraft);
   const preview = validation?.outcome
     ? ({
-        ...odd,
+        ...draft,
         outcome: validation.outcome,
-      } as OddPieceLegacyTutorialScenario)
+      } as TutorialScenario)
     : state?.draft?.kind === "odd-piece"
       ? state.draft
       : null;
+  const pointText = (pt?: { x: number; y: number }) =>
+    pt ? `${pt.x}, ${pt.y}` : "";
+  const parsePoint = (raw: string) => {
+    const [x, y] = raw.split(",").map((part) => Number(part.trim()));
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
+  };
   return (
     <section
       data-testid="mechanic-tutorial-editor"
@@ -803,33 +815,144 @@ function OddPieceTutorialEditor({
         <span>
           <h3 className="text-sm font-black">شرح القطعة الدخيلة</h3>
           <p className="text-xs leading-5 text-muted-foreground">
-            أربع قطع موثّقة: ثلاث من BMW M4 G82 وقطعة دخيلة من Mercedes-AMG C63
-            W206.
+            {isV2
+              ? "نسخة النقطة الساخنة (V2): صورة معدّلة وأصلية ومنطقة حل مطبّعة."
+              : "أربع قطع موثّقة: ثلاث من BMW M4 G82 وقطعة دخيلة من Mercedes-AMG C63 W206."}
           </p>
         </span>
         <PublishState state={state} />
       </header>
       <Textarea
         data-testid="tutorial-odd-piece-prompt"
-        value={odd.prompt}
+        value={isV2 ? oddV2.prompt : oddV1.prompt}
         onChange={(event) => update({ prompt: event.target.value })}
       />
       <div className="grid gap-2 sm:grid-cols-2">
         <Input
-          value={odd.targetVehicleLabel}
+          data-testid="tutorial-odd-piece-target-label"
+          value={isV2 ? oddV2.targetVehicleLabel : oddV1.targetVehicleLabel}
           onChange={(event) =>
             update({ targetVehicleLabel: event.target.value })
           }
           placeholder="اسم السيارة الهدف (يظهر في الكشف)"
         />
         <Input
-          value={odd.intruderVehicleLabel}
+          data-testid="tutorial-odd-piece-intruder-label"
+          value={isV2 ? oddV2.intruderVehicleLabel : oddV1.intruderVehicleLabel}
           onChange={(event) =>
             update({ intruderVehicleLabel: event.target.value })
           }
           placeholder="اسم السيارة الدخيلة (يظهر في الكشف)"
         />
       </div>
+      {isV2 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            data-testid="tutorial-odd-piece-target-id"
+            dir="ltr"
+            value={oddV2.targetVehicleIdentity}
+            onChange={(event) =>
+              update({ targetVehicleIdentity: event.target.value })
+            }
+            placeholder="targetVehicleIdentity"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-intruder-id"
+            dir="ltr"
+            value={oddV2.intruderVehicleIdentity}
+            onChange={(event) =>
+              update({ intruderVehicleIdentity: event.target.value })
+            }
+            placeholder="intruderVehicleIdentity"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-part-id"
+            dir="ltr"
+            value={oddV2.intruderPartIdentity}
+            onChange={(event) =>
+              update({ intruderPartIdentity: event.target.value })
+            }
+            placeholder="intruderPartIdentity"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-part-label"
+            value={oddV2.intruderPartLabel}
+            onChange={(event) =>
+              update({ intruderPartLabel: event.target.value })
+            }
+            placeholder="وصف القطعة الدخيلة"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-modified-url"
+            dir="ltr"
+            value={oddV2.modifiedImage?.media?.assets?.[0]?.url ?? ""}
+            onChange={(event) =>
+              update({
+                modifiedImage: {
+                  ...oddV2.modifiedImage,
+                  media: { type: "image", assets: [{ url: event.target.value }] },
+                },
+              })
+            }
+            placeholder="/tutorial-media/odd-piece-v2/mustang-modified.png"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-original-url"
+            dir="ltr"
+            value={oddV2.originalImage?.media?.assets?.[0]?.url ?? ""}
+            onChange={(event) =>
+              update({
+                originalImage: {
+                  ...oddV2.originalImage,
+                  media: { type: "image", assets: [{ url: event.target.value }] },
+                },
+              })
+            }
+            placeholder="/tutorial-media/odd-piece-v2/mustang-original.jpg"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-wrong-point"
+            dir="ltr"
+            defaultValue={pointText(oddV2.wrongPoint)}
+            onBlur={(event) => {
+              const pt = parsePoint(event.target.value);
+              if (pt) update({ wrongPoint: pt, team1Tap: pt });
+            }}
+            placeholder="wrongPoint (x, y)"
+          />
+          <Input
+            data-testid="tutorial-odd-piece-correct-point"
+            dir="ltr"
+            defaultValue={pointText(oddV2.correctPoint)}
+            onBlur={(event) => {
+              const pt = parsePoint(event.target.value);
+              if (pt) update({ correctPoint: pt, team2Tap: pt });
+            }}
+            placeholder="correctPoint (x, y)"
+          />
+          <Textarea
+            data-testid="tutorial-odd-piece-polygon"
+            dir="ltr"
+            className="sm:col-span-2"
+            defaultValue={JSON.stringify(oddV2.hotspot?.polygon ?? [])}
+            onBlur={(event) => {
+              try {
+                const polygon = JSON.parse(event.target.value);
+                if (Array.isArray(polygon)) {
+                  update({
+                    hotspot: {
+                      ...oddV2.hotspot,
+                      polygon,
+                    },
+                  });
+                }
+              } catch {
+                // Keep existing polygon if JSON is incomplete while typing.
+              }
+            }}
+          />
+        </div>
+      )}
       <p className="rounded-lg bg-muted/50 p-2 text-xs leading-5 text-muted-foreground">
         الصور المحلية والمصادر والترخيص محفوظة في حزمة المعاينة؛ لا تُرفع هذه
         المسودة إلى R2 من هذا المحرر.
@@ -837,10 +960,11 @@ function OddPieceTutorialEditor({
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
+          data-testid="tutorial-save"
           disabled={busy}
           onClick={() =>
             run(async () =>
-              setState(await saveTutorialDraft(mechanicKey, odd, worldId)),
+              setState(await saveTutorialDraft(mechanicKey, draft, worldId)),
             )
           }
         >
@@ -849,11 +973,12 @@ function OddPieceTutorialEditor({
         <Button
           type="button"
           variant="outline"
+          data-testid="tutorial-validate"
           disabled={busy}
           onClick={() =>
             run(async () =>
               setValidation(
-                await validateTutorialDraft(mechanicKey, odd, worldId),
+                await validateTutorialDraft(mechanicKey, draft, worldId),
               ),
             )
           }
@@ -1518,9 +1643,20 @@ function Top5TutorialEditor({
       label: "",
       rank: index < 5 ? index + 1 : null,
     })),
-    decisions: Array.from({ length: 10 }, (_, index) => ({
-      action: index % 2 === 0 ? "keep" : "give",
-    })),
+    decisions: (
+      [
+        "keep",
+        "give",
+        "keep",
+        "give",
+        "give",
+        "keep",
+        "give",
+        "give",
+        "keep",
+        "keep",
+      ] as const
+    ).map((action) => ({ action })),
   };
   const [state, setState] = useState<AdminTutorialState | null>(null);
   const [draft, setDraft] = useState<TutorialScenarioDraft>(initial);
