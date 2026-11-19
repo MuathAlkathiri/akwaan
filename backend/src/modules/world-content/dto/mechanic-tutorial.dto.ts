@@ -598,7 +598,7 @@ export class TutorialScenarioDto {
   @ValidateIf((value: TutorialScenarioDto) => value.kind === 'combo')
   @IsArray()
   @ArrayMinSize(3)
-  @ArrayMaxSize(3)
+  @ArrayMaxSize(4)
   @ValidateNested({ each: true })
   @Type(() => ComboTutorialStageDto)
   stages?: ComboTutorialStageDto[];
