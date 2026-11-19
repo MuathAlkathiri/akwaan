@@ -278,24 +278,19 @@ export function MarhalaBoard({
     >
       <svg
         viewBox={`0 0 ${BOX} ${BOX}`}
-        className="absolute inset-0 size-full drop-shadow-[0_22px_30px_hsl(var(--brand-navy)/0.3)]"
+        className="absolute inset-0 size-full"
         role="presentation"
         aria-hidden
       >
         <defs>
           <linearGradient id="marhala-board-rim" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(221 45% 30%)" />
-            <stop offset="100%" stopColor="hsl(225 55% 16%)" />
+            <stop offset="0%" stopColor="hsl(43 60% 98%)" />
+            <stop offset="100%" stopColor="hsl(41 45% 93%)" />
           </linearGradient>
           <linearGradient id="marhala-tile-cream" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(43 66% 96%)" />
-            <stop offset="72%" stopColor="hsl(40 55% 88%)" />
-            <stop offset="100%" stopColor="hsl(38 44% 80%)" />
-          </linearGradient>
-          <linearGradient id="marhala-tile-blue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(216 48% 94%)" />
-            <stop offset="72%" stopColor="hsl(216 38% 84%)" />
-            <stop offset="100%" stopColor="hsl(216 31% 76%)" />
+            <stop offset="0%" stopColor="hsl(43 66% 99%)" />
+            <stop offset="72%" stopColor="hsl(42 50% 96%)" />
+            <stop offset="100%" stopColor="hsl(40 42% 93%)" />
           </linearGradient>
           <linearGradient id="marhala-tile-finish" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="hsl(46 93% 76%)" />
@@ -358,7 +353,7 @@ export function MarhalaBoard({
           width={BOX - 6}
           height={BOX - 8}
           rx={46}
-          fill="hsl(225 55% 10% / 0.35)"
+          fill="hsl(var(--brand-navy))"
         />
         <rect
           x={3}
@@ -375,8 +370,8 @@ export function MarhalaBoard({
           height={BOX - 6}
           rx={46}
           fill="none"
-          stroke="hsl(var(--brand-gold) / 0.55)"
-          strokeWidth={6}
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={9}
         />
         <rect
           x={13}
@@ -385,8 +380,8 @@ export function MarhalaBoard({
           height={BOX - 32}
           rx={37}
           fill="none"
-          stroke="hsl(0 0% 100% / 0.16)"
-          strokeWidth={3}
+          stroke="hsl(var(--brand-navy) / 0.1)"
+          strokeWidth={2}
         />
 
         {/* Faces first — the squares the objects lie on. */}
@@ -784,42 +779,36 @@ function TileFace({
   const { x, y } = corner(tile);
   const finish = tile.kind === "finish";
   const accent = accentOf(tile);
-  const alternating = (tile.row + tile.column) % 2 === 0;
+  // One cream for every ordinary square. The alternating blue made a chequer
+  // of a board whose real signal is which squares are special; a square now
+  // carries colour only when it does something.
   const fill = finish
     ? "url(#marhala-tile-finish)"
-    : alternating
-      ? "url(#marhala-tile-blue)"
-      : "url(#marhala-tile-cream)";
+    : tile.kind === "boost"
+      ? "hsl(43 72% 86%)"
+      : tile.kind === "trap"
+        ? "hsl(356 60% 89%)"
+        : "url(#marhala-tile-cream)";
   return (
     <g
       data-tile-face={tile.position}
       aria-hidden
       className="transition-all duration-slow ease-akwaan"
     >
+      {/* A hard, unblurred shadow: the «ملصق» treatment the team colours use,
+          which is what makes a square read as a piece set on the board rather
+          than a shape printed into it. */}
       <rect
-        x={x + 2}
-        y={y + 10}
+        x={x}
+        y={y + 9}
         width={TILE}
         height={TILE}
         rx={22}
-        fill="hsl(225 55% 9% / 0.42)"
+        fill="hsl(var(--brand-navy))"
       />
       <rect x={x} y={y} width={TILE} height={TILE} rx={22} fill={fill} />
-      <path
-        d={`M ${x + 18} ${y + TILE - 10} H ${x + TILE - 18} Q ${x + TILE - 8} ${y + TILE - 10} ${x + TILE - 8} ${y + TILE - 23}`}
-        fill="none"
-        stroke="hsl(var(--brand-navy) / 0.16)"
-        strokeWidth={7}
-        strokeLinecap="round"
-      />
-      <path
-        d={`M ${x + 20} ${y + 10} H ${x + TILE - 22}`}
-        fill="none"
-        stroke="white"
-        strokeOpacity={0.5}
-        strokeWidth={5}
-        strokeLinecap="round"
-      />
+      {/* One navy outline for every square, special or not: the colour inside
+          it is what says what the square does. Same rule as the team colours. */}
       <rect
         x={x}
         y={y}
@@ -827,8 +816,8 @@ function TileFace({
         height={TILE}
         rx={22}
         fill="none"
-        stroke={accent}
-        strokeWidth={finish || emphasised ? 7 : 3}
+        stroke={emphasised ? accent : "hsl(var(--brand-navy))"}
+        strokeWidth={finish || emphasised ? 7 : 4}
       />
     </g>
   );
@@ -837,9 +826,9 @@ function TileFace({
 /** A square's own colour: gold forward, rose back, quiet navy for the rest. */
 function accentOf(tile: MarhalaTile): string {
   if (tile.kind === "finish") return "hsl(var(--brand-gold))";
-  if (tile.kind === "boost") return "hsl(var(--brand-gold) / 0.4)";
-  if (tile.kind === "trap") return "hsl(var(--brand-navy) / 0.2)";
-  return "hsl(var(--brand-navy) / 0.16)";
+  if (tile.kind === "boost") return "hsl(38 70% 45%)";
+  if (tile.kind === "trap") return "hsl(354 60% 45%)";
+  return "hsl(var(--brand-navy) / 0.3)";
 }
 
 /**
@@ -907,10 +896,10 @@ function TileSquare({
           <circle
             r={22}
             fill={
-              tile.kind === "boost" ? "hsl(43 96% 56%)" : "hsl(350 55% 38%)"
+              tile.kind === "boost" ? "hsl(43 80% 66%)" : "hsl(356 68% 72%)"
             }
-            stroke="hsl(var(--brand-navy) / 0.72)"
-            strokeWidth={3}
+            stroke="hsl(var(--brand-navy))"
+            strokeWidth={4}
           />
           <path
             d={
@@ -919,34 +908,32 @@ function TileSquare({
                 : "M 0 -12 V 11 M -10 2 L 0 12 L 10 2"
             }
             fill="none"
-            stroke="white"
+            stroke="hsl(var(--brand-navy))"
             strokeWidth={6}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <rect
             data-destination-badge="true"
-            x={-52}
-            y={-47}
-            width={104}
-            height={36}
-            rx={12}
+            x={-44}
+            y={-44}
+            width={88}
+            height={31}
+            rx={11}
             fill={
-              tile.kind === "boost" ? "hsl(39 90% 47%)" : "hsl(350 62% 39%)"
+              tile.kind === "boost" ? "hsl(43 80% 80%)" : "hsl(356 68% 85%)"
             }
-            stroke={
-              tile.kind === "boost" ? "hsl(45 100% 78%)" : "hsl(350 100% 78%)"
-            }
-            strokeWidth={3}
+            stroke="hsl(var(--brand-navy))"
+            strokeWidth={3.5}
           />
           <text
             data-destination-badge-text="true"
             x={0}
             y={-21}
             textAnchor="middle"
-            fontSize={23}
+            fontSize={21}
             fontWeight={900}
-            fill="white"
+            fill="hsl(var(--brand-navy))"
             direction="ltr"
           >
             {`${tile.destination} ${tile.kind === "boost" ? "↑" : "↓"}`}
@@ -956,15 +943,15 @@ function TileSquare({
       {/* A cream halo behind the numeral, so it stays crisp even where a route
           runs under it. */}
       <text
-        x={x + TILE / 2}
-        y={y + TILE / 2 + 27}
+        x={x + 30}
+        y={y + 46}
         textAnchor="middle"
         className="akwaan-numeral"
-        fontSize={78}
+        fontSize={40}
         fontWeight={900}
-        fill="hsl(var(--brand-navy))"
-        stroke="hsl(43 55% 94% / 0.72)"
-        strokeWidth={5}
+        fill="hsl(var(--brand-navy) / 0.75)"
+        stroke="hsl(43 55% 96% / 0.8)"
+        strokeWidth={4}
         strokeLinejoin="round"
         paintOrder="stroke"
         opacity={1}
