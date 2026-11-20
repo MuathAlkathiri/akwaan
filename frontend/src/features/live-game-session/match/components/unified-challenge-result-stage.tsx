@@ -225,15 +225,27 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
             .map((entry) => {
               const identity = teamIdentityOf(entry.teamId, snapshot.teams);
               return (
+                /* A point is gold, whoever won it, and the team is a dot
+                   beside it. Painting the whole chip in the team's colour
+                   collided with the one meaning red already carries here —
+                   wrong — so a red team winning a point read as a mistake.
+                   Red and green say right and wrong; gold says a point moved;
+                   a team's colour identifies, and never fills a surface. */
                 <p
                   key={entry.teamId}
+                  data-testid={`challenge-result-points-${entry.teamId}`}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-black",
-                    identity.surface,
-                    identity.border,
-                    identity.text,
+                    "inline-flex items-center gap-2 rounded-full border-2 border-brand-navy px-3 py-1 text-sm font-black text-brand-navy",
+                    entry.points > 0 ? "bg-brand-gold" : "bg-muted",
                   )}
                 >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-2.5 rounded-full border border-brand-navy",
+                      identity.solid,
+                    )}
+                  />
                   {teamName(snapshot, entry.teamId)}
                   <span className="akwaan-numeral">
                     {entry.points > 0 ? `+${entry.points}` : entry.points}

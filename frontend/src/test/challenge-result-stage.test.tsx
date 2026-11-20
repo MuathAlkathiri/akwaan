@@ -516,7 +516,9 @@ describe("RYO result recap", () => {
     expect(first.textContent).toContain("شاكك فيهم");
     const second = screen.getByTestId("ryo-result-item-1");
     expect(second.textContent).toContain("متأكد منهم");
-    expect(second.textContent).toContain("خطأ");
+    // The card stamps the answer rather than labelling it: same fact, the
+    // wording the approved recap uses.
+    expect(second.textContent).toContain("جاوب غلط");
     expect(screen.getByTestId("ryo-result-winner").textContent).toContain(
       "صقور الرياض",
     );
