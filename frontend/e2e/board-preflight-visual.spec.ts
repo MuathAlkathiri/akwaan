@@ -2,6 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from "@pla
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { loginAs } from "./helpers";
 
 const HOST = process.env.E2E_HOST_EMAIL ?? "top5smoke@test.com";
 const PASSWORD = process.env.E2E_HOST_PASSWORD ?? "Top5Smoke!42";
@@ -66,11 +67,7 @@ test("Board and Preflight visual states", async ({ page, browser }) => {
 });
 
 async function login(page: Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill(HOST);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole("button", { name: "دخول" }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  await loginAs(page, HOST, PASSWORD);
 }
 
 async function completeSetup(page: Page) {

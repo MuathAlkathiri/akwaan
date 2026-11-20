@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { loginAs } from "./helpers";
 
 /**
  * Top 5 and RYO, played end to end in real browsers against the Docker stack.
@@ -524,11 +525,7 @@ async function submitRyoAnswer(phone: Page): Promise<void> {
 }
 
 async function login(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill(HOST);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole("button", { name: "دخول" }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  await loginAs(page, HOST, PASSWORD);
 }
 
 /**
