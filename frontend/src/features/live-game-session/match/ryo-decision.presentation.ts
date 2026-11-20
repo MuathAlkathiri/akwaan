@@ -7,6 +7,10 @@
  * team actually knows the answer?". `trust` is the doubtful read ("شاكك فيهم"),
  * `steal` is the confident read that bets against them ("متأكد منهم").
  *
+ * Both reads cost a point when they miss, so neither description may promise a
+ * free option: a player who reads "مو متأكد إنهم يعرفون" and loses a point for
+ * it was misled by this file.
+ *
  * Every RYO surface — the phone choice buttons, the locked-in echo, the reveal,
  * the result recap — reads its wording from here, so the pair can never drift into
  * two different vocabularies on two screens, and no component hand-maps a raw
@@ -26,13 +30,12 @@ export interface RyoDecisionCopy {
 export const RYO_DECISION_PRESENTATION: Record<RyoDecision, RyoDecisionCopy> = {
   trust: {
     title: "شاكك فيهم",
-    description: "مو متأكد إنهم يعرفون الجواب.",
+    description: "ما أظنهم يعرفون الجواب. غلطوا +1 · عرفوا −1.",
     revealLabel: "شاكك فيهم",
   },
   steal: {
     title: "متأكد منهم",
-    description:
-      "متأكد إنهم بيعرفون الجواب — بسرق نقاطهم، بس لو غلطوا أخسر نقطة.",
+    description: "أكيد يعرفون الجواب. عرفوا +1 · غلطوا −1.",
     revealLabel: "متأكد منهم",
   },
 };

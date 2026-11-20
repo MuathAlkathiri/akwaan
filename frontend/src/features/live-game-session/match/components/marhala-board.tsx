@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
+import { PlayerCharacterIcon } from "../../components/player-characters";
 import {
   MARHALA_BOARD,
   MARHALA_ROW_LENGTH,
@@ -15,6 +16,12 @@ import {
 export interface MarhalaBoardTeam {
   id: string;
   name: string;
+  /**
+   * The character this team's player picked in the lobby, drawn as the pawn.
+   * Optional: a board handed no character falls back to the team's initial, so
+   * a session from before characters existed still draws.
+   */
+  avatarKey?: string;
 }
 
 /**
@@ -862,6 +869,16 @@ function TileFace({
         stroke={emphasised ? accent : "hsl(var(--brand-navy))"}
         strokeWidth={finish || emphasised ? 8 : 5}
       />
+      {tile.safe && !finish && (
+        <path
+          data-tile-checkpoint="flag"
+          d={`M ${x + TILE / 2 - 13} ${y + TILE / 2 + DISC - 2} v -38 h 40 l -9 14 9 14 h -40`}
+          fill="hsl(156 62% 28%)"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth={4}
+          strokeLinejoin="round"
+        />
+      )}
     </g>
   );
 }
@@ -1093,7 +1110,11 @@ function Token({
       )}
     >
       <span className="relative z-10 drop-shadow-sm">
-        {team.name.trim().slice(0, 1) || identity.slot}
+        {team.avatarKey ? (
+<PlayerCharacterIcon characterKey={team.avatarKey} size={30} />
+        ) : (
+          team.name.trim().slice(0, 1) || identity.slot
+        )}
       </span>
     </span>
   );

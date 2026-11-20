@@ -10,6 +10,8 @@ import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { teamIdentityOf, type TeamIdentity } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
+import { useAnswerCue } from "../match/components/answer-cue";
+import { PlayerCharacterIcon } from "./player-characters";
 import { BidiText } from "@/components/akwaan/bidi-text";
 import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { Button } from "@/components/ui/button";
@@ -170,6 +172,11 @@ function parseItem(value: unknown): RyoItem | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** The item a cue belongs to, so the next item's verdict is a new sound. */
+function itemIndexForCue(runtime: GameplayRuntimeSnapshot): number {
+  return Number(runtime.modeState.currentItemIndex ?? 0);
 }
 
 export function RyoGameplayPanel({
@@ -451,6 +458,11 @@ export function RyoGameplayPanel({
     !alreadySubmitted &&
     connection === "connected";
   const phone = useMobileSurface();
+  // The reveal is where اقرأ خصمك pays off, so it is where the room hears it.
+  useAnswerCue(
+    interaction?.outcome?.payload.correct as boolean | undefined,
+    `ryo-${itemIndexForCue(runtime)}`,
+  );
   const deciderName = (participantId: unknown) =>
     snapshot?.participants.find((person) => person.id === participantId)
       ?.displayName ?? "";
@@ -458,6 +470,12 @@ export function RyoGameplayPanel({
     role === "answering"
       ? prompt?.payload.answererParticipantId
       : prompt?.payload.deciderParticipantId,
+  );
+  // Who the deciding team is actually reading. The server already names the
+  // answerer in the prompt, so the phone can show the person instead of asking
+  // its player to picture them.
+  const answerer = snapshot?.participants.find(
+    (person) => person.id === prompt?.payload.answererParticipantId,
   );
   const itemIndex = Number(runtime.modeState.currentItemIndex ?? 0);
   // The clip exists for this item. The URL does not travel to a phone — only
@@ -590,6 +608,8 @@ export function RyoGameplayPanel({
         alreadySubmitted={alreadySubmitted}
         isAssignedActor={isAssignedActor}
         assignedName={assignedName}
+        answererName={answerer?.displayName}
+        answererAvatarKey={answerer?.avatarKey}
         myDecision={myDecision}
         setMyDecision={setMyDecision}
         submit={submit}
@@ -810,41 +830,53 @@ export function RyoGameplayPanel({
             data-outcome={
               interaction.outcome.payload.correct ? "correct" : "wrong"
             }
-            className={cn(
-              "akwaan-rise rounded-[var(--radius)] p-5 text-center text-sem-reveal-foreground",
-              interaction.outcome.payload.correct
-                ? "bg-sem-success"
-                : "bg-sem-error",
-            )}
+            className="akwaan-rise rounded-[var(--radius)] border-2 border-border bg-card p-5"
             role="status"
           >
-            <p className="text-2xl font-black">
-              {interaction.outcome.payload.correct
-                ? "إجابة صحيحة"
-                : "إجابة غير صحيحة"}
-            </p>
-            <p className="text-sm font-bold opacity-90">
-              قرار الخصم:{" "}
-              {ryoDecisionRevealLabel(
-                String(interaction.outcome.payload.decision),
-              )}
-            </p>
-            {/* The answers, inside the one native reveal rather than a second
-                screen after it: اقرأ خصمك resolves both sides simultaneously,
-                and splitting that into two beats would break the mechanic. */}
-            <div className="mt-3 grid gap-2 text-start sm:grid-cols-2">
-              <div className="min-w-0">
-                <p className="text-xs font-bold opacity-80">الإجابة المُرسلة</p>
-                <p className="break-words text-lg font-black [overflow-wrap:anywhere]">
+            {/* Two halves, side by side and equal in weight: اقرأ خصمك resolves
+                the answer and the read simultaneously, and the old full-bleed
+                green/red surface said the round went well or badly by the
+                answer alone — which after the symmetric payoff is no longer
+                true. A wrong answer can be the deciding team's point. So the
+                verdict stays on each half, and the score is left to the
+                scoreboard, which is the only authority on it. */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0 rounded-[var(--radius)] border-2 border-border p-4">
+                <p className="text-xs font-black text-muted-foreground">
+                  الإجابة
+                </p>
+                <p className="mt-1 break-words text-xl font-black text-foreground [overflow-wrap:anywhere]">
                   {String(
                     interaction.outcome.payload.selectedAnswer ?? "",
                   ).trim() || "ما تم إرسال إجابة"}
                 </p>
+                <p
+                  className={cn(
+                    "mt-3 rounded-[var(--radius)] border-2 px-3 py-2 text-base font-black",
+                    interaction.outcome.payload.correct
+                      ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
+                      : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
+                  )}
+                >
+                  {interaction.outcome.payload.correct
+                    ? "إجابة صحيحة"
+                    : "إجابة غير صحيحة"}
+                </p>
+                {!interaction.outcome.payload.correct && (
+                  <p className="mt-2 break-words text-sm font-bold text-muted-foreground [overflow-wrap:anywhere]">
+                    الصحيح:{" "}
+                    {String(interaction.outcome.payload.correctAnswer ?? "")}
+                  </p>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold opacity-80">الإجابة الصحيحة</p>
-                <p className="break-words text-lg font-black [overflow-wrap:anywhere]">
-                  {String(interaction.outcome.payload.correctAnswer ?? "")}
+              <div className="min-w-0 rounded-[var(--radius)] border-2 border-border p-4">
+                <p className="text-xs font-black text-muted-foreground">
+                  قراءة الخصم
+                </p>
+                <p className="mt-1 text-xl font-black text-foreground">
+                  {ryoDecisionRevealLabel(
+                    String(interaction.outcome.payload.decision),
+                  )}
                 </p>
               </div>
             </div>
@@ -868,6 +900,8 @@ function PhoneRyoController({
   alreadySubmitted,
   isAssignedActor,
   assignedName,
+  answererName,
+  answererAvatarKey,
   myDecision,
   setMyDecision,
   submit,
@@ -889,6 +923,8 @@ function PhoneRyoController({
   alreadySubmitted: boolean;
   isAssignedActor: boolean;
   assignedName: string;
+  answererName?: string;
+  answererAvatarKey?: string;
   myDecision?: string;
   setMyDecision: (decision: string) => void;
   submit: (payload: Record<string, string | number>) => void;
@@ -921,17 +957,39 @@ function PhoneRyoController({
         data-testid="ryo-phone-controller"
       >
         {outcome ? (
+          // The reveal is the point of the mechanic, so the phone shows both
+          // halves of it — what was answered and how it was read — with the
+          // player's own half first on whichever phone this is, and then the
+          // verdict that joins them.
           <section
-            className="flex flex-1 flex-col items-center justify-center gap-2"
+            className="flex flex-1 flex-col gap-3"
             data-testid="ryo-phone-reveal"
           >
-            <p className="text-2xl font-black text-foreground">
-              {outcome.correct === true ? "إجابة صحيحة" : "إجابة غير صحيحة"}
-            </p>
-            <p className="font-bold text-muted-foreground">
-              قرار الخصم: {ryoDecisionRevealLabel(String(outcome.decision))}
-            </p>
-            <p className="text-sm font-bold text-muted-foreground">
+            {(() => {
+              const answerCard = (
+                <PhoneRyoRevealCard
+                  key="answer"
+                  label={role === "answering" ? "جوابكم" : "جاوبوا"}
+                  headline={
+                    outcome.correct === true ? "إجابة صحيحة" : "إجابة غير صحيحة"
+                  }
+                  tone={outcome.correct === true ? "right" : "wrong"}
+                />
+              );
+              const readCard = (
+                <PhoneRyoRevealCard
+                  key="read"
+                  label={role === "opposing" ? "قراءتكم" : "قراءتهم فيكم"}
+                  headline={ryoDecisionRevealLabel(String(outcome.decision))}
+                />
+              );
+              // Your own half on top: the answering team reads its answer
+              // first, the deciding team reads its read first.
+              return role === "opposing"
+                ? [readCard, answerCard]
+                : [answerCard, readCard];
+            })()}
+            <p className="mt-auto text-sm font-bold text-muted-foreground">
               تابعوا النتيجة على الشاشة
             </p>
           </section>
@@ -1046,11 +1104,44 @@ function PhoneRyoController({
                 className="flex min-h-0 flex-1 flex-col"
                 data-testid="ryo-phone-decision-controls"
               >
-                <p className="flex flex-1 items-center justify-center text-sm font-bold text-muted-foreground">
-                  {sending
-                    ? "جارٍ تثبيت اختيارك…"
-                    : "اقرأوا الفريق الثاني واختاروا"}
-                </p>
+                {sending ? (
+                  <p className="flex flex-1 items-center justify-center text-sm font-bold text-muted-foreground">
+                    جارٍ تثبيت اختيارك…
+                  </p>
+                ) : (
+                  // The space between the question and the buttons used to hold
+                  // one grey line. The decision is a read of a person, so the
+                  // person goes here.
+                  <section
+                    data-testid="ryo-phone-read-panel"
+                    className="flex flex-1 flex-col justify-center gap-3 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center"
+                  >
+                    <p className="text-xs font-black text-muted-foreground">
+                      اللي يجاوب عنهم
+                    </p>
+                    {answererName ? (
+                      <div className="flex items-center justify-center gap-3">
+                        {answererAvatarKey && (
+                          <PlayerCharacterIcon
+                            characterKey={answererAvatarKey}
+                            size={44}
+                          />
+                        )}
+                        <span className="text-xl font-black text-foreground">
+                          {answererName}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-lg font-black text-foreground">
+                        الفريق الثاني
+                      </p>
+                    )}
+                    <p className="text-sm font-bold leading-relaxed text-muted-foreground">
+                      تظنونه يعرف الجواب؟ قراءتكم صح تكسبكم نقطة، وغلط تكلفكم
+                      وحدة.
+                    </p>
+                  </section>
+                )}
                 <MobileActionArea className="grid grid-cols-2">
                   {DECISIONS.map(({ decision, label, description, Icon }) => (
                     <Button
@@ -1076,18 +1167,48 @@ function PhoneRyoController({
               </section>
             )}
 
-            {(alreadySubmitted || !canSubmit) && (
-              <PhoneRyoWaiting testId="ryo-phone-waiting">
-                {alreadySubmitted
-                  ? sending
-                    ? "جارٍ تثبيت اختيارك…"
-                    : myDecision
-                      ? `اخترت «${ryoDecisionRevealLabel(myDecision)}». ننتظر الطرف الثاني…`
+            {alreadySubmitted && !sending && myDecision ? (
+              // Waiting is a live moment, not an empty screen: the choice is
+              // shown locked so its player knows it landed, and the line under
+              // it says the one thing that protects the mechanic — that nobody
+              // can see it yet.
+              <section
+                data-testid="ryo-phone-waiting"
+                className="flex flex-1 flex-col justify-center gap-3"
+              >
+                <div className="flex flex-col gap-2 rounded-[var(--radius)] border-2 border-border bg-card p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-muted-foreground">
+                      اختيارك
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[hsl(var(--sem-success))] px-2.5 py-1 text-xs font-black text-[hsl(var(--sem-success))]">
+                      <Lock className="size-3.5" aria-hidden />
+                      مقفول
+                    </span>
+                  </div>
+                  <p className="text-xl font-black text-foreground">
+                    {ryoDecisionRevealLabel(myDecision)}
+                  </p>
+                  <p className="text-xs font-bold text-muted-foreground">
+                    ما عاد ينغيّر — ولا أحد يشوفه قبل الكشف.
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-muted-foreground">
+                  ننتظر الطرف الثاني…
+                </p>
+              </section>
+            ) : (
+              (alreadySubmitted || !canSubmit) && (
+                <PhoneRyoWaiting testId="ryo-phone-waiting">
+                  {alreadySubmitted
+                    ? sending
+                      ? "جارٍ تثبيت اختيارك…"
                       : "وصل اختيارك. ننتظر الطرف الثاني…"
-                  : !isAssignedActor && role !== "spectator" && assignedName
-                    ? `${assignedName} هو صاحب القرار. ناقشوها معه.`
-                    : "ننتظر صاحب القرار…"}
-              </PhoneRyoWaiting>
+                    : !isAssignedActor && role !== "spectator" && assignedName
+                      ? `${assignedName} هو صاحب القرار. ناقشوها معه.`
+                      : "ننتظر صاحب القرار…"}
+                </PhoneRyoWaiting>
+              )
             )}
           </>
         ) : (
@@ -1097,6 +1218,42 @@ function PhoneRyoController({
         )}
       </div>
     </ChallengeFrame>
+  );
+}
+
+/**
+ * One half of a phone reveal: what a side did, and the verdict on it.
+ *
+ * `tone` is set only for the answer, which is right or wrong; the read's own
+ * verdict belongs to the shared screen, which can show both sides at once.
+ */
+function PhoneRyoRevealCard({
+  label,
+  headline,
+  tone,
+}: {
+  label: string;
+  headline: string;
+  tone?: "right" | "wrong";
+}) {
+  return (
+    <div
+      data-testid={`ryo-phone-reveal-${tone ? "answer" : "read"}`}
+      data-tone={tone}
+      className="flex flex-col gap-2 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center"
+    >
+      <p className="text-xs font-black text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "text-xl font-black",
+          tone === "right" && "text-[hsl(var(--sem-success))]",
+          tone === "wrong" && "text-[hsl(var(--sem-error))]",
+          !tone && "text-foreground",
+        )}
+      >
+        {headline}
+      </p>
+    </div>
   );
 }
 

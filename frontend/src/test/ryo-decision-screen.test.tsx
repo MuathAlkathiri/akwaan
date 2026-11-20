@@ -161,20 +161,19 @@ describe("the read-your-opponent choice terminology", () => {
     render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
     const controls = screen.getByTestId("ryo-decision-controls");
     expect(
-      within(controls).getByText("مو متأكد إنهم يعرفون الجواب."),
+      within(controls).getByText("ما أظنهم يعرفون الجواب. غلطوا +1 · عرفوا −1."),
     ).toBeTruthy();
     expect(
-      within(controls).getByText(
-        "متأكد إنهم بيعرفون الجواب — بسرق نقاطهم، بس لو غلطوا أخسر نقطة.",
-      ),
+      within(controls).getByText("أكيد يعرفون الجواب. عرفوا +1 · غلطوا −1."),
     ).toBeTruthy();
     // The description sits inside the same button as its title.
     const trustButton = controls.querySelector('[data-decision="trust"]');
     const stealButton = controls.querySelector('[data-decision="steal"]');
     expect(trustButton?.textContent).toContain("شاكك فيهم");
-    expect(trustButton?.textContent).toContain("مو متأكد إنهم يعرفون الجواب.");
     expect(stealButton?.textContent).toContain("متأكد منهم");
-    expect(stealButton?.textContent).toContain("بسرق نقاطهم");
+    // Neither read may be described as free: both cost a point when they miss.
+    expect(trustButton?.textContent).toContain("−1");
+    expect(stealButton?.textContent).toContain("−1");
   });
 
   it("submits the canonical trust value when «شاكك فيهم» is tapped", () => {
