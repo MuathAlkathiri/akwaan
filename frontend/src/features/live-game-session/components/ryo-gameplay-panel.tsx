@@ -878,6 +878,24 @@ export function RyoGameplayPanel({
                     String(interaction.outcome.payload.decision),
                   )}
                 </p>
+                {/* The server says whether the read matched; this screen never
+                    works it out, so it cannot drift from the payoff. */}
+                {typeof interaction.outcome.payload.readMatchedOutcome ===
+                  "boolean" && (
+                  <p
+                    data-testid="ryo-reveal-read-verdict"
+                    className={cn(
+                      "mt-3 rounded-[var(--radius)] border-2 px-3 py-2 text-base font-black",
+                      interaction.outcome.payload.readMatchedOutcome
+                        ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
+                        : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
+                    )}
+                  >
+                    {interaction.outcome.payload.readMatchedOutcome
+                      ? "قراءة صحيحة"
+                      : "قراءة خاطئة"}
+                  </p>
+                )}
               </div>
             </div>
           </div>
