@@ -1,5 +1,7 @@
 export const FIRST_NOTE_MODE_KEY = "first-note";
 export const FIRST_NOTE_NAME = "من أول نغمة";
+/** Mirrors the server's floor on an opening bid; the server is the authority. */
+export const FIRST_NOTE_OPENING_MIN_BID = 8;
 const json = <T>(value: unknown, fallback: T): T => {
   if (typeof value !== "string") return fallback;
   try {
@@ -20,6 +22,8 @@ export interface FirstNoteView {
   biddingTeamId?: string;
   answerOwnerTeamId?: string;
   finalBidSeconds?: number;
+  /** During a steal, the clip length the stealing team earned with its own bid. */
+  stealSeconds?: number;
   deadlineAt?: string;
   canBid: boolean;
   canPass: boolean;
@@ -50,6 +54,9 @@ export function readFirstNoteView(
     songCount: Number(state.songCount ?? 3),
     clue: json(state.contextualClueJson, { ar: "" }),
     clueLabel: json(state.clueLabelJson, undefined),
+    ...(typeof state.stealSeconds === "number"
+      ? { stealSeconds: state.stealSeconds }
+      : {}),
     ...(typeof state.currentBidSeconds === "number"
       ? { currentBidSeconds: state.currentBidSeconds }
       : {}),

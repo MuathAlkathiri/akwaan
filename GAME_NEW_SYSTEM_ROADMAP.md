@@ -2949,7 +2949,9 @@ song answer derivable without hearing the audio**.
 
 #### Auction
 
-- Ceiling: **15 seconds**. Minimum: **1 second**.
+- Ceiling: **15 seconds**. Minimum: **1 second** — but an **opening bid may not go below 8 seconds** (revised 2026-11-20).
+
+  Without that floor a team that does not recognise the artist opens at the minimum and the auction ends before its opponent ever bids: nobody can outbid 1, the clip is a second long, and a song the opponent would have won becomes nothing for either side. The denial costs the opener nothing, which makes it correct play whenever they are ignorant — and the auction stops being about how few seconds you need. An opening bid is an invitation to compete, so it may not also be a door closing.
 - Teams alternate bids; each new bid must be **lower** than the current bid.
 - Players may enter the numeric bid directly rather than selecting only fixed presets (e.g. 15 → 9 → 5 → 2); a team
   may make an aggressive jump straight to a much lower number.
@@ -2974,8 +2976,9 @@ the same 3-second clip). The clip is **public/shared**, not secret to the winnin
 - Answer: **song title**, free-text `match`, accepted answers + canonical Arabic normalization, **no
   multiple-choice options**.
 - Correct → award the reward corresponding to the final bid.
-- Wrong → the opposing team receives **one steal attempt**, using the **same audio duration** (not a longer clip —
-  otherwise losing the auction could become strategically advantageous). Steal correct → **+1 point**.
+- Wrong → the opposing team receives **one steal attempt**, playing **that team's own last bid** as its clip and paying what that bid is worth (revised 2026-11-20; a team that never bid falls back to the ceiling).
+
+  Each side is judged by the duration it asked for. Undercutting a team that bid five seconds and then failing hands them their five seconds and the points that bid was worth — exactly what they would have won — so denying them gains nothing. The original same-duration rule existed so that losing an auction could not become advantageous, and that still holds: a deliberate loss returns no more than your own bid was worth, while giving up first-answer priority.
 - Both fail → 0 points for that song.
 
 #### Post-song Reveal
@@ -2988,12 +2991,11 @@ through the established media architecture; no new media pipeline is introduced.
 
 #### Reward system
 
-| Winning bid | Points |
-|---|---|
-| 1–3 seconds | 3 |
-| 4–7 seconds | 2 |
-| 8–15 seconds | 1 |
-| Successful steal | 1 |
+**Reward = 16 − final bid** (revised 2026-11-20): one point for every second given up, from 1 point at the 15-second ceiling to 15 at the 1-second floor. A successful steal pays the same formula against the stealing team's own last bid.
+
+The previous three bands meant three real bids — 3, 7 and 15 — because dropping from 7 to 4 cost three seconds and earned nothing, so nobody did it: fourteen legal bids, three of them meaningful. A point a second makes every step count, and the auction balances itself, since the price of a second is flat while the chance of recognising the song falls away sharply as the clip shortens.
+
+⚠️ The constants (ceiling 15, opening floor 8) are reasoned estimates, not playtested. Expect to tune them after the first real sessions. Per-song totals now reach 15 rather than 3, so this challenge's internal scale is an order larger than before; match points are unchanged at +1 to the challenge winner.
 
 **No tie-breaker rule** at this stage; a tie is acceptable.
 
@@ -3230,6 +3232,14 @@ mutated, and none may be described as a decision unless separately approved:
   Arabic Music · International Music
 - **Cars** — سيارات يابانية · سيارات ألمانية · سيارات أمريكية · سيارات رياضية (the wording **«سيارات رياضية»**
   replaced the earlier brainstormed «سيارات خارقة»)
+
+#### Cars Scope decision — approved 2026-11-20
+
+**Product taxonomy: 🟡 DESIGN APPROVED.** The six approved Cars Scopes are السيارات الأمريكية، السيارات اليابانية، السيارات الألمانية، السيارات الكورية، السيارات الرياضية، والسيارات الصينية. The four-Scope Cars candidate direction above is superseded for new authoring. `cars-mix` is not an approved Scope. This decision does not establish a general overlap rule between Sports Cars and manufacturer Scopes.
+
+**Repository definitions:** existing Cars authoring profiles and the generated authoring manifest still contain the earlier four-Scope set. Their update is separate from this decision. **Runtime Scope provisioning: UNVERIFIED.** Existing Production Scope names, slugs, IDs, content and board bindings require an authenticated Admin inventory before any compatibility or migration plan. Historical runtime records must be preserved.
+
+**Cars Bomb V3:** 28 active import candidates map to the approved Scopes: American 6, Japanese 8, German 7, Korean 2, Sports 5 and Chinese 0. Two French-brand records (`bomb-cars-020` and `bomb-cars-021`) are excluded from this taxonomy and preserved in the original source package. The versioned candidate mapping removes the duplicate accepted alias `يابان` from `bomb-cars-019`; the original package is unchanged. The 30 authentic source images passed Product Owner visual QA. Media provenance, licence and derivative obligations still require verification. **Production content import: ⬜ NOT STARTED.** Authenticated Scope and duplicate reconciliation, canonical media upload, Admin readiness review and gameplay smoke remain pending.
 
 ---
 

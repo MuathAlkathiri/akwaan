@@ -3,6 +3,7 @@ import {
   FIRST_NOTE_ITEM_COUNT,
   FIRST_NOTE_MAX_BID_SECONDS,
   FIRST_NOTE_MIN_BID_SECONDS,
+  FIRST_NOTE_OPENING_MIN_BID_SECONDS,
   FIRST_NOTE_SLUG,
 } from '../../world-content/domain/world-content.constants';
 import {
@@ -74,8 +75,42 @@ const resultsOf = (s: GameplayModeState) =>
   parse<FirstNoteSongResult[]>(s.resultsJson ?? '[]', 'results');
 const songOf = (s: GameplayModeState) => songsOf(s)[Number(s.currentSongIndex)];
 
+/**
+ * What a bid is worth: one point for every second given up.
+ *
+ * The old three bands meant three real bids — 3, 7 and 15 — because dropping
+ * from 7 to 4 cost three seconds and earned nothing, so nobody did it.
+ * Fourteen legal bids, three of them meaningful. A point a second makes every
+ * step count, and the auction balances itself: the price of a second is flat
+ * while the chance of recognising the song falls away sharply as the clip
+ * shortens, so the best bid sits somewhere in the middle rather than at the
+ * floor.
+ */
 export const firstNoteReward = (seconds: number) =>
-  seconds <= 3 ? 3 : seconds <= 7 ? 2 : 1;
+  FIRST_NOTE_MAX_BID_SECONDS + 1 - seconds;
+
+/**
+ * The seconds a team is owed when it steals: the last bid it made itself.
+ *
+ * Both halves of the steal — how long it hears and what it earns — come from
+ * the stealing team's own bid, so each side is judged by the duration it
+ * asked for. Undercutting a team that bid five seconds and then failing hands
+ * them their five seconds and the points that bid was worth: exactly what
+ * they would have won, so denying them gains nothing. And deliberately losing
+ * an auction returns no more than that bid was worth while giving up first
+ * answer, so it is never the better play either.
+ *
+ * A team that never bid has asked for nothing, and falls back to the ceiling.
+ */
+export function firstNoteStealSeconds(
+  state: GameplayModeState,
+  stealingTeamId: string,
+): number {
+  const own = bidsOf(state).filter((bid) => bid.teamId === stealingTeamId);
+  return own.length
+    ? Number(own[own.length - 1].seconds)
+    : FIRST_NOTE_MAX_BID_SECONDS;
+}
 
 export function validateFirstNoteSong(
   song: FirstNoteRuntimeSong,
@@ -265,6 +300,14 @@ function publicState(
     biddingTeamId: valid.biddingTeamId ?? null,
     answerOwnerTeamId: valid.answerOwnerTeamId ?? null,
     finalBidSeconds: valid.finalBidSeconds ?? null,
+    // What the clip is during a steal: the stealing team's own last bid, so
+    // the room plays the duration that team asked for rather than the one its
+    // opponent forced on it. Null outside the steal, where `finalBidSeconds`
+    // is the authority.
+    stealSeconds:
+      phase === 'steal' && valid.answerOwnerTeamId
+        ? firstNoteStealSeconds(valid, String(valid.answerOwnerTeamId))
+        : null,
     bidHistoryJson: valid.bidHistoryJson ?? '[]',
     deadlineAt: valid.deadlineAt ?? null,
     ...(phase === 'auction' || phase === 'answering' || phase === 'steal'
@@ -369,19 +412,24 @@ export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           'FIRST_NOTE_BID_TURN',
           'It is not this team’s bidding turn',
         );
-      const ceiling =
-        state.currentBidSeconds == null
-          ? FIRST_NOTE_MAX_BID_SECONDS + 1
-          : Number(state.currentBidSeconds);
+      const opening = state.currentBidSeconds == null;
+      const ceiling = opening
+        ? FIRST_NOTE_MAX_BID_SECONDS + 1
+        : Number(state.currentBidSeconds);
+      const floor = opening
+        ? FIRST_NOTE_OPENING_MIN_BID_SECONDS
+        : FIRST_NOTE_MIN_BID_SECONDS;
       if (
         !Number.isInteger(seconds) ||
-        seconds < FIRST_NOTE_MIN_BID_SECONDS ||
+        seconds < floor ||
         seconds > FIRST_NOTE_MAX_BID_SECONDS ||
         seconds >= ceiling
       )
         return fail(
           'FIRST_NOTE_BID_INVALID',
-          'Bid must be an integer from 1–15 and strictly lower than the current bid',
+          opening
+            ? `An opening bid must be an integer from ${FIRST_NOTE_OPENING_MIN_BID_SECONDS}–${FIRST_NOTE_MAX_BID_SECONDS}`
+            : 'Bid must be an integer from 1–15 and strictly lower than the current bid',
         );
       const other = teams.find((t) => t !== team)!;
       return commandResult(
@@ -450,7 +498,7 @@ export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
           team,
           phase === 'steal',
           phase === 'steal'
-            ? 1
+            ? firstNoteReward(firstNoteStealSeconds(state, team))
             : firstNoteReward(Number(state.finalBidSeconds)),
         );
       if (phase === 'answering') {
