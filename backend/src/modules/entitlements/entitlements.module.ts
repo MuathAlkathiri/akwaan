@@ -11,6 +11,7 @@ import {
 import { TokenLedgerRepository } from './persistence/token-ledger.repository';
 import { TokenLedgerService } from './application/token-ledger.service';
 import { LaunchCampaignService } from './application/launch-campaign.service';
+import { TokensController } from './presentation/tokens.controller';
 
 /**
  * Tokens: what an account may spend, and the record of why it changed.
@@ -25,6 +26,7 @@ import { LaunchCampaignService } from './application/launch-campaign.service';
       { name: TokenBalanceDocument.name, schema: TokenBalanceSchema },
     ]),
   ],
+  controllers: [TokensController],
   providers: [TokenLedgerRepository, TokenLedgerService, LaunchCampaignService],
   exports: [TokenLedgerService, LaunchCampaignService],
 })
