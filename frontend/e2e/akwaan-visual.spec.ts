@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
+import { loginAs } from "./helpers";
 
 /**
  * The Akwaan visual smoke.
@@ -284,11 +285,7 @@ async function shoot(page: Page, name: string, viewport: string) {
 }
 
 async function login(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill(HOST);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole("button", { name: "دخول" }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  await loginAs(page, HOST, PASSWORD);
 }
 
 async function completeSetup(page: Page): Promise<void> {
