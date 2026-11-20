@@ -40,7 +40,65 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
-### Where things stand — 2026-11-18 · PRE-LAUNCH CLEANUP, LEGACY REMOVAL & ADMIN PERMANENT DELETION — ✅ IMPLEMENTED & VERIFIED LOCALLY · 🚧 IN REVIEW (five stacked PRs) · ⬜ NOT MERGED · ⬜ NOT DEPLOYED
+### Where things stand — 2026-11-20 · GIT CONSOLIDATION · MECHANIC TUTORIALS IN PRODUCTION · PR #77 — ⚠️ GITHUB `main` IS AHEAD OF THE DEPLOYED BACKEND
+
+**Git consolidation (2026-11-19/20).** 30 registered worktrees were consolidated into **one clean primary checkout**,
+`/Users/muath/akwaan`, on `main` (`b7cb89de`, equal to GitHub). Unfinished local work was preserved in verified
+recovery packages; unique branches, commits and the two stashes were retained. **Preserved is not implemented:**
+archived WIP (including Phase 1 below) is not in `main` and not deployed. No Production database or R2 mutation
+occurred during the Git cleanup.
+
+**Release inventory — six separate facts (verified 2026-11-20):**
+
+| Layer | State | Evidence |
+|---|---|---|
+| GitHub `main` | `b7cb89de` (PR #77) — contains PRs #66–#77 | `git` / `gh pr view` |
+| **Render backend (deployed)** | **`b5fa23bf`** — PRs #66–#73 plus the two Production hotfixes (Odd Piece V2 TypeScript narrowing `9130dcdc`, Combo tutorial DTO 4 stages `b5fa23bf`). **Lacks PR #75.** Auto-Deploy **OFF** (dashboard; `render.yaml` still says `autoDeploy: true` — drift) | `/health` → `commit: b5fa23bf…` |
+| **Vercel frontend (deployed)** | **`b7cb89de`** — every `main` push deploys Production automatically | GitHub Production deployments |
+| Production database content | 19 World-specific Mechanic Tutorials published (revision 1, below). DB name still **`lammah-quiz`**; `Akwaan-prd` migration ⬜ pending | public read-only tutorial API |
+| Production QA | Mechanic Tutorials release QA passed (incl. mobile 390 px, release report) and re-confirmed read-only via the public API. ⬜ Multi-device gameplay/reconnect smoke, Admin permanent-deletion Production check | — |
+| Unmerged archived development | Phase 1 Readiness / Match Parity, Celebrities, Content Production / Gemini authoring, Moving XO authoring, older primary-checkout WIP | recovery packages |
+
+**What `main` vs Render means.** Between Render `b5fa23bf` and `main` `b7cb89de` the **only backend difference is
+PR #75 (RYO payoff)**; PRs #74 and #76 are frontend-only (already live on Vercel) and PR #77 brought the two
+already-deployed hotfixes into `main`. **Render has not been redeployed after PR #77.**
+
+> ⚠️ **Do not deploy the latest `main` backend yet.** PR #75 implements the **product-approved** symmetric RYO payoff
+> (§6.1, approved 2026-11-19) and is merged, but it is **not yet deployed**: Production still scores with the previous
+> matrix. The tutorial outcome test `mechanic-tutorial.policy.spec.ts` › *tutorial outcome derivation › loses a point
+> only on a failed steal* **fails on `main`** (and on the tested merged tree) and passes on the deployed backend line,
+> because the tutorial outcome derivation still encodes the previous payoff. Remaining work — a separate task:
+> (1) align the tutorial outcome derivation with the approved §6.1 rules, (2) update its outdated test expectations, (3) run the gameplay/scoring regression suites, (4) obtain explicit authorization before deploying the backend (debt #49, #50).
+
+**PRs #66–#77 (all merged to `main`):**
+
+| PR | Merge | Scope | Render | Vercel |
+|---|---|---|---|---|
+| #66–#70 | `e5022ff`…`8c69aac` | Pre-launch cleanup: hygiene, legacy Lammah removal, Admin permanent deletion (fail-closed `PERMANENT_DELETION_ADMIN_IDS`), ops/VPS (`TRUST_PROXY`, `APP_COMMIT_SHA`, cleanup tool, `docs/operations`), roadmap | ✅ | ✅ |
+| #71 | `0f6ec0e` | Admin tutorial editor: Bomb `nextQuestion.media`, Top 5 entry ids | ✅ | ✅ |
+| #72 | `a4df3d9` | Docker: skip optional ONNX CUDA download (Render build) | ✅ | — |
+| #73 | `e25bbb6` | Mechanic Tutorials: 3-image Bomb, no cross-World generic fallback, 4-stage Combo | ✅ | ✅ |
+| #74 | `d079c78` | المرحلة board UI (frontend) | n/a | ✅ |
+| #75 | `568e73a` | RYO symmetric payoff (backend scoring) | ⬜ **not deployed** | n/a |
+| #76 | `a426ef4` | Admin: Top 5 scoped-decision default, Odd Piece V2 tutorial fields (frontend) | n/a | ✅ |
+| #77 | `b7cb89d` | The two Production-only backend hotfixes brought into `main` | ✅ (already live) | ✅ |
+
+**Phase 1 — Playable Content Readiness & Match Parity: 📦 ARCHIVED — not merged, not deployed.** All 43
+changed/untracked entries are recoverable and the full recovery was independently verified. An independent review
+approved it with follow-ups (full real-Mongo rerun on the final tree, split commits, roadmap entry) — it is **not complete
+and not ready for integration** until those requirements are resolved.
+Known Top 5 race (predates Phase 1, debt #51): removing the final player of a team can make rotation construction
+fail **after** the persistent turn mutation, outside the launch compensation; correction and a real-Mongo regression
+test are deferred.
+
+**Still open before launch** (statuses unchanged unless noted): Celebrities content and media; Content Production /
+Gemini authoring; Moving XO authoring and tutorial; Odd Piece V2 **competitive** content and activation (a V2
+*tutorial* example is published — gameplay V2 stays gated); unmerged historical primary-checkout changes; Admin
+permanent deletion — Production verification and the operator allowlist (`PERMANENT_DELETION_ADMIN_IDS`, unconfirmed
+on Render); multi-device Production gameplay/reconnect smoke; physical-device QA (#38, #41); `lammah-quiz` →
+`Akwaan-prd` migration (`docs/operations/DATABASE_MIGRATION_PLAN.md`); `TRUST_PROXY` on the live host.
+
+### Where things stand — 2026-11-18 · PRE-LAUNCH CLEANUP, LEGACY REMOVAL & ADMIN PERMANENT DELETION — HISTORICAL SNAPSHOT (superseded 2026-11-20: merged as PRs #66–#70 and deployed on Render `b5fa23bf` and Vercel; see the 2026-11-20 entry)
 
 **New Product Owner decisions (2026-11-18):**
 - **Target public launch: 2026-12-01.**
@@ -96,9 +154,9 @@ live-game-sessions; physical-device QA (#38, #41); final `Akwaan-prd` migration.
 
 - **Shipped (2026-11-19) — المرحلة board redrawn on the approved station map ([PR #74](https://github.com/MuathAlkathiri/akwaan/pull/74)):** ✅ Design approved and merged to `main`; Vercel Production deployed. Squares became discs sized to leave the serpentine run visible between them, numerals returned to disc centres, safe tiles carry checkpoint green, and the surface gained the approved artboard's orbital ground, tactical grid, corner brackets and the printed 1 → 16 run. Routes were rebuilt as the four-layer tube (halo · navy casing · gold or red core · highlight) and now mount only where they currently mean something — a token on the source tile, or the square firing mid-replay — because eleven routes converge on five destination tiles and drawing them all at rest buried the board; the destination badge carries the route until the tube is worth seeing. The tile-face test's square assertion was updated to count discs. ⚠️ The pre-merge test run was executed from the repo root, where `@/` does not resolve, so it reported "no tests" rather than passing; the suite was re-run from `frontend/` after the merge.
 
-- **In progress (2026-11-19) — RYO payoff matrix made symmetric (§6.1, §8):** 🟡 Product direction approved; 🚧 backend implemented on `feat/ryo-payoff`, not yet merged or deployed. `RyoPayoffMatrixRule` now resolves one question — did the deciding team's read match the outcome — paying `+1` when it did and `−1` when it did not, and emits a second event (`ryo.trust.vindicated`) paying the answering team `+1` when it was doubted and right anyway. Existing reason codes are deliberately unchanged: `ryo-demo-scenario.ts` and the explainer suites key off them and are under concurrent authorship. ⬜ Player-facing copy — the explainer and the `شاكك فيهم`/`متأكد منهم` option descriptions in `ryo-decision.presentation.ts`, which still describe the old payoff — is owned by the concurrent tutorial workstream and is **not** covered by this change. ⬜ Backend suite not yet run (fresh worktree without `node_modules`).
+- **In progress (2026-11-19) — RYO payoff matrix made symmetric (§6.1, §8):** 🟡 Product direction approved; 🚧 backend implemented on `feat/ryo-payoff`, not yet merged or deployed. **Update 2026-11-20:** merged to `main` as PR #75 (`568e73a`) but **not deployed** — Render `b5fa23bf` runs the previous matrix; the approved design is implemented; deployment waits for the tutorial outcome derivation to be aligned with §6.1, its test updated, regressions run and an explicit backend deployment authorization (debt #49, #50). `RyoPayoffMatrixRule` now resolves one question — did the deciding team's read match the outcome — paying `+1` when it did and `−1` when it did not, and emits a second event (`ryo.trust.vindicated`) paying the answering team `+1` when it was doubted and right anyway. Existing reason codes are deliberately unchanged: `ryo-demo-scenario.ts` and the explainer suites key off them and are under concurrent authorship. ⬜ Player-facing copy — the explainer and the `شاكك فيهم`/`متأكد منهم` option descriptions in `ryo-decision.presentation.ts`, which still describe the old payoff — is owned by the concurrent tutorial workstream and is **not** covered by this change. ⬜ Backend suite not yet run (fresh worktree without `node_modules`).
 
-- **New workstream opened (2026-11-18) — Universal Interactive Mechanic Tutorials — V6 Experience Expansion (§22.1.2):** 🟡 Product direction approved; 🚧 implementation and Production publication in progress. Every eligible playable mechanic will use the approved V6 stage language, canonical GSAP timeline architecture, and Admin-managed example scenarios (`worldId + challengeTypeId` → generic mechanic fallback → no tutorial) with server-derived outcomes. RYO V6 is live in Production; 10 additional mechanics already have Codex-authored GSAP explainers, scenario types, backend policies, and Admin editors on `main`, but still require V6 stage/phone alignment, `GenericV6TutorialSection` timeline-playback synchronization, `OddPieceTutorialEditor` V2 scoped authoring support, and authorized Production tutorial publication (plus `Moving XO` tutorial implementation once its final Arabic name/choreography is approved). See §22.1.2.
+- **New workstream opened (2026-11-18) — Universal Interactive Mechanic Tutorials — V6 Experience Expansion (§22.1.2):** 🟡 Product direction approved; 🚧 implementation and Production publication in progress. *(Historical — superseded 2026-11-20: 19 World-specific tutorials published in Production; see §22.1.2.)* Every eligible playable mechanic will use the approved V6 stage language, canonical GSAP timeline architecture, and Admin-managed example scenarios (`worldId + challengeTypeId` → generic mechanic fallback → no tutorial) with server-derived outcomes. RYO V6 is live in Production; 10 additional mechanics already have Codex-authored GSAP explainers, scenario types, backend policies, and Admin editors on `main`, but still require V6 stage/phone alignment, `GenericV6TutorialSection` timeline-playback synchronization, `OddPieceTutorialEditor` V2 scoped authoring support, and authorized Production tutorial publication (plus `Moving XO` tutorial implementation once its final Arabic name/choreography is approved). See §22.1.2.
 
 ⚠️ **Release follow-ups:** authenticated Production approve-to-READY smoke; multi-device Fair-Start/reconnect
 smoke; authenticated Production multiplayer Preflight V6 smoke; investigation of unidentified historical rearm failures; deterministic deadline retry classification;
@@ -1166,6 +1224,21 @@ committed, pushed, or deployed.** Detail and evidence in **§22**.
 - [x] **Interaction Feedback system** — branded loader (meaningful entry/recovery waits only), skeletons (known-layout content), pending buttons (async mutations / duplicate-submit prevention), one global Sonner toast (errors + invisible-utility successes only; **score/turn/Double/successful-reconnect stay silent**; **no artificial gameplay delay**; loaders never own the gameplay lifecycle)
 - [ ] ⚠️ **POST-DEPLOY VISUAL FOLLOW-UP** *(not an implementation gap)* — real-latency loader/skeleton + toast visuals, multi-device QR/reconnect, Resume + completed-Match Replay browser E2E (§22)
 
+### M. Pre-launch release state — 🚧 IN PROGRESS *(reconciled 2026-11-20)*
+
+- [x] Pre-launch cleanup merged and deployed — PRs #66–#70 (Render `b5fa23bf`, Vercel)
+- [x] Git consolidated to one clean primary checkout; unfinished work preserved in verified recovery packages
+- [x] World-specific Mechanic Tutorials — **19 of 20** published and verified in Production (§22.1.2)
+- [x] Production-only backend hotfixes brought into `main` — PR #77 (`b7cb89de`)
+- [ ] Music `first-note` tutorial — audio asset and tutorial playback support (§19 #52)
+- [ ] Combo tutorial third-question display and stage-four label polish (§19 #53)
+- [ ] RYO (approved §6.1 payoff, merged in #75): align the tutorial outcome derivation and its test, run gameplay/scoring regressions, then deploy the backend only with explicit authorization (§19 #49, #50)
+- [ ] Admin permanent deletion — set the operator allowlist and verify in Production (§19 #35)
+- [ ] Phase 1 Readiness / Match Parity — 📦 archived; resolve the review follow-ups before any integration (§19 #54)
+- [ ] Top 5 final-player removal race — fix with a real-Mongo regression test (§19 #51)
+- [ ] Multi-device Production gameplay / reconnect smoke
+- [ ] `lammah-quiz` → `Akwaan-prd` migration — the **last** pre-launch cutover (`docs/operations/DATABASE_MIGRATION_PLAN.md`)
+
 ---
 
 ## 0. Engineering Governance (read before writing any code)
@@ -1544,6 +1617,11 @@ RYO is not a layer wrapped around questions. **It is the format that replaces th
 4. Score resolves automatically. No host action.
 
 **Payoff matrix (symmetric — revised 2026-11-19, do not simplify):**
+
+> **Release status (2026-11-20):** this matrix is the **approved** RYO scoring design and is implemented and merged in
+> `main` (PR #75), but it is **not yet deployed** — the Production backend (`b5fa23bf`) still scores with the previous
+> matrix (`−1` on a failed steal only). Before deployment: align the tutorial outcome derivation and its test with this
+> matrix (debt #50), run the gameplay/scoring regressions, and obtain explicit backend deployment authorization.
 
 | Opponent's choice | Answering team correct | Answering team wrong |
 |---|---|---|
@@ -3672,7 +3750,7 @@ Not implemented. Not scheduled.
 | 32 | **Content Engine Admin responsive debt** | UI | At 390 px the candidate-list badge row (`flex flex-wrap … shrink-0` in `content-engine-review-workspace.tsx`) cannot shrink, so it never wraps and `<main>` clips the deduplication badge. This has been the case since `65c4352`, before PR #48. On desktop, about 12 px of horizontal overflow comes from the Admin header's logout button and decorative background ellipses. Unrelated to the deduplication release. |
 | 33 | **READY item reports `readiness: not_ready`** | Data / content integrity | Observed 2026-11-08 (read-only): the production READY «من أنا؟» item referenced in #30 has `status: ready` but `readiness.readiness: not_ready` with blocker `RAKKIBHA_STRUCTURE_REQUIRED`. Root cause not investigated; whether other items are affected is unknown. |
 | 34 | **Startup deadline recovery and impact verification** | Gameplay lifecycle | Historical: every boot rearmed all non-terminal runtimes (44 of 50 for ≥7 days to 2026-11-08), and from 2026-11-07 ~15:35 UTC ten deadlines repeatedly exhausted six attempts, predating PR #47. A later deployment reported 35 of 41 rearmed, six unidentified rearm failures and a distinct deadline exhausting six attempts; their relationship to #28 is unproven. ✅ PR #62 selects the newest runtime before filtering terminal/expired state, locally verified and deployed as `26fd54c`. The latest supplied startup log shows clean scheduler bootstrap, but does not establish the outcome or player impact of those unidentified sessions. ⚠️ Production gameplay/reconnect and recovery-impact verification remain open; no historical data was repaired. |
-| 35 | **Permanent mechanic deletion** | ✅ Implemented & verified locally (2026-11-18) · 🚧 in review (stacked PR 3/5) · ⬜ not merged/deployed | §19.1. Replaces the `bb94504` lifecycle, which deleted shared content. |
+| 35 | **Permanent mechanic deletion** | ✅ Merged (PR #68) · ✅ deployed (Render `b5fa23bf`, Vercel) · ⬜ Production-verified · ⬜ operator allowlist confirmed | §19.1. Replaces the `bb94504` lifecycle, which deleted shared content. Execution is fail-closed until `PERMANENT_DELETION_ADMIN_IDS` is set on Render (not confirmed). |
 | 36 | ~~**Combo captain policy undecided**~~ | Resolved 2026-11-16 | Approved and implemented (§16.11): the question holder answers and owns تثبيت / كمل; كسر الكومبو stays open to any connected opponent. |
 | 37 | **`player-catalog` integration suite fails (9 tests)** | Working-tree debt | World activation returns 400 in `test/integration/player-catalog`. Traced to uncommitted World Readiness work in the working tree, not to committed code or to §16.11. Must be resolved with that work, before it is committed. |
 | 38 | **Global captain + Timer Experience need physical-device QA** | Verification gap | Deployed to Production 2026-11-16 (`98ee362`). Both pass their automated gates, and the release alone passes the full real-Mongo suite; global captain also passed a rendered screenshot pass (360/390 phones, 720p/1080p screens). Neither has been checked on real phones and a real room screen, including countdown sound on a real TV browser. |
@@ -3686,8 +3764,19 @@ Not implemented. Not scheduled.
 | 46 | **Production Quick Review publication smoke** | Verification gap | Authenticated approval → canonical READY has not been independently exercised in Production; deployment is not proof that eligible content exists or is playable. |
 | 47 | **Production recovery / multi-device smoke** | Verification gap | PR #62 backend health and startup are verified, but real gameplay, Fair-Start and reconnect across devices and the impact on unidentified sessions remain unverified. |
 | 48 | **Historical Football DRAFT inventory** | Content / release | Existing Football DRAFT items were not promoted by PR #61; inspect readiness and seek separate authorization for canonical promotion. |
+| 49 | **GitHub `main` ahead of the deployed backend** | Release gap | Render serves `b5fa23bf`; `main` is `b7cb89de`. The only backend difference is PR #75, the **product-approved** symmetric RYO payoff (§6.1), merged but not yet deployed. Do not redeploy `main` until #50 is fixed, the gameplay/scoring regressions pass and the backend deployment is explicitly authorized. |
+| 50 | **Tutorial outcome test fails on `main`** | Regression (known) | `backend/src/modules/world-content/domain/mechanic-tutorial.policy.spec.ts` › *tutorial outcome derivation › loses a point only on a failed steal* fails on `main` and on the tested merged tree, passes on the deployed backend line: the RYO tutorial outcome derivation still encodes the previous payoff and must be aligned with the approved §6.1 matrix, with the outdated expectations updated. Recorded, not repaired. |
+| 51 | **Top 5 launch race on final-player removal** | Gameplay reliability | Removing the final player of a team can make rotation construction fail after the persistent turn mutation, outside the launch compensation. Predates Phase 1; correction and a real-Mongo regression test deferred. |
+| 52 | **Music `first-note` tutorial missing** | Content / tutorial | The 20th World-specific tutorial: needs an audio asset and tutorial audio-playback support. The endpoint returns `data: null` (no fallback leak). |
+| 53 | **Combo tutorial polish** | UI | Third-question display and the stage-four label need polish; the 4-stage tutorial is published and works. |
+| 54 | **Phase 1 Readiness / Match Parity archived** | Release gap | 📦 Archived: 43 entries preserved and recovery-verified; **not merged, not deployed, not ready for integration** until the review follow-ups are resolved (full real-Mongo rerun on the final tree, split commits, roadmap entry). |
 
-### 19.1 Permanent mechanic deletion — ✅ IMPLEMENTED & VERIFIED LOCALLY (2026-11-18) · 🚧 IN REVIEW · ⬜ NOT MERGED · ⬜ NOT DEPLOYED
+### 19.1 Permanent mechanic deletion — ✅ MERGED (PR #68) & DEPLOYED (Render `b5fa23bf`, Vercel) · ⬜ PRODUCTION VERIFICATION PENDING
+
+> **Status 2026-11-20:** the text below was written on 2026-11-18 when the work was local and in review; it is kept
+> as the implementation record. Deployment does not prove Production use: no Production deletion has been verified,
+> and the operator allowlist `PERMANENT_DELETION_ADMIN_IDS` is not confirmed on Render (without it, execution is
+> refused).
 
 Design approved 2026-11-09; implementation required by the Product Owner 2026-11-18. *Historical note:* the
 `bb94504` lifecycle hard-deleted a mechanic **and every item compatible with it, shared items included**, and the
@@ -4062,13 +4151,13 @@ in the closeout runs. Their causes remain unknown and they are not established p
 - **⬜ Authenticated Production multiplayer smoke not performed:** Creating a real Match, authenticating a host, and joining 4 phones in Production were not executed to avoid mutating production data.
 - **⚠️ Independent existing test/timeline/reconnect debt:** (1) Full frontend `npm test` is not completely green due to separately tracked concurrent working-tree WIP (`content-engine-overlap-acknowledgment.test.tsx`, `live-session-resume-revalidation.test.tsx`) and a jsdom parallel-run `requestAnimationFrame` race in `use-explainer-timeline.ts` (`refreshAfterMount` against 0-height rects); (2) `GenericV6TutorialSection` in `inline-mechanic-tutorial.tsx` pauses non-RYO GSAP timelines when `STEP_SCENES[kind]` skips intermediate beat indices (tracked under §22.1.2); (3) deterministic backend real-socket regression for initial RYO pre-activation disconnect/reconnect remains open.
 
-### 22.1.2 Universal Interactive Mechanic Tutorials — V6 Experience Expansion — 🟡 PRODUCT DIRECTION APPROVED · 🚧 IN PROGRESS (2026-11-18)
+### 22.1.2 Universal Interactive Mechanic Tutorials — V6 Experience Expansion — ✅ 19 OF 20 WORLD TUTORIALS PUBLISHED & VERIFIED IN PRODUCTION (2026-11-20) · ⚠️ `first-note` DEFERRED
 
 **Approved product direction:** Every eligible playable mechanic must have a clear, mechanic-native interactive GSAP explanation using the approved Preflight V6 visual language (navy TV bezel, cream `#FFFDF7` stage surface, modern integrated iPhone frames where phone interaction occurs, persistent demonstration banner, step timeline rail, play/pause/prev/next/replay transport, repeat-encounter compact recap, and reduced-motion manual navigation) and the existing Admin-managed tutorial example architecture (`worldId + challengeTypeId` scoped tutorials with revision history/restore/withdraw → generic mechanic tutorial fallback → fallback copy when unpublished).
 
 **Core governance rule:** **Admin controls the example content; the game engine controls the mechanic rules.** Admin authors example prompts, options/accepted answers, illustrative team actions, captions, and required tutorial media; the backend (`mechanic-tutorial.policy.ts`, `scoped-mechanic-tutorial.policy.ts`, `mechanic-tutorial.service.ts`) enforces `SCOPED_TUTORIAL_FIELD_CLASSIFICATION` (`EXAMPLE_EDITABLE` vs `FLOW_LOCKED` vs `DERIVED_OR_VALIDATED`), derives outcomes using canonical runtime scoring/grading rules, blocks competitive-catalog overlap (`TUTORIAL_OVERLAPS_COMPETITIVE_CONTENT`), and serves only published projections (`GET /mechanics/:mechanicKey/tutorial` and `GET /worlds/:worldId/mechanics/:mechanicKey/tutorial`).
 
-**Current repository, runtime, and Production state (audited 2026-11-18):**
+**Current repository, runtime, and Production state (audited 2026-11-18 — historical; the Production release below supersedes the publication statuses):**
 - **Category A — Fully implemented in V6, verified, and published in Production:** `read-your-opponent` (`اقرأ خصمك`). Integrated V6 dual-iPhone renderer (`V6RyoIntegratedSection`), generic published tutorial (`rev=1`) + World-scoped published tutorials in Production for Anime (`6a6e54159e10fe3b881da006`, `rev=1`) and Football (`6a6e46a747bc63bdaf2e3800`, `rev=1`).
 - **Category B/C — Existing Codex GSAP explainers, scenario contracts, backend validators, and Admin editors on `main`, behind V6 presentation + blocked by `GenericV6TutorialSection` playback bug + unpublished in Production:**
   - `closest` (`مين أقرب`), `bomb` (`القنبلة`), `top-5` (`أفضل 5`), `combo` (`الكومبو`), `marhala` (`المرحلة`), `first-note` (`من أول نغمة`), `odd-piece` (`القطعة الدخيلة` — V2 hotspot explainer on `main`, but `OddPieceTutorialEditor` still initializes V1 4-piece draft and lacks V2 hotspot fields, causing `SCOPED_TUTORIAL_VERSION_LOCKED` on World-scoped saves), `ekshifni` (`اكشفني` — clear-window explainer on `main`, blocked on rights-cleared real-person tutorial photo in R2), `laqatha` (`القطها` — ChallengeType not yet provisioned in Production DB, `404`), and `la-tahriqha` (`لا تحرقها` — ChallengeType not yet provisioned in Production DB, `404`).
@@ -4088,7 +4177,32 @@ in the closeout runs. Their causes remain unknown and they are not established p
 - **✅ Product-owner screenshot visual review approved on 2026-11-18** (review package: `ai/review/universal-tutorials-batch-1/final-polish/`).
 - **⚠️ Natural-speed video behavior** is supported by Gemini QA `.webm` recordings (desktop `1440×900` and mobile `390×844` for each mechanic), distinct from the product owner's screenshot review.
 - **✅ Production code release status:** Batch 1 frontend code committed & squashed into `main` via [PR #64](https://github.com/MuathAlkathiri/akwaan/pull/64) (`83b50dd` on `feat/universal-tutorials-batch-1` → `4c5ad410e82656307c2eac09d906599b1ffde514` on `main`), and deployed to Vercel Production (`7894084801`, `https://akwaan-frontend.vercel.app`, verified chunks `8901-947293c28434c42a.js` and `2022-4bbe8fce33d5c7c2.js`, 0 horizontal overflow on `/` & `/how-to-play` at `1440×900` & `390×844`). Backend untouched.
-- **⬜ Production tutorial example publication:** remains separate and unapproved. Read-only Production API check confirmed `GET /mechanics/{closest,bomb,top-5}/tutorial` and World-resolved endpoints return `data: null` (unpublished), whereas `read-your-opponent` returns `revision: 1`.
+- **⬜ Production tutorial example publication** *(historical, 2026-11-18 — superseded by the release below)*: remains separate and unapproved. Read-only Production API check confirmed `GET /mechanics/{closest,bomb,top-5}/tutorial` and World-resolved endpoints return `data: null` (unpublished), whereas `read-your-opponent` returns `revision: 1`.
+
+#### Production release — World-specific Mechanic Tutorials *(2026-11-19/20)* — ✅ PUBLISHED & VERIFIED
+
+- **Code:** PRs #71, #73 and #76 (Admin editor and backend rules) plus the two backend hotfixes later merged by PR #77
+  (Odd Piece V2 narrowing, Combo DTO accepting 4 stages). Backend live on Render `b5fa23bf`; frontend on Vercel.
+- **Published content:** **19 of 20** World-specific tutorials, all at revision 1, across the **five participating
+  Worlds**:
+
+  | World | Published World-specific tutorials |
+  |---|---|
+  | Football | RYO · مين أقرب · Bomb · Top 5 |
+  | Anime | RYO · مين أقرب · Bomb · Combo (4 stages) |
+  | Video Games | RYO · مين أقرب · Bomb · المرحلة |
+  | Cars | RYO · مين أقرب · Bomb · Odd Piece (V2 tutorial example) |
+  | Music | RYO · مين أقرب · Bomb — `first-note` ⬜ deferred |
+
+- **Resolution contract verified in Production (read-only public API, 2026-11-20):** every published World tutorial
+  returns `source: "world"`; the generic fallback no longer leaks another World's tutorial; a missing World-specific
+  tutorial returns `data: null`; the standalone generic endpoints (`GET /mechanics/:key/tutorial`) remain supported.
+- **Content checks:** Anime Combo has four stages; the Bomb tutorial carries three valid question images; the Football
+  Top 5, Video Games المرحلة and Cars Odd Piece V2 examples were verified; mobile 390 px QA passed (release report).
+- **Odd Piece:** the Cars tutorial is a **V2 tutorial example only**. It does **not** activate V2 competitive gameplay
+  content, which stays gated by the launcher (`oddPieceVersion === 1` only).
+- **Deferred debt:** Music `first-note` audio asset and tutorial audio playback (§19 #52); Combo third-question display
+  and stage-four label polish (§19 #53).
 
 ### 22.2 QA evidence (Release Gate Cleanup, 2026-08-27)
 
