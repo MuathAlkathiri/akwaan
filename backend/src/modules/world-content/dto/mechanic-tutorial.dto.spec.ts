@@ -79,4 +79,35 @@ describe('TutorialScenarioDto publication compatibility', () => {
       }),
     ).toEqual([]);
   });
+
+  it('accepts three-stage and four-stage Combo DTOs and rejects five stages', () => {
+    const baseStages = [
+      { stage: 1, prompt: 'من قائد قراصنة قبعة القش؟', correctAnswer: 'لوفي', submittedAnswer: 'لوفي' },
+      { stage: 2, prompt: 'ما اسم قرية ناروتو؟', correctAnswer: 'كونوها', submittedAnswer: 'كونوها' },
+      { stage: 3, prompt: 'من يمتلك العملاق المدرع؟', correctAnswer: 'راينر براون', submittedAnswer: 'راينر براون' },
+    ];
+    const dto3 = plainToInstance(TutorialScenarioDto, { kind: 'combo', version: 1, stages: baseStages });
+    expect(validateSync(dto3, { whitelist: true, forbidNonWhitelisted: true })).toEqual([]);
+
+    const dto4 = plainToInstance(TutorialScenarioDto, {
+      kind: 'combo',
+      version: 1,
+      stages: [
+        ...baseStages,
+        { stage: 4, prompt: 'ما الاسم الحقيقي لشخصية باين في ناروتو؟', correctAnswer: 'ناغاتو', submittedAnswer: 'إيتاتشي' },
+      ],
+    });
+    expect(validateSync(dto4, { whitelist: true, forbidNonWhitelisted: true })).toEqual([]);
+
+    const dto5 = plainToInstance(TutorialScenarioDto, {
+      kind: 'combo',
+      version: 1,
+      stages: [
+        ...baseStages,
+        { stage: 4, prompt: 'س4', correctAnswer: 'ج4', submittedAnswer: 'ج4' },
+        { stage: 4, prompt: 'س5', correctAnswer: 'ج5', submittedAnswer: 'خ5' },
+      ],
+    });
+    expect(validateSync(dto5, { whitelist: true, forbidNonWhitelisted: true }).length).toBeGreaterThan(0);
+  });
 });

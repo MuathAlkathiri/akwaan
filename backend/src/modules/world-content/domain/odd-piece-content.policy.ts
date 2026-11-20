@@ -492,6 +492,19 @@ export function readOddPieceHotspotItem(
     );
   if (problems.length) reject(problems);
   const payload = raw as OddPieceHotspotPayload;
+  if (
+    !payload.intruderVehicleIdentity?.trim() ||
+    !payload.intruderVehicleLabel?.trim()
+  ) {
+    reject([
+      issue(
+        'ODD_PIECE_INTRUDER_REQUIRED',
+        'An intruder vehicle and part identity are required',
+      ),
+    ]);
+  }
+  const intruderVehicleIdentity = payload.intruderVehicleIdentity.trim();
+  const intruderVehicleLabel = payload.intruderVehicleLabel.trim();
   return {
     contentItemId: item.id,
     scopeId: item.scopeId,
@@ -501,8 +514,8 @@ export function readOddPieceHotspotItem(
     originalImage: payload.originalImage,
     targetVehicleIdentity: payload.targetVehicleIdentity.trim(),
     targetVehicleLabel: payload.targetVehicleLabel.trim(),
-    intruderVehicleIdentity: payload.intruderVehicleIdentity.trim(),
-    intruderVehicleLabel: payload.intruderVehicleLabel.trim(),
+    intruderVehicleIdentity,
+    intruderVehicleLabel,
     intruderPartIdentity: payload.intruderPartIdentity.trim(),
     intruderPartLabel: payload.intruderPartLabel.trim(),
     hotspot: payload.hotspot,
