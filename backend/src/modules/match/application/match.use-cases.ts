@@ -43,6 +43,8 @@ import {
   MatchTransitionReason,
 } from './match-transition.notifier';
 import { MatchWorldCatalog } from './match-world.catalog';
+import { TokenLedgerService } from '../../entitlements/application/token-ledger.service';
+import { LaunchCampaignService } from '../../entitlements/application/launch-campaign.service';
 import { releaseSessionTurnForBoardReturn } from './session-turn-release';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
 import {
@@ -103,6 +105,8 @@ export class MatchUseCases {
     private readonly cancelRuntime: CancelGameplayRuntime,
     private readonly scoring: ScoringService,
     private readonly worldPresentation: WorldPresentationService,
+    private readonly tokens: TokenLedgerService,
+    private readonly campaign: LaunchCampaignService,
     // Always provided by DI; absent only in unit tests that build this by hand.
     @Optional() private readonly creationFence?: MatchCreationFence,
   ) {}
@@ -156,6 +160,24 @@ export class MatchUseCases {
         coinToss: this.tossCoin(teams, now),
         now,
       });
+      // Paying for the Match and creating it happen together or not at all.
+      // Inside the fence this shares the Match's transaction, so a setup that
+      // fails to persist cannot leave an account charged for a Match that does
+      // not exist — and a token cannot be taken twice for the same Match, since
+      // the spend is keyed on its id.
+      const owner = session.controllerActorId;
+      await this.campaign.grantAllowanceIfDue(owner, now, transaction);
+      const charged = await this.tokens.spendForMatch({
+        accountId: owner,
+        matchId: match.id,
+        transaction,
+      });
+      if (!charged.charged) {
+        throw new MatchDomainError(
+          'MATCH_TOKEN_REQUIRED',
+          'This account has no token left to start a match',
+        );
+      }
       await this.matches.create(match, transaction);
     };
     if (this.creationFence) {

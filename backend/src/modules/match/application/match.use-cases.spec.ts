@@ -58,6 +58,8 @@ describe('MatchUseCases transitions', () => {
       conflict?: boolean;
       scoreResult?: ReturnType<typeof scoring.restoreEvents>;
       sessionStatus?: string;
+      /** False makes the ledger refuse, as an empty balance would. */
+      tokenCharged?: boolean;
     } = {},
   ) => {
     let stored: MatchState | null = null;
@@ -179,6 +181,20 @@ describe('MatchUseCases transitions', () => {
         questionBackdropFor: () =>
           Promise.resolve({ asset: null, defects: [] }),
       } as unknown as import('../../world-content/application/world-presentation.service').WorldPresentationService,
+      // Tokens have their own suites. An account that can always afford the
+      // Match keeps these assertions about the Match's own transitions; the
+      // one that cannot is asserted here too, with a ledger that refuses.
+      {
+        spendForMatch: () =>
+          Promise.resolve(
+            options.tokenCharged === false
+              ? { charged: false }
+              : { charged: true, balanceAfter: 9 },
+          ),
+      } as unknown as import('../../entitlements/application/token-ledger.service').TokenLedgerService,
+      {
+        grantAllowanceIfDue: () => Promise.resolve(),
+      } as unknown as import('../../entitlements/application/launch-campaign.service').LaunchCampaignService,
     );
     return { useCases, published, current: load };
   };
@@ -225,6 +241,19 @@ describe('MatchUseCases transitions', () => {
       occurrenceIndex: 0,
       slotKey,
     });
+
+  it('leaves no Match behind when there is no token to pay for it', async () => {
+    // The charge and the insert share one transaction, so a refused balance
+    // must leave nothing: no Match, and nothing announced to the room.
+    const context = setup({ tokenCharged: false });
+
+    const refused = await createUnified(context).catch((error) => error);
+    expect((refused as MatchDomainError).getResponse()).toMatchObject({
+      code: 'MATCH_TOKEN_REQUIRED',
+    });
+    expect(context.current()).toBeNull();
+    expect(context.published).toHaveLength(0);
+  });
 
   it('announces every authoritative Match change on one channel', async () => {
     const context = setup();
