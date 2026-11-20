@@ -236,7 +236,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
 
       <Card className="surface-card border-0 shadow-none">
         <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-2xl font-black">مين أنت؟</CardTitle>
+          <CardTitle className="text-2xl font-black">اسمك طال عمرك</CardTitle>
           <p className="text-sm text-muted-foreground">
             اكتب اسمك واختر فريقك، وجوالك يتحدّث لحاله مع كل تحدي.
           </p>

@@ -42,7 +42,6 @@ function setup(input: {
     save: jest.fn(async () => undefined),
   };
   const publisher = { publish: jest.fn() };
-  const countdown = { cancel: jest.fn() };
   const reassign = { forSession: jest.fn(async () => undefined) };
   const withdraw = { forConnection: jest.fn(async () => undefined) };
   const reconciler = new PresenceEffectsReconciler(
@@ -52,7 +51,6 @@ function setup(input: {
     runtimes as never,
     { toSnapshot: () => ({}) } as never,
     publisher as never,
-    countdown as never,
     reassign as never,
     withdraw as never,
   );
@@ -62,13 +60,13 @@ function setup(input: {
     sessions,
     sessionAggregate,
     publisher,
-    countdown,
     reassign,
     withdraw,
   };
 }
 
-const bombReady = (ready: boolean, connected: boolean) => ({
+/** A ready session whose representative's readiness and presence can vary. */
+const readySession = (ready: boolean, connected: boolean) => ({
   modeKey: 'bomb',
   status: 'ready',
   teams: [{ id: 't1', active: true }],
@@ -99,51 +97,21 @@ describe('PresenceEffectsReconciler', () => {
     ]);
   });
 
-  it('cancels a ready Bomb countdown with no connected ready representative, under the expected revision', async () => {
-    const t = setup({ session: bombReady(true, false) });
-    await t.reconciler.forSession('s1');
-    expect(t.sessionAggregate!.cancelCountdown).toHaveBeenCalled();
-    expect(t.sessions.save).toHaveBeenCalledWith(t.sessionAggregate, 7);
-    expect(t.countdown.cancel).toHaveBeenCalledWith('s1');
-    expect(t.publisher.publish).toHaveBeenCalledWith(
-      'live-session:state-changed',
-      {},
-      { reason: 'bomb-countdown-cancelled' },
-    );
-  });
 
-  it('leaves a countdown whose representatives are connected and ready', async () => {
-    const t = setup({ session: bombReady(true, true) });
-    expect(await t.reconciler.cancelUnreadyBombCountdown('s1')).toBe(false);
-    expect(t.sessions.save).not.toHaveBeenCalled();
-  });
 
   it('runs every effect even when earlier ones fail (partial-failure recovery)', async () => {
-    const t = setup({
-      readinessIds: ['gone'],
-      session: bombReady(true, false),
-    });
+    const t = setup({ readinessIds: ['gone'] });
     t.reassign.forSession.mockRejectedValueOnce(new Error('stale revision'));
     t.withdraw.forConnection.mockRejectedValueOnce(new Error('db down'));
     await expect(t.reconciler.forSession('s1')).resolves.toEqual({
       status: 'transient',
     });
-    expect(t.sessions.save).toHaveBeenCalled();
     // The next pass retries what failed, derived from state again.
     await t.reconciler.forSession('s1');
     expect(t.reassign.forSession).toHaveBeenCalledTimes(2);
     expect(t.withdraw.forConnection).toHaveBeenCalledTimes(2);
   });
 
-  it('a lost revision race is contained and does not publish', async () => {
-    const t = setup({ session: bombReady(false, true) });
-    t.sessions.save.mockRejectedValueOnce(
-      new Error('LiveSessionConcurrencyError'),
-    );
-    await t.reconciler.forSession('s1');
-    expect(t.publisher.publish).not.toHaveBeenCalled();
-    expect(t.countdown.cancel).not.toHaveBeenCalled();
-  });
 
   describe('failure classification', () => {
     const invalid = () =>
@@ -153,7 +121,7 @@ describe('PresenceEffectsReconciler', () => {
       );
 
     it('is permanent only when the persisted runtime itself cannot be restored', async () => {
-      const t = setup({ session: bombReady(true, true) });
+      const t = setup({ session: readySession(true, true) });
       t.runtimes.findBySessionId.mockRejectedValue(invalid());
       t.reassign.forSession.mockRejectedValue(invalid());
       await expect(t.reconciler.forSession('s1')).resolves.toEqual({
@@ -164,7 +132,7 @@ describe('PresenceEffectsReconciler', () => {
     });
 
     it('is transient when an effect fails but the state restores (the failure lay elsewhere)', async () => {
-      const t = setup({ session: bombReady(true, true) });
+      const t = setup({ session: readySession(true, true) });
       t.reassign.forSession.mockRejectedValueOnce(invalid());
       await expect(t.reconciler.forSession('s1')).resolves.toEqual({
         status: 'transient',
@@ -172,7 +140,7 @@ describe('PresenceEffectsReconciler', () => {
     });
 
     it('is transient when the probe fails on the database', async () => {
-      const t = setup({ session: bombReady(true, true) });
+      const t = setup({ session: readySession(true, true) });
       const network = Object.assign(new Error('connection reset'), {
         name: 'MongoNetworkError',
       });
@@ -184,7 +152,7 @@ describe('PresenceEffectsReconciler', () => {
     });
 
     it('never treats a revision race as permanent, even if a load surfaced it', async () => {
-      const t = setup({ session: bombReady(true, true) });
+      const t = setup({ session: readySession(true, true) });
       t.reassign.forSession.mockRejectedValueOnce(
         new LiveSessionConcurrencyError(),
       );
@@ -199,7 +167,7 @@ describe('PresenceEffectsReconciler', () => {
     it('leaves an expired Bomb countdown alone instead of failing on it', async () => {
       const t = setup({
         session: {
-          ...bombReady(true, false),
+          ...readySession(true, false),
           expiresAt: new Date('2026-11-06T00:00:00Z'),
         },
       });

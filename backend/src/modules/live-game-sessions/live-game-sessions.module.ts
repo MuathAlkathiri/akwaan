@@ -111,9 +111,7 @@ import {
   GameplayInteractionController,
   GameplayParticipantInteractionController,
 } from './presentation/gameplay-interaction.controller';
-import { StartBombGameplay } from './application/start-bomb-gameplay.use-case';
 import { StartBombGameplayFromContent } from './application/start-bomb-from-content.use-case';
-import { BombCountdownScheduler } from './application/bomb-countdown.scheduler';
 import { LiveSessionSnapshotComposer } from './application/live-session-snapshot.composer';
 import { ScoringModule } from '../scoring/scoring.module';
 import { WorldContentModule } from '../world-content/world-content.module';
@@ -203,9 +201,7 @@ const applicationProviders = [
   CancelGameplayRuntime,
   GameplayRuntimeSocketFacade,
   GameplayInteractionUseCases,
-  StartBombGameplay,
   StartBombGameplayFromContent,
-  BombCountdownScheduler,
   StartRyoGameplay,
   StartTop5,
   ReassignTeamActions,

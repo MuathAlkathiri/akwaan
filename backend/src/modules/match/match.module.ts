@@ -65,6 +65,7 @@ import { LaqathaChallengeLauncher } from './application/laqatha-challenge.launch
 import { EkshifniChallengeLauncher } from './application/ekshifni-challenge.launcher';
 import { LaTahriqhaChallengeLauncher } from './application/la-tahriqha-challenge.launcher';
 import { FirstNoteChallengeLauncher } from './application/first-note-challenge.launcher';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 /**
  * Match orchestration.
@@ -77,6 +78,7 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
  */
 @Module({
   imports: [
+    EntitlementsModule,
     AuthModule,
     ScoringModule,
     WorldContentModule,

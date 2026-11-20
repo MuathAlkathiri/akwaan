@@ -1,4 +1,3 @@
-import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { GameplayDeadlineScheduler } from './gameplay-deadline.scheduler';
 import { GameplayObserverRegistry } from './gameplay-observer.registry';
 import { GameplayModeRegistry } from '../domain/gameplay-mode.registry';
@@ -30,73 +29,6 @@ function trackUnhandledRejections() {
     stop: () => process.off('unhandledRejection', onUnhandled),
   };
 }
-
-describe('bomb countdown timer failure containment', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(NOW);
-  });
-  afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
-  });
-
-  it('does not let a failed post-countdown start escape as an unhandled rejection', async () => {
-    // The countdown fires into a multi-step Bomb launch: session read, runtime
-    // create, round create, round start, turn start. Any of those can lose a
-    // revision race or fail against Mongo. There is no caller to catch it.
-    const rejection = new Error('runtime create lost a revision race');
-    const startBomb = {
-      startAfterCountdown: jest.fn().mockRejectedValue(rejection),
-    };
-    const scheduler = new BombCountdownScheduler({
-      get: () => startBomb,
-    } as never);
-    const tracker = trackUnhandledRejections();
-
-    scheduler.schedule('session-1', new Date(NOW + 3_000));
-    await jest.advanceTimersByTimeAsync(3_100);
-    // Let any unowned rejection reach the process before asserting.
-    await Promise.resolve();
-
-    expect(startBomb.startAfterCountdown).toHaveBeenCalledWith('session-1');
-    expect(tracker.seen).toEqual([]);
-    tracker.stop();
-  });
-
-  it('still releases the timer entry when the start fails', async () => {
-    // Containment must not cost cleanup: a failed countdown may not leave its
-    // session pinned in the map for the life of the process.
-    const scheduler = new BombCountdownScheduler({
-      get: () => ({
-        startAfterCountdown: jest.fn().mockRejectedValue(new Error('nope')),
-      }),
-    } as never);
-
-    scheduler.schedule('session-1', new Date(NOW + 1_000));
-    await jest.advanceTimersByTimeAsync(1_100);
-
-    // Cancelling a session with no live timer is a no-op; the observable proof
-    // is that nothing remains to fire.
-    expect(jest.getTimerCount()).toBe(0);
-  });
-
-  it('a countdown scheduled twice leaves exactly one timer', async () => {
-    const startBomb = {
-      startAfterCountdown: jest.fn().mockResolvedValue(undefined),
-    };
-    const scheduler = new BombCountdownScheduler({
-      get: () => startBomb,
-    } as never);
-
-    scheduler.schedule('session-1', new Date(NOW + 3_000));
-    scheduler.schedule('session-1', new Date(NOW + 3_000));
-    expect(jest.getTimerCount()).toBe(1);
-
-    await jest.advanceTimersByTimeAsync(3_100);
-    expect(startBomb.startAfterCountdown).toHaveBeenCalledTimes(1);
-  });
-});
 
 function runtimeState(
   overrides: Partial<GameplayRuntimeState> = {},
