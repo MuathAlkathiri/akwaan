@@ -116,9 +116,6 @@ export class UpdateParticipantPresence {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    // Shared with the background reconciler, so a crash between the removal
-    // above and these effects is recovered from state on a later pass.
-    await this.reconciler.cancelUnreadyBombCountdown(sessionId);
     this.logger.log({
       event: 'participant_disconnected',
       sessionId,

@@ -3,27 +3,33 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLiveSessionClock } from "../hooks/live-session-clock-context";
 import { useLiveSession } from "../hooks/live-session-context";
 import { SessionConnectionStatus } from "./session-connection-status";
-import { GameplayRuntimePanel } from "./gameplay-runtime-panel";
-import { useTeamClockDisplay } from "../hooks/use-team-clock-display";
-import { BombGameplayPanel } from "./bomb-gameplay-panel";
 import { ParticipantMatchView } from "../match/views";
 
+/**
+ * A player's phone between joining and the Match opening.
+ *
+ * Once a Match exists this hands over and never draws again, so what is left
+ * is the short wait before it: the team they were put in, and the one control
+ * they own — saying they are ready, which is what lets the host start.
+ *
+ * It used to carry a whole second game as well: a standalone Bomb run with its
+ * own countdown, its own result screen and its own English copy. Sessions are
+ * created with one mode now and always carry a Match, so none of that was
+ * reachable from the app; it is gone, and the readiness control stayed.
+ */
 export function PlayerLobby({ participantId }: { participantId: string }) {
-  const { snapshot, command, connection, error } = useLiveSession();
-  const nowMs = useLiveSessionClock();
+  const { snapshot, command, error } = useLiveSession();
   const participant = snapshot?.participants.find(
     (item) => item.id === participantId,
   );
-  const clock = useTeamClockDisplay(participant?.teamId ?? "");
   if (!snapshot) return null;
   if (!participant) {
     return (
       <Card role="alert" className="mx-auto mt-10 max-w-lg">
-        <CardContent className="pt-6">
-          This player is no longer enrolled in the game.
+        <CardContent className="pt-6 text-center font-bold">
+          ما عدت في هذي الجلسة. اطلب من المضيف يضيفك من جديد.
         </CardContent>
       </Card>
     );
@@ -32,154 +38,50 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
     return <ParticipantMatchView participantId={participantId} />;
   }
   const team = snapshot.teams.find((item) => item.id === participant.teamId);
-  const countdown = snapshot.countdownEndsAt
-    ? Math.max(
-        0,
-        Math.ceil((Date.parse(snapshot.countdownEndsAt) - nowMs) / 1000),
-      )
-    : undefined;
-  if (snapshot.bombResult) {
-    const won = participant.teamId === snapshot.bombResult.winnerTeamId;
-    return (
-      <main className="mx-auto max-w-lg py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {won ? "Congratulations! Your team won." : "Time is up"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-center">
-            <p className="text-2xl font-bold">
-              Winner: {snapshot.bombResult.winnerTeamName}
-            </p>
-            <p className="text-muted-foreground">
-              {snapshot.bombResult.completionReason === "time_expired"
-                ? `${snapshot.bombResult.loserTeamName} ran out of time.`
-                : "All Bomb items were completed."}
-            </p>
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
-  const isBombActive =
-    snapshot.mode.key === "bomb" &&
-    !["waiting", "ready"].includes(snapshot.status);
-  const isActiveRepresentative =
-    snapshot.gameplay?.activeRound?.activeParticipantId === participant.id;
-  const feedback = snapshot.gameplay?.transitions.at(-1)?.type;
   return (
-    <main className="mx-auto max-w-lg space-y-5 py-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">Player lobby</p>
-          <h1 className="text-2xl font-bold">{participant.displayName}</h1>
-        </div>
-        <SessionConnectionStatus />
-      </header>
-      {connection !== "connected" && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="rounded-lg border border-warning/35 bg-warning-subtle p-3 text-sm"
-        >
-          {connection === "connecting"
-            ? "Connecting to the game…"
-            : "Connection lost. Reconnecting to the game…"}
-        </div>
-      )}
+    <main dir="rtl" className="mx-auto max-w-lg space-y-4 py-10">
+      <SessionConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle>
-            {isBombActive
-              ? isActiveRepresentative
-                ? "Your turn"
-                : "Waiting for the other team"
-              : "Waiting for the host"}
+          <CardTitle className="font-black">
+            {participant.ready ? "جاهز — ننتظر الباقين" : "بانتظار المضيف"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">
-              {team?.name ?? "Team assignment pending"}
+            <Badge variant="outline" className="font-bold">
+              {team?.name ?? "لسا ما انحطيت في فريق"}
             </Badge>
-            <Badge variant={participant.ready ? "secondary" : "outline"}>
-              {participant.ready ? "Ready" : "Not ready"}
+            <Badge
+              variant={participant.ready ? "secondary" : "outline"}
+              className="font-bold"
+            >
+              {participant.ready ? "جاهز" : "مو جاهز"}
             </Badge>
           </div>
-          {countdown !== undefined ? (
-            <div
-              role="timer"
-              aria-live="polite"
-              className="rounded-[var(--radius)] bg-primary/10 p-6 text-center"
-            >
-              <p className="text-sm text-muted-foreground">Bomb starts in</p>
-              <p className="text-6xl font-black text-primary">{countdown}</p>
-            </div>
-          ) : isBombActive ? (
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm text-muted-foreground">
-                {team?.name ?? "Team"}
-              </p>
-              <p className="akwaan-numeral text-4xl font-bold">
-                {clock.formatted}
-              </p>
-              {(feedback === "bomb-answer-correct" ||
-                feedback === "bomb-answer-incorrect") && (
-                <p
-                  className={
-                    feedback === "bomb-answer-correct"
-                      ? "mt-2 text-sm text-success"
-                      : "mt-2 text-sm text-destructive"
-                  }
-                  role="status"
-                >
-                  {feedback === "bomb-answer-correct"
-                    ? "Correct — item advanced."
-                    : "Incorrect — try again."}
-                </p>
-              )}
-            </div>
-          ) : (
-            <Button
-              className="w-full"
-              onClick={() =>
-                command(
-                  participant.ready
-                    ? "participant-not-ready"
-                    : "participant-ready",
-                )
-              }
-              disabled={!participant.teamId}
-            >
-              {participant.ready ? "Mark not ready" : "I’m ready"}
-            </Button>
-          )}
-          {!participant.teamId && !isBombActive && (
-            <p className="text-sm text-muted-foreground">
-              Your host needs to assign a team before you can become ready.
+          <Button
+            className="h-14 w-full text-lg font-black"
+            onClick={() =>
+              command(
+                participant.ready ? "participant-not-ready" : "participant-ready",
+              )
+            }
+            disabled={!participant.teamId}
+          >
+            {participant.ready ? "رجعني مو جاهز" : "أنا جاهز"}
+          </Button>
+          {!participant.teamId && (
+            <p className="text-sm font-bold text-muted-foreground">
+              المضيف لازم يحطك في فريق قبل ما تقدر تجهز.
             </p>
           )}
           {error && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm font-bold text-destructive">
               {error.message}
             </p>
           )}
         </CardContent>
       </Card>
-      {snapshot.mode.key === "bomb" ? (
-        snapshot.gameplay ? (
-          <BombGameplayPanel runtime={snapshot.gameplay} />
-        ) : (
-          <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              Waiting for the host to start Bomb.
-            </CardContent>
-          </Card>
-        )
-      ) : (
-        <GameplayRuntimePanel />
-      )}
     </main>
   );
 }

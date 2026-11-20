@@ -70,7 +70,7 @@ export const FIRST_NOTE_DEMO_STEPS: readonly FirstNoteDemoStep[] = [
   },
   {
     id: "correct",
-    caption: "إجابة السرقة صحيحة: الفريق الثاني يحصل على نقطة واحدة.",
+    caption: "إجابة السرقة صحيحة: الفريق الثاني ياخذ 11 نقطة — قيمة مزايدته هو.",
     holdSeconds: 2.4,
   },
   {
@@ -108,9 +108,11 @@ export const SAMPLE_FIRST_NOTE_TUTORIAL_SCENARIO: FirstNoteTutorialScenario = {
     firstAnswerFailed: true,
     stealTeam: "team-b",
     stolen: true,
-    firstCorrectReward: 3,
-    stealReward: 1,
-    points: { "team-a": 0, "team-b": 1 },
+    // 16 − bid: three seconds would have paid 13, and the steal is paid by the
+    // stealing team's own last bid of five.
+    firstCorrectReward: 13,
+    stealReward: 11,
+    points: { "team-a": 0, "team-b": 11 },
     reason: "first-note.auction-steal",
   },
 };

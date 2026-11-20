@@ -18,7 +18,6 @@ import {
   LIVE_SESSION_TRANSITION_PUBLISHER,
   LiveSessionTransitionPublisher,
 } from './live-session-transition.publisher';
-import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { ReassignTeamActions } from './reassign-team-actions.use-case';
 import { WithdrawPresentationReadiness } from './withdraw-presentation-readiness.use-case';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
@@ -56,8 +55,8 @@ const NON_PERMANENT_CODES = new Set([
  *
  * Every effect is derived from persisted state, not from "a connection was just
  * removed": an action held by a participant who is not connected moves on,
- * readiness held by a connection that is no longer present is withdrawn, and a
- * Bomb countdown with no ready, connected representative is cancelled. Each is
+ * and readiness held by a connection that is no longer present is withdrawn.
+ * Each is
  * a state transition saved under the expected revision, so concurrent or
  * repeated runs converge: the loser of a race re-reads and finds nothing left
  * to do. That is what makes it safe to run after a sweep, after a crash
@@ -80,7 +79,6 @@ export class PresenceEffectsReconciler {
     private readonly snapshots: LiveGameSessionSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
-    private readonly countdown: BombCountdownScheduler,
     private readonly reassignTeamActions: ReassignTeamActions,
     private readonly withdrawReadiness: WithdrawPresentationReadiness,
   ) {}
@@ -98,9 +96,6 @@ export class PresenceEffectsReconciler {
       ),
       await this.contain('presentation_readiness', sessionId, () =>
         this.withdrawAbsentReadiness(sessionId),
-      ),
-      await this.contain('bomb_countdown', sessionId, () =>
-        this.cancelUnreadyBombCountdown(sessionId),
       ),
     ];
     if (results.every(Boolean)) return { status: 'ok' };
@@ -159,52 +154,6 @@ export class PresenceEffectsReconciler {
       withdrawn += 1;
     }
     return withdrawn;
-  }
-
-  /**
-   * A Bomb session that is `ready` while some active team has no ready,
-   * connected representative cancels its countdown. Saved under the expected
-   * revision: a concurrent cancel makes this save fail, and the retry finds the
-   * session no longer `ready`, so the countdown is cancelled and published once.
-   */
-  async cancelUnreadyBombCountdown(sessionId: string): Promise<boolean> {
-    const session = await this.sessions.findById(sessionId);
-    if (!session) return false;
-    const state = session.serialize();
-    const representativesReady = state.teams
-      .filter((team) => team.active)
-      .every((team) =>
-        state.participants.some(
-          (participant) =>
-            participant.role === 'team-player' &&
-            participant.teamId === team.id &&
-            participant.ready &&
-            participant.connected &&
-            !participant.removedAt,
-        ),
-      );
-    const now = this.clock.now();
-    if (
-      state.modeKey !== 'bomb' ||
-      state.status !== 'ready' ||
-      representativesReady ||
-      // An expired session refuses every command; there is no countdown left
-      // that anyone could start, and cancelling would only throw.
-      now.getTime() >= new Date(state.expiresAt).getTime()
-    ) {
-      return false;
-    }
-    const previousRevision = session.revision;
-    session.cancelCountdown(now);
-    session.completeCommand(randomUUID(), now);
-    await this.sessions.save(session, previousRevision);
-    this.countdown.cancel(sessionId);
-    this.publisher.publish(
-      'live-session:state-changed',
-      this.snapshots.toSnapshot(session, session.controllerActorId, now),
-      { reason: 'bomb-countdown-cancelled' },
-    );
-    return true;
   }
 
   private async contain(

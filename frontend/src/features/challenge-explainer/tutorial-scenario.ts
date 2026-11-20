@@ -282,9 +282,14 @@ export interface FirstNoteTutorialScenario {
     firstAnswerFailed: true;
     stealTeam: "team-b";
     stolen: true;
-    firstCorrectReward: 3;
-    stealReward: 1;
-    points: { "team-a": 0; "team-b": 1 };
+    /**
+     * Both are `16 − bid` now, so neither is a fixed number any more: the
+     * literal types here were the old three-band rewards, and they would have
+     * made a tutorial that told the truth a type error.
+     */
+    firstCorrectReward: number;
+    stealReward: number;
+    points: { "team-a": 0; "team-b": number };
     reason: "first-note.auction-steal";
   };
 }
@@ -377,7 +382,7 @@ export interface OddPieceLegacyTutorialScenario {
     secondClaimPieceId: string;
     secondClaimCorrect: true;
     winnerTeam: "team-b";
-    points: { "team-a": 0; "team-b": 1 };
+    points: { "team-a": 0; "team-b": number };
     matchPointDelta: 1;
     intruderPieceId: string;
     targetVehicleLabel: string;
@@ -416,7 +421,7 @@ export interface OddPieceHotspotTutorialScenario {
     handoffTeam: "team-b";
     secondClaimCorrect: true;
     winnerTeam: "team-b";
-    points: { "team-a": 0; "team-b": 1 };
+    points: { "team-a": 0; "team-b": number };
     matchPointDelta: 1;
     targetVehicleLabel: string;
     intruderVehicleLabel: string;

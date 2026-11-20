@@ -71,15 +71,15 @@ describe("من أول نغمة mechanic tutorial", () => {
     expect(screen.getByTestId("first-note-reveal")).toHaveTextContent(
       "سرقة ناجحة",
     );
-    expect(screen.getByTestId("first-note-reveal")).toHaveTextContent(
-      "+1 نقطة",
-    );
+    // The steal is paid by the stealing team's own last bid — five seconds
+    // here — not by a flat point.
+    expect(screen.getByTestId("first-note-reveal")).toHaveTextContent("+11");
     expect(screen.getByTestId("first-note-reveal")).toHaveTextContent(
       "3 أغنيات",
     );
   });
 
-  it("makes the failed first answer and single same-duration steal explicit", async () => {
+  it("makes the failed first answer and the steal paid by its own bid explicit", async () => {
     reducedMotion();
     render(
       <FirstNoteExplainer
@@ -103,8 +103,9 @@ describe("من أول نغمة mechanic tutorial", () => {
       "data-steal-state",
       "active",
     );
+    // And it hears that bid's duration, not the winner's three seconds.
     expect(screen.getByTestId("first-note-steal-handoff")).toHaveTextContent(
-      "3 ثوانٍ",
+      "5 ثوانٍ",
     );
     expect(screen.getByTestId("first-note-answer-input")).toHaveValue(
       "على بالي",

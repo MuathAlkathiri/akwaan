@@ -294,7 +294,7 @@ function FirstNoteBoardScene({
                       ? "الفريق الثاني توقف عن النزول · أولوية الإجابة للفريق الأول"
                       : step === "opening"
                         ? "الفريقان يقدّران كم ثانية تكفي"
-                        : "كل رقم أقل يرفع المخاطرة ويقرّب المكافأة من 3 نقاط"}
+                        : "كل ثانية تنزلها نقطة زيادة — وخطر أكبر"}
                   </div>
                 </section>
               )}
@@ -471,7 +471,7 @@ function FirstNotePhoneScene({
                 />
                 <p className="mt-1 text-xs font-black">سرقة ناجحة</p>
                 <p className="text-[0.62rem] font-bold text-muted-foreground">
-                  نقطة واحدة فقط
+                  11 نقطة · قيمة مزايدته هو
                 </p>
               </>
             ) : steal ? (
@@ -480,9 +480,9 @@ function FirstNotePhoneScene({
                   className="mx-auto size-4 text-brand-gold"
                   aria-hidden
                 />
-                <p className="mt-1 text-xs font-black">المقطع لم يتغير</p>
+                <p className="mt-1 text-xs font-black">المقطع بمزايدته هو</p>
                 <p className="text-[0.62rem] font-bold text-muted-foreground">
-                  3 ثوانٍ · محاولة واحدة
+                  5 ثوانٍ · محاولة واحدة
                 </p>
               </>
             ) : (
@@ -527,10 +527,10 @@ function FirstNoteStealHandoff({ step }: { step: FirstNoteDemoStepId }) {
       </p>
       <p className="mt-1 text-[0.68rem] font-bold text-muted-foreground">
         {correct
-          ? "+1 نقطة فقط — لا توجد محاولة ثانية"
+          ? "+11 — ولا توجد محاولة ثانية"
           : active
-            ? "نفس مدة المقطع: 3 ثوانٍ · محاولة واحدة فقط"
-            : "الفريق الثاني يحصل على فرصة سرقة واحدة، بلا تمديد للمقطع"}
+            ? "بمزايدته هو: 5 ثوانٍ · محاولة واحدة فقط"
+            : "الفريق الثاني ياخذ سرقة واحدة، بالمدة اللي زايد فيها هو"}
       </p>
     </section>
   );
@@ -554,7 +554,7 @@ function FirstNoteReveal({
           <Check className="mx-auto size-4 text-brand-gold" aria-hidden />
           <p className="text-xs font-black">الفريق الثاني</p>
           <p className="text-[0.65rem] font-bold text-muted-foreground">
-            سرقة ناجحة · +1 نقطة
+            سرقة ناجحة · +11
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2">
@@ -566,7 +566,7 @@ function FirstNoteReveal({
         </div>
       </div>
       <p className="text-xs font-black">
-        إجابة صحيحة من 3 ثوانٍ كانت ستمنح 3 نقاط.
+        إجابة صحيحة من 3 ثوانٍ كانت ستمنح 13 نقطة.
       </p>
       <p className="text-xs font-bold text-muted-foreground">
         هذه نتيجة أغنية واحدة؛ التحدي يضم 3 أغنيات.
@@ -600,7 +600,7 @@ function FirstNoteNotes({
       <p className="text-[0.68rem] font-bold text-muted-foreground">
         {step === "reveal"
           ? "من أول نغمة = 3 أغنيات في التحدي."
-          : `المزايدة النهائية ${scenario.outcome.finalBidSeconds} ثوانٍ · السرقة الناجحة +1.`}
+          : `المزايدة النهائية ${scenario.outcome.finalBidSeconds} ثوانٍ · السرقة الناجحة +11.`}
       </p>
       <div className="flex justify-center gap-2 text-[0.62rem] font-black">
         <span className="rounded-full bg-brand-gold/15 px-2 py-1">
