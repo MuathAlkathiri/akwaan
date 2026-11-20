@@ -299,6 +299,18 @@ export const LA_TAHRIQHA_DEFAULT_DISH_SECONDS = 30;
 export const FIRST_NOTE_SLUG = 'first-note';
 export const FIRST_NOTE_ITEM_COUNT = 3;
 export const FIRST_NOTE_MIN_BID_SECONDS = 1;
+/**
+ * The lowest an *opening* bid may go.
+ *
+ * Without it, a team that does not recognise the artist can open at the
+ * minimum and end the auction before its opponent ever bids: nobody can
+ * outbid 1, the clip is a second long, and a song the opponent would have
+ * won becomes nothing for either side. That denial costs the opener nothing,
+ * which makes it the correct play whenever they are ignorant — and the
+ * auction stops being about how few seconds you need. An opening bid is an
+ * invitation to compete, so it may not also be a door closing.
+ */
+export const FIRST_NOTE_OPENING_MIN_BID_SECONDS = 8;
 export const FIRST_NOTE_MAX_BID_SECONDS = 15;
 /** Configurable implementation/playtest default, not a Product balance rule. */
 export const FIRST_NOTE_ANSWER_SECONDS = 15;

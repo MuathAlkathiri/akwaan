@@ -9,6 +9,7 @@ import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
+import { FIRST_NOTE_OPENING_MIN_BID } from "../match/first-note.presentation";
 import { useLiveSession } from "../hooks/live-session-context";
 import { useBoundedAudio } from "../hooks/use-bounded-audio";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -59,13 +60,22 @@ export function FirstNoteGameplayPanel({
   const masterUrl = getMediaUrl(view.audio?.assets[0]?.url);
   // The authorised prefix comes from the server's frozen winning bid, never from
   // this component's own bid input.
+  // During a steal the clip is the stealing team's own bid, not the winner's:
+  // each side hears the duration it asked for, which is what stops an
+  // ignorant undercut from denying an opponent the song.
+  const clipSeconds =
+    view.phase === "steal" ? (view.stealSeconds ?? view.finalBidSeconds) : view.finalBidSeconds;
   const audioRef = useBoundedAudio({
     src: masterUrl || undefined,
-    seconds: view.finalBidSeconds,
+    seconds: clipSeconds,
     enabled: !phone && (view.phase === "answering" || view.phase === "steal"),
   });
   const live = connection === "connected";
   const max = (view.currentBidSeconds ?? 16) - 1;
+  // An opening bid may not end the auction before the other team has bid, so
+  // the first bid has a floor as well as a ceiling. The server refuses a lower
+  // one regardless; offering it here would only invite a rejected tap.
+  const min = view.currentBidSeconds == null ? FIRST_NOTE_OPENING_MIN_BID : 1;
   // The phone shows the clock for the action it is being asked to take. The
   // deadline is the server's; nothing here counts on its own.
   const remainingMs = useInteractionDeadline(
@@ -170,7 +180,7 @@ export function FirstNoteGameplayPanel({
               </strong>
             </p>
             <p>
-              {team(view.biddingTeamId)} عليه الدور · المسموح 1–{max} ثانية
+              {team(view.biddingTeamId)} عليه الدور · المسموح {min}–{max} ثانية
             </p>
             {phone && view.canBid && can("submit-first-note-bid") ? (
               <MobileActionArea>
@@ -184,7 +194,7 @@ export function FirstNoteGameplayPanel({
                   dir="ltr"
                 >
                   {Array.from(
-                    { length: Math.max(max, 0) },
+                    { length: Math.max(max - min + 1, 0) },
                     (_u, i) => max - i,
                   ).map((seconds) => (
                     <li key={seconds}>
@@ -304,7 +314,7 @@ export function FirstNoteGameplayPanel({
               className={phone ? "text-base font-black" : "text-xl font-black"}
             >
               {view.phase === "steal"
-                ? "فرصة سرقة واحدة"
+                ? `فرصة سرقة واحدة — بمزايدتكم ${clipSeconds} ثانية`
                 : `${team(view.answerOwnerTeamId)} قال يقدر يعرفها من ${view.finalBidSeconds} ثانية`}
             </p>
             {masterUrl && !phone && (
@@ -315,11 +325,11 @@ export function FirstNoteGameplayPanel({
                 // One canonical Master, identical for every bid and for the
                 // steal. Only how far it is allowed to run changes.
                 src={masterUrl}
-                data-clip-seconds={view.finalBidSeconds}
+                data-clip-seconds={clipSeconds}
                 data-testid="first-note-audio"
               />
             )}
-            {!phone && <p>مدة المقطع: {view.finalBidSeconds} ثانية</p>}
+            {!phone && <p>مدة المقطع: {clipSeconds} ثانية</p>}
             {phone && view.canAnswer && can("submit-first-note-answer") ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="flex flex-1 flex-col justify-center">

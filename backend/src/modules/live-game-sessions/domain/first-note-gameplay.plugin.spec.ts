@@ -83,12 +83,14 @@ describe('First Note content and rewards', () => {
       }),
     ).toThrow();
   });
+  // A point for every second given up, so every bid between the floor and the
+  // ceiling is a different bid.
   it.each([
-    [1, 3],
-    [3, 3],
-    [4, 2],
-    [7, 2],
-    [8, 1],
+    [1, 15],
+    [3, 13],
+    [4, 12],
+    [7, 9],
+    [8, 8],
     [15, 1],
   ])('maps %s seconds to %s points', (seconds, points) =>
     expect(firstNoteReward(seconds)).toBe(points),
@@ -144,24 +146,46 @@ describe('First Note auction', () => {
     }).runtimeState;
     expect(() => run(state, 'pass-first-note-bid', 'p1')).toThrow();
   });
+  it('refuses an opening bid below the opening floor', () => {
+    // The whole point of the floor: an opening bid may not end the auction
+    // before the other team has had a turn.
+    expect(() =>
+      run(auction(), 'submit-first-note-bid', 'p1', { seconds: 1 }),
+    ).toThrow();
+  });
   it('pass gives the opposing lowest bidder priority and preserves exact duration', () => {
-    const state = run(auction(), 'submit-first-note-bid', 'p1', {
+    const opened = run(auction(), 'submit-first-note-bid', 'p1', {
+      seconds: 9,
+    }).runtimeState;
+    const state = run(opened, 'submit-first-note-bid', 'p2', {
       seconds: 4,
     }).runtimeState;
-    const answer = run(state, 'pass-first-note-bid', 'p2').runtimeState;
+    const answer = run(state, 'pass-first-note-bid', 'p1').runtimeState;
     expect(answer).toMatchObject({
       phase: 'answering',
-      answerOwnerTeamId: 't1',
+      answerOwnerTeamId: 't2',
       finalBidSeconds: 4,
     });
   });
 });
 
 describe('First Note answer, privacy, and progression', () => {
+  // t1 opens at the floor's edge, t2 undercuts to 10, t1 takes it to 2 and t2
+  // passes — so t1 answers from 2 seconds and t2's own standing bid is 10.
   const answering = () =>
     run(
-      run(auction(), 'submit-first-note-bid', 'p1', { seconds: 2 })
-        .runtimeState,
+      run(
+        run(
+          run(auction(), 'submit-first-note-bid', 'p1', { seconds: 12 })
+            .runtimeState,
+          'submit-first-note-bid',
+          'p2',
+          { seconds: 10 },
+        ).runtimeState,
+        'submit-first-note-bid',
+        'p1',
+        { seconds: 2 },
+      ).runtimeState,
       'pass-first-note-bid',
       'p2',
     ).runtimeState;
@@ -170,11 +194,11 @@ describe('First Note answer, privacy, and progression', () => {
       answer: 'الاماكن',
     }).runtimeState;
     expect(JSON.parse(String(state.resultsJson))[0].points).toEqual({
-      t1: 3,
+      t1: 14,
       t2: 0,
     });
   });
-  it('wrong answer opens exactly one same-duration steal worth one', () => {
+  it('wrong answer opens one steal paid by the stealer\'s own bid', () => {
     const steal = run(answering(), 'submit-first-note-answer', 'p1', {
       answer: 'خطأ',
     }).runtimeState;
@@ -192,10 +216,12 @@ describe('First Note answer, privacy, and progression', () => {
     expect(
       FIRST_NOTE_GAMEPLAY_PLUGIN.projectRuntimeState(steal),
     ).not.toHaveProperty('revealAnswersJson');
+    // t2's own last bid was 10 seconds, so it hears ten and earns what ten
+    // was worth — exactly what it would have won had t1 not undercut it.
     expect(JSON.parse(String(result.resultsJson))[0]).toMatchObject({
       answers: { t1: 'خطأ', t2: 'الأماكن' },
       stolen: true,
-      points: { t1: 0, t2: 1 },
+      points: { t1: 0, t2: 6 },
     });
     expect(() =>
       run(result, 'submit-first-note-answer', 'p2', { answer: 'الأماكن' }),
