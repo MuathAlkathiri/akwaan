@@ -44,6 +44,7 @@ import {
   unifiedMatchSetupPolicy,
 } from './domain/unified-match-setup.policy';
 import { MATCH_REPOSITORY } from './persistence/match.repository';
+import { MatchPresentedContentLookup } from './application/match-presented-content.lookup';
 import {
   ContentExposureDocument,
   ContentExposureSchema,
@@ -123,6 +124,7 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
     { provide: UnifiedMatchBoardPolicy, useValue: unifiedMatchBoardPolicy },
     UnifiedMatchSetupValidator,
     MatchUseCases,
+    MatchPresentedContentLookup,
     RyoChallengeLauncher,
     Top5ChallengeLauncher,
     RakkibhaChallengeLauncher,
@@ -145,6 +147,10 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
     ChallengeTypeMatchUsageGuard,
     ListMyMatches,
   ],
-  exports: [MatchUseCases, ChallengeLauncherRegistry],
+  exports: [
+    MatchUseCases,
+    ChallengeLauncherRegistry,
+    MatchPresentedContentLookup,
+  ],
 })
 export class MatchModule {}

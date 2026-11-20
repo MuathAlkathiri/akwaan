@@ -27,6 +27,7 @@ import type { GameplayRuntimeSnapshot } from "../model";
 import { MarhalaQuestionAudio } from "./marhala-screen";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { useRyoAudioReplay } from "../hooks/use-ryo-audio-replay";
+import { QuestionVerdict } from "./question-verdict";
 
 /**
  * «إعادة المقطع» — one control, rendered on whichever surface the actor holds.
@@ -1010,6 +1011,10 @@ function PhoneRyoController({
             <p className="mt-auto text-sm font-bold text-muted-foreground">
               تابعوا النتيجة على الشاشة
             </p>
+            {/* The verdict sits after the reveal, not beside the question:
+                asked before the answer is known it would be a guess about the
+                question rather than an opinion of it. */}
+            {item && <QuestionVerdict contentItemId={item.id} className="pb-1" />}
           </section>
         ) : completed ? (
           <PhoneRyoWaiting testId="ryo-phone-complete">

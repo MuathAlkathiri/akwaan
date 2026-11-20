@@ -15,6 +15,7 @@ import { teamColorVariables } from "@/lib/team-palette";
 import {
   acknowledgePresentationReady,
   getLiveSession,
+  recordContentSignal,
   setMatchDouble,
 } from "../api/live-session-api";
 import {
@@ -192,6 +193,17 @@ export function LiveSessionProvider({
     [adoptSnapshot, participantCredential, sessionId],
   );
 
+  const sendContentSignal = useCallback(
+    async (contentItemId: string, kind: "liked" | "defect") => {
+      if (!participantCredential) return;
+      await recordContentSignal(participantCredential, {
+        contentItemId,
+        kind,
+      });
+    },
+    [participantCredential],
+  );
+
   const command = useCallback(
     (action: string, options: LiveSessionCommandOptions = {}) => {
       if (!state.snapshot) return;
@@ -358,6 +370,7 @@ export function LiveSessionProvider({
       gameplayCommand,
       presentationReady,
       presentationReadySocket,
+      recordContentSignal: sendContentSignal,
       adoptSnapshot,
       resync,
       setMatchDouble: updateMatchDouble,
@@ -377,7 +390,7 @@ export function LiveSessionProvider({
       connectionEpoch,
       resync,
       updateMatchDouble,
-    ],
+      sendContentSignal,],
   );
 
   // Memoised for the same reason: this provider still rerenders on every tick

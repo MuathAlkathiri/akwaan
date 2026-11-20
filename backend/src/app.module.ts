@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { OtpModule } from './modules/auth/otp/otp.module';
 import { UsersModule } from './modules/users/users.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { ContentSignalModule } from './modules/content-signal/content-signal.module';
 import { EntitlementsModule } from './modules/entitlements/entitlements.module';
 import { LiveGameSessionsModule } from './modules/live-game-sessions/live-game-sessions.module';
 import { HealthController } from './health.controller';
@@ -31,6 +32,7 @@ import { MatchModule } from './modules/match/match.module';
     MediaRightsModule,
     ContentEngineModule,
     SubscriptionsModule,
+    ContentSignalModule,
     EntitlementsModule,
     LiveGameSessionsModule,
     MatchModule,
