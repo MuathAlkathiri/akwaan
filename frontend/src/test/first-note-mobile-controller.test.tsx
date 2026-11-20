@@ -200,7 +200,7 @@ describe("the auction controller", () => {
     expect(screen.queryByTestId("first-note-bid-options")).toBeNull();
     expect(screen.queryByTestId("first-note-submit-bid")).toBeNull();
     expect(screen.getByTestId("first-note-auction-waiting")).toHaveTextContent(
-      "بانتظار الفريق الآخر",
+      "ننتظر",
     );
   });
 

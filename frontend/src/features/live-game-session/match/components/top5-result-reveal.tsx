@@ -282,7 +282,7 @@ export function Top5ResultReveal({
             </span>{" "}
             من أفضل 5
           </p>
-          <p className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1 text-sm font-black text-success">
+          <p className="inline-flex items-center gap-1 rounded-full border-2 border-brand-navy bg-brand-gold px-3 py-1 text-sm font-black text-brand-navy">
             <span className="akwaan-numeral">
               +
               {result.matchPoints.find(

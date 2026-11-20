@@ -244,12 +244,40 @@ export function FirstNoteGameplayPanel({
                 )}
               </MobileActionArea>
             ) : phone ? (
-              <p
-                className="flex flex-1 items-center justify-center font-black text-muted-foreground"
+              // Waiting still means nothing to do — but "the other team" is
+              // nobody. Naming who holds the bid, what their two moves are,
+              // and where the bid stands turns an empty screen into a thing
+              // worth watching. No player is named: this auction's turn
+              // belongs to a team, not to an assigned actor.
+              <section
+                className="flex flex-1 flex-col justify-center gap-3"
                 data-testid="first-note-auction-waiting"
               >
-                بانتظار الفريق الآخر
-              </p>
+                <div className="flex flex-col gap-2 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center">
+                  <p className="text-xs font-black text-muted-foreground">
+                    ننتظر
+                  </p>
+                  <p className="text-xl font-black text-foreground">
+                    {team(view.biddingTeamId)}
+                  </p>
+                  <p className="text-sm font-bold leading-relaxed text-muted-foreground">
+                    يزايد أو يتوقف. لو توقف، المقطع يروح لصاحب آخر مزايدة.
+                  </p>
+                </div>
+                {view.currentBidSeconds ? (
+                  <p className="text-center text-sm font-bold text-muted-foreground">
+                    آخر مزايدة{" "}
+                    <span className="akwaan-numeral font-black text-foreground">
+                      {view.currentBidSeconds}
+                    </span>{" "}
+                    ثانية · {team(view.currentBidTeamId)}
+                  </p>
+                ) : (
+                  <p className="text-center text-sm font-bold text-muted-foreground">
+                    ما في مزايدة بعد.
+                  </p>
+                )}
+              </section>
             ) : null}
             {!phone && view.canPass && can("pass-first-note-bid") && (
               <Button

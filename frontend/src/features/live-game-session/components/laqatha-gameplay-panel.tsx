@@ -210,9 +210,20 @@ export function LaqathaGameplayPanel({
           >
             {view.canClaim && can("claim-laqatha") ? (
               <>
-                <p className="flex flex-1 items-center justify-center px-4 font-black text-muted-foreground">
-                  تابعوا الأدلة على الشاشة
-                </p>
+                {/* Not waiting — deciding. The only question here is *when*
+                    to buzz, and the reward falling with every clue is what
+                    makes it a question, so it is what the space holds. */}
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4">
+                  <p className="text-xs font-black text-muted-foreground">
+                    الجائزة الآن
+                  </p>
+                  <p className="akwaan-numeral text-5xl font-black text-foreground">
+                    {view.currentReward ?? "—"}
+                  </p>
+                  <p className="text-sm font-bold text-muted-foreground">
+                    تنزل مع كل دليل — تابعوا الأدلة على الشاشة
+                  </p>
+                </div>
                 {/* One dominant action, sized for a thumb that is about to move
                     fast. Nothing else on this screen competes with it. */}
                 <MobileActionArea>
@@ -233,8 +244,10 @@ export function LaqathaGameplayPanel({
                 data-testid="laqatha-claim-blocked"
               >
                 {view.attemptUsed
-                  ? "انتهت محاولة فريقكم لهذا الفيلم."
-                  : "تابعوا الأدلة على الشاشة."}
+                  ? "انتهت محاولة فريقكم لهذا الفيلم. ننتظر الفريق الثاني."
+                  : view.claimOwnerTeamId
+                    ? `${teamName(view.claimOwnerTeamId)} حجز الإجابة. لو غلط، الفرصة ترجع لكم.`
+                    : "تابعوا الأدلة على الشاشة."}
               </p>
             )}
           </section>
