@@ -105,7 +105,7 @@ describe("live session phase two frontend", () => {
         <PlayerLobby participantId="player-1" />
       </LiveSessionContext.Provider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "I’m ready" }));
+    fireEvent.click(screen.getByRole("button", { name: "أنا جاهز" }));
     expect(command).toHaveBeenCalledWith("participant-ready");
   });
 

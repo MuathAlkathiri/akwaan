@@ -27,7 +27,6 @@ import {
 } from './live-session-transition.publisher';
 import { ParticipantCredentialService } from './participant-credential.service';
 import { normalizeJoinCode } from '../domain/live-session-join-access';
-import { BombCountdownScheduler } from './bomb-countdown.scheduler';
 import { LiveSessionSnapshotComposer } from './live-session-snapshot.composer';
 
 export interface JoinedLiveParticipant {
@@ -254,7 +253,6 @@ export class SetParticipantReadiness {
     private readonly snapshots: LiveGameSessionSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     private readonly publisher: LiveSessionTransitionPublisher,
-    private readonly countdown: BombCountdownScheduler,
   ) {}
 
   async execute(input: {
@@ -279,29 +277,6 @@ export class SetParticipantReadiness {
     const previousRevision = session.revision;
     const now = this.clock.now();
     session.setParticipantReady(input.actor.participantId, input.ready, now);
-    let countdownEndsAt: Date | undefined;
-    if (
-      input.ready &&
-      session.serialize().modeKey === 'bomb' &&
-      session
-        .serialize()
-        .teams.filter((team) => team.active)
-        .every((team) =>
-          session
-            .serialize()
-            .participants.some(
-              (participant) =>
-                participant.role === 'team-player' &&
-                participant.teamId === team.id &&
-                participant.ready &&
-                participant.connected &&
-                !participant.removedAt,
-            ),
-        )
-    ) {
-      session.beginCountdown(now, 3_000);
-      countdownEndsAt = session.serialize().countdownEndsAt;
-    }
     session.completeCommand(input.commandId, now);
     await this.sessions.save(session, previousRevision);
     const snapshot = this.snapshots.toSnapshot(
@@ -312,9 +287,6 @@ export class SetParticipantReadiness {
     this.publisher.publish('live-session:participant-ready-changed', snapshot, {
       participantId: input.actor.participantId,
     });
-    if (countdownEndsAt) {
-      this.countdown.schedule(session.id, countdownEndsAt);
-    }
     return snapshot;
   }
 }
