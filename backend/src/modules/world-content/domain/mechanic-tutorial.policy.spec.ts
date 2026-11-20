@@ -260,22 +260,42 @@ describe('tutorial outcome derivation', () => {
     },
   );
 
-  it('loses a point only on a failed steal', () => {
-    const failed = deriveTutorialOutcome({
-      correctOptionId: 'a',
-      answeringSelectionOptionId: 'b',
-      opposingDecision: 'STEAL',
-    });
-    expect(failed).toMatchObject({ delta: -1, reason: 'ryo.steal.failed' });
-
-    for (const other of [
+  it('pays the read, and charges it just the same when it misses', () => {
+    // The point of the tutorial is to teach the rule the Match actually plays,
+    // and that rule asks one question: was the read right? Doubting a team that
+    // turned out to know costs exactly what a failed steal costs. It used to be
+    // free, which is what made doubting the move a counting player could press
+    // every round without ever risking anything.
+    const reads = [
       { answeringSelectionOptionId: 'a', opposingDecision: 'STEAL' as const },
-      { answeringSelectionOptionId: 'a', opposingDecision: 'TRUST' as const },
       { answeringSelectionOptionId: 'b', opposingDecision: 'TRUST' as const },
-    ]) {
+    ];
+    for (const read of reads) {
       expect(
-        deriveTutorialOutcome({ correctOptionId: 'a', ...other }).delta,
+        deriveTutorialOutcome({ correctOptionId: 'a', ...read }).delta,
       ).toBe(1);
+    }
+
+    const misreads = [
+      {
+        read: {
+          answeringSelectionOptionId: 'b',
+          opposingDecision: 'STEAL' as const,
+        },
+        reason: 'ryo.steal.failed',
+      },
+      {
+        read: {
+          answeringSelectionOptionId: 'a',
+          opposingDecision: 'TRUST' as const,
+        },
+        reason: 'ryo.trust.wrong',
+      },
+    ];
+    for (const { read, reason } of misreads) {
+      expect(
+        deriveTutorialOutcome({ correctOptionId: 'a', ...read }),
+      ).toMatchObject({ delta: -1, reason });
     }
   });
 
