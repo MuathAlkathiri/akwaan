@@ -119,6 +119,23 @@ export async function setMatchDouble(
   return response.data;
 }
 
+/**
+ * Sends a player's verdict on the question they were just shown.
+ *
+ * Fire and forget by design: a tap that fails to reach the server must not
+ * interrupt a game being played in a room full of people, and a verdict is
+ * worth nothing beside that. The caller shows the tap as taken either way.
+ */
+export async function recordContentSignal(
+  credential: string,
+  input: { contentItemId: string; kind: "liked" | "defect" },
+): Promise<void> {
+  await apiClient.post("/content-signals", input, {
+    headers: { Authorization: `Bearer ${credential}` },
+    skipAuthRedirect: true,
+  });
+}
+
 export async function assignParticipantTeam(
   sessionId: string,
   participantId: string,

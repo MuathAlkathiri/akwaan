@@ -99,6 +99,16 @@ export interface LiveSessionContextValue {
       | "autoplay-blocked"
       | "retry";
   }) => Promise<void>;
+  /**
+   * A player's verdict on the question on screen, from their own phone.
+   *
+   * Absent on the shared screen, which has no participant credential and is
+   * not where anyone is sitting with a phone in their hand.
+   */
+  recordContentSignal?: (
+    contentItemId: string,
+    kind: "liked" | "defect",
+  ) => Promise<void>;
   adoptSnapshot?: (snapshot: LiveSessionSnapshot) => void;
   resync?: () => void;
   setMatchDouble?: (
