@@ -9,6 +9,7 @@ import {
   TokenBalanceSchema,
 } from './persistence/token-balance.schema';
 import { TokenLedgerRepository } from './persistence/token-ledger.repository';
+import { TokenCollectionsInitialiser } from './persistence/token-collections.initialiser';
 import { TokenLedgerService } from './application/token-ledger.service';
 import { LaunchCampaignService } from './application/launch-campaign.service';
 import { TokensController } from './presentation/tokens.controller';
@@ -27,7 +28,12 @@ import { TokensController } from './presentation/tokens.controller';
     ]),
   ],
   controllers: [TokensController],
-  providers: [TokenLedgerRepository, TokenLedgerService, LaunchCampaignService],
+  providers: [
+    TokenLedgerRepository,
+    TokenLedgerService,
+    LaunchCampaignService,
+    TokenCollectionsInitialiser,
+  ],
   exports: [TokenLedgerService, LaunchCampaignService],
 })
 export class EntitlementsModule {}
