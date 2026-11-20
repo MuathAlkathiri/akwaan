@@ -30,6 +30,22 @@ type Tone = {
 const TONES: Record<CountdownCue, Tone> = {
   warning: { wave: "sine", from: 520, to: 620, peak: 0.05, seconds: 0.22 },
   tick: { wave: "triangle", from: 880, to: 880, peak: 0.045, seconds: 0.09 },
+  // Rising and open for a right answer, falling and short for a wrong one, so
+  // the two are told apart with eyes on something else.
+  "answer-correct": {
+    wave: "sine",
+    from: 660,
+    to: 990,
+    peak: 0.07,
+    seconds: 0.26,
+  },
+  "answer-wrong": {
+    wave: "triangle",
+    from: 400,
+    to: 240,
+    peak: 0.06,
+    seconds: 0.22,
+  },
   "final-tick": {
     wave: "triangle",
     from: 1040,

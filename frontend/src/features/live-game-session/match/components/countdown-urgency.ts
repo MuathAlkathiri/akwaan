@@ -62,7 +62,19 @@ export function countdownUrgency(
 }
 
 /** A short audible cue. Each has a visual equivalent on the timer itself. */
-export type CountdownCue = "warning" | "tick" | "final-tick" | "expired";
+export type CountdownCue =
+  | "warning"
+  | "tick"
+  | "final-tick"
+  | "expired"
+  /**
+   * An answer resolving. Not a step of any clock — it is sounded directly by
+   * the mechanic that reveals the answer. It shares this union, and so the
+   * room's single opt-in instrument, because a second audio context with its
+   * own unlock would mean a player who switched sound on still heard nothing.
+   */
+  | "answer-correct"
+  | "answer-wrong";
 
 /**
  * The cue for one observed step of the countdown, or none.

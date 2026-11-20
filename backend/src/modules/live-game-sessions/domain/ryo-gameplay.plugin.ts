@@ -4,6 +4,7 @@ import {
   GameplayModeState,
 } from './gameplay-mode.plugin';
 import { GameplayPromptState } from './gameplay-interaction';
+import { ryoReadMatchedOutcome } from '../../scoring/domain/ryo-read';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 import {
@@ -856,6 +857,17 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
             ),
             answererParticipantId,
             deciderParticipantId,
+            /**
+             * Who the point went to, decided here rather than on a screen.
+             * The payoff turns on one question — did the read match the
+             * outcome — and a surface that worked that out for itself would
+             * start lying the day the rule moved, so the record carries the
+             * answer and every recap reads it.
+             */
+            readMatchedOutcome: ryoReadMatchedOutcome(
+              String(opponentDecision).toUpperCase() as 'STEAL' | 'TRUST',
+              correct,
+            ),
           },
           teamPayload: {},
           participantPayload: {},

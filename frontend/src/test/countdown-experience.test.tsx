@@ -246,8 +246,14 @@ describe("6. reduced motion", () => {
     expect(document.querySelector(".akwaan-countdown-beat")).toBeNull();
   });
 
-  it("never beats on a phone", () => {
-    render(<ChallengeCountdown remainingMs={2000} />);
+  it("beats on a phone only in its critical seconds", () => {
+    // A chip that never moves is a chip a player loses the round to: the
+    // phone's countdown was reported unnoticed in real play. It beats where
+    // the stage beats — and nowhere else — while staying silent, because five
+    // phones sounding at once would bury the room's own cue.
+    const { rerender } = render(<ChallengeCountdown remainingMs={2000} />);
+    expect(document.querySelector(".akwaan-countdown-beat")).not.toBeNull();
+    rerender(<ChallengeCountdown remainingMs={8000} />);
     expect(document.querySelector(".akwaan-countdown-beat")).toBeNull();
   });
 

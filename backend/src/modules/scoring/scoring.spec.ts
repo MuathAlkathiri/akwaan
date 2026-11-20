@@ -5,6 +5,7 @@ import {
 import { ScoringRuleRegistry } from './application/scoring-rule.registry';
 import { ScoringService } from './application/scoring.service';
 import { RyoPayoffMatrixRule } from './application/ryo-payoff-matrix.rule';
+import { ryoReadMatchedOutcome } from './domain/ryo-read';
 import { Top5ResultRule } from './application/top5-result.rule';
 import { ScoreLedger } from './domain/score-ledger';
 import {
@@ -137,6 +138,37 @@ describe('Scoring foundation (roadmap 8, 16)', () => {
         ).toHaveLength(1);
       }
     });
+
+  describe('the read behind the payoff', () => {
+    // One definition serves both the score and every screen that reports it,
+    // so this is the only place the question is answered.
+    it.each([
+      ['STEAL', true, true],
+      ['STEAL', false, false],
+      ['TRUST', false, true],
+      ['TRUST', true, false],
+    ] as const)(
+      '%s against correct=%s is a matched read: %s',
+      (decision, correct, matched) => {
+        expect(ryoReadMatchedOutcome(decision, correct)).toBe(matched);
+      },
+    );
+
+    it('agrees with the payoff it decides', () => {
+      for (const decision of ['STEAL', 'TRUST'] as const) {
+        for (const correct of [true, false]) {
+          const [event] = scoring.score(
+            SCORING_RULE_IDS.RYO_PAYOFF_MATRIX,
+            { ...base, decision, correct },
+            context,
+          );
+          expect(event.delta).toBe(
+            ryoReadMatchedOutcome(decision, correct) ? 1 : -1,
+          );
+        }
+      }
+    });
+  });
   });
 
   describe('perfect clear bonus', () => {

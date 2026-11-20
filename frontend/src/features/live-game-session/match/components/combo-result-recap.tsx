@@ -218,12 +218,17 @@ export function ComboResultRecap({
                 <span
                   key={entry.teamId}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-black",
-                    identity.surface,
-                    identity.border,
-                    identity.text,
+                    "inline-flex items-center gap-2 rounded-full border-2 border-brand-navy px-3 py-1 text-sm font-black text-brand-navy",
+                    entry.points > 0 ? "bg-brand-gold" : "bg-muted",
                   )}
                 >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-2.5 rounded-full border border-brand-navy",
+                      identity.solid,
+                    )}
+                  />
                   {`${entry.points > 0 ? "+" : ""}${entry.points} نقطة للمباراة`}
                 </span>
               );

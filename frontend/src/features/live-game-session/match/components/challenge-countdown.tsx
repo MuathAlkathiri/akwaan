@@ -34,7 +34,11 @@ import { useCountdownSoundPreference } from "./countdown-sound";
  *    this is a transient state on a transient element.
  *  - **Where it is.** On the room's stage — the controller or shared screen, read
  *    from a sofa — the header timer is large and may sound. On a phone it stays a
- *    compact chip that never animates and never sounds.
+ *    compact chip and never sounds: five phones beeping at five seconds would
+ *    drown the shared screen's own cue and tell the room nothing it cannot
+ *    already see. It does grow and beat at `critical`, because a chip the size
+ *    of a label is a chip a player loses the round to — the complaint was that
+ *    nobody notices it, and size and motion answer that without the noise.
  */
 export function ChallengeCountdown({
   remainingMs,
@@ -121,15 +125,25 @@ export function ChallengeCountdown({
         role="timer"
         aria-label={label}
         className={cn(
-          "inline-flex items-baseline gap-1 rounded-full border border-border px-2.5 py-1 text-sm font-black transition-colors duration-fast ease-akwaan",
+          // A chip the size of a label is a chip a player loses the round to.
+          // Calm it stays out of the way; critical it grows, thickens its
+          // border and beats, so the last seconds are seen from the corner of
+          // an eye that is on the answer buttons.
+          "inline-flex items-baseline gap-1 rounded-full border border-border px-2.5 py-1 text-sm font-black transition-all duration-base ease-akwaan",
           CHIP_TONE[urgency],
+          urgency === "critical" &&
+            "scale-110 border-2 px-3.5 py-1.5 text-base shadow-[0_3px_0_hsl(var(--brand-navy))]",
+          urgency === "expired" && "border-2",
           className,
         )}
       >
         {urgency !== "calm" && (
           <UrgencyIcon
             urgency={urgency}
-            className="size-3.5 shrink-0 self-center"
+            className={cn(
+              "shrink-0 self-center",
+              urgency === "critical" ? "size-5" : "size-3.5",
+            )}
             data-testid="challenge-countdown-urgent-cue"
           />
         )}
@@ -137,7 +151,13 @@ export function ChallengeCountdown({
           <span>انتهى الوقت</span>
         ) : (
           <>
-            <span className="akwaan-numeral inline-block min-w-[2ch] text-center">
+            <span
+              className={cn(
+                "akwaan-numeral inline-block min-w-[2ch] text-center",
+                urgency === "critical" &&
+                  "akwaan-countdown-beat text-xl leading-none",
+              )}
+            >
               {seconds}
             </span>
             <span className="text-[0.7rem] font-bold">ثانية</span>

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ScoreEventDraft } from '../domain/score-event';
+import { ryoReadMatchedOutcome } from '../domain/ryo-read';
 import {
   SCORING_RULE_IDS,
   ScoringRuleCalculator,
@@ -31,7 +32,7 @@ export class RyoPayoffMatrixRule implements ScoringRuleCalculator<RyoPayoffInput
     // doubtful read free, which put its break-even at two thirds and let a
     // counting player press it every round.
     const confident = input.decision === 'STEAL';
-    const readCorrectly = confident === input.correct;
+    const readCorrectly = ryoReadMatchedOutcome(input.decision, input.correct);
     const reason = confident
       ? input.correct
         ? 'ryo.steal.correct'

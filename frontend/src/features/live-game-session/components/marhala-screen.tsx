@@ -73,9 +73,21 @@ export function MarhalaScreen({
     view.deadlineAt,
     view.phase === "completed",
   );
+  // The pawn is the character its player picked in the lobby: the turn-holder's
+  // when this team holds the turn, otherwise the team's first player, so both
+  // pawns are always somebody rather than a letter.
   const teams = (snapshot?.teams ?? []).map((team) => ({
     id: team.id,
     name: team.name,
+    avatarKey:
+      snapshot?.participants.find(
+        (participant) =>
+          participant.teamId === team.id &&
+          participant.id === view.assignedParticipantId,
+      )?.avatarKey ??
+      snapshot?.participants.find(
+        (participant) => participant.teamId === team.id && participant.avatarKey,
+      )?.avatarKey,
   }));
   const teamName = (id: string) =>
     teams.find((team) => team.id === id)?.name ?? "الفريق";
