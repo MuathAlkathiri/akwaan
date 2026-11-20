@@ -128,7 +128,11 @@ describe("من أول نغمة", () => {
       />,
     );
     expect(screen.queryByTestId("first-note-bid-input")).toBeNull();
-    expect(screen.getByText("بانتظار الفريق الآخر")).toBeInTheDocument();
+    // The waiting panel is what proves the phone is locked; it names the team
+    // holding the bid rather than "the other team", which named nobody.
+    expect(
+      screen.getByTestId("first-note-auction-waiting"),
+    ).toBeInTheDocument();
   });
 
   it("gives only the answer owner free text while phones receive no audio", async () => {

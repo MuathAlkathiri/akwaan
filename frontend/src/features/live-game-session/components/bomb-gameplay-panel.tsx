@@ -605,19 +605,39 @@ export function BombGameplayPanel({
             data-testid="bomb-phone-clock"
             aria-label="الوقت المتبقي لفريقكم"
             className={cn(
-              "akwaan-numeral inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-black tabular-nums",
+              // Bomb draws its own chip because its clock is a team's, not an
+              // interaction's — but it grows and beats at `critical` exactly
+              // like the shared countdown, so the last seconds read the same
+              // in every mechanic. Silent here too: the room's screen sounds.
+              "akwaan-numeral inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-black tabular-nums transition-all duration-base ease-akwaan",
               clockUrgency === "critical" || clockUrgency === "expired"
                 ? "border-destructive/50 bg-destructive/10 text-destructive"
                 : clockUrgency === "warning"
                   ? "border-warning bg-warning-subtle text-foreground"
                   : "border-border bg-muted/60 text-foreground",
+              clockUrgency === "critical" &&
+                "scale-110 border-2 px-3.5 py-1.5 text-base shadow-[0_3px_0_hsl(var(--brand-navy))]",
+              clockUrgency === "expired" && "border-2",
             )}
             data-urgency={clockUrgency}
           >
             {clockUrgency !== "calm" && (
-              <AlarmClock className="size-3.5 shrink-0" aria-hidden />
+              <AlarmClock
+                className={cn(
+                  "shrink-0",
+                  clockUrgency === "critical" ? "size-5" : "size-3.5",
+                )}
+                aria-hidden
+              />
             )}
-            {clock.formatted}
+            <span
+              className={cn(
+                clockUrgency === "critical" &&
+                  "akwaan-countdown-beat text-xl leading-none",
+              )}
+            >
+              {clock.formatted}
+            </span>
           </output>
         }
         className="flex min-h-0 flex-1 flex-col"

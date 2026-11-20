@@ -228,9 +228,11 @@ export function RyoResultRecap({
           })}
         </ul>
 
-        {/* And the one line that actually moves the Match. */}
+        {/* And the one line that actually moves the Match. Gold, like every
+            other point in this product: green here would say "correct", which
+            is a different question from who the point went to. */}
         <p
-          className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-sm font-black text-success"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-brand-navy bg-brand-gold px-3 py-1 text-sm font-black text-brand-navy"
           data-testid="ryo-match-point"
         >
           {result.tie ? (
