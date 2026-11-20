@@ -44,6 +44,7 @@ import {
   unifiedMatchSetupPolicy,
 } from './domain/unified-match-setup.policy';
 import { MATCH_REPOSITORY } from './persistence/match.repository';
+import { MatchPresentedContentLookup } from './application/match-presented-content.lookup';
 import {
   ContentExposureDocument,
   ContentExposureSchema,
@@ -121,6 +122,7 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     { provide: UnifiedMatchBoardPolicy, useValue: unifiedMatchBoardPolicy },
     UnifiedMatchSetupValidator,
     MatchUseCases,
+    MatchPresentedContentLookup,
     RyoChallengeLauncher,
     Top5ChallengeLauncher,
     RakkibhaChallengeLauncher,
@@ -143,6 +145,10 @@ import { FirstNoteChallengeLauncher } from './application/first-note-challenge.l
     ChallengeTypeMatchUsageGuard,
     ListMyMatches,
   ],
-  exports: [MatchUseCases, ChallengeLauncherRegistry],
+  exports: [
+    MatchUseCases,
+    ChallengeLauncherRegistry,
+    MatchPresentedContentLookup,
+  ],
 })
 export class MatchModule {}
