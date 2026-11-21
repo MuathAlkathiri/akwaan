@@ -1,7 +1,7 @@
 # Render blueprint for the Akwaan BETA backend.
 #
-# Backend only. MongoDB lives in Atlas and media lives in Cloudflare R2 — Render
-# Free gives a web service no persistent disk, so nothing here may hold state.
+# Backend only. MongoDB is external and media lives in Cloudflare R2 — no
+# persistent disk is attached to this service, so nothing here may hold state.
 #
 # Docker rather than a native Node build: the runtime shells out to ffmpeg and
 # ffprobe for audio/video snippets and to yt-dlp for asset ingest. backend/
@@ -16,7 +16,10 @@ services:
   - type: web
     name: akwaan-api
     runtime: docker
-    plan: free
+    # Paid instance since 2026-11-21: 0.5 CPU / 512 MB, confirmed against the
+    # service's Compute page. Keep this equal to the dashboard — a blueprint sync
+    # applies whatever is declared here.
+    plan: 0.5c-512mb
     # Closest free region to the Gulf. Change before the first deploy if you
     # would rather be near a different audience — it cannot be moved after.
     region: frankfurt
@@ -34,7 +37,11 @@ services:
       - key: NODE_ENV
         value: production
 
-      # Atlas SRV URI, including the `lammah-quiz` database name.
+      # MongoDB SRV URI, including the database name in its path. Production
+      # uses the database `akwaan` (owner-reported, 2026-11-21; it was
+      # `lammah-quiz` before). The name lives only in this secret — nothing in
+      # the running code depends on it. Local development still uses a local
+      # `lammah-quiz`; see docker-compose.yml.
       - key: MONGODB_URI
         sync: false
 
