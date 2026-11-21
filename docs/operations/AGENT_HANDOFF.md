@@ -48,6 +48,33 @@ The command exits `0` only when the agent exited cleanly **and** its report
 says `STATUS: DONE`. Anything else — `BLOCKED`, `FAILED`, no status line, no
 report — exits non-zero.
 
+## Orchestrating from a session that cannot run programs here
+
+An orchestrator in a remote session (Claude desktop, for instance) can read and
+write files in this repo but cannot start `agy` or `codex`. The queue bridges
+that. The owner starts the watcher once, in a terminal on this machine:
+
+```bash
+ai/scripts/agents/run.sh watch                 # read-only jobs, image, place
+ai/scripts/agents/run.sh watch --allow-write   # also jobs that edit the repo
+ai/scripts/agents/run.sh watch --allow-full    # also jobs with no approvals/sandbox
+```
+
+The orchestrator then queues work and reads the result:
+
+```bash
+ai/scripts/agents/run.sh enqueue agy tasks/<file>.md --read     # prints a job id
+ai/scripts/agents/run.sh status                                  # watcher alive? queue?
+ai/scripts/agents/run.sh status <job-id>                         # that job's output
+```
+
+A job is not a shell command. It is one line naming `agy`, `codex`, `image` or
+`place`; every word must match a fixed shape, task and prompt paths must sit in
+`handoff/tasks/`, and nothing is ever passed through `eval`. A `--write` or
+`--full` job is refused unless the watcher was started with the matching flag —
+so what a remote session may do on this machine is decided by the owner, at the
+moment they start the watcher, and ends when they press Ctrl-C.
+
 ## Where things live
 
 `ai/workbench/artifacts/handoff/` (git-ignored scratch, see `AGENTS.md` §5):
@@ -56,6 +83,7 @@ report — exits non-zero.
 - `reports/` — one report per dispatch, never overwritten
 - `images/` — generated images, as PNG
 - `logs/` — the CLI's own stderr for each dispatch
+- `queue/` — queued jobs, `running/`, and `done/` with each job's output
 - `log.tsv` — one line per dispatch: time, agent, mode, task, exit code, status, report path
 
 ## The report contract

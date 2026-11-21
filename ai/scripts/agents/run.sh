@@ -21,6 +21,20 @@
 #   run.sh place  <image> <asset_name> put an approved image into the media path as
 #                                      backend/uploads/question-assets/images/<asset_name>.webp
 #
+#   run.sh watch [--allow-write] [--allow-full]
+#                                      run queued jobs on THIS machine until Ctrl-C
+#   run.sh enqueue <agy|codex|image|place> <args...>
+#                                      queue a job for the watcher (paths: see below)
+#   run.sh status [job-id]             is the watcher alive; what is queued; a job's output
+#
+# The queue exists for an orchestrator that can write files in this repo but
+# cannot run programs on this machine (a remote session). It drops a job file;
+# the watcher, started once by the owner in a terminal here, runs it. A job is
+# never a shell command: it is one line naming one of the four dispatch commands
+# above, every word is checked against a fixed shape, and task/prompt paths must
+# be inside handoff/tasks/. --write and --full jobs are refused unless the owner
+# started the watcher with the matching --allow flag.
+#
 # mode (agy/codex): --read (default) | --write | --full
 #   --read   may read the repo and answer; edits and unapproved tools are refused
 #   --write  may edit files inside the repo
@@ -285,6 +299,167 @@ Do not create, edit or delete any other file. Reply with one line: SAVED <absolu
 }
 
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Queue: a file-based way to ask this machine to run one dispatch command.
+QUEUE_SUB="queue"
+
+# Is this job line one of the four dispatch commands in an allowed shape?
+# Prints the reason and returns 1 if not. $1 = allow_write (0/1), $2 = allow_full,
+# the rest = the job's words. Shape only — existence is checked by the command.
+job_check() {
+  jc_write="$1"; jc_full="$2"; shift 2
+  [ $# -ge 1 ] || { echo "empty job"; return 1; }
+  for word in "$@"; do
+    case "$word" in
+      *[!A-Za-z0-9._/-]*) echo "word has a character outside [A-Za-z0-9._/-]: $word"; return 1 ;;
+      *..*) echo "'..' is not allowed: $word"; return 1 ;;
+      /*) echo "absolute paths are not allowed: $word"; return 1 ;;
+    esac
+  done
+  jc_sub="$1"; shift
+  case "$jc_sub" in
+    agy|codex)
+      [ $# -ge 1 ] && [ $# -le 2 ] || { echo "$jc_sub takes <tasks/file.md> [--read|--write|--full]"; return 1; }
+      case "$1" in tasks/*.md) ;; *) echo "task must be tasks/<name>.md (inside the handoff folder)"; return 1 ;; esac
+      case "${2:---read}" in
+        --read) ;;
+        --write) [ "$jc_write" = 1 ] || { echo "--write is not allowed (watcher not started with --allow-write)"; return 1; } ;;
+        --full)  [ "$jc_full" = 1 ]  || { echo "--full is not allowed (watcher not started with --allow-full)"; return 1; } ;;
+        *) echo "unknown mode: $2"; return 1 ;;
+      esac ;;
+    image)
+      [ $# -ge 2 ] || { echo "image takes <name> <tasks/prompt.txt> [--ref <repo/path>]..."; return 1; }
+      case "$1" in *[!a-z0-9-]*|-*) echo "image name must be [a-z0-9-]: $1"; return 1 ;; esac
+      case "$2" in tasks/*) ;; *) echo "prompt must be tasks/<file> (inside the handoff folder)"; return 1 ;; esac
+      shift 2
+      while [ $# -gt 0 ]; do
+        [ "$1" = "--ref" ] && [ $# -ge 2 ] || { echo "after the prompt only '--ref <path>' pairs are allowed"; return 1; }
+        case "$2" in -*) echo "bad --ref path: $2"; return 1 ;; esac
+        shift 2
+      done ;;
+    place)
+      [ $# -eq 2 ] || { echo "place takes <image-name> <asset_name>"; return 1; }
+      case "$1" in *[!a-z0-9-]*|-*) echo "image name must be [a-z0-9-]: $1"; return 1 ;; esac
+      case "$2" in *[!a-z0-9_-]*|[_-]*) echo "asset_name must be [a-z0-9_-]: $2"; return 1 ;; esac ;;
+    *) echo "not a queueable command: $jc_sub"; return 1 ;;
+  esac
+  return 0
+}
+
+queue_dirs() {
+  ensure_dirs
+  mkdir -p "$HANDOFF/$QUEUE_SUB/running" "$HANDOFF/$QUEUE_SUB/done" || die "cannot create the queue"
+}
+
+cmd_enqueue() {
+  [ $# -ge 1 ] || die "usage: run.sh enqueue <agy|codex|image|place> <args...>"
+  queue_dirs
+  # shape is checked here with every mode allowed; the watcher decides what it runs
+  why="$(job_check 1 1 "$@")" || die "$why"
+  id="$(stamp)-$$"; n=1
+  while [ -e "$HANDOFF/$QUEUE_SUB/$id.job" ] || [ -e "$HANDOFF/$QUEUE_SUB/done/$id.job" ]; do n=$((n + 1)); id="$(stamp)-$$-$n"; done
+  tmp="$HANDOFF/$QUEUE_SUB/.$id.tmp"
+  printf '%s\n' "$*" > "$tmp" && mv "$tmp" "$HANDOFF/$QUEUE_SUB/$id.job" || die "cannot write the job"
+  echo "$id"
+}
+
+watcher_age() {
+  # seconds since the watcher last wrote its heartbeat, or -1
+  [ -f "$HANDOFF/$QUEUE_SUB/.alive" ] || { echo -1; return; }
+  beat="$(head -1 "$HANDOFF/$QUEUE_SUB/.alive" | awk '{print $1}')"
+  case "$beat" in ''|*[!0-9]*) echo -1; return ;; esac
+  echo $(( $(date +%s) - beat ))
+}
+
+cmd_status() {
+  queue_dirs
+  q="$HANDOFF/$QUEUE_SUB"
+  if [ $# -eq 1 ]; then
+    id="$1"
+    if [ -f "$q/done/$id.out" ]; then cat "$q/done/$id.out"; exit 0; fi
+    if [ -f "$q/running/$id.job" ]; then echo "RUNNING: $(cat "$q/running/$id.job")"; exit 3; fi
+    if [ -f "$q/$id.job" ]; then echo "QUEUED: $(cat "$q/$id.job")"; exit 3; fi
+    die "no such job: $id"
+  fi
+  age="$(watcher_age)"
+  if [ "$age" -ge 0 ] && [ "$age" -le 15 ]; then
+    echo "watcher  : ALIVE ($(sed -n 2p "$q/.alive"))"
+  elif [ "$age" -ge 0 ]; then
+    echo "watcher  : NOT RUNNING (last heartbeat ${age}s ago)"
+  else
+    echo "watcher  : NOT RUNNING (never started)"
+  fi
+  for f in "$q"/*.job; do [ -e "$f" ] && echo "queued   : $(basename "$f" .job)  $(cat "$f")"; done
+  for f in "$q"/running/*.job; do [ -e "$f" ] && echo "running  : $(basename "$f" .job)  $(cat "$f")"; done
+  ls -t "$q/done" 2>/dev/null | grep '\.out$' | head -5 | while IFS= read -r f; do
+    echo "done     : ${f%.out}  $(grep -m1 '^JOB_EXIT:' "$q/done/$f")"
+  done
+  exit 0
+}
+
+cmd_watch() {
+  allow_write=0; allow_full=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --allow-write) allow_write=1 ;;
+      --allow-full) allow_write=1; allow_full=1 ;;
+      *) die "unknown option: $1" ;;
+    esac
+    shift
+  done
+  queue_dirs
+  q="$HANDOFF/$QUEUE_SUB"
+  age="$(watcher_age)"
+  [ "$age" -ge 0 ] && [ "$age" -le 15 ] && die "another watcher looks alive (heartbeat ${age}s ago)"
+  modes="read, image, place"
+  [ "$allow_write" = 1 ] && modes="$modes, write"
+  [ "$allow_full" = 1 ] && modes="$modes, FULL (no approvals, no sandbox)"
+  echo "watching : $q"
+  echo "allowed  : $modes"
+  echo "stop     : Ctrl-C"
+  trap 'rm -f "$q/.alive"; echo; echo "watcher stopped"; exit 0' INT TERM
+  beat() { printf '%s\n%s\n' "$(date +%s)" "$1" > "$q/.alive.tmp" && mv "$q/.alive.tmp" "$q/.alive"; }
+
+  while :; do
+    beat "idle; allowed: $modes"
+    for job in "$q"/*.job; do
+      [ -e "$job" ] || continue
+      id="$(basename "$job" .job)"
+      line="$(head -1 "$job")"
+      out="$q/done/$id.out"
+      # split on whitespace into positional words; no globbing, never eval
+      set -f; set -- $line; set +f
+      {
+        echo "JOB      : $line"
+        echo "STARTED  : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      } > "$out"
+      if why="$(job_check "$allow_write" "$allow_full" "$@")"; then
+        mv "$job" "$q/running/$id.job"
+        echo "[$(date +%H:%M:%S)] run   $id  $line"
+        beat "busy: $id"
+        jsub="$1"; shift
+        # task and prompt paths are relative to the handoff folder; --ref paths to the repo
+        case "$jsub" in
+          agy|codex) first="$HANDOFF/$1"; shift; "$0" "$jsub" "$first" ${1+"$@"} >> "$out" 2>&1 < /dev/null; rc=$? ;;
+          image) iname="$1"; iprompt="$HANDOFF/$2"; shift 2
+                 ( cd "$REPO_ROOT" && "$0" image "$iname" "$iprompt" ${1+"$@"} ) >> "$out" 2>&1 < /dev/null; rc=$? ;;
+          place) "$0" place "$@" >> "$out" 2>&1 < /dev/null; rc=$? ;;
+        esac
+        mv "$q/running/$id.job" "$q/done/$id.job"
+      else
+        echo "REFUSED  : $why" >> "$out"
+        echo "[$(date +%H:%M:%S)] REFUSED $id  $why"
+        rc=126
+        mv "$job" "$q/done/$id.job"
+      fi
+      printf 'FINISHED : %s\nJOB_EXIT: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$rc" >> "$out"
+      echo "[$(date +%H:%M:%S)] done  $id  exit $rc"
+      beat "idle; allowed: $modes"
+    done
+    sleep 2
+  done
+}
+
 # Approved image -> the canonical media location. This is a local file placement
 # only: nothing is uploaded and no content record is written. The pack then
 # references the printed URL, and deployment/scripts/copy-media-to-r2.sh ships it.
@@ -390,12 +565,15 @@ cmd_doctor() {
 # --------------------------------------------------------------------------- #
 sub="${1:-}"; [ $# -gt 0 ] && shift
 case "$sub" in
-  doctor) cmd_doctor "$@" ;;
-  new)    cmd_new "$@" ;;
-  agy|gemini) cmd_dispatch "agy" "$@" ;;
-  codex) cmd_dispatch "codex" "$@" ;;
-  image)  cmd_image "$@" ;;
-  place)  cmd_place "$@" ;;
-  ""|-h|--help) sed -n '2,42p' "$0" | sed -e 's/^# \{0,1\}//' ;;
+  doctor) cmd_doctor ${1+"$@"} ;;
+  new)    cmd_new ${1+"$@"} ;;
+  agy|gemini) cmd_dispatch "agy" ${1+"$@"} ;;
+  codex) cmd_dispatch "codex" ${1+"$@"} ;;
+  image)  cmd_image ${1+"$@"} ;;
+  place)  cmd_place ${1+"$@"} ;;
+  watch)  cmd_watch ${1+"$@"} ;;
+  enqueue) cmd_enqueue ${1+"$@"} ;;
+  status) cmd_status ${1+"$@"} ;;
+  ""|-h|--help) sed -n '2,56p' "$0" | sed -e 's/^# \{0,1\}//' ;;
   *) die "unknown command: $sub (try --help)" ;;
 esac
