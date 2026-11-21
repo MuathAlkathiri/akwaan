@@ -21,6 +21,11 @@ describe('OddPieceChallengeLauncher', () => {
   it('declares three phone-played, canonical Odd Piece items', () => {
     expect(ODD_PIECE_LAUNCHER_REQUIREMENTS.contentItemCount).toBe(3);
     expect(ODD_PIECE_LAUNCHER_REQUIREMENTS.requiresPhones).toBe(true);
+    expect(ODD_PIECE_LAUNCHER_REQUIREMENTS.selectionStrata.strata).toEqual([
+      'easy',
+      'medium',
+      'hard',
+    ]);
     expect(
       ODD_PIECE_LAUNCHER_REQUIREMENTS.isPlayableItem({
         id: 'item',
@@ -29,7 +34,7 @@ describe('OddPieceChallengeLauncher', () => {
         answerMode: 'odd_piece',
         mechanicVariant: 'odd-piece',
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       ODD_PIECE_LAUNCHER_REQUIREMENTS.isPlayableItem({
         id: 'v2-item',
@@ -39,7 +44,7 @@ describe('OddPieceChallengeLauncher', () => {
         mechanicVariant: 'odd-piece',
         oddPieceVersion: 2,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('launches through the canonical start use case', async () => {

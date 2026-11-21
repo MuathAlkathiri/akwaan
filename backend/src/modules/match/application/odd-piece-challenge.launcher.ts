@@ -32,12 +32,15 @@ export const ODD_PIECE_LAUNCHER_REQUIREMENTS = {
     requiresTeamAssignment: true,
     requiresConnectedPresence: true,
   },
+  selectionStrata: {
+    strata: ['easy', 'medium', 'hard'],
+    perStratum: 1,
+    stratumOf: (item: MatchSelectableContentItem) => item.oddPieceDifficulty ?? '',
+  },
   isPlayableItem: (item: MatchSelectableContentItem) =>
     item.answerMode === ChallengeAnswerMode.ODD_PIECE &&
     item.mechanicVariant === 'odd-piece' &&
-    // V2 is intentionally not selectable by existing production boards until
-    // migration, media-readiness and rollout gates are explicitly approved.
-    (item.oddPieceVersion === undefined || item.oddPieceVersion === 1),
+    item.oddPieceVersion === 2,
 };
 
 @Injectable()
