@@ -2,6 +2,14 @@
 #
 # One-way copy of the live local `lammah-quiz` database into MongoDB Atlas.
 #
+# NOTE (2026-11-21): Production now runs on a database named `akwaan`
+# (owner-reported). This script copies a database under the SAME name on both
+# sides, so it cannot target `akwaan` from the local `lammah-quiz`: it refuses
+# an ATLAS_URI that does not contain `/lammah-quiz`. That refusal is intended —
+# do not work around it by pointing a `/lammah-quiz` URI at the new cluster,
+# which would create a second, unused database there. Routine content reaches
+# Production through ai/scripts/promote_approved_content.py, not through this.
+#
 # The local database is never written to, dropped, or renamed — the only local
 # operation is `mongodump`, which is read-only.
 #

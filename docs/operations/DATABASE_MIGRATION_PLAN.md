@@ -1,5 +1,12 @@
 # Production database migration plan — `lammah-quiz` → `Akwaan-prd`
 
+> **Update (2026-11-21) — reported by the Product Owner, not verified from this repository:** Production was
+> moved to a new paid database named **`akwaan`** (not `Akwaan-prd`, the name this plan approved), on a paid
+> Render plan, and `MONGODB_URI` on Render now points at it. This document was **not** the record of that
+> cutover: which of the steps below were followed, what happened to `lammah-quiz`, and the count/parity checks
+> are not recorded here. Treat everything below as the earlier plan, and read `Akwaan-prd` as `akwaan`.
+> Local development is unaffected and still uses a local `lammah-quiz`.
+>
 > **Status (2026-11-18): 🟡 PLAN — NOT EXECUTED.** Approved target name `Akwaan-prd` (Product Owner, 2026-11-18).
 > This is the **last** pre-launch infrastructure cutover, after repository cleanup, the separately authorised
 > Production test-data cleanup and VPS readiness. Do **not** create `Akwaan-prd`, change `MONGODB_URI`, or touch

@@ -10,6 +10,24 @@
 #    - Uploads strictly and exclusively the approved object keys
 #    - Never traverses or syncs the entire uploads directory
 #
+#    Extra options (manifest mode only):
+#      --uploads-dir <dir>    Read the files from <dir> instead of backend/uploads.
+#                             Needed when the backend ran in Docker: its uploads
+#                             live in the `backend_uploads` volume, not on the host.
+#                             Export them first:
+#                               docker compose cp backend:/app/uploads/. /tmp/akwaan-uploads
+#      --require-media        Fail if any non-archived question carries no media
+#                             (the Bomb rule: every item must have an image).
+#      --check-remote <url>   READ-ONLY report, never uploads. For every asset the
+#                             pack declares, say whether it exists locally and
+#                             whether <url>/uploads/<key> serves it. Answers "is
+#                             this already live?" when a file is missing locally.
+#                               --check-remote https://akwaan-api.onrender.com
+#      --verify-public <url>  After a live upload, also fetch every asset through
+#                             <url>/uploads/<key> and compare its bytes (SHA-256)
+#                             with the local file. A HEAD in the bucket proves an
+#                             object exists; this proves the game can load it.
+#
 # 2. Legacy Broad Volume Sync:
 #    ./deployment/scripts/copy-media-to-r2.sh [--dry-run]
 #    - Historical Docker volume sync (local container -> bucket)
@@ -27,6 +45,10 @@ cd "$REPO_ROOT"
 
 MANIFEST=""
 DRY_RUN=0
+UPLOADS_DIR_ARG=""
+REQUIRE_MEDIA=0
+CHECK_REMOTE=""
+VERIFY_PUBLIC=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -42,13 +64,38 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=1
       shift
       ;;
+    --uploads-dir)
+      if [[ -z "${2:-}" ]]; then echo "ERROR: --uploads-dir requires a directory" >&2; exit 1; fi
+      UPLOADS_DIR_ARG="$2"
+      shift 2
+      ;;
+    --require-media)
+      REQUIRE_MEDIA=1
+      shift
+      ;;
+    --check-remote)
+      if [[ -z "${2:-}" ]]; then echo "ERROR: --check-remote requires a base URL" >&2; exit 1; fi
+      CHECK_REMOTE="$2"
+      shift 2
+      ;;
+    --verify-public)
+      if [[ -z "${2:-}" ]]; then echo "ERROR: --verify-public requires a base URL" >&2; exit 1; fi
+      VERIFY_PUBLIC="$2"
+      shift 2
+      ;;
     -h|--help)
       echo "Usage: $0 [--manifest <path/to/source.json>] [--dry-run]"
+      echo "          [--uploads-dir <dir>] [--require-media]"
+      echo "          [--check-remote <base-url>] [--verify-public <base-url>]"
       echo
       echo "Options:"
-      echo "  --manifest <file>  Path to canonical source pack JSON (scoped upload)"
-      echo "  --dry-run          Validate files and print planned object keys without uploading"
-      echo "  -h, --help         Show this help message"
+      echo "  --manifest <file>       Path to canonical source pack JSON (scoped upload)"
+      echo "  --dry-run               Validate files and print planned object keys without uploading"
+      echo "  --uploads-dir <dir>     Read files from <dir> instead of backend/uploads"
+      echo "  --require-media         Fail if any non-archived question carries no media"
+      echo "  --check-remote <url>    Read-only: report local and live presence of every asset"
+      echo "  --verify-public <url>   After upload, fetch each asset via <url>/uploads/ and compare bytes"
+      echo "  -h, --help              Show this help message"
       exit 0
       ;;
     *)
@@ -68,6 +115,102 @@ if [[ -n "$MANIFEST" ]]; then
     exit 1
   fi
 
+  if [[ -n "$UPLOADS_DIR_ARG" ]]; then
+    if [[ ! -d "$UPLOADS_DIR_ARG" ]]; then
+      echo "ERROR: --uploads-dir is not a directory: $UPLOADS_DIR_ARG" >&2
+      exit 1
+    fi
+    UPLOADS_DIR_ABS="$(cd "$UPLOADS_DIR_ARG" && pwd)"
+  else
+    UPLOADS_DIR_ABS="$REPO_ROOT/backend/uploads"
+  fi
+  export UPLOADS_DIR_ABS REQUIRE_MEDIA
+
+  # Read-only. For each asset the pack declares: is the file here, and does the
+  # public media path serve it? With $2 = "strict" a local file is required and
+  # its SHA-256 must equal what the URL returns. Values travel by environment,
+  # never by interpolation into the program text.
+  remote_check() {
+    REMOTE_BASE="$1" REMOTE_STRICT="${2:-}" MANIFEST_PATH="$MANIFEST" python3 - <<'PY'
+import hashlib, json, os, sys, urllib.error, urllib.request
+
+base = os.environ['REMOTE_BASE'].rstrip('/')
+strict = os.environ.get('REMOTE_STRICT') == 'strict'
+uploads = os.environ['UPLOADS_DIR_ABS']
+
+with open(os.environ['MANIFEST_PATH'], encoding='utf-8') as fh:
+    data = json.load(fh)
+keys, seen = [], set()
+for q in data.get('questions') or data.get('items', []):
+    if q.get('status') == 'archived':
+        continue
+    media = q.get('media') or {}
+    if media.get('type') in (None, 'none'):
+        continue
+    for asset in media.get('assets') or []:
+        key = (asset.get('url') or '').strip().lstrip('/')
+        if key.startswith('uploads/'):
+            key = key[len('uploads/'):]
+        if key and key not in seen:
+            seen.add(key)
+            keys.append((q.get('id', 'unknown'), key))
+
+if not keys:
+    print('ERROR: Manifest declares no media assets.', file=sys.stderr)
+    sys.exit(5)
+
+def fetch(url):
+    request = urllib.request.Request(url, headers={'User-Agent': 'akwaan-media-check'})
+    try:
+        with urllib.request.urlopen(request, timeout=45) as response:
+            return response.status, response.headers.get('Content-Type', ''), response.read()
+    except urllib.error.HTTPError as error:
+        return error.code, '', b''
+    except Exception as error:  # DNS, TLS, timeout: unreachable is not "missing"
+        return None, str(error), b''
+
+counts = {}
+bad = 0
+print(f'{"LOCAL":7s} {"REMOTE":16s} KEY')
+for qid, key in keys:
+    path = os.path.join(uploads, key)
+    local = os.path.isfile(path) and os.path.getsize(path) > 0
+    status, ctype, body = fetch(f'{base}/uploads/{key}')
+    if status is None:
+        remote = 'UNREACHABLE'
+    elif status != 200:
+        remote = f'MISSING({status})'
+    elif not body or not (ctype.startswith('image/') or ctype.startswith('audio/') or ctype.startswith('video/')):
+        remote = 'INVALID'
+    elif local and hashlib.sha256(body).hexdigest() != hashlib.sha256(open(path, 'rb').read()).hexdigest():
+        remote = 'DIFFERENT'
+    else:
+        remote = 'OK'
+    ok = remote == 'OK' and (local or not strict)
+    bad += 0 if ok else 1
+    label = f'{"yes" if local else "NO":7s} {remote:16s}'
+    counts[label] = counts.get(label, 0) + 1
+    print(f'{label} {key}  [{qid}]')
+
+print('-' * 65)
+for label, n in sorted(counts.items()):
+    print(f'{n:4d}  local={label.split()[0]:3s} remote={label.split()[1]}')
+print(f'Assets: {len(keys)} | not OK: {bad} | base: {base}')
+sys.exit(0 if bad == 0 else 1)
+PY
+  }
+
+  if [[ -n "$CHECK_REMOTE" ]]; then
+    echo "================================================================="
+    echo "AKWAAN MEDIA — REMOTE CHECK (read-only, zero writes)"
+    echo "================================================================="
+    echo "Manifest : $MANIFEST"
+    echo "Local    : $UPLOADS_DIR_ABS"
+    echo
+    remote_check "$CHECK_REMOTE"
+    exit $?
+  fi
+
   echo "================================================================="
   echo "AKWAAN R2 MEDIA INGESTION — SCOPED MANIFEST MODE"
   echo "================================================================="
@@ -83,7 +226,10 @@ import sys
 
 manifest_path = '$MANIFEST'
 repo_root = '$REPO_ROOT'
-local_uploads_dir = os.path.join(repo_root, 'backend', 'uploads')
+local_uploads_dir = os.environ.get('UPLOADS_DIR_ABS') or os.path.join(repo_root, 'backend', 'uploads')
+require_media = os.environ.get('REQUIRE_MEDIA') == '1'
+no_media = []
+active = 0
 
 try:
     with open(manifest_path, 'r', encoding='utf-8') as f:
@@ -105,11 +251,14 @@ for q in questions:
     if q.get('status') == 'archived':
         continue
     qid = q.get('id', 'unknown')
+    active += 1
     media = q.get('media')
     if not media or not isinstance(media, dict):
+        no_media.append(qid)
         continue
     m_type = media.get('type')
     if not m_type or m_type == 'none':
+        no_media.append(qid)
         continue
     if m_type not in ('image', 'audio', 'video'):
         errors.append(f'[{qid}] Unsupported media type: {m_type}')
@@ -158,10 +307,24 @@ for q in questions:
             'size': file_size
         })
 
+# Never silent: a text-only item in a pack that should be all-image is exactly
+# the thing a quiet skip would hide.
+if no_media:
+    print(f'NOTE: {len(no_media)} of {active} active questions carry no media.', file=sys.stderr)
+    if require_media:
+        for qid in no_media:
+            errors.append(f'[{qid}] carries no media (--require-media)')
+
 if errors:
     print('VALIDATION FAILURES:', file=sys.stderr)
     for err in errors:
         print(f'  - {err}', file=sys.stderr)
+    if any('Missing local asset on disk' in err for err in errors):
+        print(f'HINT: files are read from {local_uploads_dir}', file=sys.stderr)
+        print('      If the backend ran in Docker its uploads are in the backend_uploads volume:', file=sys.stderr)
+        print('        docker compose cp backend:/app/uploads/. /tmp/akwaan-uploads', file=sys.stderr)
+        print('        ... --uploads-dir /tmp/akwaan-uploads', file=sys.stderr)
+        print('      To see whether they are already live: --check-remote <api-base-url>', file=sys.stderr)
     sys.exit(4)
 
 if len(items) == 0:
@@ -191,7 +354,7 @@ for idx, it in enumerate(data, 1):
     echo
     echo "==> DRY-RUN SUMMARY:"
     echo "  Total approved assets to sync : $ITEM_COUNT"
-    echo "  Local source directory        : backend/uploads/"
+    echo "  Local source directory        : $UPLOADS_DIR_ABS"
     echo "  Destination bucket target     : s3://${R2_BUCKET:-akwaan-beta-media}"
     echo "  Missing / invalid assets      : 0"
     echo "  Unrelated files included      : 0 (Strictly filtered)"
@@ -253,10 +416,20 @@ for it in data:
         'aws', 's3api', 'head-object',
         '--bucket', bucket,
         '--key', key,
-        '--endpoint-url', endpoint
+        '--endpoint-url', endpoint,
+        '--output', 'json'
     ], capture_output=True)
     if res.returncode != 0:
-        missing_remote.append(key)
+        missing_remote.append(f'{key} (not in bucket)')
+        continue
+    # Present is not enough: an older object under the same key would pass a
+    # bare existence check while serving the wrong bytes.
+    try:
+        remote_size = json.loads(res.stdout.decode('utf-8')).get('ContentLength')
+    except Exception:
+        remote_size = None
+    if remote_size != it['size']:
+        missing_remote.append(f'{key} (bucket size {remote_size} != local {it[\"size\"]})')
 
 if missing_remote:
     print(f'ERROR: {len(missing_remote)} objects failed remote verification:', file=sys.stderr)
@@ -264,8 +437,14 @@ if missing_remote:
         print(f'  - {m}', file=sys.stderr)
     sys.exit(1)
 
-print(f'SUCCESS: All {len(data)} objects verified present in r2://{bucket}')
+print(f'SUCCESS: All {len(data)} objects verified in r2://{bucket} (present, size matches)')
 "
+
+  if [[ -n "$VERIFY_PUBLIC" ]]; then
+    echo
+    echo "==> Verifying through the public media path: ${VERIFY_PUBLIC}/uploads/..."
+    remote_check "$VERIFY_PUBLIC" strict
+  fi
   echo "Media ingest complete."
   exit 0
 fi

@@ -16,6 +16,11 @@ services:
   - type: web
     name: akwaan-api
     runtime: docker
+    # NOTE (2026-11-21): the owner reports this service now runs on a PAID Render
+    # plan. The value below was deliberately left as it was, because the exact
+    # plan name was not confirmed when this note was written. If this blueprint
+    # is ever synced, the line below is the declared state — set it to the real
+    # plan first so a sync cannot move the service back to Free.
     plan: free
     # Closest free region to the Gulf. Change before the first deploy if you
     # would rather be near a different audience — it cannot be moved after.
@@ -34,7 +39,11 @@ services:
       - key: NODE_ENV
         value: production
 
-      # Atlas SRV URI, including the `lammah-quiz` database name.
+      # MongoDB SRV URI, including the database name in its path. Production
+      # uses the database `akwaan` (owner-reported, 2026-11-21; it was
+      # `lammah-quiz` before). The name lives only in this secret — nothing in
+      # the running code depends on it. Local development still uses a local
+      # `lammah-quiz`; see docker-compose.yml.
       - key: MONGODB_URI
         sync: false
 
