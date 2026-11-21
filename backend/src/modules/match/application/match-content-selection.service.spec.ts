@@ -340,48 +340,50 @@ describe('MatchContentSelector', () => {
     expect(await select(items, { requirements }).result).toEqual(['usable']);
   });
 
-  describe('Odd Piece V2 production gate', () => {
-    // The gate lives in the launcher predicate, but it only holds if the
-    // selector tags a stored V2 payload as V2: an untagged item reads as a
-    // legacy V1 item and would be playable.
+  describe('Odd Piece V2 selection', () => {
     const oddPiece = (
       id: string,
       scopeId: string,
       version?: number,
+      difficulty?: 'easy' | 'medium' | 'hard',
     ): FakeItem =>
       item(id, scopeId, {
         answerPayload: { mode: ChallengeAnswerMode.ODD_PIECE },
         mechanicPayload: {
           variant: 'odd-piece',
           ...(version === undefined ? {} : { version }),
-          ...(version === 2 ? { difficulty: 'easy' } : {}),
+          ...(difficulty ? { difficulty } : {}),
         },
       });
 
-    it('draws legacy and V1 puzzles but never a V2 hotspot puzzle', async () => {
+    it('draws one V2 hotspot puzzle per difficulty (easy, medium, hard) and ignores legacy/V1 puzzles', async () => {
       const items = [
         oddPiece('legacy', 's0'),
         oddPiece('v1', 's1', 1),
         oddPiece('v1-b', 's2', 1),
-        oddPiece('v2-a', 's0', 2),
-        oddPiece('v2-b', 's1', 2),
-        oddPiece('v2-c', 's3', 2),
+        oddPiece('v2-easy', 's0', 2, 'easy'),
+        oddPiece('v2-medium', 's1', 2, 'medium'),
+        oddPiece('v2-hard', 's3', 2, 'hard'),
       ];
 
       const selected = await select(items, {
         requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS,
       }).result;
 
-      expect(selected.sort()).toEqual(['legacy', 'v1', 'v1-b']);
+      expect(selected).toEqual(['v2-easy', 'v2-medium', 'v2-hard']);
     });
 
-    it('refuses to launch rather than play V2 when only V2 puzzles exist', async () => {
-      const items = POOL_0.map((scopeId) =>
-        oddPiece(`${scopeId}-v2`, scopeId, 2),
-      );
-
+    it('refuses to launch when only legacy/V1 puzzles exist or a V2 difficulty stratum is missing', async () => {
+      const legacyOnly = [oddPiece('legacy', 's0'), oddPiece('v1', 's1', 1)];
       await expect(
-        select(items, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
+        select(legacyOnly, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
+      ).rejects.toThrow();
+
+      const missingStrata = POOL_0.map((scopeId) =>
+        oddPiece(`${scopeId}-v2`, scopeId, 2, 'easy'),
+      );
+      await expect(
+        select(missingStrata, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
       ).rejects.toThrow();
     });
   });
