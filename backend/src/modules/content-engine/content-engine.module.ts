@@ -54,6 +54,14 @@ import { MediaStorageModule } from '../../common/uploads/media-storage.module';
 import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
 import { CandidateMediaReviewService } from './application/candidate-media-review.service';
+import { MediaDiscoveryService } from './application/media-discovery.service';
+import {
+  ENGINE_MEDIA_DISCOVERY_PROVIDERS,
+  MediaDiscoveryProvider,
+} from './domain/media-discovery';
+import { ENGINE_MEDIA_DISCOVERY_USER_AGENT } from './domain/content-engine.constants';
+import { commonsDiscoveryEnabled } from './domain/engine-media-flags';
+import { WikimediaCommonsDiscoveryProvider } from './infrastructure/wikimedia-commons.discovery';
 import { MediaRightsModule } from '../media-rights/media-rights.module';
 import { EnginePricingService } from './domain/engine-pricing.service';
 import { EngineJobAdminService } from './application/engine-job-admin.service';
@@ -202,6 +210,25 @@ import {
     LocalImageStorageService,
     EngineImageIngestionService,
     CandidateMediaReviewService,
+    {
+      // Image discovery is fail-closed like the provider slots above: with the
+      // switch down the list is empty, the service reports itself unavailable,
+      // and no outbound call can be made on a reviewer's behalf.
+      provide: ENGINE_MEDIA_DISCOVERY_PROVIDERS,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): MediaDiscoveryProvider[] =>
+        commonsDiscoveryEnabled(config)
+          ? [
+              new WikimediaCommonsDiscoveryProvider({
+                userAgent:
+                  config
+                    .get<string>(ENGINE_MEDIA_DISCOVERY_USER_AGENT)
+                    ?.trim() || undefined,
+              }),
+            ]
+          : [],
+    },
+    MediaDiscoveryService,
   ],
   exports: [
     EnginePricingService,

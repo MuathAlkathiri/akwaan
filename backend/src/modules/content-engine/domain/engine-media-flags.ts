@@ -1,6 +1,7 @@
 import {
   CONTENT_ENGINE_ENABLED,
   ENGINE_IMAGE_GENERATION_ENABLED,
+  ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED,
   ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED,
   ENGINE_MEDIA_ENRICHMENT_ENABLED,
 } from './content-engine.constants';
@@ -43,4 +44,20 @@ export function resolveEngineMediaFlags(
     wigoloDiscovery:
       enrichment && truthy(config, ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED),
   };
+}
+
+/**
+ * Commons discovery follows the same rule as the switches above: it is an
+ * enrichment strategy, so it is on only when the engine, enrichment and its
+ * own switch all are. Kept beside them rather than inside `EngineMediaFlags`
+ * because that shape describes what may fill a slot automatically, and
+ * discovery only ever proposes images for a person to choose from.
+ */
+export function commonsDiscoveryEnabled(
+  config: FlagSource | undefined,
+): boolean {
+  return (
+    resolveEngineMediaFlags(config).enrichment &&
+    truthy(config, ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED)
+  );
 }

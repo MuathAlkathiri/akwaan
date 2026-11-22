@@ -65,6 +65,19 @@ export const ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED =
   'ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED';
 
 /**
+ * Wikimedia Commons image discovery. Off by default. Free and keyless, but it
+ * is still an outbound call made on a reviewer's behalf, so it is switched on
+ * deliberately like every other enrichment strategy. Discovery finds images;
+ * it is never proof of rights.
+ */
+export const ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED =
+  'ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED';
+
+/** Identifies this deployment to image providers that require it. Optional. */
+export const ENGINE_MEDIA_DISCOVERY_USER_AGENT =
+  'ENGINE_MEDIA_DISCOVERY_USER_AGENT';
+
+/**
  * Money is integer **micros of SAR** everywhere — 1 SAR = 1_000_000 micros.
  *
  * Floats are not allowed near a spending cap. `0.1 + 0.2 !== 0.3` is a rounding
