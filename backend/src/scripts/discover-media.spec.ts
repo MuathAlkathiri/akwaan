@@ -37,9 +37,10 @@ describe('discover-media arguments', () => {
 });
 
 describe('throttleWaitMs', () => {
-  it('waits as long as the server asked, up to a minute', () => {
+  it('waits as long as the server asked, up to three minutes', () => {
     expect(throttleWaitMs(0, 17)).toBe(17_000);
-    expect(throttleWaitMs(1, 900)).toBe(60_000);
+    expect(throttleWaitMs(0, 120)).toBe(120_000);
+    expect(throttleWaitMs(1, 900)).toBe(180_000);
   });
 
   it('backs off on its own when the server gave no time', () => {

@@ -84,13 +84,15 @@ export function fileSlug(subject: string): string {
 const DOWNLOAD_PAUSE_MS = 2_000;
 /** Waits used when a throttling server does not say how long. */
 const THROTTLE_BACKOFF_MS = [10_000, 30_000];
-const THROTTLE_MAX_WAIT_MS = 60_000;
+const THROTTLE_MAX_WAIT_MS = 180_000;
 
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 
 /**
  * How long to wait before each retry of a throttled request: the server's own
- * `Retry-After` when it sent one (capped), otherwise a fixed backoff.
+ * `Retry-After` when it sent one, otherwise a fixed backoff. Waiting less than
+ * the server asked is asking again while still refused, so the stated time is
+ * honoured in full up to three minutes.
  */
 export function throttleWaitMs(
   attempt: number,
@@ -205,7 +207,7 @@ async function main(): Promise<number> {
   // The engine's own downloader: destination guard, redirect re-validation,
   // streaming byte cap, and proof that the bytes are a real image.
   const downloader = new ImageDownloadService({
-    get: () => undefined,
+    get: (key: string) => process.env[key],
   } as never);
   mkdirSync(args.out, { recursive: true });
   const slug = fileSlug(args.subject);

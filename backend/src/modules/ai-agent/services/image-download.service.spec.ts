@@ -31,12 +31,15 @@ class ScriptedTransport implements ImageFetchTransport {
 
   constructor(private readonly script: Record<string, Scripted>) {}
 
+  readonly userAgents: string[] = [];
+
   async get(
     url: URL,
-    options: { signal: AbortSignal },
+    options: { signal: AbortSignal; userAgent: string },
   ): Promise<ImageFetchResponse> {
     const key = url.toString();
     this.requested.push(key);
+    this.userAgents.push(options.userAgent);
     const entry = this.script[key];
     if (!entry) throw new Error(`unscripted request ${key}`);
     if (entry.hang) {
@@ -93,6 +96,26 @@ describe('ImageDownloadService.fetchImage', () => {
       image: { format: 'png', width: 3, height: 2 },
     });
     expect(result.bytes.equals(PNG_3X2)).toBe(true);
+  });
+
+  it('introduces itself with a contact an image host can use', async () => {
+    const { downloader, transport } = service({ [IMG]: png() });
+    await downloader.fetchImage(IMG, { maxBytes: 1024 });
+    expect(transport.userAgents).toEqual([
+      'Akwaan/1.0 (https://playakwaan.com; content engine image retrieval)',
+    ]);
+  });
+
+  it('lets a deployment name its own contact', async () => {
+    const transport = new ScriptedTransport({ [IMG]: png() });
+    const downloader = new ImageDownloadService(
+      new ConfigService({ IMAGE_FETCH_CONTACT: ' media@example.org ' }),
+      transport,
+    );
+    await downloader.fetchImage(IMG, { maxBytes: 1024 });
+    expect(transport.userAgents).toEqual([
+      'Akwaan/1.0 (media@example.org; content engine image retrieval)',
+    ]);
   });
 
   it('carries the wait a throttling server asked for', async () => {

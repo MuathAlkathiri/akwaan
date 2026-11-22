@@ -41,6 +41,10 @@ const HEADER_TYPES: Record<InspectedImage['format'], readonly string[]> = {
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
+/** A URL or address a host's operators can reach us at. */
+export const IMAGE_FETCH_CONTACT = 'IMAGE_FETCH_CONTACT';
+export const DEFAULT_IMAGE_FETCH_CONTACT = 'https://playakwaan.com';
+
 export type ImageFetchCode =
   | 'HTTP_STATUS_NOT_OK'
   | 'TOO_MANY_REDIRECTS'
@@ -121,6 +125,23 @@ export class ImageDownloadService {
     this.transport = transport ?? new GuardedNodeImageTransport();
   }
 
+  /**
+   * How this server introduces itself to an image host.
+   *
+   * It names a contact, because a host cannot tell a well-behaved script from
+   * an anonymous one any other way. Wikimedia in particular serves an
+   * unidentified client only what is already in its cache and answers
+   * everything else HTTP 429 — which looked like random failures until the
+   * responses were read: the same two files in four were refused every time.
+   * `IMAGE_FETCH_CONTACT` overrides the contact for a deployment.
+   */
+  private userAgent(purpose: string): string {
+    const contact =
+      this.config.get<string>(IMAGE_FETCH_CONTACT)?.trim() ||
+      DEFAULT_IMAGE_FETCH_CONTACT;
+    return `Akwaan/1.0 (${contact}; ${purpose})`;
+  }
+
   absolutePath(localPath: string) {
     const uploadsRoot =
       this.config.get<string>('UPLOADS_DIR') ?? join(process.cwd(), 'uploads');
@@ -159,7 +180,7 @@ export class ImageDownloadService {
             maxRedirects: LEGACY_MAX_REDIRECTS,
             signal,
             timedOut,
-            userAgent: 'Akwaan/1.0 (question image retrieval)',
+            userAgent: this.userAgent('question image retrieval'),
           });
         } catch (error) {
           if (
@@ -247,7 +268,7 @@ export class ImageDownloadService {
           maxRedirects: options.maxRedirects ?? 3,
           signal,
           timedOut,
-          userAgent: 'Akwaan/1.0 (content engine image retrieval)',
+          userAgent: this.userAgent('content engine image retrieval'),
         });
 
         const contentType = this.contentTypeOf(response);
