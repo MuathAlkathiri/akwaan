@@ -81,22 +81,50 @@ export function fileSlug(subject: string): string {
   return slug || 'image';
 }
 
-const DOWNLOAD_PAUSE_MS = 1_000;
-const THROTTLED_RETRY_MS = 6_000;
+const DOWNLOAD_PAUSE_MS = 2_000;
+/** Waits used when a throttling server does not say how long. */
+const THROTTLE_BACKOFF_MS = [10_000, 30_000];
+const THROTTLE_MAX_WAIT_MS = 60_000;
 
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 
-/** HTTP 429 means "later", not "no": wait once and ask again. */
+/**
+ * How long to wait before each retry of a throttled request: the server's own
+ * `Retry-After` when it sent one (capped), otherwise a fixed backoff.
+ */
+export function throttleWaitMs(
+  attempt: number,
+  retryAfterSeconds: number | undefined,
+): number | null {
+  if (attempt >= THROTTLE_BACKOFF_MS.length) return null;
+  if (retryAfterSeconds !== undefined) {
+    return Math.min(retryAfterSeconds * 1000, THROTTLE_MAX_WAIT_MS);
+  }
+  return THROTTLE_BACKOFF_MS[attempt];
+}
+
+/**
+ * HTTP 429 means "later", not "no". The first two live runs each lost one
+ * image in four to a 429 that a plain request minutes later did not get, and a
+ * single 6-second retry was not enough — so this waits as long as the server
+ * asks, twice, and says what it is doing.
+ */
 async function fetchPatiently(downloader: ImageDownloadService, url: string) {
   const options = { maxBytes: ENGINE_IMAGE_MAX_BYTES };
-  try {
-    return await downloader.fetchImage(url, options);
-  } catch (error) {
-    if (!(error instanceof ImageFetchError) || error.status !== 429) {
-      throw error;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await downloader.fetchImage(url, options);
+    } catch (error) {
+      if (!(error instanceof ImageFetchError) || error.status !== 429) {
+        throw error;
+      }
+      const wait = throttleWaitMs(attempt, error.retryAfterSeconds);
+      if (wait === null) throw error;
+      console.error(
+        `throttled (HTTP 429, Retry-After: ${error.retryAfterSeconds ?? 'not sent'}); waiting ${Math.round(wait / 1000)}s`,
+      );
+      await sleep(wait);
     }
-    await sleep(THROTTLED_RETRY_MS);
-    return downloader.fetchImage(url, options);
   }
 }
 
@@ -186,9 +214,10 @@ async function main(): Promise<number> {
 
   for (const [index, media] of result.candidates.entries()) {
     try {
-      // One at a time, with a pause: a burst of image requests is what a
+      // One at a time, with a pause before each — the first included, since
+      // it follows straight after the search request. A burst is what a
       // provider throttles first.
-      if (index > 0) await sleep(DOWNLOAD_PAUSE_MS);
+      await sleep(DOWNLOAD_PAUSE_MS);
       const fetched = await fetchPatiently(downloader, media.downloadUrl);
       const file = `${slug}-${index + 1}${fetched.image.extension}`;
       writeFileSync(join(args.out, file), fetched.bytes, { flag: 'wx' });

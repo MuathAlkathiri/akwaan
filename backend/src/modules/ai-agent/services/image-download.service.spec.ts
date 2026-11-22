@@ -12,7 +12,10 @@ import {
 } from '../../../infrastructure/media/testing/image-fixtures';
 import { ImageInspectionError } from '../../../infrastructure/media/image-bytes.inspector';
 import { RemoteDestinationError } from '../../../infrastructure/media/remote-image-destination.guard';
-import { ImageDownloadService } from '../infrastructure/assets/image-download.service';
+import {
+  ImageDownloadService,
+  retryAfterSecondsOf,
+} from '../infrastructure/assets/image-download.service';
 
 type Scripted = {
   status?: number;
@@ -90,6 +93,30 @@ describe('ImageDownloadService.fetchImage', () => {
       image: { format: 'png', width: 3, height: 2 },
     });
     expect(result.bytes.equals(PNG_3X2)).toBe(true);
+  });
+
+  it('carries the wait a throttling server asked for', async () => {
+    const { downloader } = service({
+      [IMG]: { status: 429, headers: { 'retry-after': '17' } },
+    });
+    await expect(
+      downloader.fetchImage(IMG, { maxBytes: 1024 }),
+    ).rejects.toMatchObject({
+      code: 'HTTP_STATUS_NOT_OK',
+      status: 429,
+      retryAfterSeconds: 17,
+    });
+  });
+
+  it('leaves the wait undefined when the server sent none', async () => {
+    const { downloader } = service({ [IMG]: { status: 429 } });
+    const error = await downloader
+      .fetchImage(IMG, { maxBytes: 1024 })
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ status: 429 });
+    expect(
+      (error as { retryAfterSeconds?: number }).retryAfterSeconds,
+    ).toBeUndefined();
   });
 
   it('refuses a private destination before any request', async () => {
@@ -396,5 +423,27 @@ describe('ImageDownloadService.download (legacy Wikimedia/Jikan contract)', () =
       ).rejects.toBeInstanceOf(ImageInspectionError);
     }
     expect(await stored()).toEqual([]);
+  });
+});
+
+describe('retryAfterSecondsOf', () => {
+  const now = new Date('2026-11-22T12:00:00Z');
+
+  it('reads a number of seconds', () => {
+    expect(retryAfterSecondsOf('30', now)).toBe(30);
+    expect(retryAfterSecondsOf(['5', '99'], now)).toBe(5);
+  });
+
+  it('reads an HTTP date as seconds from now', () => {
+    expect(retryAfterSecondsOf('Sun, 22 Nov 2026 12:00:45 GMT', now)).toBe(45);
+  });
+
+  it('is undefined for nothing, nonsense, or a time already past', () => {
+    expect(retryAfterSecondsOf(undefined, now)).toBeUndefined();
+    expect(retryAfterSecondsOf('  ', now)).toBeUndefined();
+    expect(retryAfterSecondsOf('soon', now)).toBeUndefined();
+    expect(
+      retryAfterSecondsOf('Sun, 22 Nov 2026 11:59:00 GMT', now),
+    ).toBeUndefined();
   });
 });

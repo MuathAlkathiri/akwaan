@@ -51,12 +51,35 @@ export type ImageFetchCode =
   | 'MIME_NOT_ALLOWED'
   | 'MIME_MISMATCH';
 
+/**
+ * `Retry-After` as seconds from now. The header is either a number of seconds
+ * or an HTTP date; anything else, or a time already past, is treated as absent.
+ */
+export function retryAfterSecondsOf(
+  header: string | string[] | undefined,
+  now: Date = new Date(),
+): number | undefined {
+  const raw = (Array.isArray(header) ? header[0] : header)?.trim();
+  if (!raw) return undefined;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const at = Date.parse(raw);
+  if (Number.isNaN(at)) return undefined;
+  const seconds = Math.ceil((at - now.getTime()) / 1000);
+  return seconds > 0 ? seconds : undefined;
+}
+
 export class ImageFetchError extends Error {
   constructor(
     readonly code: ImageFetchCode,
     message: string,
     /** The HTTP status, on HTTP_STATUS_NOT_OK. */
     readonly status?: number,
+    /**
+     * What the server's `Retry-After` asked for, in seconds, when it sent one.
+     * A throttled source says how long to wait; a caller that retries should
+     * not have to guess.
+     */
+    readonly retryAfterSeconds?: number,
   ) {
     super(`${code}: ${message}`);
     this.name = 'ImageFetchError';
@@ -356,6 +379,7 @@ export class ImageDownloadService {
           'HTTP_STATUS_NOT_OK',
           `image request returned HTTP ${response.status}`,
           response.status,
+          retryAfterSecondsOf(response.headers['retry-after']),
         );
       }
       return { response, finalUrl: url.toString(), redirects };
