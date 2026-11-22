@@ -449,6 +449,20 @@ export const LAQATHA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: LAQATHA_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.questionsJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.questionsJson);
+      if (runtimeState.currentQuestionIndex == null) return undefined;
+      const index = Number(runtimeState.currentQuestionIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.contentItemId;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     source: 'runtime-state',
     commandType: 'expire-laqatha-phase',

@@ -27,7 +27,6 @@ import type { GameplayRuntimeSnapshot } from "../model";
 import { MarhalaQuestionAudio } from "./marhala-screen";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { useRyoAudioReplay } from "../hooks/use-ryo-audio-replay";
-import { QuestionVerdict } from "./question-verdict";
 
 /**
  * «إعادة المقطع» — one control, rendered on whichever surface the actor holds.
@@ -116,7 +115,9 @@ function RyoReplayButton({
       aria-label="إعادة تشغيل المقطع الصوتي للجميع"
       className={cn("font-bold", compact && "w-full")}
     >
-      {waiting ? `إعادة المقطع (${Math.ceil(cooldownMs / 1000)})` : "إعادة المقطع"}
+      {waiting
+        ? `إعادة المقطع (${Math.ceil(cooldownMs / 1000)})`
+        : "إعادة المقطع"}
     </Button>
   );
 }
@@ -352,7 +353,8 @@ export function RyoGameplayPanel({
 
     if (failure?.reason === "autoplay-blocked") {
       void probePlayable().then((next) => {
-        if (preloadAudioUrl) setAudioVerdict({ url: preloadAudioUrl, verdict: next });
+        if (preloadAudioUrl)
+          setAudioVerdict({ url: preloadAudioUrl, verdict: next });
         void send(next === "ready" ? "ready" : next);
       });
       return;
@@ -1014,7 +1016,6 @@ function PhoneRyoController({
             {/* The verdict sits after the reveal, not beside the question:
                 asked before the answer is known it would be a guess about the
                 question rather than an opinion of it. */}
-            {item && <QuestionVerdict contentItemId={item.id} className="pb-1" />}
           </section>
         ) : completed ? (
           <PhoneRyoWaiting testId="ryo-phone-complete">

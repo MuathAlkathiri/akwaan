@@ -65,6 +65,7 @@ function launchState(participants: EligibleParticipant[]): GameplayModeState {
       teamId,
       action: laTahriqhaDishAction(teamId),
       participants,
+      now: new Date('2026-01-01T00:00:00.000Z'),
     }).state;
   }
   return LA_TAHRIQHA_GAMEPLAY_PLUGIN.validateRuntimeState({

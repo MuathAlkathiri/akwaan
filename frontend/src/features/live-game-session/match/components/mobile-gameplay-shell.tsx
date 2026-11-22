@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
+import { QuestionVerdict } from "../../components/question-verdict";
 import { useLiveSession } from "../../hooks/live-session-context";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchStageKey } from "../types";
@@ -102,6 +103,7 @@ export function MobileGameplayShell({
 }) {
   const { snapshot } = useLiveSession();
   const phase = mobilePhaseOf(snapshot);
+  const contentItemId = snapshot?.gameplay?.currentContentItemId;
   const participant = participantId
     ? snapshot?.participants.find((person) => person.id === participantId)
     : undefined;
@@ -120,77 +122,94 @@ export function MobileGameplayShell({
   return (
     <MobileSurfaceContext.Provider value={true}>
       <MobileParticipantContext.Provider value={participantId}>
-      <div
-        dir="rtl"
-        data-testid="mobile-gameplay-shell"
-        data-mobile-phase={phase}
-        className={cn(
-          "flex min-h-[100dvh] flex-col bg-background text-foreground",
-          // A notch, a home indicator and a browser's disappearing chrome are all
-          // the same problem, solved once here rather than in every mechanic.
-          "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
-          "ps-[env(safe-area-inset-left)] pe-[env(safe-area-inset-right)]",
-        )}
-      >
-        {/* Compact by design: one line of context, never a scoreboard. The room
-          already has a screen showing the score to everyone. */}
-        <header
-          data-testid="mobile-shell-header"
-          className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-2"
+        <div
+          dir="rtl"
+          data-testid="mobile-gameplay-shell"
+          data-mobile-phase={phase}
+          className={cn(
+            "flex min-h-[100dvh] flex-col bg-background text-foreground",
+            // A notch, a home indicator and a browser's disappearing chrome are all
+            // the same problem, solved once here rather than in every mechanic.
+            "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+            "ps-[env(safe-area-inset-left)] pe-[env(safe-area-inset-right)]",
+          )}
         >
-          <div className="min-w-0">
-            <p className="truncate text-[0.7rem] font-black text-muted-foreground">
-              {challengeName?.worldName ?? "أكوان"}
-            </p>
-            <p className="truncate text-sm font-black leading-tight text-foreground">
-              {challengeName?.challengeName ?? "المباراة"}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {/* Reserved, stable slot for a future shared timer presentation. It
+          {/* Compact by design: one line of context, never a scoreboard. The room
+          already has a screen showing the score to everyone. */}
+          <header
+            data-testid="mobile-shell-header"
+            className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[0.7rem] font-black text-muted-foreground">
+                {challengeName?.worldName ?? "أكوان"}
+              </p>
+              <p className="truncate text-sm font-black leading-tight text-foreground">
+                {challengeName?.challengeName ?? "المباراة"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {/* Reserved, stable slot for a future shared timer presentation. It
               stays empty in this phase: mechanics keep their own authoritative
               countdowns, and a second one here would be a duplicate. */}
-            <span data-testid="mobile-shell-timer-slot" aria-hidden />
-            <MobileStatus phase={phase} />
-            {team && identity && (
-              <span
-                data-testid="mobile-shell-team"
-                data-team-id={team.id}
-                className={cn(
-                  "inline-flex max-w-[7.5rem] items-center gap-1.5 rounded-full border px-2 py-1 text-[0.7rem] font-black",
-                  identity.surface,
-                  identity.border,
-                  identity.text,
-                )}
-              >
+              <span data-testid="mobile-shell-timer-slot" aria-hidden />
+              <MobileStatus phase={phase} />
+              {team && identity && (
                 <span
-                  aria-hidden
-                  className={cn("size-1.5 shrink-0 rounded-full", identity.dot)}
-                />
-                <span className="truncate">{team.name}</span>
-              </span>
-            )}
-          </div>
-        </header>
+                  data-testid="mobile-shell-team"
+                  data-team-id={team.id}
+                  className={cn(
+                    "inline-flex max-w-[7.5rem] items-center gap-1.5 rounded-full border px-2 py-1 text-[0.7rem] font-black",
+                    identity.surface,
+                    identity.border,
+                    identity.text,
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      identity.dot,
+                    )}
+                  />
+                  <span className="truncate">{team.name}</span>
+                </span>
+              )}
+            </div>
+          </header>
 
-        {/* One fixed position for the Match router. `min-h-0` lets a tall mechanic
+          {/* One fixed position for the Match router. `min-h-0` lets a tall mechanic
           scroll inside this region instead of growing the page, and the region
           itself fills whatever the header leaves — which is what keeps a neutral
           state centred rather than stranded at the top. */}
-        <div
-          data-testid="mobile-shell-main"
-          className={cn(
-            "flex min-h-0 flex-1 flex-col px-3 py-3",
-            // The Match router renders its own `<main>` in here, and it is a block.
-            // Stretching it from this side keeps the flex chain intact all the way
-            // down to a neutral state — without editing the router, and without a
-            // second landmark competing with the one it already owns.
-            "[&>main]:flex [&>main]:min-h-0 [&>main]:flex-1 [&>main]:flex-col",
+          <div
+            data-testid="mobile-shell-main"
+            className={cn(
+              "flex min-h-0 flex-1 flex-col px-3 py-3",
+              // The Match router renders its own `<main>` in here, and it is a block.
+              // Stretching it from this side keeps the flex chain intact all the way
+              // down to a neutral state — without editing the router, and without a
+              // second landmark competing with the one it already owns.
+              "[&>main]:flex [&>main]:min-h-0 [&>main]:flex-1 [&>main]:flex-col",
+            )}
+          >
+            {children}
+          </div>
+
+          {/* One control for every mechanic.
+          It lived in the ريو panel alone, so nine challenges out of ten never
+          offered it and the owner never saw it in a real game. It belongs here,
+          beside the router rather than inside any one panel, so a mechanic
+          added later gets it without anyone remembering to.
+          Quiet on purpose: no prompt, no modal, no interruption. A player who
+          wants to say something finds it; a player who does not never notices
+          it. It appears only while an authored question is actually on screen. */}
+          {contentItemId && (
+            <div className="shrink-0 px-3 pb-2">
+              <QuestionVerdict contentItemId={contentItemId} />
+            </div>
           )}
-        >
-          {children}
         </div>
-      </div>
       </MobileParticipantContext.Provider>
     </MobileSurfaceContext.Provider>
   );

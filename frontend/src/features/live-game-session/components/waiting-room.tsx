@@ -346,7 +346,7 @@ export function WaitingRoom() {
               </ul>
               {/* Optional. With a captain, that phone carries every turn the
                   side has to take with one hand; without one the turns go round
-                  the whole side. Set here and fixed once the Match starts. */}
+                  the whole side. The host can change it during the Match too. */}
               <div className="mt-auto border-t px-5 py-4">
                 <label
                   htmlFor={`captain-${team.id}`}
@@ -381,7 +381,7 @@ export function WaitingRoom() {
                   id={`captain-hint-${team.id}`}
                   className="text-muted-foreground mt-1.5 text-xs font-bold"
                 >
-                  بدون قائد = تناوب تلقائي بين لاعبي الفريق
+                  بدون قائد = تناوب تلقائي بين لاعبي الفريق. تقدر تغيّره من شاشة المباراة بعد ما تبدأ.
                 </p>
               </div>
             </section>

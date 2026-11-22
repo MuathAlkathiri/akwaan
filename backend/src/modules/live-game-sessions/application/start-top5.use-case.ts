@@ -245,6 +245,7 @@ export class StartTop5 {
         teamId: startingTeamId,
         action: TOP5_DECISION_ACTION,
         participants,
+        now: new Date(),
       },
     );
 

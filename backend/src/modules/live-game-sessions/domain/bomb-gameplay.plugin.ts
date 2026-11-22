@@ -305,6 +305,22 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: BOMB_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      const questions = JSON.parse(String(runtimeState.questionsJson));
+      if (roundState.itemIndex == null) return undefined;
+      const index = Number(roundState.itemIndex);
+      if (!Array.isArray(questions) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const question = questions.find(
+        (entry) => entry?.id === roundState.questionId,
+      );
+      const id = question?.items?.[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   // Bomb is the one mechanic whose clock is the *session's* team clock rather
   // than anything on its own runtime, so it names the source instead of a phase.
   deadline: {

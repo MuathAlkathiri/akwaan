@@ -1,5 +1,6 @@
 import {
   COMBO_ANSWER_ACTION,
+  COMBO_BREAK_ACTION,
   COMBO_GAMEPLAY_PLUGIN,
   COMBO_QUESTION_SECONDS,
   ComboPlannedQuestion,
@@ -52,7 +53,12 @@ function runtime(captains: Record<string, string> = {}): GameplayModeState {
         captains,
       }),
     ),
-    { teamId: A, action: COMBO_ANSWER_ACTION, participants: ROSTER },
+    {
+      teamId: A,
+      action: COMBO_ANSWER_ACTION,
+      participants: ROSTER,
+      now: NOW,
+    },
   );
   return COMBO_GAMEPLAY_PLUGIN.validateRuntimeState({
     teamIdsJson: JSON.stringify([A, B]),
@@ -184,6 +190,7 @@ describe('الكومبو — the question holder', () => {
     const moved = reassignUnavailableActions(
       parseTeamActionAssignments(decided.teamActionJson),
       away,
+      NOW,
     );
     const handed = moved.state.assignments.find(
       (a) => a.action === COMBO_ANSWER_ACTION,
@@ -310,5 +317,63 @@ describe('الكومبو — the question holder', () => {
         teamId: A,
       }).isAssignedActor,
     ).toBe(true);
+  });
+});
+
+/**
+ * كسر الكومبو is the other team's decision, so it is the other team's captain.
+ *
+ * It cannot ride on the answer's assignment: that one follows the team playing
+ * the run, and the break is spent against them.
+ */
+describe('الكومبو — كسر الكومبو', () => {
+  const withBreak = (captains: Record<string, string> = {}) => {
+    const state = runtime(captains);
+    return {
+      ...state,
+      teamActionJson: serializeTeamActionAssignments(
+        assignNextTeamActionOrHold(
+          parseTeamActionAssignments(String(state.teamActionJson)),
+          {
+            teamId: B,
+            action: COMBO_BREAK_ACTION,
+            participants: ROSTER,
+            now: NOW,
+          },
+        ).state,
+      ),
+    };
+  };
+
+  it('lets the opposing captain arm it', () => {
+    const next = send(
+      withBreak({ [A]: 'a1', [B]: 'b1' }),
+      'arm-combo-break',
+      'b1',
+    );
+    expect(next.armedBreakByTeamId).toBe(B);
+  });
+
+  it('refuses a teammate of the opposing captain', () => {
+    expect(() =>
+      send(withBreak({ [A]: 'a1', [B]: 'b1' }), 'arm-combo-break', 'b2'),
+    ).toThrow(
+      expect.objectContaining({ code: 'TEAM_ACTION_WRONG_PARTICIPANT' }),
+    );
+  });
+
+  it('still refuses the team playing the run', () => {
+    // The older rule stands ahead of this one.
+    expect(() =>
+      send(withBreak({ [A]: 'a1', [B]: 'b1' }), 'arm-combo-break', 'a1'),
+    ).toThrow(expect.objectContaining({ code: 'COMBO_BREAK_FORBIDDEN' }));
+  });
+
+  it('leaves a runtime that predates the action alone', () => {
+    // Never freeze a charge the team is entitled to spend.
+    expect(
+      send(runtime({ [A]: 'a1', [B]: 'b1' }), 'arm-combo-break', 'b2')
+        .armedBreakByTeamId,
+    ).toBe(B);
   });
 });

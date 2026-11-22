@@ -129,7 +129,12 @@ export class StartMarhalaGameplay {
           captains: teamCaptainsOf(sessionState),
         }),
       ),
-      { teamId: teams[0], action: MARHALA_TURN_ACTION, participants },
+      {
+        teamId: teams[0],
+        action: MARHALA_TURN_ACTION,
+        participants,
+        now: new Date(),
+      },
     );
 
     const actor = { kind: 'user' as const, actorId: input.actorId };

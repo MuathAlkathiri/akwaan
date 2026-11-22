@@ -150,8 +150,8 @@ export async function assignParticipantTeam(
 }
 
 /**
- * Name a team's lobby captain, or pass `null` for none (automatic rotation).
- * Refused once the Match has started.
+ * Name a team's captain, or pass `null` for none (automatic rotation).
+ * The host can change it during the Match.
  */
 export async function setTeamCaptain(
   sessionId: string,

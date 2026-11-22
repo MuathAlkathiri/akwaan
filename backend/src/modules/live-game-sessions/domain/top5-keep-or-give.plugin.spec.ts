@@ -59,6 +59,7 @@ function initialState(
       teamId: 'team-a',
       action: TOP5_DECISION_ACTION,
       participants,
+      now: NOW,
     },
   );
   return {

@@ -23,6 +23,8 @@ import {
   projectTeamActionAssignment,
   serializeTeamActionAssignments,
   TeamActionAssignment,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 
 /**
@@ -316,6 +318,7 @@ function decide(
   // that team's players did not make.
   if (!hostSkipped) {
     assertTeamActionAuthorized(assignments, {
+      ...teamActionStandInWindow(context),
       action: TOP5_DECISION_ACTION,
       participantId: context.submitterParticipantId,
       ...(typeof command.payload.assignmentSequence === 'number'
@@ -353,6 +356,7 @@ function decide(
       teamId: opponentTeamId,
       action: TOP5_DECISION_ACTION,
       participants: context.eligibleParticipants ?? [],
+      now: teamActionClock(context),
     });
     assignments = advanced.state;
     nextAssignment = advanced.assignment;

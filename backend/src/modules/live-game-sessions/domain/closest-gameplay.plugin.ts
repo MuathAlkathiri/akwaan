@@ -15,6 +15,8 @@ import {
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
   TeamActionAssignmentState,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 import { toSafeQuestionMedia } from './safe-question-media';
 import { ContentItemMedia } from '../../world-content/domain/world-content.types';
@@ -231,6 +233,7 @@ function openAssignments(
       teamId,
       action: closestAnswerAction(teamId),
       participants: context.eligibleParticipants ?? [],
+      now: teamActionClock(context),
     });
     next = opened.state;
     participantIds[teamId] = opened.assignment.participantId;
@@ -340,6 +343,7 @@ function handle(
       );
     }
     assertTeamActionAuthorized(assignments, {
+      ...teamActionStandInWindow(context),
       action: closestAnswerAction(teamId),
       participantId,
       ...(typeof command.payload.assignmentSequence === 'number'
@@ -521,6 +525,20 @@ export const CLOSEST_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: CLOSEST_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.itemsJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.itemsJson);
+      if (runtimeState.currentItemIndex == null) return undefined;
+      const index = Number(runtimeState.currentItemIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   // `deadlineAt` is cleared when an item resolves, but the phase is named anyway
   // so the reducer never has to infer liveness from a nullable field.
   deadline: {

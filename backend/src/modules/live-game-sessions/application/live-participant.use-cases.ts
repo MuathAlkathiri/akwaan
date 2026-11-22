@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { LiveSessionJoinAccess } from '../domain/live-session-join-access';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../domain/live-session.errors';
 import { LiveSessionActor } from './live-session-actor';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
+import { ReassignTeamActions } from './reassign-team-actions.use-case';
 import {
   LiveGameSessionSnapshot,
   LiveGameSessionSnapshotMapper,
@@ -81,6 +82,37 @@ export class JoinLiveSession {
     );
     if (existing && existing.role !== 'controller') {
       return this.result(session, existing.id, existing.role, now);
+    }
+
+    // A player whose phone lost its credential — a closed tab, a new one, a
+    // private window — reaches here as a fresh join under their old name. Give
+    // them their own place back rather than refusing it. This runs before the
+    // capacity checks on purpose: they are already counted in the room, so a
+    // full session or a full team would otherwise lock out the very person who
+    // belongs in it.
+    const reclaimed = session.reclaimParticipantByName({
+      displayName: input.displayName,
+      joinRequestId: input.joinRequestId,
+      now,
+    });
+    if (reclaimed) {
+      const revisionBeforeReclaim = session.revision;
+      session.completeCommand(input.joinRequestId, now);
+      await this.sessions.save(session, revisionBeforeReclaim);
+      // The reclaim only ever matches a team player; the narrower literal is
+      // what `result` accepts.
+      const result = await this.result(
+        session,
+        reclaimed.id,
+        'team-player',
+        now,
+      );
+      this.publisher.publish(
+        'live-session:participant-joined',
+        result.snapshot,
+        { participantId: reclaimed.id },
+      );
+      return result;
     }
     const accessState = access.serialize();
     const activePlayers = state.participants.filter(
@@ -472,26 +504,36 @@ export class AssignParticipantTeam extends HostParticipantMutation {
 }
 
 /**
- * The host naming — or clearing — a team's lobby captain.
+ * The host naming — or clearing — a team's captain.
  *
- * Lobby only (the domain refuses once the Match starts), so the captain is
- * locked for the Match. With no captain the team's actions rotate over its
- * whole roster. Published as a team change: it is part of how the teams are
- * set up, and every client already refreshes on that event.
+ * Allowed mid-Match, not only in the lobby: a captain who walks out holding
+ * the turn used to leave her team unable to act for the rest of the challenge,
+ * and the host had no way to fix it. With no captain the team's actions rotate
+ * over its whole roster. Published as a team change: it is part of how the
+ * teams are set up, and every client already refreshes on that event.
+ *
+ * Two halves, because the captain is recorded in two places. The session is
+ * authoritative for the *next* challenge; the challenge being played right now
+ * holds its own rotation in the gameplay runtime, so a live retarget has to
+ * follow — otherwise the host sees the armband move and the team still cannot
+ * act, which is the bug rather than the fix.
  */
 @Injectable()
 export class SetTeamCaptain extends HostParticipantMutation {
+  private readonly logger = new Logger(SetTeamCaptain.name);
+
   constructor(
     @Inject(LIVE_GAME_SESSION_REPOSITORY) sessions: LiveGameSessionRepository,
     @Inject(LIVE_SESSION_CLOCK) clock: LiveSessionClock,
     snapshots: LiveGameSessionSnapshotMapper,
     @Inject(LIVE_SESSION_TRANSITION_PUBLISHER)
     publisher: LiveSessionTransitionPublisher,
+    private readonly reassignments: ReassignTeamActions,
   ) {
     super(sessions, clock, snapshots, publisher);
   }
 
-  execute(input: {
+  async execute(input: {
     sessionId: string;
     actorId: string;
     teamId: string;
@@ -499,7 +541,7 @@ export class SetTeamCaptain extends HostParticipantMutation {
     expectedRevision: number;
     commandId: string;
   }) {
-    return this.mutate({
+    const snapshot = await this.mutate({
       ...input,
       participantId: input.participantId ?? undefined,
       event: 'live-session:participant-team-changed',
@@ -510,6 +552,26 @@ export class SetTeamCaptain extends HostParticipantMutation {
           now,
         ),
     });
+    // Best effort on purpose: the armband has already moved on the session and
+    // been published. If the live rotation cannot be retargeted — no challenge
+    // running, or a mechanic that never opted into assignment — the host's
+    // change still stands and the next assignment honours it. Failing the whole
+    // command here would tell the host their change did not happen when it did.
+    try {
+      await this.reassignments.retargetCaptain(
+        input.sessionId,
+        input.teamId,
+        input.participantId ?? undefined,
+      );
+    } catch (error) {
+      this.logger.warn({
+        event: 'captain_live_retarget_failed',
+        sessionId: input.sessionId,
+        teamId: input.teamId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return snapshot;
   }
 }
 

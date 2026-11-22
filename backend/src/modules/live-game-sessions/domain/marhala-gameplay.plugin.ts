@@ -37,6 +37,8 @@ import {
   clearTeamAction,
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 
 /**
@@ -356,6 +358,7 @@ function assertSubmitterHoldsTurn(
 ): void {
   if (typeof state.teamActionJson !== 'string') return;
   assertTeamActionAuthorized(parseTeamActionAssignments(state.teamActionJson), {
+    ...teamActionStandInWindow(context),
     action: MARHALA_TURN_ACTION,
     teamId: marhalaActiveTeamId(state),
     participantId: context.submitterParticipantId,
@@ -403,6 +406,7 @@ function syncTurnAssignment(
         teamId,
         action: MARHALA_TURN_ACTION,
         participants: context.eligibleParticipants ?? [],
+        now: teamActionClock(context),
       }).state,
     ),
   };
@@ -908,6 +912,16 @@ export const MARHALA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: MARHALA_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.questionJson !== 'string') return undefined;
+      const question = JSON.parse(runtimeState.questionJson);
+      const id = question?.contentItemId;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   /**
    * The clock belongs to the question, not to the session, and it is the same for
    * every difficulty — the risk a team elects is the movement range, never the time.

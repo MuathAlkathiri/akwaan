@@ -16,6 +16,7 @@ import {
   EligibleParticipant,
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
+  teamActionStandInWindow,
 } from './team-action-assignment';
 
 /**
@@ -29,25 +30,43 @@ import {
 export const COMBO_ANSWER_ACTION = 'combo.answer';
 
 /** Hand the question about to open to one phone of the playing team. */
+/**
+ * كسر الكومبو belongs to the other team, so it cannot share the answer's
+ * assignment — that one follows the team actually playing the run. The
+ * opposing captain decides whether to spend the charge, the same way their own
+ * captain decides whether to continue or bank.
+ */
+export const COMBO_BREAK_ACTION = 'combo.break';
+
 export function assignComboQuestion(
   state: GameplayModeState,
   participants: readonly EligibleParticipant[],
+  now: Date,
 ): GameplayModeState {
   if (typeof state.teamActionJson !== 'string') return state;
   const teamId = comboActiveTeamId(state);
   if (!teamId) return state;
+  const answering = assignNextTeamActionOrHold(
+    parseTeamActionAssignments(state.teamActionJson),
+    {
+      teamId,
+      action: COMBO_ANSWER_ACTION,
+      participants,
+      now,
+    },
+  );
+  const opponent = teamsOf(state).find((candidate) => candidate !== teamId);
+  const withBreak = opponent
+    ? assignNextTeamActionOrHold(answering.state, {
+        teamId: opponent,
+        action: COMBO_BREAK_ACTION,
+        participants,
+        now,
+      }).state
+    : answering.state;
   return {
     ...state,
-    teamActionJson: serializeTeamActionAssignments(
-      assignNextTeamActionOrHold(
-        parseTeamActionAssignments(state.teamActionJson),
-        {
-          teamId,
-          action: COMBO_ANSWER_ACTION,
-          participants,
-        },
-      ).state,
-    ),
+    teamActionJson: serializeTeamActionAssignments(withBreak),
   };
 }
 
@@ -78,6 +97,7 @@ function assertHoldsComboQuestion(
 ): void {
   if (typeof state.teamActionJson !== 'string') return;
   assertTeamActionAuthorized(parseTeamActionAssignments(state.teamActionJson), {
+    ...teamActionStandInWindow(context),
     action: COMBO_ANSWER_ACTION,
     teamId: comboActiveTeamId(state) ?? undefined,
     participantId: context.submitterParticipantId,
@@ -493,7 +513,7 @@ function openQuestion(
 ): GameplayModeState {
   return validateRuntime({
     // The rotation advances here, and only here: one holder per question.
-    ...assignComboQuestion(state, input.participants),
+    ...assignComboQuestion(state, input.participants, input.now),
     questionIndex: input.questionIndex,
     phase: 'question',
     forcedQuestion: input.forced,
@@ -839,6 +859,20 @@ function handle(
     if (state.armedBreakByTeamId !== null) {
       reject('COMBO_BREAK_ALREADY_SPENT', 'كسر الكومبو is already armed');
     }
+    // Which team may break is settled above; this settles which phone.
+    if (typeof state.teamActionJson === 'string') {
+      const assignments = parseTeamActionAssignments(state.teamActionJson);
+      // Not opened yet on a runtime that predates this: never freeze a charge
+      // the team is entitled to spend.
+      if (assignmentFor(assignments, COMBO_BREAK_ACTION)) {
+        assertTeamActionAuthorized(assignments, {
+          ...teamActionStandInWindow(context),
+          action: COMBO_BREAK_ACTION,
+          teamId: armingTeamId,
+          participantId: context.submitterParticipantId,
+        });
+      }
+    }
     const next = validateRuntime({
       ...state,
       chargesJson: JSON.stringify({ ...charges, [armingTeamId]: 'spent' }),
@@ -962,6 +996,27 @@ export const COMBO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: COMBO_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      const plan = JSON.parse(String(runtimeState.questionPlanJson));
+      if (runtimeState.runIndex == null || runtimeState.questionIndex == null)
+        return undefined;
+      const run = Number(runtimeState.runIndex);
+      const index = Number(runtimeState.questionIndex);
+      if (
+        !Array.isArray(plan) ||
+        !Number.isInteger(run) ||
+        run < 0 ||
+        !Number.isInteger(index) ||
+        index < 0
+      )
+        return undefined;
+      const id = plan[run]?.[index]?.contentItemId;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   // Each question carries its own clock, so the deadline lives on the runtime
   // and is live only while a question is open. `decision`, `break-reveal` and
   // the terminal phases must never be armed.

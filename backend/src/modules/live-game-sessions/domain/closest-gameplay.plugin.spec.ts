@@ -57,6 +57,7 @@ describe('Closest gameplay', () => {
       teamId: 'a',
       action: closestAnswerAction('a'),
       participants: [{ participantId: 'a1', teamId: 'a', connected: true }],
+      now: new Date('2026-01-01T00:00:00.000Z'),
     }).state;
     const state = {
       itemsJson: JSON.stringify([
@@ -114,6 +115,7 @@ describe('Closest gameplay', () => {
         teamId,
         action: closestAnswerAction(teamId),
         participants: [{ participantId, teamId, connected: true }],
+        now: new Date('2026-01-01T00:00:00.000Z'),
       }).state;
     }
     const state = {
@@ -159,6 +161,7 @@ describe('Closest gameplay', () => {
           { participantId, teamId, connected: true },
           { participantId: `${teamId}2`, teamId, connected: true },
         ],
+        now: new Date('2026-01-01T00:00:00.000Z'),
       }).state;
     }
     const base = {

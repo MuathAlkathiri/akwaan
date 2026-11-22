@@ -9,10 +9,13 @@ import {
   LiveGameSessionRepository,
 } from '../domain/live-game-session.repository';
 import {
+  EligibleParticipant,
   parseTeamActionAssignments,
   reassignUnavailableActions,
+  retargetRotationCaptain,
   serializeTeamActionAssignments,
   TeamActionAssignment,
+  TeamActionAssignmentState,
 } from '../domain/team-action-assignment';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
 import { LiveGameSessionSnapshotMapper } from './live-game-session.snapshot';
@@ -23,6 +26,19 @@ import {
 import { LiveSessionConcurrencyError } from '../domain/live-session.errors';
 import { eligibleParticipantsOf } from './start-top5.use-case';
 import { BOMB_MODE_KEY } from '../domain/bomb-gameplay.plugin';
+
+/**
+ * Why a run is happening.
+ *
+ * Both causes need the identical, fiddly aftermath — mirroring the new holder
+ * into the round's `activeParticipantId`, `assignmentSequence` and the ryo
+ * answerer/decider fields, guarding the write on the runtime revision, and
+ * republishing — so they share one path and differ only in what they compute.
+ * Duplicating that aftermath for the host's case is how the two would drift.
+ */
+type ReassignmentPlan =
+  | { kind: 'absence' }
+  | { kind: 'captain'; teamId: string; captainId: string | undefined };
 
 /**
  * Keeps a team-authoritative mechanic playable when its assigned player leaves.
@@ -69,13 +85,36 @@ export class ReassignTeamActions {
    * that — the recomputation finds nothing to change and this writes nothing.
    */
   async forSession(sessionId: string): Promise<TeamActionAssignment[]> {
+    return this.run(sessionId, { kind: 'absence' });
+  }
+
+  /**
+   * Moves a team's armband mid-challenge at the host's request.
+   *
+   * The host has already named the captain on the session; this makes it true
+   * of the challenge actually being played, which is the half that a frozen
+   * team needs. Unlike the absence path this does not wait for anyone to look
+   * disconnected: the host said so, so it takes effect at once.
+   */
+  async retargetCaptain(
+    sessionId: string,
+    teamId: string,
+    captainId: string | undefined,
+  ): Promise<TeamActionAssignment[]> {
+    return this.run(sessionId, { kind: 'captain', teamId, captainId });
+  }
+
+  private async run(
+    sessionId: string,
+    plan: ReassignmentPlan,
+  ): Promise<TeamActionAssignment[]> {
     for (
       let attempt = 1;
       attempt <= ReassignTeamActions.MAX_ATTEMPTS;
       attempt += 1
     ) {
       try {
-        return await this.attempt(sessionId);
+        return await this.attempt(sessionId, plan);
       } catch (error) {
         if (!(error instanceof LiveSessionConcurrencyError)) throw error;
         this.logger.warn({
@@ -95,7 +134,10 @@ export class ReassignTeamActions {
     return [];
   }
 
-  private async attempt(sessionId: string): Promise<TeamActionAssignment[]> {
+  private async attempt(
+    sessionId: string,
+    plan: ReassignmentPlan,
+  ): Promise<TeamActionAssignment[]> {
     const runtime = await this.runtimes.findBySessionId(sessionId);
     const session = await this.sessions.findById(sessionId);
     if (!runtime || !session) return [];
@@ -110,13 +152,25 @@ export class ReassignTeamActions {
       const eligible = eligibleParticipantsOf(sessionState).filter(
         (participant) => participant.teamId === teamId && participant.connected,
       );
+      // The host's change concerns one team; the other is mid-answer.
+      if (plan.kind === 'captain' && plan.teamId !== teamId) return [];
+      // Absence only acts on somebody who is actually gone. The host does not
+      // have to wait for that: they said so, so it takes effect now.
       if (
+        plan.kind === 'absence' &&
         eligible.some((participant) => participant.participantId === current)
       ) {
         return [];
       }
-      const replacement = eligible[0];
+      const replacement =
+        plan.kind === 'captain'
+          ? (eligible.find(
+              (participant) => participant.participantId === plan.captainId,
+            ) ?? eligible[0])
+          : eligible[0];
       if (!replacement || !teamId) return [];
+      // Already where the host wants it.
+      if (replacement.participantId === current) return [];
       const previousRevision = runtime.revision;
       const now = this.clock.now();
       runtime.applyModeState({
@@ -142,6 +196,7 @@ export class ReassignTeamActions {
           teamId,
           participantId: replacement.participantId,
           action: 'bomb.answer',
+          openedAt: now.toISOString(),
           sequence: runtime.revision,
         },
       ];
@@ -154,9 +209,10 @@ export class ReassignTeamActions {
       return [];
     }
     const participants = eligibleParticipantsOf(session.serialize());
-    const reassigned = reassignUnavailableActions(
+    const reassigned = this.recompute(
       parseTeamActionAssignments(state.runtimeState.teamActionJson),
       participants,
+      plan,
     );
     if (!reassigned.changed.length) return [];
 
@@ -232,5 +288,30 @@ export class ReassignTeamActions {
       })),
     });
     return reassigned.changed;
+  }
+
+  /**
+   * The one line the two causes actually disagree about.
+   *
+   * Absence moves only what an absent player is holding, and leaves a
+   * connected holder alone. A captain retarget moves what the named team is
+   * holding whether or not its holder is connected — that is the point of an
+   * override.
+   */
+  private recompute(
+    assignments: TeamActionAssignmentState,
+    participants: readonly EligibleParticipant[],
+    plan: ReassignmentPlan,
+  ): { state: TeamActionAssignmentState; changed: TeamActionAssignment[] } {
+    const now = this.clock.now();
+    if (plan.kind === 'captain') {
+      return retargetRotationCaptain(assignments, {
+        teamId: plan.teamId,
+        captainId: plan.captainId,
+        participants,
+        now,
+      });
+    }
+    return reassignUnavailableActions(assignments, participants, now);
   }
 }

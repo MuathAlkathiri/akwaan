@@ -209,6 +209,7 @@ export class StartLaTahriqhaGameplay {
         teamId,
         action: laTahriqhaDishAction(teamId),
         participants,
+        now: new Date(),
       }).state;
     }
 

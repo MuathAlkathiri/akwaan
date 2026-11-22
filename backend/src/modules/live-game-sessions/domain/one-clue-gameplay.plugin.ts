@@ -22,6 +22,8 @@ import {
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
   TeamActionAssignmentState,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 
 export const ONE_CLUE_MODE_KEY = ONE_CLUE_SLUG;
@@ -195,6 +197,7 @@ function openAssignments(
       teamId,
       action: oneClueAnswerAction(teamId),
       participants: context.eligibleParticipants ?? [],
+      now: teamActionClock(context),
     }).state;
   }
   return next;
@@ -341,6 +344,7 @@ function handle(
       );
     }
     assertTeamActionAuthorized(assignments, {
+      ...teamActionStandInWindow(context),
       action: oneClueAnswerAction(teamId),
       participantId,
       ...(typeof command.payload.assignmentSequence === 'number'
@@ -507,6 +511,20 @@ export const ONE_CLUE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: ONE_CLUE_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.itemsJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.itemsJson);
+      if (runtimeState.currentItemIndex == null) return undefined;
+      const index = Number(runtimeState.currentItemIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     source: 'runtime-state',
     commandType: 'expire-one-clue-stage',

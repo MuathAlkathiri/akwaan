@@ -46,7 +46,7 @@ export interface LiveSessionSnapshot {
      */
     colorId?: string;
     /**
-     * The lobby captain, if the host named one. Locked once the Match starts.
+     * The team's captain, which the host can change during the Match.
      * Absent means no captain: the team's turns rotate automatically.
      */
     captainParticipantId?: string;
@@ -98,6 +98,13 @@ export interface LiveSessionSnapshot {
 }
 
 export interface GameplayRuntimeSnapshot {
+  /**
+   * The authored item on screen now, as the content engine knows it.
+   *
+   * Absent for a mechanic whose round is not a single authored question — the
+   * shared verdict control simply does not appear there.
+   */
+  currentContentItemId?: string;
   runtimeId: string;
   sessionId: string;
   status:

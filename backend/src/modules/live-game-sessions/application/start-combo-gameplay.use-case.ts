@@ -171,7 +171,12 @@ export class StartComboGameplay {
           captains: teamCaptainsOf(sessionState),
         }),
       ),
-      { teamId: teams[0], action: COMBO_ANSWER_ACTION, participants },
+      {
+        teamId: teams[0],
+        action: COMBO_ANSWER_ACTION,
+        participants,
+        now: new Date(),
+      },
     );
 
     const actor = { kind: 'user' as const, actorId: input.actorId };

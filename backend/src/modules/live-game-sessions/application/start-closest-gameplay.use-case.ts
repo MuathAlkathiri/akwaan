@@ -145,6 +145,7 @@ export class StartClosestGameplay {
         teamId,
         action: closestAnswerAction(teamId),
         participants,
+        now: new Date(),
       }).state;
     }
     const actor = { kind: 'user' as const, actorId: input.actorId };

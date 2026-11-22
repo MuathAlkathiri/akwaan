@@ -19,6 +19,16 @@ import {
 } from './gameplay-mode.plugin';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  assertTeamActionAuthorized,
+  assignNextTeamActionOrHold,
+  assignmentFor,
+  clearTeamAction,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+  teamActionClock,
+  teamActionStandInWindow,
+} from './team-action-assignment';
 
 export const FIRST_NOTE_MODE_KEY = FIRST_NOTE_SLUG;
 export { FIRST_NOTE_ITEM_COUNT };
@@ -199,6 +209,99 @@ const answerPayload = (p: GameplayCommandPayload) => {
     return fail('FIRST_NOTE_ANSWER_INVALID', 'Submit one non-empty song title');
   return { answer: p.answer.trim() };
 };
+/**
+ * One authoritative phone per team moment in «من أول نغمة».
+ *
+ * The auction is not a race — the teams alternate, and the mechanic already
+ * knows whose turn it is. What it did not know was *who on that team*, so any
+ * of four phones could fire a bid and the room argued about which one counted.
+ * The captain decides the bid and gives the answer; the rotation supplies a
+ * stand-in only when there is no captain or the captain is away.
+ */
+export const FIRST_NOTE_TURN_ACTION = 'first-note.turn';
+
+/**
+ * The team that owes an action right now, or nothing between songs.
+ *
+ * Bidding and answering are the same kind of moment — one team, one decision —
+ * so they share one action rather than two that would have to be kept in step.
+ */
+function firstNoteActingTeamId(state: GameplayModeState): string | undefined {
+  const phase = String(state.phase);
+  if (phase === 'auction')
+    return typeof state.biddingTeamId === 'string'
+      ? state.biddingTeamId
+      : undefined;
+  if (phase === 'answering' || phase === 'steal')
+    return typeof state.answerOwnerTeamId === 'string'
+      ? state.answerOwnerTeamId
+      : undefined;
+  return undefined;
+}
+
+/**
+ * Refuses a phone that is not holding its team's turn.
+ *
+ * A runtime started before turns were assigned carries no `teamActionJson` and
+ * keeps the old team-wide rule, so a Match already in progress is not broken by
+ * this landing.
+ */
+function assertHoldsFirstNoteTurn(
+  context: GameplayPluginContext,
+  state: GameplayModeState,
+): void {
+  if (typeof state.teamActionJson !== 'string') return;
+  const assignments = parseTeamActionAssignments(state.teamActionJson);
+  // Not opened yet — a phase this mechanic entered outside the reducer, such as
+  // Fair-Start activation. Refusing here would freeze the challenge on its very
+  // first command; the sync opens the action on the way out instead.
+  if (!assignmentFor(assignments, FIRST_NOTE_TURN_ACTION)) return;
+  assertTeamActionAuthorized(assignments, {
+    ...teamActionStandInWindow(context),
+    action: FIRST_NOTE_TURN_ACTION,
+    teamId: firstNoteActingTeamId(state),
+    participantId: context.submitterParticipantId,
+  });
+}
+
+/** Moves the turn with the mechanic, and closes it when nobody owes one. */
+function syncFirstNoteTurn(
+  before: GameplayModeState,
+  after: GameplayModeState,
+  context: GameplayPluginContext,
+): GameplayModeState {
+  if (typeof after.teamActionJson !== 'string') return after;
+  const assignments = parseTeamActionAssignments(after.teamActionJson);
+  const teamId = firstNoteActingTeamId(after);
+  if (!teamId) {
+    return {
+      ...after,
+      teamActionJson: serializeTeamActionAssignments(
+        clearTeamAction(assignments, FIRST_NOTE_TURN_ACTION),
+      ),
+    };
+  }
+  // Unchanged turn, already held by that team: leave the holder alone rather
+  // than re-opening the action under them mid-decision.
+  if (
+    teamId === firstNoteActingTeamId(before) &&
+    assignmentFor(assignments, FIRST_NOTE_TURN_ACTION)?.teamId === teamId
+  ) {
+    return after;
+  }
+  return {
+    ...after,
+    teamActionJson: serializeTeamActionAssignments(
+      assignNextTeamActionOrHold(assignments, {
+        teamId,
+        action: FIRST_NOTE_TURN_ACTION,
+        participants: context.eligibleParticipants ?? [],
+        now: teamActionClock(context),
+      }).state,
+    ),
+  };
+}
+
 const commandResult = (
   runtimeState: GameplayModeState,
   eventType: string,
@@ -338,10 +441,215 @@ function publicState(
   };
 }
 
+/**
+ * The mechanic itself. Wrapped rather than inlined so that the turn assignment
+ * is synced on EVERY path out of it — a transition that forgot to move the turn
+ * would leave the next team unable to act at all.
+ */
+function reduceFirstNote(
+  context: GameplayPluginContext,
+  command: {
+    type: string;
+    payload: GameplayCommandPayload;
+    runtimeState: GameplayModeState;
+    roundState: GameplayModeState;
+  },
+): GameplayCommandResult {
+  const state = validate(command.runtimeState);
+  const teams = teamsOf(state);
+  const now =
+    context.now ?? fail('INVALID_FIRST_NOTE_STATE', 'Server time missing');
+  const phase = String(state.phase);
+  if (command.type === 'submit-first-note-bid') {
+    const team = actorTeam(context, teams);
+    const seconds = Number(command.payload.seconds);
+    if (phase !== 'auction' || state.biddingTeamId !== team)
+      return fail('FIRST_NOTE_BID_TURN', 'It is not this team’s bidding turn');
+    // The team's turn is already established; this settles which phone.
+    assertHoldsFirstNoteTurn(context, state);
+    const opening = state.currentBidSeconds == null;
+    const ceiling = opening
+      ? FIRST_NOTE_MAX_BID_SECONDS + 1
+      : Number(state.currentBidSeconds);
+    const floor = opening
+      ? FIRST_NOTE_OPENING_MIN_BID_SECONDS
+      : FIRST_NOTE_MIN_BID_SECONDS;
+    if (
+      !Number.isInteger(seconds) ||
+      seconds < floor ||
+      seconds > FIRST_NOTE_MAX_BID_SECONDS ||
+      seconds >= ceiling
+    )
+      return fail(
+        'FIRST_NOTE_BID_INVALID',
+        opening
+          ? `An opening bid must be an integer from ${FIRST_NOTE_OPENING_MIN_BID_SECONDS}–${FIRST_NOTE_MAX_BID_SECONDS}`
+          : 'Bid must be an integer from 1–15 and strictly lower than the current bid',
+      );
+    const other = teams.find((t) => t !== team)!;
+    return commandResult(
+      {
+        ...state,
+        currentBidSeconds: seconds,
+        currentBidTeamId: team,
+        biddingTeamId: other,
+        bidHistoryJson: JSON.stringify([
+          ...bidsOf(state),
+          { teamId: team, seconds, at: now.toISOString() },
+        ]),
+      },
+      'first-note-bid-accepted',
+    );
+  }
+  if (command.type === 'pass-first-note-bid') {
+    const team = actorTeam(context, teams);
+    if (
+      phase !== 'auction' ||
+      state.biddingTeamId !== team ||
+      !state.currentBidTeamId ||
+      state.currentBidTeamId === team
+    )
+      return fail(
+        'FIRST_NOTE_PASS_INVALID',
+        'A team may pass only on its turn after the opponent holds a valid bid',
+      );
+    assertHoldsFirstNoteTurn(context, state);
+    return commandResult(
+      {
+        ...state,
+        phase: 'answering',
+        answerOwnerTeamId: state.currentBidTeamId,
+        finalBidSeconds: state.currentBidSeconds,
+        deadlineAt: answerDeadline(state, now),
+      },
+      'first-note-auction-resolved',
+    );
+  }
+  if (command.type === 'submit-first-note-answer') {
+    const team = actorTeam(context, teams);
+    if (
+      (phase !== 'answering' && phase !== 'steal') ||
+      state.answerOwnerTeamId !== team
+    )
+      return fail(
+        'FIRST_NOTE_ANSWER_FORBIDDEN',
+        'Only the answer owner may submit',
+      );
+    // The captain bid for this answer, so the captain gives it.
+    assertHoldsFirstNoteTurn(context, state);
+    const correct = songOf(state).acceptedAnswers.some(
+      (a) =>
+        normalizeAnswer(a) === normalizeAnswer(String(command.payload.answer)),
+    );
+    state.revealAnswersJson = JSON.stringify({
+      ...parse<Record<string, string>>(
+        state.revealAnswersJson ?? '{}',
+        'answers',
+      ),
+      [team]: String(command.payload.answer),
+    });
+    if (correct)
+      return resolve(
+        state,
+        now,
+        team,
+        phase === 'steal',
+        phase === 'steal'
+          ? firstNoteReward(firstNoteStealSeconds(state, team))
+          : firstNoteReward(Number(state.finalBidSeconds)),
+      );
+    if (phase === 'answering') {
+      const opponent = teams.find((t) => t !== team)!;
+      return commandResult(
+        {
+          ...state,
+          phase: 'steal',
+          answerOwnerTeamId: opponent,
+          deadlineAt: answerDeadline(state, now),
+        },
+        'first-note-steal-opened',
+      );
+    }
+    return resolve(state, now, null, true, 0);
+  }
+  if (command.type === 'expire-first-note-answer') {
+    if (
+      (phase !== 'answering' && phase !== 'steal') ||
+      typeof state.deadlineAt !== 'string' ||
+      now.getTime() < Date.parse(state.deadlineAt)
+    )
+      return fail(
+        'FIRST_NOTE_NOT_EXPIRED',
+        'First Note answer window has not expired',
+      );
+    if (phase === 'answering') {
+      const opponent = teams.find((t) => t !== state.answerOwnerTeamId)!;
+      return commandResult(
+        {
+          ...state,
+          phase: 'steal',
+          answerOwnerTeamId: opponent,
+          deadlineAt: answerDeadline(state, now),
+        },
+        'first-note-steal-opened',
+      );
+    }
+    return resolve(state, now, null, true, 0);
+  }
+  if (command.type === 'advance-first-note') {
+    if (phase !== 'resolved')
+      return fail('FIRST_NOTE_NOT_RESOLVED', 'Resolve this song first');
+    const next = Number(state.currentSongIndex) + 1;
+    if (next >= FIRST_NOTE_ITEM_COUNT)
+      return commandResult(
+        {
+          ...state,
+          phase: 'completed',
+          deadlineAt: null,
+          resultJson: JSON.stringify(totals(state)),
+        },
+        'first-note-completed',
+      );
+    const opener = teams[next % teams.length];
+    return commandResult(
+      {
+        ...state,
+        phase: 'preparing',
+        currentSongIndex: next,
+        revealAnswersJson: '{}',
+        currentBidSeconds: null,
+        currentBidTeamId: null,
+        biddingTeamId: opener,
+        answerOwnerTeamId: null,
+        finalBidSeconds: null,
+        bidHistoryJson: '[]',
+        deadlineAt: null,
+      },
+      'first-note-song-prepared',
+      true,
+    );
+  }
+  return fail('FIRST_NOTE_COMMAND_UNKNOWN', 'Unsupported First Note command');
+}
+
 export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: FIRST_NOTE_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.songsJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.songsJson);
+      if (runtimeState.currentSongIndex == null) return undefined;
+      const index = Number(runtimeState.currentSongIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.contentItemId;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     source: 'runtime-state',
     commandType: 'expire-first-note-answer',
@@ -399,180 +707,15 @@ export const FIRST_NOTE_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       ? validate({ ...state, phase: 'auction' })
       : state,
   handleCommand: (context, command) => {
-    const state = validate(command.runtimeState);
-    const teams = teamsOf(state);
-    const now =
-      context.now ?? fail('INVALID_FIRST_NOTE_STATE', 'Server time missing');
-    const phase = String(state.phase);
-    if (command.type === 'submit-first-note-bid') {
-      const team = actorTeam(context, teams);
-      const seconds = Number(command.payload.seconds);
-      if (phase !== 'auction' || state.biddingTeamId !== team)
-        return fail(
-          'FIRST_NOTE_BID_TURN',
-          'It is not this team’s bidding turn',
-        );
-      const opening = state.currentBidSeconds == null;
-      const ceiling = opening
-        ? FIRST_NOTE_MAX_BID_SECONDS + 1
-        : Number(state.currentBidSeconds);
-      const floor = opening
-        ? FIRST_NOTE_OPENING_MIN_BID_SECONDS
-        : FIRST_NOTE_MIN_BID_SECONDS;
-      if (
-        !Number.isInteger(seconds) ||
-        seconds < floor ||
-        seconds > FIRST_NOTE_MAX_BID_SECONDS ||
-        seconds >= ceiling
-      )
-        return fail(
-          'FIRST_NOTE_BID_INVALID',
-          opening
-            ? `An opening bid must be an integer from ${FIRST_NOTE_OPENING_MIN_BID_SECONDS}–${FIRST_NOTE_MAX_BID_SECONDS}`
-            : 'Bid must be an integer from 1–15 and strictly lower than the current bid',
-        );
-      const other = teams.find((t) => t !== team)!;
-      return commandResult(
-        {
-          ...state,
-          currentBidSeconds: seconds,
-          currentBidTeamId: team,
-          biddingTeamId: other,
-          bidHistoryJson: JSON.stringify([
-            ...bidsOf(state),
-            { teamId: team, seconds, at: now.toISOString() },
-          ]),
-        },
-        'first-note-bid-accepted',
-      );
-    }
-    if (command.type === 'pass-first-note-bid') {
-      const team = actorTeam(context, teams);
-      if (
-        phase !== 'auction' ||
-        state.biddingTeamId !== team ||
-        !state.currentBidTeamId ||
-        state.currentBidTeamId === team
-      )
-        return fail(
-          'FIRST_NOTE_PASS_INVALID',
-          'A team may pass only on its turn after the opponent holds a valid bid',
-        );
-      return commandResult(
-        {
-          ...state,
-          phase: 'answering',
-          answerOwnerTeamId: state.currentBidTeamId,
-          finalBidSeconds: state.currentBidSeconds,
-          deadlineAt: answerDeadline(state, now),
-        },
-        'first-note-auction-resolved',
-      );
-    }
-    if (command.type === 'submit-first-note-answer') {
-      const team = actorTeam(context, teams);
-      if (
-        (phase !== 'answering' && phase !== 'steal') ||
-        state.answerOwnerTeamId !== team
-      )
-        return fail(
-          'FIRST_NOTE_ANSWER_FORBIDDEN',
-          'Only the answer owner may submit',
-        );
-      const correct = songOf(state).acceptedAnswers.some(
-        (a) =>
-          normalizeAnswer(a) ===
-          normalizeAnswer(String(command.payload.answer)),
-      );
-      state.revealAnswersJson = JSON.stringify({
-        ...parse<Record<string, string>>(
-          state.revealAnswersJson ?? '{}',
-          'answers',
-        ),
-        [team]: String(command.payload.answer),
-      });
-      if (correct)
-        return resolve(
-          state,
-          now,
-          team,
-          phase === 'steal',
-          phase === 'steal'
-            ? firstNoteReward(firstNoteStealSeconds(state, team))
-            : firstNoteReward(Number(state.finalBidSeconds)),
-        );
-      if (phase === 'answering') {
-        const opponent = teams.find((t) => t !== team)!;
-        return commandResult(
-          {
-            ...state,
-            phase: 'steal',
-            answerOwnerTeamId: opponent,
-            deadlineAt: answerDeadline(state, now),
-          },
-          'first-note-steal-opened',
-        );
-      }
-      return resolve(state, now, null, true, 0);
-    }
-    if (command.type === 'expire-first-note-answer') {
-      if (
-        (phase !== 'answering' && phase !== 'steal') ||
-        typeof state.deadlineAt !== 'string' ||
-        now.getTime() < Date.parse(state.deadlineAt)
-      )
-        return fail(
-          'FIRST_NOTE_NOT_EXPIRED',
-          'First Note answer window has not expired',
-        );
-      if (phase === 'answering') {
-        const opponent = teams.find((t) => t !== state.answerOwnerTeamId)!;
-        return commandResult(
-          {
-            ...state,
-            phase: 'steal',
-            answerOwnerTeamId: opponent,
-            deadlineAt: answerDeadline(state, now),
-          },
-          'first-note-steal-opened',
-        );
-      }
-      return resolve(state, now, null, true, 0);
-    }
-    if (command.type === 'advance-first-note') {
-      if (phase !== 'resolved')
-        return fail('FIRST_NOTE_NOT_RESOLVED', 'Resolve this song first');
-      const next = Number(state.currentSongIndex) + 1;
-      if (next >= FIRST_NOTE_ITEM_COUNT)
-        return commandResult(
-          {
-            ...state,
-            phase: 'completed',
-            deadlineAt: null,
-            resultJson: JSON.stringify(totals(state)),
-          },
-          'first-note-completed',
-        );
-      const opener = teams[next % teams.length];
-      return commandResult(
-        {
-          ...state,
-          phase: 'preparing',
-          currentSongIndex: next,
-          revealAnswersJson: '{}',
-          currentBidSeconds: null,
-          currentBidTeamId: null,
-          biddingTeamId: opener,
-          answerOwnerTeamId: null,
-          finalBidSeconds: null,
-          bidHistoryJson: '[]',
-          deadlineAt: null,
-        },
-        'first-note-song-prepared',
-        true,
-      );
-    }
-    return fail('FIRST_NOTE_COMMAND_UNKNOWN', 'Unsupported First Note command');
+    const result = reduceFirstNote(context, command);
+    return {
+      ...result,
+      runtimeState: syncFirstNoteTurn(
+        command.runtimeState,
+        result.runtimeState,
+        context,
+      ),
+    };
   },
   projectRuntimeState: (s) => publicState(s),
   projectRuntimeStateForActor: (s, a) => publicState(s, a),

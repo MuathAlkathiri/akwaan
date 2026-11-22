@@ -158,6 +158,14 @@ export interface GameplayRuntimeSnapshot {
     totalItems: number;
     image: { url: string; altText?: string };
   };
+  /**
+   * The authored item on screen right now, as the content engine knows it.
+   *
+   * Here so that one shared control on the phone can carry a player's opinion
+   * of any mechanic's question. Only an id: the question itself is already in
+   * the round state the player is reading.
+   */
+  currentContentItemId?: string;
   prompt?: string;
   activeTeamId?: string;
   completedRounds: Array<{
@@ -350,6 +358,12 @@ export class GameplayRuntimeSnapshotMapper {
       ...(preparation ?? {}),
       awaitingPresentation: true as const,
     };
+    // Each mechanic answers for itself; a mechanic that does not implement it
+    // simply has no verdict control on the phone.
+    const currentContentItemId = plugin.currentContentItemId?.(
+      state.runtimeState,
+      projectedRound ?? {},
+    );
     const currentItem =
       state.modeKey === 'bomb' && projectedRound?.phase === 'presenting'
         ? {
@@ -481,6 +495,7 @@ export class GameplayRuntimeSnapshotMapper {
         ? { id: state.activeRound.id, status: state.activeRound.status }
         : undefined,
       currentItem,
+      ...(currentContentItemId ? { currentContentItemId } : {}),
       prompt:
         typeof projectedRound?.prompt === 'string'
           ? projectedRound.prompt

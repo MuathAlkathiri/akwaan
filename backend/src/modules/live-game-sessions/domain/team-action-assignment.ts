@@ -46,6 +46,13 @@ export interface TeamActionAssignment {
   /** The mechanic-defined role, e.g. `top5.decision` or `ryo.answer`. */
   action: string;
   /**
+   * When this action opened, ISO-8601. The holder is authoritative, but a team
+   * must never be stuck behind a phone that is gone: after a grace measured
+   * from this moment a teammate may act instead. See
+   * {@link teamActionGraceElapsed}.
+   */
+  openedAt: string;
+  /**
    * Monotonic within a challenge. A command that names an older sequence is
    * acting on an assignment the server has already moved past, and is refused
    * rather than silently applied to whatever is current.
@@ -65,6 +72,83 @@ export interface TeamActionAssignmentState {
   /** Every currently open assignment, keyed by action. At most one per action. */
   assignments: TeamActionAssignment[];
   nextSequence: number;
+}
+
+/**
+ * How long a team waits for a holder who is *known* to be gone. Short, because
+ * the handoff is the only thing standing between the team and a dead turn.
+ */
+export const TEAM_ACTION_ABSENT_GRACE_MS = 5_000;
+
+/**
+ * How long a team waits for a holder who still *looks* connected but has not
+ * acted. Longer, because this window is also the captain's thinking time: a bid
+ * or a difficulty choice takes more than five seconds and a teammate must not
+ * be able to jump in and take it.
+ *
+ * It exists because presence can lie. A phone that loses its connection without
+ * closing it is reported connected until the socket times out, and that is
+ * exactly how a real match froze on 2026-11-21: the captain had left, the server
+ * still believed otherwise, and the team could not play. This ceiling means a
+ * stale connection costs the room one turn's pause, never the match.
+ */
+export const TEAM_ACTION_STALE_GRACE_MS = 20_000;
+
+/**
+ * Whether a teammate may now act in the holder's place.
+ *
+ * Identity and display use a different, slower absence rule
+ * (`participant-presence.ts`); this one governs in-match authority only, and
+ * the two must not be merged — a player's name should not flicker because a
+ * turn moved on.
+ */
+export function teamActionGraceElapsed(input: {
+  openedAt: string;
+  holderConnected: boolean;
+  now: Date;
+}): boolean {
+  const openedAt = Date.parse(input.openedAt);
+  if (Number.isNaN(openedAt)) return false;
+  const grace = input.holderConnected
+    ? TEAM_ACTION_STALE_GRACE_MS
+    : TEAM_ACTION_ABSENT_GRACE_MS;
+  return input.now.getTime() - openedAt >= grace;
+}
+
+/**
+ * The clock to stamp a newly opened action with, read off a gameplay plugin
+ * context.
+ *
+ * The context's clock is optional, and an action must still carry the moment it
+ * opened — the stand-in grace is measured from it. So a missing clock falls
+ * back to the wall clock, which starts the grace now; the alternative, a zero
+ * date, would read as an action opened in 1970 and let a teammate act at once.
+ * In production the session layer always supplies the clock.
+ */
+export function teamActionClock(context: { now?: Date }): Date {
+  return context.now ?? new Date();
+}
+
+/**
+ * The stand-in arguments for {@link assertTeamActionAuthorized}, read off a
+ * gameplay plugin context.
+ *
+ * Both fields are optional on that context, and a context carrying no clock
+ * cannot be reasoned about in time — so this degrades to the strict
+ * holder-only rule rather than guessing a `now`, which would silently let a
+ * teammate act whenever the plumbing was incomplete. In production the session
+ * layer supplies both (`submit-gameplay-command.use-case.ts`), so the strict
+ * branch is for tests and for any future caller that forgets.
+ */
+export function teamActionStandInWindow(context: {
+  now?: Date;
+  eligibleParticipants?: readonly EligibleParticipant[];
+}): { participants: readonly EligibleParticipant[]; now: Date } {
+  if (!context.now) return { participants: [], now: new Date(0) };
+  return {
+    participants: context.eligibleParticipants ?? [],
+    now: context.now,
+  };
 }
 
 export const TEAM_ACTION_ASSIGNMENT_ERRORS = {
@@ -210,6 +294,7 @@ export function assignNextTeamAction(
     teamId: string;
     action: string;
     participants: readonly EligibleParticipant[];
+    now: Date;
   },
 ): { state: TeamActionAssignmentState; assignment: TeamActionAssignment } {
   const rotations = state.rotations.map((rotation) => ({
@@ -233,6 +318,7 @@ export function assignNextTeamAction(
     teamId: input.teamId,
     participantId: picked.participantId,
     action: input.action,
+    openedAt: input.now.toISOString(),
     sequence: working.nextSequence,
   };
   return {
@@ -266,6 +352,7 @@ export function assignNextTeamActionOrHold(
     teamId: string;
     action: string;
     participants: readonly EligibleParticipant[];
+    now: Date;
   },
 ): { state: TeamActionAssignmentState; assignment: TeamActionAssignment } {
   if (eligibleFor(input.teamId, input.participants).length) {
@@ -309,9 +396,71 @@ export function assignmentFor(
  * a command the old holder already sent is stale rather than accepted — and the
  * new assignment is persisted like any other.
  */
+/**
+ * Moves a team's armband mid-challenge, and with it whatever that team holds.
+ *
+ * The host's escape hatch. Naming a captain in the lobby only decides who acts
+ * at the next assignment, which is no help to a team whose captain has already
+ * walked out holding the turn — so this also re-opens that team's open actions,
+ * which lands them on the new captain while she is connected.
+ *
+ * Only the named team is touched: the other team is mid-thought and must not
+ * have its holder swapped underneath it. The rotation's order is preserved, so
+ * nobody loses their place; a captain who was not in the order yet (she joined
+ * after the challenge started) is appended rather than inserted, for the same
+ * reason.
+ *
+ * Passing `captainId: undefined` clears the armband: the team goes back to
+ * plain rotation, and its open actions move to whoever is next.
+ */
+export function retargetRotationCaptain(
+  state: TeamActionAssignmentState,
+  input: {
+    teamId: string;
+    captainId: string | undefined;
+    participants: readonly EligibleParticipant[];
+    now: Date;
+  },
+): { state: TeamActionAssignmentState; changed: TeamActionAssignment[] } {
+  const rotations = state.rotations.map((rotation) => ({
+    ...rotation,
+    order: [...rotation.order],
+  }));
+  const rotation = rotations.find(
+    (candidate) => candidate.teamId === input.teamId,
+  );
+  // A mechanic that never opted into assignment has no rotation to retarget.
+  if (!rotation) return { state, changed: [] };
+
+  if (input.captainId === undefined) {
+    delete rotation.captainId;
+  } else {
+    rotation.captainId = input.captainId;
+    if (!rotation.order.includes(input.captainId)) {
+      rotation.order = [...rotation.order, input.captainId];
+    }
+  }
+
+  let working: TeamActionAssignmentState = { ...state, rotations };
+  const changed: TeamActionAssignment[] = [];
+  for (const assignment of state.assignments) {
+    if (assignment.teamId !== input.teamId) continue;
+    const result = assignNextTeamActionOrHold(working, {
+      teamId: input.teamId,
+      action: assignment.action,
+      participants: input.participants,
+      now: input.now,
+    });
+    working = result.state;
+    changed.push(result.assignment);
+  }
+  return { state: working, changed };
+}
+
 export function reassignUnavailableActions(
   state: TeamActionAssignmentState,
   participants: readonly EligibleParticipant[],
+  now: Date,
 ): { state: TeamActionAssignmentState; changed: TeamActionAssignment[] } {
   let working = state;
   const changed: TeamActionAssignment[] = [];
@@ -323,6 +472,7 @@ export function reassignUnavailableActions(
       teamId: assignment.teamId,
       action: assignment.action,
       participants,
+      now,
     });
     working = result.state;
     changed.push(result.assignment);
@@ -345,6 +495,13 @@ export function assertTeamActionAuthorized(
     teamId?: string;
     participantId?: string;
     sequence?: number;
+    /**
+     * Required together: they decide whether a teammate may act in place of a
+     * holder who has not. Without them a team whose holder's phone is gone can
+     * never finish its turn, which is the bug this pair exists to prevent.
+     */
+    participants: readonly EligibleParticipant[];
+    now: Date;
   },
 ): TeamActionAssignment {
   const assignment = assignmentFor(state, input.action);
@@ -367,10 +524,29 @@ export function assertTeamActionAuthorized(
     );
   }
   if (input.participantId !== assignment.participantId) {
-    throw new LiveSessionDomainError(
-      TEAM_ACTION_ASSIGNMENT_ERRORS.WRONG_PARTICIPANT,
-      'Only the assigned player may take this action',
+    // Not the holder. A teammate may still act, but only once the holder has
+    // had their turn and not taken it: the captain's authority is the point of
+    // the rotation, and a teammate who could act immediately would make the
+    // captain decorative.
+    const eligible = eligibleFor(assignment.teamId, input.participants);
+    const holderConnected = input.participants.some(
+      (candidate) =>
+        candidate.participantId === assignment.participantId &&
+        candidate.connected,
     );
+    const mayStandIn =
+      eligible.includes(input.participantId) &&
+      teamActionGraceElapsed({
+        openedAt: assignment.openedAt,
+        holderConnected,
+        now: input.now,
+      });
+    if (!mayStandIn) {
+      throw new LiveSessionDomainError(
+        TEAM_ACTION_ASSIGNMENT_ERRORS.WRONG_PARTICIPANT,
+        'Only the assigned player may take this action',
+      );
+    }
   }
   if (input.sequence !== undefined && input.sequence !== assignment.sequence) {
     throw new LiveSessionDomainError(

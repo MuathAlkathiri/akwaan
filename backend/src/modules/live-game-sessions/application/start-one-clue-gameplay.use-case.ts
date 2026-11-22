@@ -151,6 +151,7 @@ export class StartOneClueGameplay {
         teamId,
         action: oneClueAnswerAction(teamId),
         participants,
+        now: new Date(),
       }).state;
     }
     const actor = { kind: 'user' as const, actorId: input.actorId };
