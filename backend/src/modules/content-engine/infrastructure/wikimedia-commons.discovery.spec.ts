@@ -70,7 +70,7 @@ describe('WikimediaCommonsDiscoveryProvider', () => {
       gsrlimit: '8',
       prop: 'imageinfo',
       iiprop: 'url|size|mime|extmetadata',
-      iiurlwidth: '1600',
+      iiurlwidth: '1280',
     });
     // Wikimedia blocks clients that do not identify themselves.
     expect(init.headers['user-agent']).toBe(DEFAULT_DISCOVERY_USER_AGENT);

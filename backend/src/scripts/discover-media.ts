@@ -28,7 +28,10 @@ import {
   MediaDiscoveryError,
 } from '../modules/content-engine/domain/media-discovery';
 import { WikimediaCommonsDiscoveryProvider } from '../modules/content-engine/infrastructure/wikimedia-commons.discovery';
-import { ImageDownloadService } from '../modules/ai-agent/infrastructure/assets/image-download.service';
+import {
+  ImageDownloadService,
+  ImageFetchError,
+} from '../modules/ai-agent/infrastructure/assets/image-download.service';
 import { ENGINE_IMAGE_MAX_BYTES } from '../modules/content-engine/infrastructure/engine-image-ingestion.service';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..');
@@ -76,6 +79,25 @@ export function fileSlug(subject: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return slug || 'image';
+}
+
+const DOWNLOAD_PAUSE_MS = 1_000;
+const THROTTLED_RETRY_MS = 6_000;
+
+const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+
+/** HTTP 429 means "later", not "no": wait once and ask again. */
+async function fetchPatiently(downloader: ImageDownloadService, url: string) {
+  const options = { maxBytes: ENGINE_IMAGE_MAX_BYTES };
+  try {
+    return await downloader.fetchImage(url, options);
+  } catch (error) {
+    if (!(error instanceof ImageFetchError) || error.status !== 429) {
+      throw error;
+    }
+    await sleep(THROTTLED_RETRY_MS);
+    return downloader.fetchImage(url, options);
+  }
 }
 
 const cell = (text: string, width: number) =>
@@ -164,9 +186,10 @@ async function main(): Promise<number> {
 
   for (const [index, media] of result.candidates.entries()) {
     try {
-      const fetched = await downloader.fetchImage(media.downloadUrl, {
-        maxBytes: ENGINE_IMAGE_MAX_BYTES,
-      });
+      // One at a time, with a pause: a burst of image requests is what a
+      // provider throttles first.
+      if (index > 0) await sleep(DOWNLOAD_PAUSE_MS);
+      const fetched = await fetchPatiently(downloader, media.downloadUrl);
       const file = `${slug}-${index + 1}${fetched.image.extension}`;
       writeFileSync(join(args.out, file), fetched.bytes, { flag: 'wx' });
       sources.push({

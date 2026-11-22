@@ -8,8 +8,14 @@ import {
 
 export const WIKIMEDIA_COMMONS_PROVIDER = 'wikimedia-commons';
 const API_URL = 'https://commons.wikimedia.org/w/api.php';
-/** Rendition width asked for. Commons scales down, never up. */
-const RENDITION_WIDTH = 1600;
+/**
+ * Rendition width asked for. Commons scales down, never up.
+ *
+ * 1280 on purpose: Wikimedia serves a fixed ladder of thumbnail widths from
+ * cache and rate-limits requests that make it render any other size. The first
+ * live run asked for 1600 and one download in four came back HTTP 429.
+ */
+const RENDITION_WIDTH = 1280;
 const DEFAULT_TIMEOUT_MS = 10_000;
 /**
  * Wikimedia asks every client to identify itself and blocks generic agents.
