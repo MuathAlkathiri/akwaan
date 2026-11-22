@@ -43,6 +43,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  // Proves to Search Console that this site is ours, so the sitemap can be
+  // submitted and indexing requested. Google keeps checking for it, so it stays
+  // after verification rather than being removed as a one-off.
+  verification: {
+    google: "L9fXCw9IwWbWZh_kTHGyCDs3eTBv-ouvi2fhdCvGins",
+  },
   openGraph: {
     type: "website",
     locale: "ar_SA",
