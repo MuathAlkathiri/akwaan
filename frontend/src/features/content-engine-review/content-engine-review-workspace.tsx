@@ -29,6 +29,10 @@ import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
 import { CandidateMediaPanel } from "./candidate-media-panel";
+
+/** Recorded with a rights acknowledgment made as part of a one-click approval. */
+const QUICK_RIGHTS_NOTE =
+  "اعتماد سريع: شفت الصورة ومصدرها، وأقرّ باستخدامها مع بقاء حالة الحقوق كما هي.";
 import {
   INCOMPLETE_HISTORICAL_CODES,
   INCONCLUSIVE_COMPARISON_CODES,
@@ -705,7 +709,8 @@ export function ContentEngineReviewWorkspace() {
       rawCandidate.jobId !== activeFilterJobId,
   );
   const candidate = isCandidateJobMismatch ? undefined : rawCandidate;
-  const quickMode = Boolean(candidate?.reviewEligibility?.quickReview?.eligible && !detailedReview);
+  const quickEligible = Boolean(candidate?.reviewEligibility?.quickReview?.eligible || candidate?.reviewEligibility?.quickReview?.eligibleWithMediaSteps);
+  const quickMode = quickEligible && !detailedReview;
   const canonicalItem = useQuery({
     queryKey: ["content-engine-canonical-item", candidate?.publishedContentItemId],
     queryFn: () => api.getOverlapContentItem(candidate!.publishedContentItemId!),
@@ -2168,7 +2173,7 @@ export function ContentEngineReviewWorkspace() {
             )}
           </SectionCard>
 
-          {candidate.reviewEligibility?.quickReview?.eligible && <Button variant="outline" onClick={() => setDetailedReview((value) => !value)}>{quickMode ? "فتح المراجعة التفصيلية" : "العودة للمراجعة السريعة"}</Button>}
+          {quickEligible && <Button variant="outline" onClick={() => setDetailedReview((value) => !value)}>{quickMode ? "فتح المراجعة التفصيلية" : "العودة للمراجعة السريعة"}</Button>}
           {!quickMode && <SectionCard
             title="التقييم البشري"
             description="الروابط والتفسير محفوظة مع هوية المراجع والتوقيت، ويُشترط رابط دليل عند توثيق الادعاءات غير المدعومة آلياً"
@@ -2454,6 +2459,24 @@ export function ContentEngineReviewWorkspace() {
             data-testid="decision-bar"
             className="z-10 space-y-2 rounded-xl border bg-card p-3 shadow-sm lg:sticky lg:bottom-4 lg:shadow-[0_-10px_24px_-14px_hsl(var(--foreground)/0.35)]"
           >
+            {quickMode && (candidate.reviewEligibility?.quickReview?.mediaSteps?.length ?? 0) > 0 && (
+              <p className="text-xs text-muted-foreground" data-testid="quick-approve-media-note">
+                الضغطة تعتمد السؤال والصورة مع بعض
+                {candidate.reviewEligibility?.quickReview?.mediaSteps?.some((step) => step.acknowledgeRights)
+                  ? "، وتسجّل إقرارك باستخدام الصورة وحقوقها غير مؤكدة."
+                  : "."}
+              </p>
+            )}
+            {!quickEligible && candidate.reviewStatus !== "approved" && (candidate.reviewEligibility?.quickReview?.reasons?.length ?? 0) > 0 && (
+              <div className="rounded-md bg-muted p-2 text-xs" data-testid="quick-approve-unavailable">
+                <p className="font-semibold">ليش ما فيه اعتماد بضغطة لهذا السؤال؟</p>
+                <ul className="list-disc ps-4">
+                  {candidate.reviewEligibility?.quickReview?.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {!quickMode && <DecisionBarSummary
               candidate={candidate}
               requirements={approvalRequirements}
@@ -2466,8 +2489,16 @@ export function ContentEngineReviewWorkspace() {
                   action.mutate(async () => {
                     try {
                       let approved: ReviewCandidate;
+                      setPublicationStage("approval");
+                      // One click also takes the media decisions the reviewer is
+                      // making by approving: the image they are looking at, and
+                      // its unknown rights. Each is its own recorded action.
+                      let mediaRevision = candidate.mediaReviewRevision ?? 0;
+                      for (const step of candidate.reviewEligibility?.quickReview?.mediaSteps ?? []) {
+                        if (step.review) mediaRevision = (await api.reviewCandidateMedia(candidate.candidateId, step.slotKey, { expectedMediaReviewRevision: mediaRevision, status: "approved" })).mediaReviewRevision ?? mediaRevision + 1;
+                        if (step.acknowledgeRights) mediaRevision = (await api.acknowledgeCandidateMediaRights(candidate.candidateId, step.slotKey, { expectedMediaReviewRevision: mediaRevision, note: QUICK_RIGHTS_NOTE })).mediaReviewRevision ?? mediaRevision + 1;
+                      }
                       try {
-                        setPublicationStage("approval");
                         approved = await api.approveCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, assessmentBasis: "HUMAN_DIRECT_REVIEW", readyPublicationAuthorized: true });
                       } catch (error) {
                         const status = (error as { response?: { status?: number } })?.response?.status;

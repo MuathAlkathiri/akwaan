@@ -3716,13 +3716,17 @@ export class ContentEngineReviewService {
     };
   }
 
-  private quickReviewReasons(candidate: PresentableCandidate, job: PresentableJob | null, targetResolutionError: string | null = null): string[] {
+  private quickReviewReasons(candidate: PresentableCandidate, job: PresentableJob | null, targetResolutionError: string | null = null, options: { mediaAside?: boolean } = {}): string[] {
     const reasons: string[] = [];
     if ((candidate.reviewStatus ?? 'pending') !== 'pending' || candidate.publishedContentItemId) reasons.push('المرشح ليس بانتظار المراجعة.');
     if (!job || targetResolutionError) reasons.push('تعذر التحقق من هدف المرشح.');
     const draft = candidate.draft as { prompt?: { ar?: unknown }; answerPayload?: unknown } | null;
     if (!draft || typeof draft.prompt?.ar !== 'string' || !draft.prompt.ar.trim() || !draft.answerPayload || typeof draft.answerPayload !== 'object') reasons.push('بيانات السؤال أو الإجابة غير مكتملة.');
-    if (job && !['read-your-opponent', 'closest'].includes(job.mechanicKey)) reasons.push('تتطلب الميكانيكية مراجعة تفصيلية.');
+    if (job && !['read-your-opponent', 'closest', 'bomb'].includes(job.mechanicKey)) reasons.push('تتطلب الميكانيكية مراجعة تفصيلية.');
+    if (job?.mechanicKey === 'bomb') {
+      const accepted = (draft?.answerPayload as { mode?: string; acceptedAnswers?: unknown } | undefined);
+      if (accepted?.mode !== 'match' || !Array.isArray(accepted.acceptedAnswers) || accepted.acceptedAnswers.length === 0 || accepted.acceptedAnswers.some((entry) => typeof entry !== 'string' || !entry.trim())) reasons.push('الإجابات المقبولة غير مكتملة.');
+    }
     const answer = draft?.answerPayload as { mode?: string; options?: Array<{ id?: string; label?: { ar?: string } }>; correctOptionId?: string; correctValue?: number } | undefined;
     if (job?.mechanicKey === 'read-your-opponent' && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
     if (job?.mechanicKey === 'closest') {
@@ -3733,15 +3737,43 @@ export class ContentEngineReviewService {
     if (hasIncompleteHistoricalVerification(candidate.findings)) reasons.push('التحقق التاريخي غير مكتمل.');
     if (candidate.findings?.some((f) => ['FAMILY_COMPLIANCE_MISMATCH', 'FAMILY_COMPLIANCE_UNVERIFIED'].includes(f.code))) reasons.push('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
     const compatibility = candidate.compatibilityEvaluation as { preDraft?: { blockers?: unknown[] } } | null;
-    if (!compatibility?.preDraft || !Array.isArray(compatibility.preDraft.blockers) || compatibility.preDraft.blockers.length) reasons.push('التوافق غير مكتمل أو يتضمن موانع.');
+    if (!compatibility?.preDraft || !Array.isArray(compatibility.preDraft.blockers)) reasons.push('فحص التوافق ما اكتمل لهذا المرشح.');
+    else if (compatibility.preDraft.blockers.length) reasons.push(`التوافق فيه موانع: ${(compatibility.preDraft.blockers as Array<{ code?: string; message?: string }>).map((blocker) => `${blocker.code ?? 'UNKNOWN'} (${blocker.message ?? ''})`).join('؛ ')}`);
     const gate = this.overlapGate((candidate.findings ?? []) as ScreenFinding[]);
     if (gate.historicalDuplicates.length || gate.batchDuplicates.length || gate.unverifiable.length || gate.required.length) reasons.push('التكرار أو التقاطع يتطلب مراجعة تفصيلية.');
     const fact = candidate.factVerification as { state?: string; claims?: Array<{ state?: string; evidence?: Array<{ relation?: string }> }> } | null;
     const human = candidate.humanAssessment as { factualState?: string } | null;
     if (human?.factualState && human.factualState !== 'SUPPORTED') reasons.push('التقييم البشري السابق يتطلب مراجعة تفصيلية.');
     if (candidate.status === 'fact_blocked' || fact?.state === 'CONTRADICTED' || human?.factualState === 'CONTRADICTED' || fact?.claims?.some((c) => c.state === 'CONTRADICTED' || c.evidence?.some((e) => e.relation === 'contradicts'))) reasons.push('توجد أدلة متناقضة تتطلب مراجعة تفصيلية.');
-    if (job && !this.mediaReadiness(candidate, job).ready) reasons.push('الوسائط أو حقوقها غير جاهزة.');
+    if (!options.mediaAside && job && !this.mediaReadiness(candidate, job).ready) reasons.push('الوسائط أو حقوقها غير جاهزة.');
     return reasons;
+  }
+
+  /**
+   * The media actions one quick approval may take on the reviewer's behalf:
+   * approving the image they are looking at, and acknowledging its unknown
+   * rights. Null when media needs a decision a single click must not make —
+   * a missing or rejected image, blocked rights, an image a model saw the
+   * answer written in, or one from a web search that states no licence.
+   */
+  private quickMediaSteps(candidate: PresentableCandidate, job: PresentableJob | null): { steps: Array<{ slotKey: string; review: boolean; acknowledgeRights: boolean }> } | { blocked: string } {
+    if (!job) return { blocked: 'تعذر التحقق من هدف المرشح.' };
+    const readiness = this.mediaReadiness(candidate, job);
+    if (readiness.ready) return { steps: [] };
+    const steps = new Map<string, { slotKey: string; review: boolean; acknowledgeRights: boolean }>();
+    for (const blocker of readiness.blockers) {
+      const slot = ((candidate.mediaPlan ?? []) as unknown as CandidateMediaSlot[]).find((entry) => entry.slotKey === blocker.slotKey);
+      if (!slot?.asset?.url || slot.status !== 'resolved') return { blocked: 'ما فيه صورة مرفقة للسؤال؛ اختر من المقترحات أو ارفع صورة أول.' };
+      if (slot.visualCheck?.status === 'leaks') return { blocked: 'الصورة المرفقة عليها علامة إنها تكشف الإجابة.' };
+      const step = steps.get(blocker.slotKey) ?? { slotKey: blocker.slotKey, review: false, acknowledgeRights: false };
+      if (blocker.code === 'MEDIA_REVIEW_REQUIRED') step.review = true;
+      else if (blocker.code === 'MEDIA_RIGHTS_ACKNOWLEDGMENT_REQUIRED') {
+        if (slot.provenance?.provider === 'brave-search') return { blocked: 'الصورة من بحث الويب وترخيصها غير معروف؛ الإقرار بحقوقها يكون يدوي.' };
+        step.acknowledgeRights = true;
+      } else return { blocked: `الوسائط تحتاج قرار تفصيلي (${blocker.code}).` };
+      steps.set(blocker.slotKey, step);
+    }
+    return { steps: [...steps.values()] };
   }
 
   private assertQuickReview(candidate: EngineCandidateDocument, job: PresentableJob) {
@@ -3962,7 +3994,7 @@ export class ContentEngineReviewService {
       approvalBlockers,
       draftBlockers,
       mediaReadiness,
-      quickReview: (() => { const reasons = this.quickReviewReasons(candidate, job, targetResolutionError); return { eligible: reasons.length === 0, reasons }; })(),
+      quickReview: (() => { const reasons = this.quickReviewReasons(candidate, job, targetResolutionError); const media = this.quickMediaSteps(candidate, job); const textReasons = this.quickReviewReasons(candidate, job, targetResolutionError, { mediaAside: true }); const steps = 'steps' in media ? media.steps : []; const eligibleWithMediaSteps = reasons.length > 0 && textReasons.length === 0 && steps.length > 0; return { eligible: reasons.length === 0, reasons: 'blocked' in media ? [...textReasons, media.blocked] : reasons, eligibleWithMediaSteps, mediaSteps: steps }; })(),
     };
   }
 
