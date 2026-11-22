@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
+import { TokenChip } from "@/components/layout/token-chip";
 import {
   adminNavigation,
   isAdminNavigationActive,
@@ -246,7 +247,7 @@ function SiteHeader({ merged }: { merged: boolean }) {
             aria-label="أكوان - الرئيسية"
           >
             <Image
-              src="/brand/akwaan-logo.png"
+              src="/brand/logo-header.svg"
               alt="أكوان"
               fill
               priority
@@ -263,6 +264,12 @@ function SiteHeader({ merged }: { merged: boolean }) {
         )}
 
         <div className="flex min-w-28 shrink-0 items-center justify-end gap-1.5 sm:min-w-36 sm:gap-3">
+          {/* Matches left, and the door to buying more. Hidden on the narrowest
+              screens, where the burger and the sign-in action already fill the
+              row and a third chip would push the logo off. */}
+          <span className="hidden sm:inline-flex">
+            <TokenChip />
+          </span>
           {showNav && (
             <button
               type="button"

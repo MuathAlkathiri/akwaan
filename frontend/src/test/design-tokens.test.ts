@@ -101,7 +101,9 @@ describe("the canonical Akwaan brand asset", () => {
       "src/features/live-game-session/components/player-join-page.tsx",
     ]) {
       const source = read(path);
-      expect(source).toContain('/brand/akwaan-logo.png');
+      // The 2026 identity's header mark. The guard's real job is that the
+      // Lammah logo never comes back; the path it allows moves with the brand.
+      expect(source).toMatch(/\/brand\/(logo-header\.svg|akwaan-logo\.png)/);
       expect(source).not.toContain('/brand/lammah-logo.png');
     }
   });
@@ -118,8 +120,8 @@ describe("the retired identity stays retired", () => {
 
   it("exposes the approved Akwaan palette without changing team semantics", () => {
     const css = read("src/app/globals.css");
-    expect(css).toContain("--brand-navy: 239 40% 17%");
-    expect(css).toContain("--brand-purple: 247 100% 71%");
+    expect(css).toContain("--brand-navy: 247 44% 16%");
+    expect(css).toContain("--brand-purple: 254 58% 61%");
     expect(css).toContain("--brand-cyan: 188 49% 54%");
     expect(css).toContain("--brand-gold: 40 57% 63%");
   });
@@ -134,17 +136,18 @@ describe("the retired identity stays retired", () => {
     }
   });
 
-  it("keeps the app background warm rather than pure white", () => {
+  it("keeps the app background plain white", () => {
+    // The warm off-white this used to guard was the pre-2026 room. The approved
+    // identity puts the page on plain white and lets the sticker style — thick
+    // navy outlines, hard unblurred shadows — do the separating. The guard is
+    // kept rather than dropped because the thing it really defends against is
+    // the retired dark canvas creeping back, which a loose background invites.
     const css = read("src/app/globals.css");
     const background = css.match(/--background:\s*(\d+)\s+(\d+)%\s+(\d+)%/);
     expect(background).not.toBeNull();
-    const [, hue, saturation, lightness] = background!.map(Number);
-    // A warm hue with real saturation, just below white.
-    expect(hue).toBeGreaterThanOrEqual(20);
-    expect(hue).toBeLessThanOrEqual(60);
-    expect(saturation).toBeGreaterThan(10);
-    expect(lightness).toBeGreaterThanOrEqual(92);
-    expect(lightness).toBeLessThan(100);
+    const [, , saturation, lightness] = background!.map(Number);
+    expect(saturation).toBe(0);
+    expect(lightness).toBe(100);
   });
 
   it("tints team surfaces from the team's own base rather than a fourth hue", () => {
