@@ -90,7 +90,13 @@ export class MoyasarProvider implements PaymentProvider {
         amount: request.amountHalalas,
         currency: 'SAR',
         description: request.description,
-        callback_url: request.callbackUrl,
+        // `success_url`, not `callback_url`. For invoices Moyasar documents
+        // `callback_url` as a server-to-server notification that redirects
+        // nobody — sending the player's return address there left them
+        // stranded on the payment page, and pointed invoice notifications at
+        // a page of the website. Delivery is the dashboard webhook's job.
+        success_url: request.callbackUrl,
+        back_url: request.callbackUrl,
         metadata: request.metadata,
       }),
     });
@@ -113,7 +119,11 @@ export class MoyasarProvider implements PaymentProvider {
         'Moyasar returned an invoice without an id or a payment page',
       );
     }
-    return { providerPaymentId: invoice.id, redirectUrl: invoice.url };
+    // Moyasar hands back a page in English. The players are Arabic speakers
+    // and the invoice page reads correctly in Arabic, so ask for it.
+    const page = new URL(invoice.url);
+    page.searchParams.set('lang', 'ar');
+    return { providerPaymentId: invoice.id, redirectUrl: page.toString() };
   }
 
   /**
