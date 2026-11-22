@@ -13,7 +13,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/auth.types';
-import { IsIn, IsString } from 'class-validator';
+import { IsIn, IsString, Length } from 'class-validator';
 import { StartPurchase } from '../application/start-purchase.use-case';
 import { FulfilPurchase } from '../application/fulfil-purchase.use-case';
 import { TOKEN_PACK_IDS, riyalsOf } from '../domain/token-pack';
@@ -33,6 +33,13 @@ export class StartPurchaseDto {
   @IsString()
   @IsIn(TOKEN_PACK_IDS)
   packId!: string;
+}
+
+/** The charge a returning player is asking us to settle. */
+export class SettlePurchaseDto {
+  @IsString()
+  @Length(1, 64)
+  invoiceId!: string;
 }
 
 /**
@@ -78,6 +85,24 @@ export class PaymentsController {
     return this.startPurchase.execute({
       accountId: user.id,
       packId: body.packId,
+    });
+  }
+
+  @Post('settle')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Settle a charge the player came back with' })
+  settle(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: SettlePurchaseDto,
+  ) {
+    // The second way in. A webhook can be lost for good, and then only the
+    // player knows they paid — so their return is treated as a question worth
+    // answering, not as proof of anything. The charge is still read from the
+    // provider, and it is only ever looked for among this account's own.
+    return this.fulfil.fromReturn({
+      providerPaymentId: body.invoiceId,
+      accountId: user.id,
     });
   }
 

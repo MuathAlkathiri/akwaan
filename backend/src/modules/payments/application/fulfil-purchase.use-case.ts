@@ -1,14 +1,21 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TokenLedgerService } from '../../entitlements/application/token-ledger.service';
-import { PAYMENT_PROVIDER, PaymentProvider } from '../domain/payment-provider';
+import {
+  PAYMENT_PROVIDER,
+  PaymentProvider,
+  VerifiedPayment,
+} from '../domain/payment-provider';
 import { PAYMENT_ERRORS, PaymentError } from '../domain/payment.errors';
 import { tokenPackById } from '../domain/token-pack';
-import { PurchaseIntentRepository } from '../persistence/purchase-intent.repository';
+import {
+  PurchaseIntent,
+  PurchaseIntentRepository,
+} from '../persistence/purchase-intent.repository';
 
 /** What the webhook did, for the log and for the provider's response. */
 export type FulfilmentOutcome =
   | { granted: true; tokens: number; accountId: string }
-  | { granted: false; reason: 'not-paid' | 'notice' };
+  | { granted: false; reason: 'not-paid' | 'notice' | 'unknown' };
 
 /**
  * Turns a paid charge into tokens, exactly once.
@@ -85,6 +92,65 @@ export class FulfilPurchase {
       );
     }
 
+    return this.settle(payment, intent);
+  }
+
+  /**
+   * Settles a charge the player came back with, rather than one a webhook
+   * announced.
+   *
+   * A delivery can be lost for good. The provider retries and then gives up,
+   * and what is left is a player who paid and received nothing, with no one
+   * watching. The provider sends the player back carrying the charge's id, so
+   * their return is a second chance to notice — and the payment is still read
+   * from the provider, never from the query string that brought them.
+   *
+   * Scoped to the asker's own purchases. Otherwise a signed-in player could
+   * walk charge ids and learn which ones exist.
+   */
+  async fromReturn(input: {
+    providerPaymentId: string;
+    accountId: string;
+  }): Promise<FulfilmentOutcome> {
+    const intent = await this.intents.findByProviderPaymentId(
+      this.provider.key,
+      input.providerPaymentId,
+    );
+    if (!intent || intent.accountId !== input.accountId) {
+      return { granted: false, reason: 'unknown' };
+    }
+
+    return this.fromRecord(intent);
+  }
+
+  /**
+   * Re-checks a charge from our own record of it, with nobody asking.
+   *
+   * The two routes above both depend on someone turning up — the provider
+   * with a delivery, or the player with a return. A player who paid and then
+   * closed the tab is neither, and the sweeper behind this is the only thing
+   * that would ever notice them.
+   */
+  async fromRecord(intent: PurchaseIntent): Promise<FulfilmentOutcome> {
+    const payment = await this.provider.readPayment(intent.providerPaymentId);
+    if (payment.status !== 'paid') {
+      return { granted: false, reason: 'not-paid' };
+    }
+
+    return this.settle(payment, intent);
+  }
+
+  /**
+   * The grant itself, for a payment the provider has reported as paid and an
+   * intent we wrote before the player ever saw the payment page.
+   *
+   * Shared by every route in, so a second way to settle a charge cannot be
+   * added without the price check or the idempotency key.
+   */
+  private async settle(
+    payment: VerifiedPayment,
+    intent: PurchaseIntent,
+  ): Promise<FulfilmentOutcome> {
     const pack = tokenPackById(intent.packId);
     if (!pack) {
       // A pack retired since the charge began. The money is real, so this is

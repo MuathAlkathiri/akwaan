@@ -79,6 +79,11 @@ export interface PaymentProvider {
    * ordinary payment events — which is every delivery, for a provider that has
    * no such notion. Optional for that reason.
    */
+  /**
+   * Reads a payment back from the provider by its own id, with no delivery
+   * involved. The webhook is how we are usually told; this is how we can ask.
+   */
+  readPayment(providerPaymentId: string): Promise<VerifiedPayment>;
   readEndpointNotice?(input: {
     rawBody: string;
     headers: Record<string, string | undefined>;

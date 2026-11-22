@@ -52,6 +52,7 @@ const deliver = (
     key: 'moyasar',
     start: jest.fn(),
     verifyWebhook: jest.fn().mockResolvedValue(verified),
+    readPayment: jest.fn().mockResolvedValue(verified),
   };
   const useCase = new FulfilPurchase(
     provider,
@@ -172,6 +173,7 @@ describe('turning a paid charge into tokens', () => {
       verifyWebhook: jest
         .fn()
         .mockRejectedValue(new PaymentError('X', 'unverified')),
+      readPayment: jest.fn(),
     };
     const useCase = new FulfilPurchase(
       provider,
@@ -230,6 +232,7 @@ describe('a delivery that is about the endpoint, not about money', () => {
       key: 'moyasar',
       start: jest.fn(),
       verifyWebhook,
+      readPayment: jest.fn(),
       readEndpointNotice: jest.fn().mockReturnValue(notice),
     };
     const useCase = new FulfilPurchase(
@@ -269,5 +272,108 @@ describe('a delivery that is about the endpoint, not about money', () => {
     );
     await expect(run()).rejects.toBeInstanceOf(PaymentError);
     expect(verifyWebhook).toHaveBeenCalled();
+  });
+});
+
+describe('settling a charge the player came back with', () => {
+  /**
+   * The webhook is how we are told; this is how we can ask. It exists because
+   * a delivery can be lost for good, and what is left then is a player who
+   * paid and received nothing, with nobody watching.
+   */
+  const returning = (
+    verified: VerifiedPayment,
+    intent: PurchaseIntent | null = intentFor(),
+  ) => {
+    const grant = jest.fn().mockResolvedValue({});
+    const readPayment = jest.fn().mockResolvedValue(verified);
+    const verifyWebhook = jest.fn();
+    const provider: PaymentProvider = {
+      key: 'moyasar',
+      start: jest.fn(),
+      verifyWebhook,
+      readPayment,
+    };
+    const useCase = new FulfilPurchase(
+      provider,
+      { grant } as unknown as TokenLedgerService,
+      {
+        findByProviderPaymentId: jest
+          .fn()
+          .mockResolvedValue(intent ?? undefined),
+        markFulfilled: jest.fn().mockResolvedValue(undefined),
+        record: jest.fn(),
+      } as unknown as PurchaseIntentRepository,
+    );
+    return {
+      grant,
+      readPayment,
+      run: (accountId = 'acc-1') =>
+        useCase.fromReturn({ providerPaymentId: 'pay_123', accountId }),
+    };
+  };
+
+  it('grants when the provider confirms the charge was paid', async () => {
+    const { run, grant } = returning(payment());
+    await expect(run()).resolves.toEqual({
+      granted: true,
+      tokens: FIVE.tokens,
+      accountId: 'acc-1',
+    });
+    expect(grant).toHaveBeenCalled();
+  });
+
+  it('keys the grant the same way the webhook does, so only one lands', async () => {
+    // Both routes settling the same charge must add tokens exactly once.
+    const { run, grant } = returning(payment());
+    await run();
+    expect(grant).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'moyasar:pay_123' }),
+    );
+  });
+
+  it('asks the provider rather than believing the player', async () => {
+    // The player arrives with `status=paid` in a query string. It is not read.
+    const { run, readPayment } = returning(payment());
+    await run();
+    expect(readPayment).toHaveBeenCalledWith('pay_123');
+  });
+
+  it('refuses a charge that belongs to another account', async () => {
+    // Otherwise a signed-in player could walk ids and learn which exist.
+    const { run, grant, readPayment } = returning(payment());
+    await expect(run('acc-2')).resolves.toEqual({
+      granted: false,
+      reason: 'unknown',
+    });
+    expect(readPayment).not.toHaveBeenCalled();
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('says nothing useful about a charge this system never started', async () => {
+    const { run, grant } = returning(payment(), null);
+    await expect(run()).resolves.toEqual({
+      granted: false,
+      reason: 'unknown',
+    });
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('grants nothing for a charge the provider says is unpaid', async () => {
+    const { run, grant } = returning(payment({ status: 'pending' }));
+    await expect(run()).resolves.toEqual({
+      granted: false,
+      reason: 'not-paid',
+    });
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('still refuses a charge that paid less than the pack costs', async () => {
+    // The price check belongs to the shared core, so every route in gets it.
+    const { run, grant } = returning(
+      payment({ amountHalalas: tokenPackById('single')!.priceHalalas }),
+    );
+    await expect(run()).rejects.toBeInstanceOf(PaymentError);
+    expect(grant).not.toHaveBeenCalled();
   });
 });

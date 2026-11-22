@@ -211,6 +211,16 @@ export class MoyasarProvider implements PaymentProvider {
     return body;
   }
 
+  async readPayment(providerPaymentId: string): Promise<VerifiedPayment> {
+    const invoice = await this.readInvoice(providerPaymentId);
+    return {
+      providerPaymentId,
+      status: statusOf(invoice.status),
+      amountHalalas: Number(invoice.amount),
+      metadata: (invoice.metadata ?? {}) as VerifiedPayment['metadata'],
+    };
+  }
+
   private async readInvoice(id: string): Promise<{
     status?: unknown;
     amount?: unknown;

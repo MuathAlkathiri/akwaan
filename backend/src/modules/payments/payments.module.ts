@@ -6,6 +6,7 @@ import { PAYMENT_PROVIDER } from './domain/payment-provider';
 import { MoyasarProvider } from './infrastructure/moyasar.provider';
 import { StartPurchase } from './application/start-purchase.use-case';
 import { FulfilPurchase } from './application/fulfil-purchase.use-case';
+import { UnsettledPurchaseSweeper } from './application/unsettled-purchase.sweeper';
 import { PurchaseIntentRepository } from './persistence/purchase-intent.repository';
 import { PaymentsController } from './presentation/payments.controller';
 import {
@@ -33,6 +34,7 @@ import {
     PurchaseIntentRepository,
     StartPurchase,
     FulfilPurchase,
+    UnsettledPurchaseSweeper,
     { provide: PAYMENT_PROVIDER, useClass: MoyasarProvider },
   ],
   exports: [StartPurchase, FulfilPurchase],
