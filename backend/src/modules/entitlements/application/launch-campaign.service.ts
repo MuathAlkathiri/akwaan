@@ -53,8 +53,27 @@ export class LaunchCampaignService {
       transaction,
     });
     if (movement.balanceAfter === amount) {
-      this.logger.log({ event: 'campaign_allowance_granted', accountId, amount });
+      this.logger.log({
+        event: 'campaign_allowance_granted',
+        accountId,
+        amount,
+      });
     }
+  }
+
+  /**
+   * Whether the free month is still running, and when it closes.
+   *
+   * The shop asks this before it offers to sell anything. While the campaign
+   * is open every Match is free and balances are not consumed, so taking
+   * money would be charging for something the player already has.
+   */
+  status(now: Date): { open: boolean; endsAt?: string } {
+    const endsAt = this.config.get<string>('LAUNCH_CAMPAIGN_ENDS_AT');
+    const open = this.isOpen(now);
+    return open && endsAt && !Number.isNaN(Date.parse(endsAt))
+      ? { open, endsAt: new Date(endsAt).toISOString() }
+      : { open };
   }
 
   private isOpen(now: Date): boolean {

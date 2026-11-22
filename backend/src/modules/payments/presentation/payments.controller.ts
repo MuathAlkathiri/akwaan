@@ -16,6 +16,7 @@ import { AuthenticatedUser } from '../../auth/auth.types';
 import { IsIn, IsString, Length } from 'class-validator';
 import { StartPurchase } from '../application/start-purchase.use-case';
 import { FulfilPurchase } from '../application/fulfil-purchase.use-case';
+import { LaunchCampaignService } from '../../entitlements/application/launch-campaign.service';
 import { TOKEN_PACK_IDS, riyalsOf } from '../domain/token-pack';
 
 /**
@@ -58,18 +59,31 @@ export class PaymentsController {
   constructor(
     private readonly startPurchase: StartPurchase,
     private readonly fulfil: FulfilPurchase,
+    private readonly campaign: LaunchCampaignService,
   ) {}
 
   @Get('packs')
-  @ApiOperation({ summary: 'What a player can buy' })
+  @ApiOperation({
+    summary: 'What a player can buy, and whether the shop sells',
+  })
   packs() {
-    return this.startPurchase.catalogue().map((pack) => ({
-      id: pack.id,
-      tokens: pack.tokens,
-      label: pack.label,
-      priceHalalas: pack.priceHalalas,
-      priceRiyals: riyalsOf(pack),
-    }));
+    // While the launch month runs, every Match is free and balances are not
+    // consumed — so the shop shows its prices and refuses to take money for
+    // something the player already has. The screen needs to know that before
+    // it draws a buy button, which is why it travels with the catalogue
+    // rather than being inferred from a date the browser would have to know.
+    const campaign = this.campaign.status(new Date());
+    return {
+      packs: this.startPurchase.catalogue().map((pack) => ({
+        id: pack.id,
+        tokens: pack.tokens,
+        label: pack.label,
+        priceHalalas: pack.priceHalalas,
+        priceRiyals: riyalsOf(pack),
+      })),
+      selling: !campaign.open,
+      freeUntil: campaign.endsAt,
+    };
   }
 
   @Post('checkout')
