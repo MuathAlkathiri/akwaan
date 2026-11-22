@@ -18,9 +18,9 @@ const page = (overrides: Record<string, unknown> = {}, info = {}) => ({
       descriptionurl:
         'https://commons.wikimedia.org/wiki/File:Ars%C3%A8ne_Wenger_2015.jpg',
       thumburl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Wenger_2015.jpg/1600px-Wenger_2015.jpg',
-      thumbwidth: 1600,
-      thumbheight: 1200,
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Wenger_2015.jpg/1280px-Wenger_2015.jpg',
+      thumbwidth: 1280,
+      thumbheight: 960,
       mime: 'image/jpeg',
       extmetadata: {
         LicenseShortName: { value: 'CC BY-SA 4.0' },
@@ -87,9 +87,9 @@ describe('WikimediaCommonsDiscoveryProvider', () => {
         matchedPhrase: 'Arsène Wenger',
         title: 'Arsène Wenger 2015.jpg',
         downloadUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Wenger_2015.jpg/1600px-Wenger_2015.jpg',
-        width: 1600,
-        height: 1200,
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Wenger_2015.jpg/1280px-Wenger_2015.jpg',
+        width: 1280,
+        height: 960,
         originalUrl:
           'https://upload.wikimedia.org/wikipedia/commons/a/ab/Wenger_2015.jpg',
         pageUrl:
@@ -124,6 +124,31 @@ describe('WikimediaCommonsDiscoveryProvider', () => {
       [1, 'Second.jpg'],
       [2, 'Third.jpg'],
     ]);
+  });
+
+  it('does not believe a rendition size larger than the original', async () => {
+    // What the live API does for a small photo: the "rendition" is reported at
+    // the width asked for, but the bytes behind it are the 404x575 original.
+    const provider = new WikimediaCommonsDiscoveryProvider({
+      fetchImpl: respond({
+        query: {
+          pages: [
+            page(
+              {},
+              {
+                width: 404,
+                height: 575,
+                thumbwidth: 1280,
+                thumbheight: 1822,
+              },
+            ),
+          ],
+        },
+      }),
+    });
+    const [media] = await provider.search('x', { limit: 5 });
+    expect([media.width, media.height]).toEqual([404, 575]);
+    expect(media.downloadUrl).toBe(media.originalUrl);
   });
 
   it('falls back to the original when no rendition is offered', async () => {

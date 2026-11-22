@@ -151,8 +151,17 @@ export class WikimediaCommonsDiscoveryProvider implements MediaDiscoveryProvider
     const hasRendition = Boolean(
       rendition && renditionWidth && renditionHeight,
     );
+    const vector = originalMimetype === 'image/svg+xml';
     // An SVG is only usable through its raster rendition.
-    if (originalMimetype === 'image/svg+xml' && !hasRendition) return null;
+    if (vector && !hasRendition) return null;
+    // For an original narrower than the width asked for, the API still reports
+    // the asked-for size while serving the original's bytes: the first live run
+    // listed a 404x575 photo as 1600x2277. Only a rendition that is genuinely
+    // smaller than a raster original is a rendition; otherwise the original's
+    // own numbers are the true ones. (An SVG has no pixel size of its own, so
+    // its rendition is always real.)
+    const useRendition =
+      hasRendition && (vector || (renditionWidth as number) < originalWidth);
 
     const meta = info.extmetadata ?? {};
     const attribution = text(meta.AttributionRequired?.value)?.toLowerCase();
@@ -163,9 +172,9 @@ export class WikimediaCommonsDiscoveryProvider implements MediaDiscoveryProvider
       rank: positive(page.index) ?? Number.MAX_SAFE_INTEGER,
       matchedPhrase: phrase,
       title: title.replace(/^File:/i, ''),
-      downloadUrl: hasRendition ? (rendition as string) : originalUrl,
-      width: hasRendition ? (renditionWidth as number) : originalWidth,
-      height: hasRendition ? (renditionHeight as number) : originalHeight,
+      downloadUrl: useRendition ? (rendition as string) : originalUrl,
+      width: useRendition ? (renditionWidth as number) : originalWidth,
+      height: useRendition ? (renditionHeight as number) : originalHeight,
       originalUrl,
       pageUrl,
       originalMimetype,
