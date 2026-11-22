@@ -19,7 +19,7 @@ import type { CandidateMediaSlot } from '../domain/candidate-media-plan';
 import {
   GenerationSpecValidationError,
   GenerationSpecification,
-  PROMPT_VERSIONS,
+  promptVersionFor,
   computeGenerationPlanSeed,
   generatorAnswerModeFor,
   isGenerationSpecificationComplete,
@@ -184,7 +184,7 @@ export class ContentEngineOrchestratorService {
     if (
       expectedAnswerMode &&
       (candidateSpec.answerMode !== expectedAnswerMode ||
-        candidateSpec.promptVersion !== PROMPT_VERSIONS[expectedAnswerMode])
+        candidateSpec.promptVersion !== promptVersionFor(job.mechanicKey))
     ) {
       return {
         valid: false,
@@ -469,6 +469,7 @@ export class ContentEngineOrchestratorService {
             candidateId: row.candidateId ?? String(row._id),
             scopeKey: job.scopeKey,
             worldKey: job.worldKey,
+            mechanicKey: job.mechanicKey,
             session: screenSession,
           },
         );

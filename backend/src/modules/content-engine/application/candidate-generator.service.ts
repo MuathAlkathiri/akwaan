@@ -31,8 +31,15 @@ import {
   resolveRequestedDifficulty,
   resolveRyoMixedDifficultyTargets,
   generatorAnswerModeFor,
+  promptVersionFor,
   validateTargetCount,
 } from '../domain/generation-specification';
+import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
+import {
+  BOMB_IMAGE_KINDS,
+  BombImageKind,
+  CandidateMediaIntent,
+} from '../domain/candidate-media-intent';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { ResolvedAuthoringContext } from './authoring-context.service';
 import { EngineBudgetService } from './engine-budget.service';
@@ -408,6 +415,105 @@ export const COMBO_TASK_GUIDANCE = [
   'Spread the batch across the four stages rather than clustering on one rung.',
 ].join('\n');
 
+/** The Bomb Skill's own bound: a prompt a player reads in one glance. */
+export const BOMB_MAX_PROMPT_LENGTH = 70;
+
+export const BOMB_CANDIDATE_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['candidates'],
+  properties: {
+    candidates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        // Authoring order: the picture is decided before the wording. A Bomb
+        // item whose image was an afterthought is a text question with a
+        // decoration, which is the thing the mechanic exists to avoid.
+        required: [
+          'concept',
+          'imageSubject',
+          'imageSubjectAr',
+          'imageKind',
+          'imageMustNotShow',
+          'imageAltText',
+          'prompt',
+          'acceptedAnswers',
+          'factualClaims',
+        ],
+        properties: {
+          concept: {
+            type: 'string',
+            description:
+              'The idea in one line, before any wording exists: what the player recognises or recalls, and why it belongs to this Scope.',
+          },
+          imageSubject: {
+            type: 'string',
+            description:
+              'The one real thing the picture shows, as the exact name an encyclopedia files it under, in Latin script — "Luka Modrić", "Santiago Bernabéu Stadium", "Toyota Supra (A80)". A name to search for, never a description, a scene, or two subjects. It must be a real, specific, photographed subject: an existing photograph will be found for it, nothing is drawn or generated.',
+          },
+          imageSubjectAr: {
+            type: 'string',
+            description: 'The same subject by its common Arabic name.',
+          },
+          imageKind: {
+            type: 'string',
+            enum: [...BOMB_IMAGE_KINDS],
+            description:
+              'What kind of thing the subject is. Use "other" only when none fits.',
+          },
+          imageMustNotShow: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Anything that would give the answer away if it were readable in the picture: a name printed on a shirt, a caption, a scoreboard, a badge with the club name spelled out. Empty when nothing would.',
+          },
+          imageAltText: {
+            type: 'string',
+            description:
+              'One short Arabic sentence describing the picture for a player who cannot see it, WITHOUT stating the answer.',
+          },
+          prompt: {
+            type: 'string',
+            description: `Arabic question text, under ${BOMB_MAX_PROMPT_LENGTH} characters, read in one glance. It must not contain the answer, any accepted spelling of it, or a word that gives it away.`,
+          },
+          acceptedAnswers: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 10,
+            items: { type: 'string' },
+            description:
+              'The typed answer, graded by text match. The SHORTEST widely recognised unique name first, then only genuinely DIFFERENT forms a correct player would type: a well-known nickname or short form, the full name beside the common one, a widely used Latin transliteration. Do NOT list spelling variants that differ only in أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, letter case, or a leading ال — grading already folds those. Never a different entity, a broader category, or a near-miss that should be wrong.',
+          },
+          factualClaims: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'The answer-critical claim(s) that make the accepted answer the correct one for this subject.',
+          },
+        },
+      },
+    },
+  },
+};
+
+export const BOMB_TASK_GUIDANCE = [
+  '## BOMB TASK',
+  'القنبلة is a recognition race against a running clock. A player glances, knows, types. Anything that needs working out belongs to another mechanic.',
+  'EVERY item is about ONE real picture. Decide the picture first, then write the question for it.',
+  'There are two shapes, and only two. Recognition: the picture is the clue and the answer names what it shows ("من هذا؟", "وش اسم هذا الملعب؟"). Completion: the prompt names the subject and asks for a part of its name, and the picture shows that subject ("وش الاسم الأول لمودريتش؟" beside a photograph of Modrić).',
+  'The subject must be something a real photograph of already exists: a named person, club, stadium, vehicle, place, object or work. Give its exact encyclopedia name in `imageSubject`. Never describe an illustration to be drawn, never invent a scene, never ask for two subjects in one picture.',
+  'The picture must not answer the question in writing. List in `imageMustNotShow` whatever would: for a completion item that is the answer itself appearing as readable text; for a recognition item it is the name on a shirt, a caption, a scoreboard, a spelled-out badge.',
+  `The prompt is under ${BOMB_MAX_PROMPT_LENGTH} characters and is one plain spoken question. No scene-setting, no clauses, no "which of the following".`,
+  'The answer is typed and graded by text match, so it must be ONE short canonical name — the shortest name people actually use for it. Not a sentence, not a list.',
+  'If two correct players would plausibly type genuinely different words, the item has no stable written answer. Replace it.',
+  'Grading folds أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, case and a leading ال, so never spend an accepted answer on those. List only forms that differ as words.',
+  'Digits are NOT folded: ٧ and 7 grade as different answers, so an answer that is a number belongs to another mechanic.',
+  'A question the whole table answers before looking at the picture is wasted. A question nobody at the table could answer is wasted too. Aim between them.',
+  'Vary the subjects across the batch: do not return several items about the same person, club or place.',
+].join('\n');
+
 /**
  * Extends a candidate generation schema with an explicit `slotIndex` property
  * for jobs with pinned creative slots. Preserves strict-mode requirements by
@@ -670,9 +776,13 @@ export function composeGenerationPrompt(
     answerMode === 'closest'
       ? resolveRequestedDifficulty('closest', options?.difficulty)
       : answerMode === 'match'
-        ? // الكومبو carries its difficulty in the stage ladder, so it takes no
-          // separate difficulty selection.
-          resolveRequestedDifficulty('combo', options?.difficulty)
+        ? // Neither match mechanic takes a difficulty selection: الكومبو
+          // carries its difficulty in the stage ladder, and القنبلة is a
+          // recognition race with no difficulty axis at all.
+          resolveRequestedDifficulty(
+            context.mechanicKey === BOMB_SLUG ? BOMB_SLUG : 'combo',
+            options?.difficulty,
+          )
         : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
   const normalizedGuidance = normalizeBatchGuidance(options?.batchGuidance);
 
@@ -710,7 +820,9 @@ export function composeGenerationPrompt(
     answerMode === 'closest'
       ? CLOSEST_TASK_GUIDANCE
       : answerMode === 'match'
-        ? COMBO_TASK_GUIDANCE
+        ? context.mechanicKey === BOMB_SLUG
+          ? BOMB_TASK_GUIDANCE
+          : COMBO_TASK_GUIDANCE
         : [
             RYO_TASK_GUIDANCE,
             buildRyoDifficultyGuidance(
@@ -775,6 +887,8 @@ export interface CandidateAuthoring {
   estimatedConfidence?: { band: string; why: string };
   /** الكومبو: why the item sits on the stage it claims. */
   stageJustification?: string;
+  /** القنبلة: the real picture this item needs, for discovery and review. */
+  mediaIntent?: CandidateMediaIntent;
   /** Which Closest direction this item takes. Absent on pre-2g candidates. */
   answerBasis?: 'reasoning' | 'knowledge-anchored';
   playerReasoningStrategy?: string;
@@ -937,10 +1051,13 @@ export class CandidateGeneratorService {
         `generationSpec answerMode "${spec.answerMode}" does not match canonical answerMode "${answerMode}" for mechanic "${input.context.mechanicKey}"`,
       );
     }
-    if (spec && spec.promptVersion !== PROMPT_VERSIONS[answerMode]) {
+    const activePromptVersion = promptVersionFor(
+      input.context.mechanicKey,
+    ) as string;
+    if (spec && spec.promptVersion !== activePromptVersion) {
       throw new CandidateParseError(
         'PROMPT_VERSION_DRIFT',
-        `generationSpec promptVersion "${spec.promptVersion}" does not match active generator promptVersion "${PROMPT_VERSIONS[answerMode]}"`,
+        `generationSpec promptVersion "${spec.promptVersion}" does not match active generator promptVersion "${activePromptVersion}"`,
       );
     }
     const resolvedDifficulty = resolveRequestedDifficulty(
@@ -986,7 +1103,7 @@ export class CandidateGeneratorService {
       spec?.generationModel ??
       this.config.get<string>('ENGINE_GENERATION_MODEL') ??
       'fake-model';
-    const promptVersion = spec?.promptVersion ?? PROMPT_VERSIONS[answerMode];
+    const promptVersion = spec?.promptVersion ?? activePromptVersion;
     const omitTemperature =
       spec?.omitTemperature ?? resolveOmitTemperature(this.config);
     const temperature = omitTemperature
@@ -1018,7 +1135,9 @@ export class CandidateGeneratorService {
       answerMode === 'closest'
         ? CLOSEST_CANDIDATE_SCHEMA
         : answerMode === 'match'
-          ? COMBO_CANDIDATE_SCHEMA
+          ? input.context.mechanicKey === BOMB_SLUG
+            ? BOMB_CANDIDATE_SCHEMA
+            : COMBO_CANDIDATE_SCHEMA
           : RYO_CANDIDATE_SCHEMA;
     const responseSchema = hasCreativeSlots
       ? schemaWithCreativeSlots(baseSchema)
@@ -1108,6 +1227,7 @@ export class CandidateGeneratorService {
 
     const parsed = this.parse(raw, count, answerMode, {
       requireSlotIdentity: hasCreativeSlots,
+      mechanicKey: input.context.mechanicKey,
     });
     const saved: GeneratedCandidate[] = [];
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
@@ -1276,6 +1396,108 @@ export class CandidateGeneratorService {
     };
   }
 
+  /**
+   * One القنبلة candidate, parsed strictly.
+   *
+   * The picture is part of the item, so a candidate that does not say what its
+   * picture shows is refused like one with no answer: there would be nothing to
+   * search for, and the item could only ever be finished by hand.
+   *
+   * The draft carries no `media` yet. The image is found, reviewed and written
+   * into the draft by the media stage; until then the canonical media contract
+   * holds the candidate back, which is the point.
+   */
+  private parseBomb(item: unknown): ParsedCandidate {
+    const value = item as {
+      concept?: unknown;
+      imageSubject?: unknown;
+      imageSubjectAr?: unknown;
+      imageKind?: unknown;
+      imageMustNotShow?: unknown;
+      imageAltText?: unknown;
+      prompt?: unknown;
+      acceptedAnswers?: unknown;
+      factualClaims?: unknown;
+    };
+
+    const factualClaims = Array.isArray(value.factualClaims)
+      ? value.factualClaims.filter(
+          (claim): claim is string =>
+            typeof claim === 'string' && Boolean(claim.trim()),
+        )
+      : [];
+    if (!factualClaims.length) {
+      throw new CandidateParseError(
+        'CANDIDATE_FACTUAL_CLAIMS_REQUIRED',
+        'every candidate must state its answer-critical claim',
+      );
+    }
+
+    const subject = text(value.imageSubject);
+    if (!subject) {
+      throw new CandidateParseError(
+        'BOMB_IMAGE_SUBJECT_REQUIRED',
+        'every Bomb candidate must name the real subject its picture shows',
+      );
+    }
+
+    const seen = new Set<string>();
+    const acceptedAnswers: string[] = [];
+    for (const raw of Array.isArray(value.acceptedAnswers)
+      ? value.acceptedAnswers
+      : []) {
+      const answer = text(raw);
+      if (!answer) continue;
+      const key = answer.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      acceptedAnswers.push(answer);
+    }
+    if (
+      !acceptedAnswers.length ||
+      acceptedAnswers.length > COMBO_MAX_ACCEPTED_ANSWERS
+    ) {
+      throw new CandidateParseError(
+        'BOMB_ACCEPTED_ANSWERS_INVALID',
+        `acceptedAnswers must hold 1 to ${COMBO_MAX_ACCEPTED_ANSWERS} distinct non-empty answers`,
+      );
+    }
+
+    const kind = text(value.imageKind);
+    const mustNotShow = (
+      Array.isArray(value.imageMustNotShow) ? value.imageMustNotShow : []
+    )
+      .map((entry) => text(entry))
+      .filter((entry): entry is string => Boolean(entry));
+    const mediaIntent: CandidateMediaIntent = {
+      slotKey: 'item-image',
+      subject,
+      ...(text(value.imageSubjectAr)
+        ? { subjectAr: text(value.imageSubjectAr) }
+        : {}),
+      // An unknown kind is not worth losing the item over; it only tunes search.
+      kind: (BOMB_IMAGE_KINDS as readonly string[]).includes(kind ?? '')
+        ? (kind as BombImageKind)
+        : 'other',
+      mustNotShow,
+      ...(text(value.imageAltText)
+        ? { altText: text(value.imageAltText) }
+        : {}),
+    };
+
+    return {
+      factualClaims,
+      draft: {
+        prompt: { ar: typeof value.prompt === 'string' ? value.prompt : '' },
+        answerPayload: { mode: 'match', acceptedAnswers },
+      },
+      authoring: {
+        ...(text(value.concept) ? { concept: text(value.concept) } : {}),
+        mediaIntent,
+      },
+    };
+  }
+
   private parseClosest(item: unknown): ParsedCandidate {
     const value = item as {
       concept?: unknown;
@@ -1380,7 +1602,14 @@ export class CandidateGeneratorService {
     raw: string,
     count: number,
     answerMode: 'multiple_choice' | 'closest' | 'match' = 'multiple_choice',
-    options?: { requireSlotIdentity?: boolean },
+    options?: {
+      requireSlotIdentity?: boolean;
+      /**
+       * Two mechanics share the `match` answer mode. Absent means الكومبو, the
+       * first of them, so a caller that predates القنبلة keeps its behaviour.
+       */
+      mechanicKey?: string;
+    },
   ): ParsedCandidate[] {
     let payload: unknown;
     try {
@@ -1527,7 +1756,9 @@ export class CandidateGeneratorService {
       return orderedCandidates.map((item) => this.parseClosest(item));
     }
     if (answerMode === 'match') {
-      return orderedCandidates.map((item) => this.parseCombo(item));
+      return options?.mechanicKey === BOMB_SLUG
+        ? orderedCandidates.map((item) => this.parseBomb(item))
+        : orderedCandidates.map((item) => this.parseCombo(item));
     }
     return orderedCandidates.map((item) => {
       const value = item as {

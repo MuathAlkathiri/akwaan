@@ -563,6 +563,7 @@ export class ContentEngineReviewService {
       candidateId,
       scopeKey: references.job.scopeKey,
       worldKey: references.job.worldKey,
+      mechanicKey: references.job.mechanicKey,
       session: editSession,
     });
     this.mergeFindings(
@@ -1235,6 +1236,7 @@ export class ContentEngineReviewService {
             candidateId,
             worldKey: job.worldKey,
             scopeKey: job.scopeKey,
+            mechanicKey: job.mechanicKey,
             session: screeningSession,
           });
           if (directReview && (!screened.passed || screened.findings.some((finding) => finding.severity === 'blocking'))) {
@@ -1455,6 +1457,7 @@ export class ContentEngineReviewService {
         candidateId,
         scopeKey: references.job.scopeKey,
         worldKey: references.job.worldKey,
+        mechanicKey: references.job.mechanicKey,
         session,
       },
     );
@@ -1703,6 +1706,7 @@ export class ContentEngineReviewService {
             candidateId,
             worldKey: job.worldKey,
             scopeKey: job.scopeKey,
+            mechanicKey: job.mechanicKey,
             session: screeningSession,
           });
           const legacyRecovery = await this.reconstructLegacyBatchOverlaps(
@@ -2012,6 +2016,7 @@ export class ContentEngineReviewService {
             candidateId,
             worldKey: job.worldKey,
             scopeKey: job.scopeKey,
+            mechanicKey: job.mechanicKey,
             session: screeningSession,
           });
           // R4-A: the approval's persisted acknowledgments must still cover the
@@ -2144,7 +2149,7 @@ export class ContentEngineReviewService {
         if (inventory.status !== 'COMPLETE') throw new ConflictException({ code: 'HISTORICAL_VERIFICATION_INCOMPLETE', message: 'Historical inventory is incomplete' });
         screeningSession.historicalRecords = screeningSession.historicalRecords.filter((record) => record.id !== link.contentItemId);
         const draft = this.stripTargetFields(fresh.draft ?? {});
-        const screened = this.screen.screen(draft, fresh.authoring, { candidateId, worldKey: job.worldKey, scopeKey: job.scopeKey, session: screeningSession });
+        const screened = this.screen.screen(draft, fresh.authoring, { candidateId, worldKey: job.worldKey, scopeKey: job.scopeKey, mechanicKey: job.mechanicKey, session: screeningSession });
         if (!screened.passed || screened.findings.some((finding) => finding.severity === 'blocking')) throw new ConflictException('Fresh screening has blocking findings');
         this.assertOverlapGate(this.overlapGate(this.mergeFindings([...screened.findings], await this.revalidateBatchFindings(fresh, draft, fresh.authoring, job, session))), this.acknowledgedFingerprints(fresh), 'draft');
         const item = await this.contentItems.findOne(link.contentItemId, { session });
