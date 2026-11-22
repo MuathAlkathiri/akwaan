@@ -2,7 +2,9 @@ import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 import {
   localizeMatchError,
+  matchErrorIsRecoverable,
   matchErrorMessage,
+  RECOVERABLE_MATCH_ERROR_CODES,
 } from "@/features/live-game-session/match/errors/match-errors";
 
 /**
@@ -69,5 +71,58 @@ describe("a القنبلة launch refusal", () => {
     expect(localizeMatchError(refusal("SOME_UNMAPPED_CODE")).message).toBe(
       FALLBACK,
     );
+  });
+});
+
+/**
+ * The banner is for errors the player can do something about.
+ *
+ * A room playing at any speed saw «تعذر تنفيذ آخر إجراء.» constantly, and the
+ * reason was not that the codes were unmapped: the loudest ones are
+ * concurrency control. The server refuses a command that raced a newer state,
+ * the client resyncs, the action lands — and the banner announced the race as
+ * though something had failed.
+ */
+describe("races the client recovers from", () => {
+  it("keeps the stale-revision family off the banner", () => {
+    for (const code of [
+      "MATCH_STALE_REVISION",
+      "STALE_REVISION",
+      "STALE_RUNTIME_REVISION",
+      "STALE_INTERACTION_REVISION",
+      "STALE_PRESENTATION_GENERATION",
+      "PRESENTATION_SURFACE_INVALID",
+      "CONCURRENT_UPDATE",
+      "TEAM_ACTION_STALE_ASSIGNMENT",
+    ]) {
+      expect(matchErrorIsRecoverable(code)).toBe(true);
+    }
+  });
+
+  it("still shows a refusal the player has to answer", () => {
+    // Being the wrong phone for a decision is a fact about the room, not a
+    // race: the player needs to know their teammate holds it.
+    expect(matchErrorIsRecoverable("TEAM_ACTION_WRONG_PARTICIPANT")).toBe(
+      false,
+    );
+    expect(matchErrorIsRecoverable("MATCH_FORBIDDEN")).toBe(false);
+    expect(matchErrorIsRecoverable("CHALLENGE_NOT_LAUNCHABLE")).toBe(false);
+  });
+
+  it("shows anything it has never heard of", () => {
+    // Silence is granted one code at a time, never by default — a new code
+    // must surface so it can be noticed and mapped.
+    expect(matchErrorIsRecoverable("SOME_BRAND_NEW_CODE")).toBe(false);
+    expect(matchErrorIsRecoverable(undefined)).toBe(false);
+  });
+
+  it("still carries a sentence for every code it silences", () => {
+    // Silent on the banner is not the same as unexplained: these codes surface
+    // in other places, and one with no sentence is a gap either way. Asserted
+    // over the whole set rather than a sample, so adding a code without copy
+    // fails here instead of shipping.
+    for (const code of RECOVERABLE_MATCH_ERROR_CODES) {
+      expect(matchErrorMessage(code)).toBeDefined();
+    }
   });
 });
