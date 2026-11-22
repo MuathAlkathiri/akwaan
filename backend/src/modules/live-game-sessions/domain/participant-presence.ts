@@ -47,6 +47,40 @@ export interface ParticipantPresenceProjection {
  */
 export const MAX_PARTICIPANT_CONNECTIONS = 2;
 
+/**
+ * How long a participant may go unheard before they count as gone.
+ *
+ * A closed tab does not always announce itself: mobile browsers frequently end
+ * a page without delivering a disconnect, so the socket entry survives and the
+ * room goes on showing a player who left. `lastSeenAt` already records the
+ * truth; until 2026-11-22 nothing read it.
+ *
+ * This is for identity and display only — who the room shows as here, and
+ * whether a returning player may take their own name back. It must never gate
+ * an action inside a challenge: waiting 25 seconds to discover that a captain
+ * is gone is the freeze it was meant to prevent. In-match authority moves on a
+ * much shorter rule of its own, counted from when the prompt appeared rather
+ * than from anyone's last breath.
+ */
+export const PARTICIPANT_ABSENCE_MS = 25_000;
+
+/**
+ * Both conditions are required on purpose. A socket that drops for a moment and
+ * reconnects would otherwise open a window in which somebody else could take
+ * the name — and taking a name means taking the identity, which would strand
+ * the original player for good. Silence has to last as well.
+ */
+export function participantIsAbsent(
+  participant: { connected: boolean; lastSeenAt?: Date },
+  now: Date,
+): boolean {
+  if (participant.connected) return false;
+  if (!participant.lastSeenAt) return true;
+  return (
+    now.getTime() - participant.lastSeenAt.getTime() >= PARTICIPANT_ABSENCE_MS
+  );
+}
+
 export function presenceProjection(
   state: ParticipantPresenceState | undefined,
 ): ParticipantPresenceProjection {

@@ -91,6 +91,7 @@ function runtimeState(input: {
       teamId: input.teamId,
       connected: true,
     })),
+    now: NOW,
   }).state;
   return {
     id: 'runtime-1',

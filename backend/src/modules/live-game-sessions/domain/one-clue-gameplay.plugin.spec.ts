@@ -36,6 +36,7 @@ function initial() {
       teamId,
       action: oneClueAnswerAction(teamId),
       participants,
+      now: new Date('2026-01-01T00:00:00.000Z'),
     }).state;
   }
   return {

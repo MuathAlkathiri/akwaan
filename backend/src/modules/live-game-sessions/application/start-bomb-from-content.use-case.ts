@@ -77,6 +77,7 @@ export function initialBombHolderSetup(
         teamId,
         action: 'bomb.initial-holder',
         participants,
+        now: new Date(),
       }).assignment.participantId;
       return {
         teamId,

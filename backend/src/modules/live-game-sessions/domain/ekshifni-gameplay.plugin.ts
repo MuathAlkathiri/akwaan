@@ -25,6 +25,16 @@ import {
 } from './gameplay-mode.plugin';
 import { InteractionActorProjection } from './gameplay-interaction.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  assertTeamActionAuthorized,
+  assignNextTeamActionOrHold,
+  assignmentFor,
+  clearTeamAction,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+  teamActionClock,
+  teamActionStandInWindow,
+} from './team-action-assignment';
 
 export const EKSHIFNI_MODE_KEY = EKSHIFNI_SLUG;
 export { EKSHIFNI_ITEM_COUNT, EKSHIFNI_REGION_COUNT, EKSHIFNI_VALUES };
@@ -523,10 +533,293 @@ function publicState(
   };
 }
 
+/**
+ * Two different rights, so two different shapes.
+ *
+ * Revealing is a turn: initiative belongs to one team at a time, and spending
+ * it is the whole decision. Answering is a race — both eligible teams may go at
+ * once — so each team carries its own open action rather than sharing one.
+ *
+ * Making the answer captain-only does not close the race. Two captains still
+ * race each other; what ends is four phones racing on the same team and the
+ * room arguing about which tap counted.
+ */
+export const EKSHIFNI_REVEAL_ACTION = 'ekshifni.reveal';
+export const ekshifniAnswerAction = (teamId: string) =>
+  `ekshifni.answer.${teamId}`;
+
+function assertHoldsEkshifni(
+  context: GameplayPluginContext,
+  state: GameplayModeState,
+  action: string,
+  teamId: string,
+): void {
+  // A runtime started before اكشفني assigned its actions keeps the old
+  // team-wide rule, so a Match in flight is not broken by this landing.
+  if (typeof state.teamActionJson !== 'string') return;
+  const assignments = parseTeamActionAssignments(state.teamActionJson);
+  // Not opened yet — a phase this mechanic entered outside the reducer, such as
+  // Fair-Start activation. Refusing here would freeze the challenge on its very
+  // first command; the sync opens the action on the way out instead.
+  if (!assignmentFor(assignments, action)) return;
+  assertTeamActionAuthorized(assignments, {
+    ...teamActionStandInWindow(context),
+    action,
+    teamId,
+    participantId: context.submitterParticipantId,
+  });
+}
+
+/** Keeps the reveal turn and both answer rights pointing at the right phones. */
+function syncEkshifniTurns(
+  before: GameplayModeState,
+  after: GameplayModeState,
+  context: GameplayPluginContext,
+): GameplayModeState {
+  if (typeof after.teamActionJson !== 'string') return after;
+  let assignments = parseTeamActionAssignments(after.teamActionJson);
+  const teams = teamsOf(after);
+  if (String(after.phase) !== 'playing') {
+    // Nothing is owed between images or once the challenge is over.
+    assignments = clearTeamAction(assignments, EKSHIFNI_REVEAL_ACTION);
+    for (const teamId of teams)
+      assignments = clearTeamAction(assignments, ekshifniAnswerAction(teamId));
+    return {
+      ...after,
+      teamActionJson: serializeTeamActionAssignments(assignments),
+    };
+  }
+  const open = (teamId: string, action: string) => {
+    assignments = assignNextTeamActionOrHold(assignments, {
+      teamId,
+      action,
+      participants: context.eligibleParticipants ?? [],
+      now: teamActionClock(context),
+    }).state;
+  };
+  const initiative = String(after.initiativeTeamId ?? '');
+  const held = assignmentFor(assignments, EKSHIFNI_REVEAL_ACTION);
+  if (initiative && (!held || held.teamId !== initiative)) {
+    open(initiative, EKSHIFNI_REVEAL_ACTION);
+  }
+  // A new image is a new right for both teams; within one image the holder is
+  // left alone rather than re-opened under them mid-thought.
+  const newImage = after.currentImageIndex !== before.currentImageIndex;
+  for (const teamId of teams) {
+    const action = ekshifniAnswerAction(teamId);
+    if (newImage || !assignmentFor(assignments, action)) open(teamId, action);
+  }
+  return {
+    ...after,
+    teamActionJson: serializeTeamActionAssignments(assignments),
+  };
+}
+
+/**
+ * The mechanic itself, wrapped so the reveal turn and both answer rights are
+ * re-synced on every path out — including the ones that change the image.
+ */
+function reduceEkshifni(
+  context: GameplayPluginContext,
+  command: {
+    type: string;
+    payload: GameplayCommandPayload;
+    runtimeState: GameplayModeState;
+    roundState: GameplayModeState;
+  },
+): GameplayCommandResult {
+  const state = validate(command.runtimeState);
+  const teams = teamsOf(state);
+  const phase = String(state.phase);
+  const now = context.now ?? fail('Server command time is missing');
+
+  if (command.type === 'reveal-ekshifni-region') {
+    const teamId = submitterTeam(context, teams);
+    if (phase !== 'playing') {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_IMAGE_CLOSED',
+        'No اكشفني image is open',
+      );
+    }
+    // Initiative is the entire right being spent here.
+    if (state.initiativeTeamId !== teamId) {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_NOT_YOUR_TURN',
+        'The other team chooses the next region',
+      );
+    }
+    // Initiative says which team; this says which phone.
+    assertHoldsEkshifni(context, state, EKSHIFNI_REVEAL_ACTION, teamId);
+    const image = currentImage(state);
+    const regionId = String(command.payload.regionId);
+    if (!image.regions.some((region) => region.id === regionId)) {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_UNKNOWN_REGION',
+        'That region is not on this image',
+      );
+    }
+    const revealed = revealedOf(state);
+    // The CAS revision guard stops a replayed command from landing twice; this
+    // stops a second *distinct* command from spending value on a mask that is
+    // already off.
+    if (revealed.includes(regionId)) {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_REGION_ALREADY_REVEALED',
+        'That region is already uncovered',
+      );
+    }
+    const next = [...revealed, regionId];
+    return result(
+      {
+        ...releaseOpponentPenalty(state, teamId),
+        revealedRegionIdsJson: JSON.stringify(next),
+      },
+      'ekshifni-region-revealed',
+      {
+        teamId,
+        imageIndex: state.currentImageIndex,
+        revealedCount: next.length,
+        value: ekshifniValue(next.length),
+      },
+    );
+  }
+
+  if (command.type === 'submit-ekshifni') {
+    const teamId = submitterTeam(context, teams);
+    if (phase !== 'playing') {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_IMAGE_CLOSED',
+        'No اكشفني image is open',
+      );
+    }
+    // Answering is open between eligible teams; only a parked one is out, and
+    // only until the opponent acts.
+    if (state.answerPenaltyTeamId === teamId) {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_ANSWER_NOT_ELIGIBLE',
+        'Wait for the other team to act before answering again',
+      );
+    }
+    // The race between the teams is untouched; this settles which phone
+    // carries each team into it.
+    assertHoldsEkshifni(context, state, ekshifniAnswerAction(teamId), teamId);
+    const image = currentImage(state);
+    const answer = String(command.payload.answer);
+    const correct = image.acceptedAnswers.some(
+      (accepted) => normalizeAnswer(accepted) === normalizeAnswer(answer),
+    );
+    const recorded: GameplayModeState = {
+      ...state,
+      attemptsJson: JSON.stringify([
+        ...attemptsOf(state),
+        { teamId, answer, correct },
+      ]),
+    };
+    if (correct) {
+      return resolveImage(
+        recorded,
+        now,
+        teamId,
+        'answer',
+        'ekshifni-answer-correct',
+      );
+    }
+    // Wrong: this team hands initiative over and parks itself. Nothing about
+    // the celebrity is disclosed, and no region is uncovered as a penalty.
+    const opponent = teams.find((team) => team !== teamId) ?? teamId;
+    return result(
+      {
+        ...releaseOpponentPenalty(recorded, teamId),
+        answerPenaltyTeamId: teamId,
+        initiativeTeamId: opponent,
+      },
+      'ekshifni-answer-wrong',
+      { teamId, imageIndex: state.currentImageIndex },
+    );
+  }
+
+  if (command.type === 'expire-ekshifni-image') {
+    if (
+      phase !== 'playing' ||
+      typeof state.deadlineAt !== 'string' ||
+      now.getTime() < Date.parse(state.deadlineAt)
+    ) {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_NOT_EXPIRED',
+        'The اكشفني safety deadline has not elapsed',
+      );
+    }
+    // Nobody is rewarded for a stalled image, and the identity still reaches
+    // the room through the ordinary terminal reveal.
+    return resolveImage(state, now, null, 'timeout', 'ekshifni-image-expired');
+  }
+
+  if (command.type === 'advance-ekshifni') {
+    if (phase !== 'resolved') {
+      throw new LiveSessionDomainError(
+        'EKSHIFNI_NOT_RESOLVED',
+        'Resolve this image first',
+      );
+    }
+    const next = Number(state.currentImageIndex) + 1;
+    if (next >= EKSHIFNI_ITEM_COUNT) {
+      return result(
+        {
+          ...state,
+          phase: 'completed',
+          deadlineAt: null,
+          resultJson: JSON.stringify(challengeResult(state)),
+        },
+        'ekshifni-completed',
+      );
+    }
+    // Open a fresh Fair-Start generation: the next image sits hidden and
+    // clockless in `preparing` until the shared surface re-acknowledges.
+    return result(
+      {
+        ...state,
+        phase: 'preparing',
+        currentImageIndex: next,
+        revealedRegionIdsJson: '[]',
+        attemptsJson: '[]',
+        answerPenaltyTeamId: null,
+        initiativeTeamId: ekshifniOpeningTeam(
+          teams,
+          String(state.selectingTeamId),
+          next,
+        ),
+        deadlineAt: null,
+      },
+      'ekshifni-image-prepared',
+      { imageIndex: next },
+      true,
+    );
+  }
+
+  throw new LiveSessionDomainError(
+    'EKSHIFNI_COMMAND_UNKNOWN',
+    'Unsupported اكشفني command',
+  );
+}
+
 export const EKSHIFNI_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: EKSHIFNI_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.imagesJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.imagesJson);
+      if (runtimeState.currentImageIndex == null) return undefined;
+      const index = Number(runtimeState.currentImageIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.contentItemId;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     // A technical safety clock only: اكشفني has no product answer timer, but an
     // image nobody answers must still end so the match can converge.
@@ -590,179 +883,15 @@ export const EKSHIFNI_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         })
       : state,
   handleCommand: (context, command) => {
-    const state = validate(command.runtimeState);
-    const teams = teamsOf(state);
-    const phase = String(state.phase);
-    const now = context.now ?? fail('Server command time is missing');
-
-    if (command.type === 'reveal-ekshifni-region') {
-      const teamId = submitterTeam(context, teams);
-      if (phase !== 'playing') {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_IMAGE_CLOSED',
-          'No اكشفني image is open',
-        );
-      }
-      // Initiative is the entire right being spent here.
-      if (state.initiativeTeamId !== teamId) {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_NOT_YOUR_TURN',
-          'The other team chooses the next region',
-        );
-      }
-      const image = currentImage(state);
-      const regionId = String(command.payload.regionId);
-      if (!image.regions.some((region) => region.id === regionId)) {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_UNKNOWN_REGION',
-          'That region is not on this image',
-        );
-      }
-      const revealed = revealedOf(state);
-      // The CAS revision guard stops a replayed command from landing twice; this
-      // stops a second *distinct* command from spending value on a mask that is
-      // already off.
-      if (revealed.includes(regionId)) {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_REGION_ALREADY_REVEALED',
-          'That region is already uncovered',
-        );
-      }
-      const next = [...revealed, regionId];
-      return result(
-        {
-          ...releaseOpponentPenalty(state, teamId),
-          revealedRegionIdsJson: JSON.stringify(next),
-        },
-        'ekshifni-region-revealed',
-        {
-          teamId,
-          imageIndex: state.currentImageIndex,
-          revealedCount: next.length,
-          value: ekshifniValue(next.length),
-        },
-      );
-    }
-
-    if (command.type === 'submit-ekshifni') {
-      const teamId = submitterTeam(context, teams);
-      if (phase !== 'playing') {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_IMAGE_CLOSED',
-          'No اكشفني image is open',
-        );
-      }
-      // Answering is open between eligible teams; only a parked one is out, and
-      // only until the opponent acts.
-      if (state.answerPenaltyTeamId === teamId) {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_ANSWER_NOT_ELIGIBLE',
-          'Wait for the other team to act before answering again',
-        );
-      }
-      const image = currentImage(state);
-      const answer = String(command.payload.answer);
-      const correct = image.acceptedAnswers.some(
-        (accepted) => normalizeAnswer(accepted) === normalizeAnswer(answer),
-      );
-      const recorded: GameplayModeState = {
-        ...state,
-        attemptsJson: JSON.stringify([
-          ...attemptsOf(state),
-          { teamId, answer, correct },
-        ]),
-      };
-      if (correct) {
-        return resolveImage(
-          recorded,
-          now,
-          teamId,
-          'answer',
-          'ekshifni-answer-correct',
-        );
-      }
-      // Wrong: this team hands initiative over and parks itself. Nothing about
-      // the celebrity is disclosed, and no region is uncovered as a penalty.
-      const opponent = teams.find((team) => team !== teamId) ?? teamId;
-      return result(
-        {
-          ...releaseOpponentPenalty(recorded, teamId),
-          answerPenaltyTeamId: teamId,
-          initiativeTeamId: opponent,
-        },
-        'ekshifni-answer-wrong',
-        { teamId, imageIndex: state.currentImageIndex },
-      );
-    }
-
-    if (command.type === 'expire-ekshifni-image') {
-      if (
-        phase !== 'playing' ||
-        typeof state.deadlineAt !== 'string' ||
-        now.getTime() < Date.parse(state.deadlineAt)
-      ) {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_NOT_EXPIRED',
-          'The اكشفني safety deadline has not elapsed',
-        );
-      }
-      // Nobody is rewarded for a stalled image, and the identity still reaches
-      // the room through the ordinary terminal reveal.
-      return resolveImage(
-        state,
-        now,
-        null,
-        'timeout',
-        'ekshifni-image-expired',
-      );
-    }
-
-    if (command.type === 'advance-ekshifni') {
-      if (phase !== 'resolved') {
-        throw new LiveSessionDomainError(
-          'EKSHIFNI_NOT_RESOLVED',
-          'Resolve this image first',
-        );
-      }
-      const next = Number(state.currentImageIndex) + 1;
-      if (next >= EKSHIFNI_ITEM_COUNT) {
-        return result(
-          {
-            ...state,
-            phase: 'completed',
-            deadlineAt: null,
-            resultJson: JSON.stringify(challengeResult(state)),
-          },
-          'ekshifni-completed',
-        );
-      }
-      // Open a fresh Fair-Start generation: the next image sits hidden and
-      // clockless in `preparing` until the shared surface re-acknowledges.
-      return result(
-        {
-          ...state,
-          phase: 'preparing',
-          currentImageIndex: next,
-          revealedRegionIdsJson: '[]',
-          attemptsJson: '[]',
-          answerPenaltyTeamId: null,
-          initiativeTeamId: ekshifniOpeningTeam(
-            teams,
-            String(state.selectingTeamId),
-            next,
-          ),
-          deadlineAt: null,
-        },
-        'ekshifni-image-prepared',
-        { imageIndex: next },
-        true,
-      );
-    }
-
-    throw new LiveSessionDomainError(
-      'EKSHIFNI_COMMAND_UNKNOWN',
-      'Unsupported اكشفني command',
-    );
+    const outcome = reduceEkshifni(context, command);
+    return {
+      ...outcome,
+      runtimeState: syncEkshifniTurns(
+        command.runtimeState,
+        outcome.runtimeState,
+        context,
+      ),
+    };
   },
   projectRuntimeState: (state) => publicState(state),
   projectRuntimeStateForActor: (state, actor) => publicState(state, actor),

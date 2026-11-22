@@ -176,6 +176,7 @@ export class StartRyoGameplay {
       answeringTeamId: startingTeamId,
       opposingTeamId,
       participants,
+      now: new Date(),
     });
     const actor = { kind: 'user' as const, actorId: input.actorId };
     const runtimeItems = documents.map((item, itemIndex) => ({

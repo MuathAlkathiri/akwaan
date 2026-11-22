@@ -94,7 +94,9 @@ async function bootstrap() {
   // Creates the module graph, connects the database and constructs every
   // provider. Startup hooks run later, inside app.listen().
   const app = await traceStartupStep('NestFactory.create', () =>
-    NestFactory.create(AppModule),
+    // `rawBody` is for webhooks: a provider that signs its deliveries signs the
+    // bytes it sent, and a re-serialised body is not those bytes.
+    NestFactory.create(AppModule, { rawBody: true }),
   );
   const configService = app.get(ConfigService);
 

@@ -387,6 +387,23 @@ export interface GameplayModePlugin {
    * information implements this instead, so the split lives with the mechanic
    * that owns the secret rather than in a snapshot mapper.
    */
+  /**
+   * The authored item the player is looking at right now (optional, additive).
+   *
+   * An opinion about a question belongs to that question, and only the mechanic
+   * knows which of its items is on screen at this moment — that state is its
+   * own shape. Answering here lets ONE shared control on the phone carry the
+   * opinion for every mechanic, instead of each panel growing its own and nine
+   * of them being forgotten.
+   *
+   * Return the content item's id, the same id the content engine stores, not a
+   * composite or an index. A mechanic that omits this shows no verdict control,
+   * which is the right answer for one whose round is not a single authored item.
+   */
+  currentContentItemId?(
+    runtimeState: GameplayModeState,
+    roundState: GameplayModeState,
+  ): string | undefined;
   projectRuntimeStateForActor?(
     state: GameplayModeState,
     actor: InteractionActorProjection,

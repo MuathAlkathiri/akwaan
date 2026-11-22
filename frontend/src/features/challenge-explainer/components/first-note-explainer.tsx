@@ -93,7 +93,7 @@ export function FirstNoteExplainer({
       data-testid="first-note-explainer"
       data-demo-step={step.id}
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -111,7 +111,7 @@ export function FirstNoteExplainer({
       <div
         data-first-note-scene
         className={cn(
-          "grid gap-3",
+          "grid min-h-0 flex-1 gap-3",
           boardStep
             ? "lg:grid-cols-[minmax(0,2.5fr)_minmax(15rem,.7fr)]"
             : "lg:grid-cols-[minmax(0,1.6fr)_minmax(15rem,.8fr)]",

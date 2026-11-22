@@ -353,6 +353,20 @@ export const ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: ODD_PIECE_HOTSPOT_MODE_KEY,
   version: ODD_PIECE_HOTSPOT_VERSION,
   stateSchemaVersion: 2,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.puzzlesJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.puzzlesJson);
+      if (runtimeState.currentPuzzleIndex == null) return undefined;
+      const index = Number(runtimeState.currentPuzzleIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     source: 'runtime-state',
     commandType: 'expire-odd-piece-hotspot-discussion',

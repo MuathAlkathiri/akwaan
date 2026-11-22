@@ -204,7 +204,7 @@ export function Top5Explainer({
       dir="rtl"
       data-testid="top5-explainer"
       data-variant={compact ? "compact" : "full"}
-      className={compact || embedded ? "space-y-3" : "space-y-6"}
+      className={compact || embedded ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -222,7 +222,7 @@ export function Top5Explainer({
 
       <div
         className={cn(
-          "grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:gap-4",
+          "grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:gap-4",
           (compact || embedded) && "gap-3",
           isOutcome && "lg:grid-cols-1",
         )}
@@ -728,7 +728,7 @@ function Top5Phone({
         acting={active}
         className="mx-auto w-full max-w-[195px]"
       >
-        <div className="flex min-h-[11rem] w-full flex-col justify-center gap-2 text-center">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col justify-center gap-2 text-center">
           <p className="text-[0.65rem] font-black text-muted-foreground">
             أفضل 5
           </p>

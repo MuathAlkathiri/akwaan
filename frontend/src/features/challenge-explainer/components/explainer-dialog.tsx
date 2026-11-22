@@ -147,11 +147,13 @@ export function MechanicTutorialDialog({
               </DialogDescription>
             </DialogHeader>
             {tutorial && (
-              <MechanicTutorialRenderer
-                scenario={tutorial.scenario}
-                compact
-                mode="player"
-              />
+              <div data-testid="explainer-demo-stage" className="flex h-[36rem] min-h-0 w-full flex-col lg:h-[40rem]">
+                <MechanicTutorialRenderer
+                  scenario={tutorial.scenario}
+                  compact
+                  mode="player"
+                />
+              </div>
             )}
           </div>
         </div>

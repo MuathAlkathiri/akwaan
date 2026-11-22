@@ -163,10 +163,15 @@ cmd_dispatch() {
 
   rc=0
   if [ "$agent" = "agy" ]; then
-    # default: tools that need approval are soft-denied (the run still exits 0
-    # and names the tool on stderr). auto: workspace edits and safe commands run.
+    # plan: the agent reads and answers but does not edit. auto: workspace edits
+    # and safe commands run. A tool that needs approval it cannot get is
+    # soft-denied — the run still exits 0 and names the tool on stderr.
+    #
+    # `--mode default` was used here until 2026-11-22. The agy CLI no longer
+    # accepts it ("unrecognized --mode value", then "error: interrupted"), so
+    # every read dispatch died before reading the task.
     case "$mode" in
-      read)  perm="--mode default" ;;
+      read)  perm="--mode plan" ;;
       write) perm="--mode auto" ;;
       full)  perm="--dangerously-skip-permissions" ;;
     esac
@@ -549,7 +554,7 @@ cmd_doctor() {
     echo "--- smoke: one short prompt to each CLI (uses a little quota) ---"
     if command -v agy >/dev/null 2>&1; then
       err="$HANDOFF/logs/doctor-agy.err"
-      r="$(cd "$REPO_ROOT" && agy -p "Reply with exactly the word READY and nothing else." --mode default --output-format text --print-timeout 3m 2>"$err" < /dev/null | tr -d '[:space:]')"
+      r="$(cd "$REPO_ROOT" && agy -p "Reply with exactly the word READY and nothing else." --mode plan --output-format text --print-timeout 3m 2>"$err" < /dev/null | tr -d '[:space:]')"
       case "$r" in *READY*) echo "agy smoke    : OK" ;; *) echo "agy smoke    : FAIL (got: ${r:-nothing})"; smoke_why "$err"; bad=1 ;; esac
     fi
     if command -v codex >/dev/null 2>&1; then

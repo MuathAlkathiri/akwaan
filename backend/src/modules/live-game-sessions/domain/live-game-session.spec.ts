@@ -155,7 +155,7 @@ describe('LiveGameSession', () => {
       expect(() => session.setTeamCaptain(one, 'a1', now)).toThrow();
     });
 
-    it('is locked once the Match starts', () => {
+    it('can still be moved once the Match has started', () => {
       const { session, one } = lobby();
       session.setTeamCaptain(one, 'a1', now);
       // Every team needs a ready player before the Match can start.
@@ -173,13 +173,17 @@ describe('LiveGameSession', () => {
       session.setParticipantReady('c1', true, now);
       session.markReady(now);
       session.start(now);
-      expect(() => session.setTeamCaptain(one, 'a2', now)).toThrow(
+      // The captain used to be locked here, and that lock cost a real room a
+      // whole challenge: the captain left mid-match and the host could not name
+      // anyone else. The host owns the room, so the armband has to be movable.
+      session.setTeamCaptain(one, 'a2', now);
+      expect(captainOf(session, one)).toBe('a2');
+      session.setTeamCaptain(one, undefined, now);
+      expect(captainOf(session, one)).toBeUndefined();
+      // The rule that survives: a captain is a player on that team.
+      expect(() => session.setTeamCaptain(one, 'b1', now)).toThrow(
         LiveSessionDomainError,
       );
-      expect(() => session.setTeamCaptain(one, undefined, now)).toThrow(
-        LiveSessionDomainError,
-      );
-      expect(captainOf(session, one)).toBe('a1');
     });
 
     it('survives a restore', () => {

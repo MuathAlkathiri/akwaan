@@ -15,6 +15,11 @@ const messages: Record<string, string> = {
   MATCH_STALE_REVISION: "تغيّرت المباراة من جهاز ثاني. نجيب آخر حالة الحين.",
   STALE_REVISION: "اللي بالشاشة قديم. نحدّثه الحين.",
   CONCURRENT_UPDATE: "وصل تحديث أحدث للمباراة. جرّب مرة ثانية بعد التحديث.",
+  STALE_RUNTIME_REVISION: "تغيّر التحدي قبل ما توصل حركتك. نحدّثه ونكمل.",
+  STALE_INTERACTION_REVISION: "خلصت هذي الخطوة قبل ما توصل حركتك. نحدّث ونكمل.",
+  STALE_PRESENTATION_GENERATION:
+    "الشاشة انتقلت للخطوة اللي بعدها. نلحقها الحين.",
+  PRESENTATION_SURFACE_INVALID: "الشاشة المشتركة مو جاهزة لهذي الخطوة بعد.",
   MATCH_FORBIDDEN: "هذا الإجراء للمتحكّم بس.",
   SESSION_FORBIDDEN: "ما عندك صلاحية تحكّم بهذه الجلسة.",
   MATCH_NOT_FOUND: "ما فيه مباراة لهذه الجلسة بعد.",
@@ -143,4 +148,40 @@ export function localizeMatchError(error: unknown): LocalizedMatchError {
 
 export function matchErrorMessage(code?: string): string | undefined {
   return code ? messages[code] : undefined;
+}
+
+/**
+ * Refusals the client recovers from on its own.
+ *
+ * These are concurrency control, not failures. The server is saying "your
+ * command raced a newer state"; the client resyncs and the player's action
+ * lands. Nothing was lost and there is nothing for them to do.
+ *
+ * They were being painted as warnings anyway, which is why a room playing at
+ * any speed saw «تعذر تنفيذ آخر إجراء.» over and over during a normal match —
+ * a banner shouting about things that had already worked. A surface reserved
+ * for actionable errors has to be told which ones are not.
+ *
+ * The bar for adding a code here is narrow: the client must already retry or
+ * resync on it, and the player must have nothing to decide. A code that leaves
+ * the player stuck, or that hides a real bug, belongs in `messages` with a
+ * sentence instead.
+ */
+const recoverable = new Set([
+  "MATCH_STALE_REVISION",
+  "STALE_REVISION",
+  "STALE_RUNTIME_REVISION",
+  "STALE_INTERACTION_REVISION",
+  "STALE_PRESENTATION_GENERATION",
+  "PRESENTATION_SURFACE_INVALID",
+  "CONCURRENT_UPDATE",
+  "TEAM_ACTION_STALE_ASSIGNMENT",
+]);
+
+export const RECOVERABLE_MATCH_ERROR_CODES: readonly string[] = [
+  ...recoverable,
+];
+
+export function matchErrorIsRecoverable(code?: string): boolean {
+  return code ? recoverable.has(code) : false;
 }

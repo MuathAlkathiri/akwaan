@@ -20,6 +20,18 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+  TeamActionAssignmentState,
+} from '../domain/team-action-assignment';
+import {
+  EKSHIFNI_REVEAL_ACTION,
+  ekshifniAnswerAction,
+} from '../domain/ekshifni-gameplay.plugin';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
+import {
   EKSHIFNI_ITEM_COUNT,
   EKSHIFNI_MODE_KEY,
   EkshifniRuntimeImage,
@@ -191,6 +203,38 @@ export class StartEkshifniGameplay {
         answerPenaltyTeamId: null,
         // Set on Fair-Start activation; no clock runs before the picture is up.
         deadlineAt: null,
+        // Opened here rather than on the first command, so that even the very
+        // first reveal of a challenge names one phone per team.
+        teamActionJson: serializeTeamActionAssignments(
+          (() => {
+            const participants = eligibleParticipantsOf(sessionState);
+            let assignments: TeamActionAssignmentState =
+              createTeamActionAssignmentState(
+                buildTeamRotations({
+                  teams,
+                  participants,
+                  randomIndex: () => 0,
+                  captains: teamCaptainsOf(sessionState),
+                }),
+              );
+            const now = new Date();
+            const open = (teamId: string, action: string) => {
+              assignments = assignNextTeamActionOrHold(assignments, {
+                teamId,
+                action,
+                participants,
+                now,
+              }).state;
+            };
+            open(
+              ekshifniOpeningTeam(teams, selectingTeamId, 0),
+              EKSHIFNI_REVEAL_ACTION,
+            );
+            for (const teamId of teams)
+              open(teamId, ekshifniAnswerAction(teamId));
+            return assignments;
+          })(),
+        ),
       },
     });
     let runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

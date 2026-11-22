@@ -121,6 +121,7 @@ export function openRyoItemAssignments(input: {
   answeringTeamId: string;
   opposingTeamId: string;
   participants: readonly EligibleParticipant[];
+  now: Date;
 }): {
   state: TeamActionAssignmentState;
   answererParticipantId: string;
@@ -130,10 +131,12 @@ export function openRyoItemAssignments(input: {
     teamId: input.answeringTeamId,
     action: RYO_ANSWER_ACTION,
     participants: input.participants,
+    now: input.now,
   });
   const decision = assignNextTeamActionOrHold(answer.state, {
     teamId: input.opposingTeamId,
     action: RYO_DECISION_ACTION,
+    now: input.now,
     participants: input.participants,
   });
   return {
@@ -362,6 +365,25 @@ export const RYO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: RYO_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  /**
+   * The item being answered right now, by the round's own index.
+   *
+   * `itemsJson` carries the content engine's id on every item, so the opinion a
+   * player gives lands on the question they actually saw rather than on
+   * whatever the runtime has moved to since.
+   */
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      const items = parse<{ id?: string }[]>(runtimeState.itemsJson, 'items');
+      const index = Number(roundState.itemIndex);
+      if (!Number.isInteger(index) || index < 0) return undefined;
+      const id = items[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      // A malformed runtime must not break the snapshot every surface reads.
+      return undefined;
+    }
+  },
   // No `deadline` declaration on purpose: "اقرأ خصمك" puts its clock on the
   // interaction prompt (`RYO_TIMER_SECONDS`), and every interaction deadline is
   // enforced by the reducer without being declared.

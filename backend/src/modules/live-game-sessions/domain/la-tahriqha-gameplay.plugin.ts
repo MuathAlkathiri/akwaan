@@ -15,6 +15,8 @@ import {
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
   TeamActionAssignmentState,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 import { toSafeQuestionMedia } from './safe-question-media';
 import {
@@ -342,6 +344,7 @@ function openCaptaincies(
       teamId,
       action: laTahriqhaDishAction(teamId),
       participants: context.eligibleParticipants ?? [],
+      now: teamActionClock(context),
     });
     next = opened.state;
     captains[teamId] = opened.assignment.participantId;
@@ -378,6 +381,7 @@ function captainTeam(
     );
   }
   assertTeamActionAuthorized(assignments, {
+    ...teamActionStandInWindow(context),
     action: laTahriqhaDishAction(teamId),
     participantId,
     ...(sequence !== undefined ? { sequence } : {}),
@@ -782,6 +786,20 @@ export const LA_TAHRIQHA_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: LA_TAHRIQHA_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      if (typeof runtimeState.dishesJson !== 'string') return undefined;
+      const items = JSON.parse(runtimeState.dishesJson);
+      if (runtimeState.currentDishIndex == null) return undefined;
+      const index = Number(runtimeState.currentDishIndex);
+      if (!Array.isArray(items) || !Number.isInteger(index) || index < 0)
+        return undefined;
+      const id = items[index]?.id;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   deadline: {
     source: 'runtime-state',
     commandType: 'expire-la-tahriqha-dish',

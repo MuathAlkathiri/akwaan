@@ -1068,6 +1068,7 @@ describe('المرحلة gameplay', () => {
               teamId: TEAM_A,
               action: MARHALA_TURN_ACTION,
               participants: roster,
+              now: NOW,
             },
           ).state,
         ),

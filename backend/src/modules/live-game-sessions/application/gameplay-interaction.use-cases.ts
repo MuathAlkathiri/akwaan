@@ -328,6 +328,7 @@ export class GameplayInteractionUseCases {
       answeringTeamId,
       opposingTeamId,
       participants,
+      now,
     });
     const advancedRuntimeState = withRyoAssignments(
       { ...runtimeState, phase: 'collecting' },

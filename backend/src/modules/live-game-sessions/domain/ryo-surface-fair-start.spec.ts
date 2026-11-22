@@ -60,6 +60,7 @@ function openedAssignments(
     },
     answeringTeamId: answererTeamId,
     opposingTeamId: deciderTeamId,
+    now: new Date('2026-01-01T00:00:00.000Z'),
     participants: [
       { participantId: answerer, teamId: answererTeamId, connected: true },
       { participantId: decider, teamId: deciderTeamId, connected: true },

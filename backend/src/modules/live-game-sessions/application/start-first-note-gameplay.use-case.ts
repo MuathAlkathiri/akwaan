@@ -20,6 +20,14 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+} from '../domain/team-action-assignment';
+import { FIRST_NOTE_TURN_ACTION } from '../domain/first-note-gameplay.plugin';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
+import {
   FIRST_NOTE_ITEM_COUNT,
   FIRST_NOTE_MODE_KEY,
   FirstNoteRuntimeSong,
@@ -73,6 +81,7 @@ export class StartFirstNoteGameplay {
         'FIRST_NOTE_LAUNCH_FORBIDDEN',
         'Only the controller can launch First Note',
       );
+    const sessionState = session.serialize();
     const configuration = await this.configurations.findByWorldAndSlot(
       input.worldId,
       input.slotKey,
@@ -154,6 +163,27 @@ export class StartFirstNoteGameplay {
         resultsJson: '[]',
         deadlineAt: null,
         answerWindowSeconds,
+        // One phone per team moment, from the opening bid onward. Without this
+        // the auction accepts a bid from any of the team's phones and the room
+        // argues about which one counted.
+        teamActionJson: serializeTeamActionAssignments(
+          assignNextTeamActionOrHold(
+            createTeamActionAssignmentState(
+              buildTeamRotations({
+                teams,
+                participants: eligibleParticipantsOf(sessionState),
+                randomIndex: () => 0,
+                captains: teamCaptainsOf(sessionState),
+              }),
+            ),
+            {
+              teamId: teams[0],
+              action: FIRST_NOTE_TURN_ACTION,
+              participants: eligibleParticipantsOf(sessionState),
+              now: new Date(),
+            },
+          ).state,
+        ),
       },
     });
     let runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

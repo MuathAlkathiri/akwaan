@@ -138,8 +138,10 @@ describe('World Content architecture', () => {
       // from World Content rather than declaring a second copy.
       'modules/live-game-sessions/domain/closest-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/closest-gameplay.plugin.ts',
+      'modules/live-game-sessions/domain/ekshifni-captain.spec.ts',
       'modules/live-game-sessions/domain/ekshifni-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/ekshifni-gameplay.plugin.ts',
+      'modules/live-game-sessions/domain/first-note-captain.spec.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/first-note-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/la-tahriqha-gameplay.plugin.spec.ts',

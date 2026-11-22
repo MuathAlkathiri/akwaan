@@ -4,7 +4,10 @@ import {
   LiveSessionDomainError,
   StaleLiveSessionRevisionError,
 } from './live-session.errors';
-import { ParticipantPresenceProjection } from './participant-presence';
+import {
+  participantIsAbsent,
+  ParticipantPresenceProjection,
+} from './participant-presence';
 import {
   PlayerAvatarKey,
   firstFreeAvatar,
@@ -398,6 +401,40 @@ export class LiveGameSession {
     return unjoined < this.state.expiresAt ? unjoined : this.state.expiresAt;
   }
 
+  /**
+   * Lets a player who lost their phone's credential take their own place back.
+   *
+   * Typing the name again is the claim «I am that person», not a request for a
+   * new seat, so this returns the SAME participant: same id, same team, same
+   * score, same turn. Nothing about them is reset. The credential version is
+   * raised so the lost credential cannot come back and contend for the seat.
+   *
+   * The name is only released while its holder is absent. Someone actually
+   * playing keeps it, and the caller still refuses the join.
+   */
+  reclaimParticipantByName(input: {
+    displayName: string;
+    joinRequestId: string;
+    now: Date;
+  }): LiveSessionParticipantState | undefined {
+    const normalizedDisplayName = input.displayName.trim().toLocaleLowerCase();
+    const holder = this.state.participants.find(
+      (participant) =>
+        !participant.removedAt &&
+        participant.role === 'team-player' &&
+        participant.normalizedDisplayName === normalizedDisplayName,
+    );
+    if (!holder) return undefined;
+    if (!participantIsAbsent(holder, input.now)) return undefined;
+
+    holder.credentialVersion += 1;
+    holder.joinRequestId = input.joinRequestId;
+    holder.lastSeenAt = input.now;
+    holder.ready = false;
+    this.state.lastTransitionAt = input.now;
+    return holder;
+  }
+
   enrollParticipant(input: {
     id?: string;
     displayName: string;
@@ -540,9 +577,17 @@ export class LiveGameSession {
   /**
    * Names a team's captain, or clears it with `undefined`.
    *
-   * A lobby setting: refused once the Match has started, so the captain is
-   * locked for the whole Match. The captain must be a current team player on
-   * that team.
+   * Allowed mid-Match, not only in the lobby. The captain used to be locked
+   * once play began, and that lock produced the worst failure this project has
+   * seen in a real room: on 2026-11-21 a team's captain left mid-match, the
+   * host could not name a replacement, and the team could not act at all for
+   * the rest of the challenge. The host owns the room, so the host must be able
+   * to move the armband.
+   *
+   * The captain must be a current team player on that team. Changing it mid-
+   * challenge also moves whatever action that team currently holds — see
+   * `retargetRotationCaptain`; the session alone cannot do that, because the
+   * live rotation lives in the gameplay runtime.
    */
   setTeamCaptain(
     teamId: string,
@@ -550,7 +595,9 @@ export class LiveGameSession {
     now: Date,
   ): void {
     this.assertStatus(
-      this.state.modeKey === 'bomb' ? ['waiting'] : ['waiting', 'ready'],
+      this.state.modeKey === 'bomb'
+        ? ['waiting', 'active']
+        : ['waiting', 'ready', 'active'],
       now,
     );
     const team = this.requireTeam(teamId);

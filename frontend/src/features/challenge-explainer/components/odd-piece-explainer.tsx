@@ -261,7 +261,7 @@ function OddPieceHotspotExplainer({
       data-demo-step={step.id}
       data-comparison-mode={comparisonMode}
       data-variant={compact ? "compact" : "full"}
-      className={cn("w-full", compact ? "space-y-3" : "space-y-6")}
+      className={cn("w-full", compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6")}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -295,7 +295,7 @@ function OddPieceHotspotExplainer({
               : undefined
         }
         className={cn(
-          "grid grid-cols-1 gap-3 lg:gap-5",
+          "grid min-h-0 flex-1 grid-cols-1 gap-3 lg:gap-5",
           singleSurface
             ? "lg:grid-cols-1"
             : "lg:grid-cols-[minmax(0,1fr)_minmax(17rem,0.34fr)]",

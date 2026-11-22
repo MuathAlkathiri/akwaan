@@ -222,7 +222,7 @@ export function ClosestExplainer({
       dir="rtl"
       data-testid="closest-explainer"
       data-mobile-scene={mobileScene}
-      className="space-y-3"
+      className="flex h-full min-h-0 flex-col space-y-3"
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -239,10 +239,10 @@ export function ClosestExplainer({
       <div
         data-testid="closest-scene-stage"
         className={cn(
-          "grid content-start gap-3",
+          "grid min-h-0 flex-1 content-start gap-3",
           embedded
             ? "lg:grid-cols-[1.35fr_1fr] lg:items-center"
-            : cn("min-h-[29rem] lg:min-h-0", !compact && "lg:grid-cols-[1.6fr_1fr]"),
+            : cn(compact ? "min-h-0 flex-1" : "min-h-[29rem] lg:min-h-0", !compact && "lg:grid-cols-[1.6fr_1fr]"),
         )}
       >
         <SharedScreenFrame

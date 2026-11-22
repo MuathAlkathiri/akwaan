@@ -193,14 +193,25 @@ export function LiveSessionProvider({
     [adoptSnapshot, participantCredential, sessionId],
   );
 
-  const sendContentSignal = useCallback(
-    async (contentItemId: string, kind: "liked" | "defect") => {
-      if (!participantCredential) return;
-      await recordContentSignal(participantCredential, {
-        contentItemId,
-        kind,
-      });
-    },
+  /**
+   * Undefined without a credential, deliberately.
+   *
+   * It used to be a function that returned silently when the credential was
+   * missing, so the control still rendered, still showed the tap as taken, and
+   * sent nothing — the player was told their opinion counted when it did not.
+   * Leaving it undefined lets the control's own guard hide it, which is the
+   * honest answer: no way to sign the signal, no control.
+   */
+  const sendContentSignal = useMemo(
+    () =>
+      participantCredential
+        ? async (contentItemId: string, kind: "liked" | "defect") => {
+            await recordContentSignal(participantCredential, {
+              contentItemId,
+              kind,
+            });
+          }
+        : undefined,
     [participantCredential],
   );
 
@@ -227,7 +238,8 @@ export function LiveSessionProvider({
       if (!state.snapshot?.gameplay || !socketRef.current) {
         // A caller following its command must hear that it never left;
         // everyone else keeps the old silent no-op.
-        if (delivery) throw new Error("Live session connection is not available");
+        if (delivery)
+          throw new Error("Live session connection is not available");
         return;
       }
       socketRef.current.command(
@@ -390,7 +402,8 @@ export function LiveSessionProvider({
       connectionEpoch,
       resync,
       updateMatchDouble,
-      sendContentSignal,],
+      sendContentSignal,
+    ],
   );
 
   // Memoised for the same reason: this provider still rerenders on every tick

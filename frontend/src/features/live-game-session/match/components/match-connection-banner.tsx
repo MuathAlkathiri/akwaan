@@ -3,7 +3,10 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLiveSession } from "../../hooks/live-session-context";
-import { matchErrorMessage } from "../errors/match-errors";
+import {
+  matchErrorIsRecoverable,
+  matchErrorMessage,
+} from "../errors/match-errors";
 
 /**
  * What the room is told while the connection is not simply fine.
@@ -19,6 +22,9 @@ export function MatchConnectionBanner() {
   // by the fixed MatchShell connection pill. They must not insert a transient
   // row above the active stage. This surface is reserved for actionable errors.
   if (!error) return null;
+  // A race the client already recovered from is not something the room needs
+  // to read about; see `matchErrorIsRecoverable`.
+  if (matchErrorIsRecoverable(error.code)) return null;
   const message = matchErrorMessage(error.code) ?? "تعذر تنفيذ آخر إجراء.";
   return (
     <aside

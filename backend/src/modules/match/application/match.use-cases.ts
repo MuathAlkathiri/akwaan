@@ -275,6 +275,7 @@ export class MatchUseCases {
         teamId: rotation.teamId,
         action: `match.double.${rotation.teamId}`,
         participants,
+        now: this.clock.now(),
       }).state;
     }
     const revision = match.revision;
@@ -340,11 +341,17 @@ export class MatchUseCases {
     if (match.isDuplicate(input.commandId)) return match;
     const assignments = match.pendingChallenge?.doubleAssignments;
     if (!assignments) throw new MatchForbiddenError();
+    // Strict holder-only: the stand-in grace is not wired here yet, because
+    // this path has no eligible-participant list to hand it. A team whose
+    // double-holder leaves keeps the default — it does not block the
+    // challenge — so the gap costs a choice, never the match.
     assertTeamActionAuthorized(assignments, {
       action: `match.double.${participant.teamId}`,
       teamId: participant.teamId,
       participantId: participant.id,
       sequence: input.assignmentSequence,
+      participants: [],
+      now: this.clock.now(),
     });
     const revision = match.revision;
     match.setTeamDouble({

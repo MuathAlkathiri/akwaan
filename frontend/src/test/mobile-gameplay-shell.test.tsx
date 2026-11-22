@@ -85,8 +85,18 @@ const snapshotWith = (
         worldSubtotals: [],
       },
       standings: [
-        { teamId: "team-alpha", signedTotal: 3, displayTotal: 3, name: TEAMS[0].name },
-        { teamId: "team-beta", signedTotal: 1, displayTotal: 1, name: TEAMS[1].name },
+        {
+          teamId: "team-alpha",
+          signedTotal: 3,
+          displayTotal: 3,
+          name: TEAMS[0].name,
+        },
+        {
+          teamId: "team-beta",
+          signedTotal: 1,
+          displayTotal: 1,
+          name: TEAMS[1].name,
+        },
       ],
       availableActions: [],
       ...over,
@@ -96,7 +106,9 @@ const snapshotWith = (
 const renderHost = (snapshot: LiveSessionSnapshot) =>
   render(
     <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
     >
       <LiveSessionContext.Provider
         value={{ snapshot, connection: "connected", resync: vi.fn() } as never}
@@ -186,7 +198,9 @@ describe("the lifecycle word is derived, never invented", () => {
       "data-phase",
       "ready",
     );
-    expect(screen.getByTestId("mobile-shell-status")).toHaveTextContent("جاهزين");
+    expect(screen.getByTestId("mobile-shell-status")).toHaveTextContent(
+      "جاهزين",
+    );
   });
 });
 
@@ -245,12 +259,12 @@ describe("waiting and completion own the screen", () => {
         },
       }),
     );
-    expect(screen.getByTestId("participant-challenge-winner")).toHaveTextContent(
-      "أسود الشمال",
-    );
-    expect(screen.getByTestId("participant-challenge-points")).toHaveTextContent(
-      "+1 نقطة",
-    );
+    expect(
+      screen.getByTestId("participant-challenge-winner"),
+    ).toHaveTextContent("أسود الشمال");
+    expect(
+      screen.getByTestId("participant-challenge-points"),
+    ).toHaveTextContent("+1 نقطة");
     // …and settles into the wait on the same screen.
     expect(screen.getByTestId("participant-waiting")).toHaveTextContent(
       "بانتظار التحدي القادم…",
@@ -263,7 +277,9 @@ describe("waiting and completion own the screen", () => {
         challengeResult: { winnerTeamId: "team-alpha", matchPoints: [] },
       }),
     );
-    expect(screen.getByTestId("participant-challenge-winner")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("participant-challenge-winner"),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("participant-challenge-points")).toBeNull();
   });
 
@@ -285,7 +301,12 @@ describe("fair-start: the shell must not remount what it wraps", () => {
     expect(routerNode).not.toBeNull();
     expect(routerNode).toHaveAttribute("data-match-stage", "board");
 
-    for (const stage of ["preflight", "challenge", "challenge_result", "match_complete"]) {
+    for (const stage of [
+      "preflight",
+      "challenge",
+      "challenge_result",
+      "match_complete",
+    ]) {
       rerender(
         <LiveSessionContext.Provider
           value={
@@ -371,7 +392,10 @@ describe("المرحلة recurring generations on one continuously mounted phone
       },
     }) as unknown as LiveSessionSnapshot;
 
-  const tree = (snapshot: LiveSessionSnapshot, ack: ReturnType<typeof vi.fn>) => (
+  const tree = (
+    snapshot: LiveSessionSnapshot,
+    ack: ReturnType<typeof vi.fn>,
+  ) => (
     <LiveSessionContext.Provider
       value={
         {
@@ -392,7 +416,9 @@ describe("المرحلة recurring generations on one continuously mounted phone
     // This is the sequence a human ran on a real phone: it stuck on
     // "نجهّز التحدي…" at Q2 with the recovery banner, because every one of the
     // phone's acknowledgements was refused PRESENTATION_SURFACE_INVALID.
-    const ack = vi.fn().mockRejectedValue(new Error("PRESENTATION_SURFACE_INVALID"));
+    const ack = vi
+      .fn()
+      .mockRejectedValue(new Error("PRESENTATION_SURFACE_INVALID"));
     const { rerender } = render(tree(preparing(1), ack));
     const routerNode = screen
       .getByTestId("mobile-shell-main")
@@ -435,3 +461,66 @@ describe("المرحلة recurring generations on one continuously mounted phone
   });
 });
 
+/**
+ * The verdict control, once per phone rather than once per mechanic.
+ *
+ * It used to live inside the ريو panel alone, so nine challenges out of ten
+ * never offered it and a real play test never surfaced it at all. These pin
+ * that it now comes from the shell, and that it stays away when it would be
+ * dishonest — a player with no credential cannot sign a signal, so the control
+ * must not invite a tap it will drop.
+ */
+describe("the shared verdict control", () => {
+  /** A runtime parked before presentation, so no mechanic panel is involved. */
+  const runtime = (over: Record<string, unknown> = {}) => ({
+    runtimeId: "runtime-1",
+    revision: 20,
+    mode: { key: "marhala", version: 1 },
+    status: "active",
+    modeState: { awaitingPresentation: true },
+    presentationSurface: { running: true, generation: 1, required: false },
+    transitions: [],
+    availableActions: [],
+    ...over,
+  });
+
+  const onPhone = (
+    gameplay: Record<string, unknown> | undefined,
+    ctx: Record<string, unknown> = { recordContentSignal: vi.fn() },
+  ) =>
+    render(
+      <LiveSessionContext.Provider
+        value={
+          {
+            snapshot: {
+              ...snapshotWith("challenge", {
+                currentChallenge: { occurrenceIndex: 0, slotKey: "slot_1" },
+              }),
+              gameplay,
+            },
+            connection: "connected",
+            resync: vi.fn(),
+            ...ctx,
+          } as never
+        }
+      >
+        <ParticipantMatchView participantId="p-1" />
+      </LiveSessionContext.Provider>,
+    );
+
+  it("offers it while an authored question is on screen", () => {
+    onPhone(runtime({ currentContentItemId: "item-7" }));
+    expect(screen.getByTestId("question-verdict")).toBeInTheDocument();
+  });
+
+  it("stays away when the mechanic names no item", () => {
+    // A board or a deck is not one authored question; there is nothing to rate.
+    onPhone(runtime());
+    expect(screen.queryByTestId("question-verdict")).toBeNull();
+  });
+
+  it("stays away when the player cannot sign the signal", () => {
+    onPhone(runtime({ currentContentItemId: "item-7" }), {});
+    expect(screen.queryByTestId("question-verdict")).toBeNull();
+  });
+});

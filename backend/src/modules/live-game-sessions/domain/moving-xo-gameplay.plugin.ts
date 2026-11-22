@@ -26,6 +26,8 @@ import {
   clearTeamAction,
   parseTeamActionAssignments,
   serializeTeamActionAssignments,
+  teamActionStandInWindow,
+  teamActionClock,
 } from './team-action-assignment';
 
 /**
@@ -298,6 +300,7 @@ function openTurn(
           teamId: runtime.activeTeamId,
           action: MOVING_XO_TURN_ACTION,
           participants: context.eligibleParticipants ?? [],
+          now: teamActionClock(context),
         },
       ).state,
     ),
@@ -320,6 +323,7 @@ function assertHoldsTurn(
   assertTeamActionAuthorized(
     parseTeamActionAssignments(runtime.teamActionJson),
     {
+      ...teamActionStandInWindow(context),
       action: MOVING_XO_TURN_ACTION,
       teamId: runtime.activeTeamId,
       participantId: context.submitterParticipantId,
@@ -777,6 +781,18 @@ export const MOVING_XO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
   key: MOVING_XO_MODE_KEY,
   version: 1,
   stateSchemaVersion: 1,
+  currentContentItemId: (runtimeState, roundState) => {
+    try {
+      const question: unknown = runtimeState.question;
+      const id =
+        question && typeof question === 'object' && !Array.isArray(question)
+          ? (question as { contentItemId?: unknown }).contentItemId
+          : undefined;
+      return typeof id === 'string' && id ? id : undefined;
+    } catch {
+      return undefined;
+    }
+  },
   /**
    * One declared deadline, two windows.
    *
