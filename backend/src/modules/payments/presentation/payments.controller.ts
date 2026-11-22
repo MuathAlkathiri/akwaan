@@ -13,12 +13,25 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/auth.types';
+import { IsIn, IsString } from 'class-validator';
 import { StartPurchase } from '../application/start-purchase.use-case';
 import { FulfilPurchase } from '../application/fulfil-purchase.use-case';
-import { riyalsOf } from '../domain/token-pack';
+import { TOKEN_PACK_IDS, riyalsOf } from '../domain/token-pack';
 
-/** The one field a player sends to buy. */
+/**
+ * The one field a player sends to buy.
+ *
+ * Every property needs a validator, and not merely to be checked: the app
+ * validates with `forbidNonWhitelisted`, so a property without one is stripped
+ * and then rejected — a DTO with no decorators makes the endpoint refuse every
+ * request it receives. This one shipped bare and did exactly that.
+ *
+ * The catalogue is the authority on what may be bought, here as everywhere, so
+ * the allowed values are read from it rather than copied.
+ */
 export class StartPurchaseDto {
+  @IsString()
+  @IsIn(TOKEN_PACK_IDS)
   packId!: string;
 }
 

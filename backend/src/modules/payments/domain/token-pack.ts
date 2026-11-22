@@ -45,3 +45,11 @@ export function tokenPackById(id: string): TokenPack | undefined {
 export function riyalsOf(pack: TokenPack): number {
   return pack.priceHalalas / HALALAS_PER_RIYAL;
 }
+
+/**
+ * The ids the shop will accept on the wire.
+ *
+ * Derived from the catalogue rather than written out again, so adding a pack
+ * cannot leave the endpoint refusing to sell it.
+ */
+export const TOKEN_PACK_IDS: string[] = TOKEN_PACKS.map((pack) => pack.id);

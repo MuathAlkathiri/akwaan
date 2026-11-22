@@ -221,7 +221,9 @@ describe('a delivery that is about the endpoint, not about money', () => {
    * dashboard. It names no invoice, so before this was understood the delivery
    * was refused as malformed and the webhook could never be verified at all.
    */
-  const withNotice = (notice: { event: string; detail?: string } | undefined) => {
+  const withNotice = (
+    notice: { event: string; detail?: string } | undefined,
+  ) => {
     const grant = jest.fn().mockResolvedValue({});
     const verifyWebhook = jest.fn();
     const provider: PaymentProvider = {
@@ -259,10 +261,12 @@ describe('a delivery that is about the endpoint, not about money', () => {
 
   it('still fulfils an ordinary payment when the provider reports no notice', async () => {
     const { run, verifyWebhook } = withNotice(undefined);
-    verifyWebhook.mockRejectedValue(new PaymentError(
+    verifyWebhook.mockRejectedValue(
+      new PaymentError(
         PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
         'reached the payment path',
-      ));
+      ),
+    );
     await expect(run()).rejects.toBeInstanceOf(PaymentError);
     expect(verifyWebhook).toHaveBeenCalled();
   });
