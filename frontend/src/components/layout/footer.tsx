@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import { smoothScrollToHash } from "./header";
 
 /**
@@ -20,9 +21,8 @@ const QUICK_LINKS = [
 const LEGAL_LINKS = [
   { label: "شروط الاستخدام", href: "/terms" },
   { label: "سياسة الخصوصية", href: "/privacy" },
+  { label: "سياسة الاسترجاع", href: "/refund" },
 ];
-
-const SUPPORT_EMAIL = "support@playakwaan.com";
 
 /**
  * The close of the page: who Akwaan is, where to go next, and how to reach us.
