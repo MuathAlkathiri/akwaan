@@ -13,8 +13,12 @@ import { smoothScrollToHash } from "./header";
  */
 const QUICK_LINKS = [
   { label: "الرئيسية", href: "/" },
-  { label: "العوالم", href: "/#worlds" },
+  // The footer points at the World explainer rather than the home picker:
+  // the header already carries "/#worlds" for people who came to play, and a
+  // real page is what a search engine can index and rank.
+  { label: "العوالم", href: "/worlds" },
   { label: "كيف تلعب", href: "/how-to-play" },
+  { label: "الأسئلة الشائعة", href: "/faq" },
   { label: "مبارياتي", href: "/matches" },
 ];
 
