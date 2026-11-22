@@ -8,7 +8,7 @@ import { PurchaseIntentRepository } from '../persistence/purchase-intent.reposit
 /** What the webhook did, for the log and for the provider's response. */
 export type FulfilmentOutcome =
   | { granted: true; tokens: number; accountId: string }
-  | { granted: false; reason: 'not-paid' };
+  | { granted: false; reason: 'not-paid' | 'notice' };
 
 /**
  * Turns a paid charge into tokens, exactly once.
@@ -47,6 +47,20 @@ export class FulfilPurchase {
     rawBody: string;
     headers: Record<string, string | undefined>;
   }): Promise<FulfilmentOutcome> {
+    // Some deliveries are about the endpoint rather than about money — the
+    // provider checking that this URL is really ours. Those are read first,
+    // because they name no payment and would otherwise look malformed.
+    const notice = this.provider.readEndpointNotice?.(input);
+    if (notice) {
+      this.logger.log({
+        event: 'provider_notice',
+        provider: this.provider.key,
+        notice: notice.event,
+        detail: notice.detail,
+      });
+      return { granted: false, reason: 'notice' };
+    }
+
     const payment = await this.provider.verifyWebhook(input);
 
     if (payment.status !== 'paid') {

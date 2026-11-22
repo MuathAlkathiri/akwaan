@@ -5,6 +5,7 @@ import {
   PaymentProvider,
   PaymentRequest,
   PaymentStatus,
+  ProviderNotice,
   StartedPayment,
   VerifiedPayment,
 } from '../domain/payment-provider';
@@ -25,6 +26,17 @@ function secretsMatch(a: string, b: string): boolean {
   const left = createHash('sha256').update(a).digest();
   const right = createHash('sha256').update(b).digest();
   return timingSafeEqual(left, right);
+}
+
+/** The parts of a Moyasar delivery this adapter reads. */
+interface MoyasarDelivery {
+  type?: string;
+  secret_token?: string;
+  data?: {
+    id?: string;
+    invoice_id?: string;
+    verification_code?: string | number;
+  };
 }
 
 /** Moyasar's own vocabulary, narrowed to what the shop acts on. */
@@ -118,32 +130,7 @@ export class MoyasarProvider implements PaymentProvider {
     rawBody: string;
     headers: Record<string, string | undefined>;
   }): Promise<VerifiedPayment> {
-    const expected = this.config.get<string>('MOYASAR_WEBHOOK_SECRET');
-    if (!expected)
-      throw new PaymentError(
-        PAYMENT_ERRORS.PROVIDER_UNAVAILABLE,
-        'MOYASAR_WEBHOOK_SECRET is not configured',
-      );
-
-    let body: {
-      secret_token?: string;
-      data?: { id?: string; invoice_id?: string };
-    };
-    try {
-      body = JSON.parse(input.rawBody);
-    } catch {
-      throw new PaymentError(
-        PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
-        'Webhook body is not JSON',
-      );
-    }
-
-    if (!body.secret_token || !secretsMatch(body.secret_token, expected)) {
-      throw new PaymentError(
-        PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
-        'Webhook secret does not match',
-      );
-    }
+    const body = this.authenticate(input.rawBody);
 
     const invoiceId = body.data?.invoice_id ?? body.data?.id;
     if (!invoiceId) {
@@ -162,6 +149,56 @@ export class MoyasarProvider implements PaymentProvider {
       // what decides the grant: the purchase intent is.
       metadata: (invoice.metadata ?? {}) as VerifiedPayment['metadata'],
     };
+  }
+
+  /**
+   * Moyasar proves an endpoint belongs to whoever configured it by posting a
+   * short code here and asking for it back in the dashboard. It names no
+   * invoice, so without this it would reach `verifyWebhook` and be refused as
+   * malformed — leaving a webhook that can never be verified. The code is
+   * logged because the dashboard asks for what OUR server received, and the
+   * log is where a person reads that.
+   */
+  readEndpointNotice(input: {
+    rawBody: string;
+    headers: Record<string, string | undefined>;
+  }): ProviderNotice | undefined {
+    const body = this.authenticate(input.rawBody);
+    const code = body.data?.verification_code;
+    if (code === undefined || code === null || code === '') return undefined;
+    return { event: body.type ?? 'webhook_verification', detail: String(code) };
+  }
+
+  /**
+   * Establishes that a delivery really came from Moyasar, and hands back what
+   * it said. Shared by every reader of a delivery so that none of them can be
+   * written without the secret check.
+   */
+  private authenticate(rawBody: string): MoyasarDelivery {
+    const expected = this.config.get<string>('MOYASAR_WEBHOOK_SECRET');
+    if (!expected)
+      throw new PaymentError(
+        PAYMENT_ERRORS.PROVIDER_UNAVAILABLE,
+        'MOYASAR_WEBHOOK_SECRET is not configured',
+      );
+
+    let body: MoyasarDelivery;
+    try {
+      body = JSON.parse(rawBody) as MoyasarDelivery;
+    } catch {
+      throw new PaymentError(
+        PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
+        'Webhook body is not JSON',
+      );
+    }
+
+    if (!body.secret_token || !secretsMatch(body.secret_token, expected)) {
+      throw new PaymentError(
+        PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
+        'Webhook secret does not match',
+      );
+    }
+    return body;
   }
 
   private async readInvoice(id: string): Promise<{

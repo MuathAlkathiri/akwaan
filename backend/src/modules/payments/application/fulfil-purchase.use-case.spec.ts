@@ -1,5 +1,5 @@
 import { FulfilPurchase } from './fulfil-purchase.use-case';
-import { PaymentError } from '../domain/payment.errors';
+import { PAYMENT_ERRORS, PaymentError } from '../domain/payment.errors';
 import { TOKEN_PACKS, tokenPackById } from '../domain/token-pack';
 import { PaymentProvider, VerifiedPayment } from '../domain/payment-provider';
 import { TokenLedgerService } from '../../entitlements/application/token-ledger.service';
@@ -212,5 +212,58 @@ describe('the catalogue', () => {
 
   it('keeps ids unique, since the ledger records them', () => {
     expect(new Set(TOKEN_PACKS.map((p) => p.id)).size).toBe(TOKEN_PACKS.length);
+  });
+});
+
+describe('a delivery that is about the endpoint, not about money', () => {
+  /**
+   * Moyasar posts a short code to the webhook URL and asks for it back in the
+   * dashboard. It names no invoice, so before this was understood the delivery
+   * was refused as malformed and the webhook could never be verified at all.
+   */
+  const withNotice = (notice: { event: string; detail?: string } | undefined) => {
+    const grant = jest.fn().mockResolvedValue({});
+    const verifyWebhook = jest.fn();
+    const provider: PaymentProvider = {
+      key: 'moyasar',
+      start: jest.fn(),
+      verifyWebhook,
+      readEndpointNotice: jest.fn().mockReturnValue(notice),
+    };
+    const useCase = new FulfilPurchase(
+      provider,
+      { grant } as unknown as TokenLedgerService,
+      {
+        findByProviderPaymentId: jest.fn(),
+        markFulfilled: jest.fn(),
+        record: jest.fn(),
+      } as unknown as PurchaseIntentRepository,
+    );
+    return {
+      grant,
+      verifyWebhook,
+      run: () => useCase.fromWebhook({ rawBody: '{}', headers: {} }),
+    };
+  };
+
+  it('answers it without reading any payment', async () => {
+    const { run, verifyWebhook, grant } = withNotice({
+      event: 'webhook_verification',
+      detail: '123456',
+    });
+    await expect(run()).resolves.toEqual({ granted: false, reason: 'notice' });
+    // The point: it never looks for a payment that was never named.
+    expect(verifyWebhook).not.toHaveBeenCalled();
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('still fulfils an ordinary payment when the provider reports no notice', async () => {
+    const { run, verifyWebhook } = withNotice(undefined);
+    verifyWebhook.mockRejectedValue(new PaymentError(
+        PAYMENT_ERRORS.WEBHOOK_UNVERIFIED,
+        'reached the payment path',
+      ));
+    await expect(run()).rejects.toBeInstanceOf(PaymentError);
+    expect(verifyWebhook).toHaveBeenCalled();
   });
 });

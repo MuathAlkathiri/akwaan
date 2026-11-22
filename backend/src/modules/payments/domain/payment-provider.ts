@@ -46,6 +46,21 @@ export interface VerifiedPayment {
   metadata: { accountId?: string; packId?: string };
 }
 
+/**
+ * A delivery that is about this endpoint rather than about any payment.
+ *
+ * Providers use the webhook URL for their own housekeeping too — proving the
+ * endpoint belongs to whoever configured it, most often. Such a delivery names
+ * no payment and must still be answered politely, so it is read here instead of
+ * arriving at the ledger as a malformed payment.
+ */
+export interface ProviderNotice {
+  /** The provider's own name for what it sent. */
+  event: string;
+  /** What a person is expected to read back, when there is anything. */
+  detail?: string;
+}
+
 export interface PaymentProvider {
   /** Names this provider in ledger references and idempotency keys. */
   readonly key: string;
@@ -58,6 +73,16 @@ export interface PaymentProvider {
     rawBody: string;
     headers: Record<string, string | undefined>;
   }): Promise<VerifiedPayment>;
+  /**
+   * Reads a delivery that concerns the endpoint rather than a payment, after
+   * authenticating it exactly as `verifyWebhook` would. Returns undefined for
+   * ordinary payment events — which is every delivery, for a provider that has
+   * no such notion. Optional for that reason.
+   */
+  readEndpointNotice?(input: {
+    rawBody: string;
+    headers: Record<string, string | undefined>;
+  }): ProviderNotice | undefined;
 }
 
 export const PAYMENT_PROVIDER = Symbol('PAYMENT_PROVIDER');
