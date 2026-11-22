@@ -21,7 +21,13 @@ export interface ReviewEligibility {
   canApprove: boolean;
   canCreateDraft: boolean;
   approvalBlockers: string[];
-  quickReview?: { eligible: boolean; reasons: string[] };
+  quickReview?: {
+    eligible: boolean;
+    reasons: string[];
+    /** Quick approval is possible once these media actions are taken with it. */
+    eligibleWithMediaSteps?: boolean;
+    mediaSteps?: Array<{ slotKey: string; review: boolean; acknowledgeRights: boolean }>;
+  };
   /** Server-reported reasons a DRAFT cannot be created (stale/untrusted approval). */
   draftBlockers?: string[];
   /** §30.22 media readiness. Absent on servers before Phase 1. */
@@ -84,6 +90,27 @@ export interface CandidateMediaSlot {
     explanation?: string | null;
   } | null;
   failureReason?: string | null;
+  visualCheck?: MediaVisualCheck | null;
+  /** Other images discovery found for this slot; one can be chosen instead. */
+  suggestions?: CandidateMediaSuggestion[] | null;
+}
+
+export interface CandidateMediaSuggestion {
+  provider: string;
+  title: string;
+  downloadUrl: string;
+  pageUrl: string;
+  width: number;
+  height: number;
+  licenceNote: string;
+  previewUrl?: string;
+  visualCheck?: MediaVisualCheck;
+}
+
+/** What a model saw when it looked at the image for the answer written on it. */
+export interface MediaVisualCheck {
+  status: "clear" | "leaks" | "unchecked";
+  evidence?: string;
 }
 
 export interface CandidateMediaFinding {

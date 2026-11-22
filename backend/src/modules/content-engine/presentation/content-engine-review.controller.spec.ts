@@ -56,7 +56,7 @@ describe('ContentEngineReviewController media-review contract (§30.22 Phase 3A)
 
   const base = '/admin/content-engine/candidates/{candidateId}/media/{slotKey}';
 
-  it('exposes exactly the three media actions as POST routes with both path parameters', async () => {
+  it('exposes exactly the four media actions as POST routes with both path parameters', async () => {
     const document = await documentFor();
     const mediaPaths = Object.keys(document.paths).filter((path) =>
       path.includes('/media/'),
@@ -66,6 +66,7 @@ describe('ContentEngineReviewController media-review contract (§30.22 Phase 3A)
         `${base}/asset`,
         `${base}/review`,
         `${base}/rights-acknowledgement`,
+        `${base}/suggestion`,
       ].sort(),
     );
     for (const path of mediaPaths) {
