@@ -145,7 +145,7 @@ export function BombExplainer({
     <div
       ref={scope}
       dir="rtl"
-      className={cn(compact ? "space-y-2 text-sm" : "space-y-3")}
+      className={cn(compact ? "flex h-full min-h-0 flex-col space-y-2 text-sm" : "space-y-3")}
       data-testid="bomb-explainer"
     >
       {showsExplainerControls(mode, timeline) ? (
@@ -165,7 +165,7 @@ export function BombExplainer({
       )}
       <div
         className={cn(
-          "grid gap-3",
+          "grid min-h-0 flex-1 gap-3",
           embedded && "lg:grid-cols-[1.3fr_1fr] lg:items-center",
         )}
       >
@@ -173,12 +173,10 @@ export function BombExplainer({
           <div
             className={cn(
               "relative flex flex-col items-center justify-center gap-2 overflow-hidden bg-gradient-to-b from-background to-destructive/10 p-2.5 text-center sm:gap-3 sm:p-4",
-              currentQuestion.media?.type === "image"
-                ? compact || embedded
-                  ? "min-h-[205px] min-[381px]:min-h-[215px] sm:min-h-[260px]"
-                  : "min-h-[260px] min-[381px]:min-h-[280px] sm:min-h-[380px]"
-                : compact || embedded
-                  ? "min-h-[168px] min-[381px]:min-h-[178px] sm:min-h-[225px]"
+              compact || embedded
+                ? "h-full min-h-0 flex-1"
+                : currentQuestion.media?.type === "image"
+                  ? "min-h-[260px] min-[381px]:min-h-[280px] sm:min-h-[380px]"
                   : "min-h-[180px] min-[381px]:min-h-[200px] sm:min-h-[260px]",
             )}
           >

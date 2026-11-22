@@ -82,7 +82,7 @@ export function LaqathaExplainer({
       data-testid="laqatha-explainer"
       data-demo-step={step.id}
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -100,7 +100,7 @@ export function LaqathaExplainer({
       <div
         data-laqatha-scene
         className={cn(
-          "grid gap-3",
+          "grid min-h-0 flex-1 gap-3",
           boardStep
             ? "lg:grid-cols-[minmax(0,2.3fr)_minmax(12rem,.55fr)]"
             : "lg:grid-cols-[minmax(0,1.9fr)_minmax(14rem,.65fr)]",

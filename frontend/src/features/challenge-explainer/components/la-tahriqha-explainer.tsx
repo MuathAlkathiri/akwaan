@@ -159,7 +159,7 @@ export function LaTahriqhaExplainer({
       data-testid="la-tahriqha-explainer"
       data-demo-step={step.id}
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -178,7 +178,7 @@ export function LaTahriqhaExplainer({
       <div
         data-la-tahriqha-scene
         className={cn(
-          "grid grid-cols-1 items-start gap-3",
+          "grid min-h-0 flex-1 grid-cols-1 items-start gap-3",
           selectionScene
             ? "lg:grid-cols-[minmax(0,2fr)_minmax(15rem,.72fr)]"
             : revealScene

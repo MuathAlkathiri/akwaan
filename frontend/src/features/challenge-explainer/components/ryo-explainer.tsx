@@ -162,7 +162,7 @@ export function RyoExplainer({
       dir="rtl"
       data-testid="ryo-explainer"
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -181,7 +181,7 @@ export function RyoExplainer({
       <div
         className={
           compact
-            ? "grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+            ? "grid min-h-0 flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
             : "grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]"
         }
       >
@@ -450,7 +450,7 @@ function CompactPhone({ children }: { children: React.ReactNode }) {
     <div
       data-testid="explainer-phone-shell"
       className={cn(
-        "shrink-0 rounded-[1.5rem] border border-[hsl(var(--brand-navy)/.14)] bg-[hsl(var(--brand-navy))] p-[4px] shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.7)]",
+        "max-h-full shrink-0 rounded-[1.5rem] border border-[hsl(var(--brand-navy)/.14)] bg-[hsl(var(--brand-navy))] p-[4px] shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.7)]",
         PHONE_SHELL_WIDTH,
       )}
     >

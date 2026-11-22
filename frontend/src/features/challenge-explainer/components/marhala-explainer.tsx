@@ -98,7 +98,7 @@ export function MarhalaExplainer({
       data-testid="marhala-explainer"
       data-variant={compact ? "compact" : "full"}
       data-demo-step={step.id}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -117,7 +117,7 @@ export function MarhalaExplainer({
       <div
         data-marhala-scene
         className={cn(
-          "grid gap-3",
+          "grid min-h-0 flex-1 gap-3",
           boardFocused
             ? "lg:grid-cols-[minmax(0,1.85fr)_minmax(15rem,.7fr)]"
             : "lg:grid-cols-[minmax(0,1.6fr)_minmax(18rem,.9fr)]",

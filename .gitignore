@@ -97,3 +97,8 @@ ai/workbench/artifacts/
 **/.impeccable/live/deferred-svelte-component-accepts.json
 **/.impeccable/live/*.png
 # impeccable-ignore-end
+
+# Local tool noise
+__pycache__/
+frontend/vitest.config.mts.timestamp-*.mjs
+.claude/settings.local.json

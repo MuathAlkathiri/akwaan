@@ -109,7 +109,7 @@ export function ComboExplainer({
       data-testid="combo-explainer"
       data-variant={compact ? "compact" : "full"}
       data-demo-step={step.id}
-      className={compact ? "space-y-3" : "space-y-6"}
+      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -128,7 +128,7 @@ export function ComboExplainer({
       <div
         data-combo-scene
         className={cn(
-          "grid gap-3 lg:grid-cols-[minmax(0,1.9fr)_minmax(15rem,.75fr)]",
+          "grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1.9fr)_minmax(15rem,.75fr)]",
           compact ? "lg:gap-4" : "gap-6",
           isOutcome && "lg:grid-cols-1",
         )}
@@ -458,7 +458,7 @@ function ComboPhone({
         <div
           className={cn(
             "flex flex-col justify-center px-2 text-center",
-            compact ? "min-h-[12rem] gap-1" : "min-h-[16rem] gap-2",
+            compact ? "h-full min-h-0 flex-1 gap-1" : "min-h-[16rem] gap-2",
           )}
         >
           {decision ? (
