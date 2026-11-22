@@ -25,9 +25,9 @@ beforeEach(() => {
   jest
     .spyOn(
       EngineJobAdminService.prototype as any,
-      'historicalInventoryComplete',
+      'historicalInventoryGap',
     )
-    .mockResolvedValue(true);
+    .mockResolvedValue(null);
 });
 afterEach(() => jest.restoreAllMocks());
 
