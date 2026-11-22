@@ -105,11 +105,29 @@ export interface CandidateMediaReview {
   explanation?: string | null;
 }
 
+/**
+ * Another image discovery found for the same slot and did not use. Metadata
+ * only — nothing was downloaded — kept so a reviewer who dislikes the attached
+ * image can switch without searching again. Like every discovered image it
+ * says what a page claims about licence and author, not what is cleared.
+ */
+export interface CandidateMediaSuggestion {
+  provider: string;
+  title: string;
+  downloadUrl: string;
+  pageUrl: string;
+  width: number;
+  height: number;
+  licenceNote: string;
+}
+
 export interface CandidateMediaSlot {
   slotKey: string;
   purpose: MediaPurpose;
   required: boolean;
   status: CandidateMediaSlotStatus;
+  /** Alternatives to `asset`, when the asset came from discovery. */
+  suggestions?: CandidateMediaSuggestion[] | null;
   asset?: CandidateMediaAsset | null;
   provenance?: CandidateMediaProvenance | null;
   rights?: CandidateMediaRights | null;

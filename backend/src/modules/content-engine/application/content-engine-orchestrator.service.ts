@@ -14,6 +14,7 @@ import {
   assertNoRuleConflicts,
 } from '../domain/effective-rules';
 import { planCandidateMedia } from '../domain/candidate-media-planning';
+import { CandidateMediaEnrichmentService } from './candidate-media-enrichment.service';
 import { resolveEngineMediaFlags } from '../domain/engine-media-flags';
 import type { CandidateMediaSlot } from '../domain/candidate-media-plan';
 import {
@@ -71,6 +72,8 @@ export class ContentEngineOrchestratorService {
     private readonly planner?: GenerationPlannerService,
     @Optional()
     private readonly config?: ConfigService,
+    @Optional()
+    private readonly mediaEnrichment?: CandidateMediaEnrichmentService,
   ) {}
 
   async runNext(owner: string): Promise<{ jobId: string } | null> {
@@ -712,10 +715,11 @@ export class ContentEngineOrchestratorService {
    * resolved fail-closed, so a missing ConfigService plans nothing rather than
    * authorizing a call.
    *
-   * Nothing here contacts a provider yet. What it produces is the record a
-   * reviewer needs: which slots this target requires, and why each unfilled one
-   * is unfilled — which turns the readiness gate's "no plan entry" into a
-   * sentence that names the next action.
+   * Planning itself contacts nobody: it records which slots this target
+   * requires, and why each unfilled one is unfilled — which turns the readiness
+   * gate's "no plan entry" into a sentence that names the next action. When
+   * image discovery is switched on, the awaited image slots are then filled
+   * with a found image, still awaiting a person's review.
    */
   private async planMedia(job: LeasedJob): Promise<void> {
     const flags = resolveEngineMediaFlags(this.config);
@@ -734,10 +738,35 @@ export class ContentEngineOrchestratorService {
       // Ungoverned candidates are left byte-identical: a plan entry is itself
       // what makes a candidate media-governed, so writing one would gate a text
       // question's approval on media nobody requires.
-      if (!outcome.mediaPlan) continue;
-      await this.updateCandidate(job, String(row._id), {
-        mediaPlan: outcome.mediaPlan,
-      });
+      if (!outcome.governed) continue;
+      const stored = Array.isArray(row.mediaPlan)
+        ? (row.mediaPlan as unknown as CandidateMediaSlot[])
+        : [];
+      const changes: Record<string, unknown> = outcome.mediaPlan
+        ? { mediaPlan: outcome.mediaPlan }
+        : {};
+
+      // Finding the image. Off unless enrichment and a discovery provider are
+      // both switched on; and whatever it finds arrives unreviewed, so the
+      // candidate stays blocked on a person either way.
+      if (flags.enrichment && this.mediaEnrichment?.isAvailable()) {
+        // A search and a download per candidate is seconds, not milliseconds.
+        await this.jobs.renew({
+          jobId: job.jobId,
+          leaseEpoch: job.leaseEpoch,
+        });
+        const enriched = await this.mediaEnrichment.enrich({
+          mechanicKey: job.mechanicKey,
+          scopeKey: job.scopeKey,
+          authoring: row.authoring ?? null,
+          mediaPlan: outcome.mediaPlan ?? stored,
+          mediaReviewRevision: row.mediaReviewRevision ?? null,
+        });
+        Object.assign(changes, enriched.set);
+      }
+
+      if (Object.keys(changes).length === 0) continue;
+      await this.updateCandidate(job, String(row._id), changes);
     }
     await this.jobs.checkpoint({
       jobId: job.jobId,

@@ -55,6 +55,7 @@ import { LocalImageStorageService } from '../../common/uploads/local-image-stora
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
 import { CandidateMediaReviewService } from './application/candidate-media-review.service';
 import { MediaDiscoveryService } from './application/media-discovery.service';
+import { CandidateMediaEnrichmentService } from './application/candidate-media-enrichment.service';
 import {
   ENGINE_MEDIA_DISCOVERY_PROVIDERS,
   MediaDiscoveryProvider,
@@ -229,6 +230,7 @@ import {
           : [],
     },
     MediaDiscoveryService,
+    CandidateMediaEnrichmentService,
   ],
   exports: [
     EnginePricingService,
