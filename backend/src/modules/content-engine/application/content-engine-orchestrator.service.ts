@@ -761,6 +761,12 @@ export class ContentEngineOrchestratorService {
           authoring: row.authoring ?? null,
           mediaPlan: outcome.mediaPlan ?? stored,
           mediaReviewRevision: row.mediaReviewRevision ?? null,
+          check: {
+            jobId: job.jobId,
+            candidateId: String(row.candidateId ?? row._id),
+            question: questionTextOf(row.draft),
+            acceptedAnswers: acceptedAnswersOf(row.draft),
+          },
         });
         Object.assign(changes, enriched.set);
       }
@@ -797,4 +803,23 @@ export class ContentEngineOrchestratorService {
       throw new LeaseLostError(job.jobId, job.leaseEpoch);
     }
   }
+}
+
+/** The question as players will read it, for a model that is shown its image. */
+function questionTextOf(draft: unknown): string {
+  const prompt = (draft as { prompt?: unknown } | null | undefined)?.prompt;
+  if (typeof prompt === 'string') return prompt;
+  const localized = prompt as { ar?: unknown; en?: unknown } | undefined;
+  return [localized?.ar, localized?.en]
+    .filter((text): text is string => typeof text === 'string' && !!text.trim())
+    .join(' / ');
+}
+
+function acceptedAnswersOf(draft: unknown): string[] {
+  const answers = (
+    draft as { answerPayload?: { acceptedAnswers?: unknown } } | null
+  )?.answerPayload?.acceptedAnswers;
+  return Array.isArray(answers)
+    ? answers.filter((answer): answer is string => typeof answer === 'string')
+    : [];
 }

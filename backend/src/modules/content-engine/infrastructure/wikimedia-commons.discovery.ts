@@ -5,6 +5,9 @@ import {
   MediaDiscoverySearchOptions,
   plainText,
 } from '../domain/media-discovery';
+import { DEFAULT_DISCOVERY_USER_AGENT, discoveryJson } from './discovery-http';
+
+export { DEFAULT_DISCOVERY_USER_AGENT };
 
 export const WIKIMEDIA_COMMONS_PROVIDER = 'wikimedia-commons';
 const API_URL = 'https://commons.wikimedia.org/w/api.php';
@@ -16,14 +19,6 @@ const API_URL = 'https://commons.wikimedia.org/w/api.php';
  * live run asked for 1600 and one download in four came back HTTP 429.
  */
 const RENDITION_WIDTH = 1280;
-const DEFAULT_TIMEOUT_MS = 10_000;
-/**
- * Wikimedia asks every client to identify itself and blocks generic agents.
- * Overridable so a deployment can put its own contact address in it.
- */
-export const DEFAULT_DISCOVERY_USER_AGENT =
-  'Akwaan/1.0 (https://playakwaan.com; content engine media discovery)';
-
 /**
  * Originals we can end up with a usable raster of. SVG is listed because the
  * rendition Commons returns for it is a PNG; it is only accepted when that
@@ -125,6 +120,43 @@ export class WikimediaCommonsDiscoveryProvider implements MediaDiscoveryProvider
     return found.map((media, rank) => ({ ...media, rank }));
   }
 
+  /**
+   * The named files themselves, in the order asked for. For a caller that
+   * already knows which file it wants and needs its sizes and licence.
+   */
+  async lookup(
+    fileNames: string[],
+    phrase: string,
+    signal?: AbortSignal,
+  ): Promise<DiscoveredMedia[]> {
+    if (fileNames.length === 0) return [];
+    const url = new URL(API_URL);
+    url.search = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      formatversion: '2',
+      titles: fileNames.map((name) => `File:${name}`).join('|'),
+      prop: 'imageinfo',
+      iiprop: 'url|size|mime|extmetadata',
+      iiurlwidth: String(RENDITION_WIDTH),
+    }).toString();
+    const payload = await this.request(url, signal);
+    const pages = (payload as { query?: { pages?: unknown } })?.query?.pages;
+    if (!Array.isArray(pages)) return [];
+    const key = (name: string) => name.replace(/_/g, ' ').trim();
+    const found: DiscoveredMedia[] = [];
+    for (const name of fileNames) {
+      const page = (pages as CommonsPage[]).find(
+        (entry) =>
+          typeof entry?.title === 'string' &&
+          key(entry.title.replace(/^File:/i, '')) === key(name),
+      );
+      const media = page ? this.toMedia(page, phrase) : null;
+      if (media) found.push({ ...media, rank: found.length });
+    }
+    return found;
+  }
+
   private toMedia(page: CommonsPage, phrase: string): DiscoveredMedia | null {
     const info = page?.imageinfo?.[0];
     if (!info) return null;
@@ -193,62 +225,7 @@ export class WikimediaCommonsDiscoveryProvider implements MediaDiscoveryProvider
     };
   }
 
-  private async request(url: URL, outer?: AbortSignal): Promise<unknown> {
-    const fetchImpl = this.options.fetchImpl ?? fetch;
-    const controller = new AbortController();
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-    const forward = () => controller.abort();
-    outer?.addEventListener('abort', forward, { once: true });
-    if (outer?.aborted) controller.abort();
-
-    try {
-      const response = await fetchImpl(url.toString(), {
-        headers: {
-          accept: 'application/json',
-          'user-agent': this.options.userAgent ?? DEFAULT_DISCOVERY_USER_AGENT,
-        },
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        throw new MediaDiscoveryError(
-          'DISCOVERY_HTTP_STATUS',
-          `Wikimedia Commons responded ${response.status}`,
-          response.status,
-        );
-      }
-      const payload = (await response.json().catch(() => {
-        throw new MediaDiscoveryError(
-          'DISCOVERY_BAD_RESPONSE',
-          'Wikimedia Commons did not return JSON',
-        );
-      })) as { error?: { code?: unknown; info?: unknown } };
-      // MediaWiki reports its own errors with HTTP 200.
-      if (payload?.error) {
-        throw new MediaDiscoveryError(
-          'DISCOVERY_BAD_RESPONSE',
-          `Wikimedia Commons API error: ${String(payload.error.code ?? 'unknown')}`,
-        );
-      }
-      return payload;
-    } catch (error) {
-      if (error instanceof MediaDiscoveryError) throw error;
-      if (timedOut) {
-        throw new MediaDiscoveryError(
-          'DISCOVERY_TIMEOUT',
-          'Wikimedia Commons did not answer in time',
-        );
-      }
-      throw new MediaDiscoveryError(
-        'DISCOVERY_FAILED',
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      clearTimeout(timer);
-      outer?.removeEventListener('abort', forward);
-    }
+  private request(url: URL, outer?: AbortSignal): Promise<unknown> {
+    return discoveryJson(url, 'Wikimedia Commons', this.options, outer);
   }
 }

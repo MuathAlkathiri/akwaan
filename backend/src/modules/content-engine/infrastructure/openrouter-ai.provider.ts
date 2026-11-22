@@ -339,7 +339,18 @@ export class OpenRouterAiProvider implements AiProvider {
         ...(request.systemInstruction
           ? [{ role: 'system', content: request.systemInstruction }]
           : []),
-        { role: 'user', content: request.prompt },
+        {
+          role: 'user',
+          content: request.images?.length
+            ? [
+                { type: 'text', text: request.prompt },
+                ...request.images.map((url) => ({
+                  type: 'image_url',
+                  image_url: { url, detail: request.imageDetail ?? 'low' },
+                })),
+              ]
+            : request.prompt,
+        },
       ],
       // Temperature is omitted for models that do not accept it.
       //

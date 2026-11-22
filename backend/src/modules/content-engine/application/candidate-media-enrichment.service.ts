@@ -1,17 +1,29 @@
-import { Injectable } from '@nestjs/common';
-import { mediaIntentOf } from '../domain/candidate-media-intent';
+import { createHash } from 'node:crypto';
+import { Injectable, Optional } from '@nestjs/common';
+import {
+  CandidateMediaIntent,
+  mediaIntentOf,
+} from '../domain/candidate-media-intent';
 import {
   CandidateMediaSlot,
   CandidateMediaSuggestion,
+  MediaVisualCheck,
   replaceMediaSlotAsset,
 } from '../domain/candidate-media-plan';
-import { DiscoveredMedia, licenceNoteOf } from '../domain/media-discovery';
+import {
+  DiscoveredMedia,
+  licenceNoteOf,
+  titleNamesSubject,
+} from '../domain/media-discovery';
 import { resolveMediaRequirements } from '../domain/media-requirements';
 import { EngineImageIngestionService } from '../infrastructure/engine-image-ingestion.service';
 import { MediaDiscoveryService } from './media-discovery.service';
+import { MediaVisualCheckService } from './media-visual-check.service';
 
 /** One image attached and up to three more to choose from. */
 export const ENRICHMENT_DISCOVERY_LIMIT = 4;
+/** Web results offered when nothing trustworthy was found. One paid request. */
+const WEB_SUGGESTION_LIMIT = 6;
 /** Between download attempts, so a batch is never a burst at one host. */
 const DEFAULT_PAUSE_MS = 1_000;
 
@@ -21,6 +33,16 @@ export interface MediaEnrichmentInput {
   authoring: unknown;
   mediaPlan: readonly CandidateMediaSlot[];
   mediaReviewRevision?: number | null;
+  /**
+   * What is needed to look at an image for the answer written on it. Without
+   * it (or with the check switched off) images are attached unlooked-at.
+   */
+  check?: {
+    jobId: string;
+    candidateId: string;
+    question: string;
+    acceptedAnswers: string[];
+  };
 }
 
 export interface MediaEnrichmentOutcome {
@@ -59,6 +81,7 @@ export class CandidateMediaEnrichmentService {
   constructor(
     private readonly discovery: MediaDiscoveryService,
     private readonly ingestion: EngineImageIngestionService,
+    @Optional() private readonly visual?: MediaVisualCheckService,
   ) {}
 
   /** False when no discovery provider is switched on. */
@@ -112,15 +135,75 @@ export class CandidateMediaEnrichmentService {
         continue;
       }
 
+      // What a model saw written in each image it was shown. Empty when the
+      // check is off; a missing entry always means "nobody looked".
+      const looks = new Map<DiscoveredMedia, MediaVisualCheck>();
+      const look = async (
+        media: DiscoveredMedia,
+      ): Promise<MediaVisualCheck | undefined> => {
+        if (!input.check || !this.visual?.isAvailable()) return undefined;
+        const known = looks.get(media);
+        if (known) return known;
+        const imageUrl = media.previewUrl ?? media.downloadUrl;
+        const verdict = await this.visual.check({
+          jobId: input.check.jobId,
+          reservationKey: `${input.check.candidateId}:${requirement.slotKey}:${createHash(
+            'sha256',
+          )
+            .update(imageUrl)
+            .digest('hex')
+            .slice(0, 16)}`,
+          imageUrl,
+          question: input.check.question,
+          acceptedAnswers: input.check.acceptedAnswers,
+          mustNotShow: intent.mustNotShow,
+        });
+        looks.set(media, verdict);
+        return verdict;
+      };
+      const suggest = async (
+        offered: DiscoveredMedia[],
+      ): Promise<CandidateMediaSuggestion[]> => {
+        // One at a time: each look is a budget reservation on the same job,
+        // and concurrent reservations contend for the same ledger row.
+        for (const media of offered) await look(media);
+        return offered.map((media) => {
+          const seen = looks.get(media);
+          return {
+            ...toSuggestion(media),
+            ...(seen ? { visualCheck: seen } : {}),
+          };
+        });
+      };
+      /** Nothing attached: record why, and offer everything that was found. */
+      const offer = async (
+        failureReason: string,
+        offered: DiscoveredMedia[],
+      ) => {
+        plan[index] = {
+          ...slot,
+          failureReason,
+          suggestions: await suggest(offered),
+        };
+        touched = true;
+        unresolved.push(requirement.slotKey);
+      };
+
       let found: DiscoveredMedia[];
       try {
         const result = await this.discovery.discover({
           subject: intent.subject,
           alternatives: intent.subjectAr ? [intent.subjectAr] : [],
+          kind: intent.kind,
           limit: ENRICHMENT_DISCOVERY_LIMIT,
         });
         found = result.candidates;
         if (found.length === 0) {
+          const fromWeb = await this.webSearch(intent);
+          if (fromWeb.length > 0) {
+            await offer('MEDIA_DISCOVERY_NO_CONFIDENT_MATCH', fromWeb);
+            continue;
+          }
           // "Nobody could be asked" and "nothing exists" need different
           // actions from a reviewer, so they are different reasons.
           const everyProviderFailed =
@@ -138,11 +221,39 @@ export class CandidateMediaEnrichmentService {
         continue;
       }
 
-      let attached: number | null = null;
+      // A mark is one specific drawing. A file named after the club is far
+      // more often a match photo or a chart than its crest, so for a mark only
+      // the catalogue's own choice counts.
+      const nameIsEnough = intent.kind !== 'club-or-brand-mark';
+      // Only a file tied to the subject may be attached unseen. The rest stay
+      // on the slot as suggestions for the reviewer to choose from.
+      const confident = found.filter(
+        (media) =>
+          media.subjectVerified === true ||
+          (nameIsEnough &&
+            titleNamesSubject(media.title, [intent.subject, intent.subjectAr])),
+      );
+      if (confident.length === 0) {
+        await offer('MEDIA_DISCOVERY_NO_CONFIDENT_MATCH', [
+          ...found,
+          ...(await this.webSearch(intent)),
+        ]);
+        continue;
+      }
+      const others = found.filter((media) => !confident.includes(media));
+
+      let attached: DiscoveredMedia | null = null;
       let lastFailure = 'MEDIA_RETRIEVAL_FAILED';
-      for (let attempt = 0; attempt < found.length; attempt += 1) {
-        if (attempt > 0) await this.pause(DEFAULT_PAUSE_MS);
-        const media = found[attempt];
+      let downloads = 0;
+      for (const media of confident) {
+        // The right subject with its name written across it is a spoiled
+        // question; it stays a suggestion, flagged, and the next one is tried.
+        if ((await look(media))?.status === 'leaks') {
+          lastFailure = 'MEDIA_ANSWER_VISIBLE';
+          continue;
+        }
+        if (downloads > 0) await this.pause(DEFAULT_PAUSE_MS);
+        downloads += 1;
         const ingested = await this.ingestion.ingestRemote({
           url: media.downloadUrl,
           provenance: {
@@ -172,14 +283,14 @@ export class CandidateMediaEnrichmentService {
             rights: ingested.rights,
           },
         );
+        const suggestions = await suggest([
+          ...confident.filter((other) => other !== media),
+          ...others,
+        ]);
+        const seen = looks.get(media);
         plan = next.mediaPlan.map((entry) =>
           entry.slotKey === requirement.slotKey
-            ? {
-                ...entry,
-                suggestions: found
-                  .filter((_, other) => other !== attempt)
-                  .map(toSuggestion),
-              }
+            ? { ...entry, suggestions, ...(seen ? { visualCheck: seen } : {}) }
             : entry,
         );
         revision = next.mediaReviewRevision;
@@ -196,12 +307,21 @@ export class CandidateMediaEnrichmentService {
             },
           ],
         };
-        attached = attempt;
+        attached = media;
         touched = true;
         resolved.push(requirement.slotKey);
         break;
       }
-      if (attached === null) wait(lastFailure);
+      if (attached === null) {
+        if (lastFailure === 'MEDIA_ANSWER_VISIBLE') {
+          await offer('MEDIA_ANSWER_VISIBLE_IN_ALL', [
+            ...found,
+            ...(await this.webSearch(intent)),
+          ]);
+        } else {
+          wait(lastFailure);
+        }
+      }
     }
 
     if (!touched) return { set: {}, resolved, unresolved };
@@ -215,6 +335,27 @@ export class CandidateMediaEnrichmentService {
       unresolved,
     };
   }
+
+  /**
+   * Last resort, for the reviewer's eyes only: whatever a general web search
+   * shows. Never attached from here, and a failure is simply no suggestions.
+   */
+  private async webSearch(
+    intent: CandidateMediaIntent,
+  ): Promise<DiscoveredMedia[]> {
+    if (!this.discovery.hasFallback()) return [];
+    try {
+      const result = await this.discovery.discover({
+        subject: intent.subject,
+        kind: intent.kind,
+        tier: 'fallback',
+        limit: WEB_SUGGESTION_LIMIT,
+      });
+      return result.candidates;
+    } catch {
+      return [];
+    }
+  }
 }
 
 const toSuggestion = (media: DiscoveredMedia): CandidateMediaSuggestion => ({
@@ -225,4 +366,5 @@ const toSuggestion = (media: DiscoveredMedia): CandidateMediaSuggestion => ({
   width: media.width,
   height: media.height,
   licenceNote: licenceNoteOf(media),
+  ...(media.previewUrl ? { previewUrl: media.previewUrl } : {}),
 });

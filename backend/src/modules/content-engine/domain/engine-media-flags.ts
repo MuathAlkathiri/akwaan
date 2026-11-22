@@ -1,7 +1,10 @@
 import {
   CONTENT_ENGINE_ENABLED,
   ENGINE_IMAGE_GENERATION_ENABLED,
+  ENGINE_MEDIA_DISCOVERY_BRAVE_API_KEY,
   ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED,
+  ENGINE_MEDIA_DISCOVERY_WIKIDATA_ENABLED,
+  ENGINE_MEDIA_VISION_CHECK_ENABLED,
   ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED,
   ENGINE_MEDIA_ENRICHMENT_ENABLED,
 } from './content-engine.constants';
@@ -59,5 +62,36 @@ export function commonsDiscoveryEnabled(
   return (
     resolveEngineMediaFlags(config).enrichment &&
     truthy(config, ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED)
+  );
+}
+
+/** Wikidata discovery, under the same three switches as Commons discovery. */
+export function wikidataDiscoveryEnabled(
+  config: FlagSource | undefined,
+): boolean {
+  return (
+    resolveEngineMediaFlags(config).enrichment &&
+    truthy(config, ENGINE_MEDIA_DISCOVERY_WIKIDATA_ENABLED)
+  );
+}
+
+/** The Brave key, only while enrichment is on; null switches the provider off. */
+export function braveDiscoveryKey(
+  config: FlagSource | undefined,
+): string | null {
+  if (!resolveEngineMediaFlags(config).enrichment) return null;
+  const key = String(
+    config?.get<string>(ENGINE_MEDIA_DISCOVERY_BRAVE_API_KEY) ?? '',
+  ).trim();
+  return key || null;
+}
+
+/** The answer-visibility check, an enrichment step like discovery itself. */
+export function mediaVisionCheckEnabled(
+  config: FlagSource | undefined,
+): boolean {
+  return (
+    resolveEngineMediaFlags(config).enrichment &&
+    truthy(config, ENGINE_MEDIA_VISION_CHECK_ENABLED)
   );
 }

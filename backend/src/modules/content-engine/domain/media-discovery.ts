@@ -25,6 +25,10 @@ export interface MediaDiscoveryQuery {
   subject: string;
   /** Other phrases, tried in order only while results are still short. */
   alternatives?: string[];
+  /** What sort of thing the subject is, where the caller knows. */
+  kind?: string;
+  /** Which providers to ask. Defaults to the primary ones. */
+  tier?: MediaDiscoveryTier;
   limit?: number;
   minShortSide?: number;
 }
@@ -59,6 +63,14 @@ export interface DiscoveredMedia {
   /** Plain text; provider markup is stripped. */
   author: string | null;
   credit: string | null;
+  /**
+   * True when the provider reached this file through the subject's own
+   * catalogue entry rather than by matching words. Evidence about *what the
+   * picture shows*; it says nothing about rights.
+   */
+  subjectVerified?: boolean;
+  /** A small copy for showing in a list, where the provider has one. */
+  previewUrl?: string;
 }
 
 export type MediaDiscoveryErrorCode =
@@ -81,12 +93,22 @@ export class MediaDiscoveryError extends Error {
 
 export interface MediaDiscoverySearchOptions {
   limit: number;
+  kind?: string;
   signal?: AbortSignal;
 }
+
+/**
+ * `primary` providers state a licence and are asked first. `fallback` ones find
+ * more but say nothing about rights, so they are asked only when the primary
+ * ones came up empty, and their results are only ever shown to a person.
+ */
+export type MediaDiscoveryTier = 'primary' | 'fallback';
 
 /** One place images can be found. Stateless; safe to call concurrently. */
 export interface MediaDiscoveryProvider {
   readonly name: string;
+  /** Absent means `primary`. */
+  readonly tier?: MediaDiscoveryTier;
   search(
     phrase: string,
     options: MediaDiscoverySearchOptions,
@@ -175,4 +197,51 @@ export function discoveryLimit(limit: number | undefined): number {
     );
   }
   return Math.min(limit, MEDIA_DISCOVERY_MAX_LIMIT);
+}
+
+/** Words that describe what a subject is, not which one it is. */
+const SUBJECT_NOISE = new Set([
+  'fc',
+  'afc',
+  'cf',
+  'sc',
+  'the',
+  'of',
+  'club',
+  'football',
+  'نادي',
+  'ملعب',
+  'استاد',
+]);
+
+/** Comparable words of a name: no accents, no punctuation, no bracketed gloss. */
+export function subjectTokens(text: string): string[] {
+  return text
+    .replace(/\([^)]*\)/g, ' ')
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase()
+    .replace(/\b([a-z])\.(?=[a-z]\b)/g, '$1')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 1 && !SUBJECT_NOISE.has(token));
+}
+
+/**
+ * Whether a found file is named after the subject, in any of its spellings.
+ *
+ * Full-text search also matches descriptions and categories, so a painting of
+ * foxes kept in a Leicester museum is a perfectly good hit for "Leicester
+ * City F.C.". A file's own name is the one field its uploader wrote to say
+ * what the picture shows, so it is the only evidence trusted enough to attach
+ * a picture without a person looking first.
+ */
+export function titleNamesSubject(
+  title: string,
+  subjects: ReadonlyArray<string | undefined>,
+): boolean {
+  const inTitle = new Set(subjectTokens(title));
+  return subjects.some((subject) => {
+    const wanted = subject ? subjectTokens(subject) : [];
+    return wanted.length > 0 && wanted.every((token) => inTitle.has(token));
+  });
 }

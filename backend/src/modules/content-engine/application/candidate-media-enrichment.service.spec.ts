@@ -8,11 +8,11 @@ import { EngineImageIngestionResult } from '../infrastructure/engine-image-inges
 import { ContentEngineOrchestratorService } from './content-engine-orchestrator.service';
 import { CandidateMediaEnrichmentService } from './candidate-media-enrichment.service';
 
-const media = (name: string): DiscoveredMedia => ({
+const media = (name: string, title?: string): DiscoveredMedia => ({
   provider: 'wikimedia-commons',
   rank: 0,
   matchedPhrase: 'Arsène Wenger',
-  title: `${name}.jpg`,
+  title: title ?? `Arsène Wenger ${name}.jpg`,
   downloadUrl: `https://img.example/${name}.jpg`,
   width: 1280,
   height: 960,
@@ -79,33 +79,53 @@ const build = (options: {
   discover?: () => Promise<MediaDiscoveryResult>;
   ingest?: (url: string) => EngineImageIngestionResult;
   available?: boolean;
+  web?: DiscoveredMedia[];
+  /** Verdict per image title; presence switches the visual check on. */
+  looks?: Record<string, 'clear' | 'leaks' | 'unchecked'>;
 }) => {
-  const discover = jest.fn(
+  const primary =
     options.discover ??
-      (async () => ({
-        candidates: options.found ?? [media('a'), media('b'), media('c')],
-        reports: [
-          {
-            provider: 'wikimedia-commons',
-            phrase: 'Arsène Wenger',
-            status: 'ok' as const,
-            returned: 3,
-          },
-        ],
-      })),
+    (async () => ({
+      candidates: options.found ?? [media('a'), media('b'), media('c')],
+      reports: [
+        {
+          provider: 'wikimedia-commons',
+          phrase: 'Arsène Wenger',
+          status: 'ok' as const,
+          returned: 3,
+        },
+      ],
+    }));
+  const discover = jest.fn(async (query?: { tier?: string }) =>
+    query?.tier === 'fallback'
+      ? { candidates: options.web ?? [], reports: [] }
+      : primary(),
   );
   const ingestRemote = jest.fn(async (input: { url: string }) =>
     (options.ingest ?? ((url) => stored(url.split('/').pop()!.split('.')[0])))(
       input.url,
     ),
   );
+  const check = jest.fn(async (request: { imageUrl: string }) => {
+    const name = request.imageUrl.split('/').pop()!.split('.')[0];
+    const status = options.looks?.[name] ?? 'clear';
+    return status === 'leaks'
+      ? { status, evidence: `reads "${name}"` }
+      : { status };
+  });
+  const visual = { isAvailable: () => options.looks !== undefined, check };
   const service = new CandidateMediaEnrichmentService(
-    { discover, isAvailable: () => options.available ?? true } as never,
+    {
+      discover,
+      isAvailable: () => options.available ?? true,
+      hasFallback: () => options.web !== undefined,
+    } as never,
     { ingestRemote } as never,
+    visual as never,
   );
   const pause = jest.fn(async () => undefined);
   service.pause = pause;
-  return { service, discover, ingestRemote, pause };
+  return { service, discover, ingestRemote, pause, check };
 };
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -124,6 +144,7 @@ describe('CandidateMediaEnrichmentService', () => {
     expect(discover).toHaveBeenCalledWith({
       subject: 'Arsène Wenger',
       alternatives: ['أرسين فينغر'],
+      kind: 'person',
       limit: 4,
     });
   });
@@ -158,7 +179,7 @@ describe('CandidateMediaEnrichmentService', () => {
     ]);
     expect(slot.suggestions?.[0]).toEqual({
       provider: 'wikimedia-commons',
-      title: 'b.jpg',
+      title: 'Arsène Wenger b.jpg',
       downloadUrl: 'https://img.example/b.jpg',
       pageUrl: 'https://commons.example/File:b.jpg',
       width: 1280,
@@ -166,6 +187,195 @@ describe('CandidateMediaEnrichmentService', () => {
       licenceNote: expect.stringContaining(
         'https://commons.example/File:b.jpg',
       ),
+    });
+  });
+
+  it('does not attach a file that is not named after the subject', async () => {
+    const { service, ingestRemote } = build({
+      found: [media('foxes', 'Common foxes in the snow.jpg')],
+    });
+    const outcome = await service.enrich(input());
+    expect(ingestRemote).not.toHaveBeenCalled();
+    expect(outcome.resolved).toEqual([]);
+    expect(outcome.unresolved).toEqual(['item-image']);
+    const slot = (outcome.set.mediaPlan as any[])[0];
+    expect(slot.failureReason).toBe('MEDIA_DISCOVERY_NO_CONFIDENT_MATCH');
+    expect(slot.suggestions.map((s: any) => s.title)).toEqual([
+      'Common foxes in the snow.jpg',
+    ]);
+    expect(outcome.set['draft.media']).toBeUndefined();
+  });
+
+  it('skips an unrelated first result and attaches the one named after the subject', async () => {
+    const { service, ingestRemote } = build({
+      found: [
+        media('foxes', 'Common foxes in the snow.jpg'),
+        media('a', 'Arsene Wenger 2012.jpg'),
+      ],
+    });
+    const outcome = await service.enrich(input());
+    expect(ingestRemote).toHaveBeenCalledTimes(1);
+    expect(ingestRemote.mock.calls[0][0].url).toBe('https://img.example/a.jpg');
+    const slot = (outcome.set.mediaPlan as any[])[0];
+    expect(slot.suggestions.map((s: any) => s.title)).toEqual([
+      'Common foxes in the snow.jpg',
+    ]);
+  });
+
+  it("attaches a file its subject's catalogue entry names, whatever it is called", async () => {
+    const { service, ingestRemote } = build({
+      found: [{ ...media('a', 'IMG 4471.jpg'), subjectVerified: true }],
+    });
+    const outcome = await service.enrich(input());
+    expect(ingestRemote).toHaveBeenCalledTimes(1);
+    expect(outcome.resolved).toEqual(['item-image']);
+  });
+
+  it('for a club mark, a file merely named after the club is only a suggestion', async () => {
+    const { service, ingestRemote } = build({
+      found: [media('m', 'Peterborough United v Leicester City.jpg')],
+    });
+    const outcome = await service.enrich(
+      input({
+        authoring: {
+          mediaIntent: {
+            slotKey: 'item-image',
+            subject: 'Leicester City F.C.',
+            kind: 'club-or-brand-mark',
+            mustNotShow: [],
+          },
+        },
+      }),
+    );
+    expect(ingestRemote).not.toHaveBeenCalled();
+    const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+    expect(slot.failureReason).toBe('MEDIA_DISCOVERY_NO_CONFIDENT_MATCH');
+    expect(slot.suggestions).toHaveLength(1);
+  });
+
+  describe('web search as a last resort', () => {
+    const web = [
+      {
+        ...media('w', 'Leicester City logo'),
+        provider: 'brave-search',
+        previewUrl: 'https://imgs.example/thumb-w.jpg',
+      },
+    ];
+
+    it('is not asked when a trusted image was found', async () => {
+      const { service, discover } = build({ web });
+      await service.enrich(input());
+      expect(discover).toHaveBeenCalledTimes(1);
+    });
+
+    it('adds web results as suggestions, and attaches none of them', async () => {
+      const { service, discover, ingestRemote } = build({
+        found: [media('foxes', 'Common foxes in the snow.jpg')],
+        web,
+      });
+      const outcome = await service.enrich(input());
+      expect(discover).toHaveBeenLastCalledWith({
+        subject: 'Arsène Wenger',
+        kind: 'person',
+        tier: 'fallback',
+        limit: 6,
+      });
+      expect(ingestRemote).not.toHaveBeenCalled();
+      expect(outcome.resolved).toEqual([]);
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.suggestions?.map((s) => s.provider)).toEqual([
+        'wikimedia-commons',
+        'brave-search',
+      ]);
+      expect(slot.suggestions?.[1].previewUrl).toBe(
+        'https://imgs.example/thumb-w.jpg',
+      );
+    });
+
+    it('offers web results even when the licensed sources found nothing at all', async () => {
+      const { service } = build({ found: [], web });
+      const outcome = await service.enrich(input());
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.failureReason).toBe('MEDIA_DISCOVERY_NO_CONFIDENT_MATCH');
+      expect(slot.suggestions).toHaveLength(1);
+    });
+  });
+
+  describe('looking at images for the answer written on them', () => {
+    const checked = (over: Record<string, unknown> = {}) =>
+      input({
+        check: {
+          jobId: 'job-1',
+          candidateId: 'cand-1',
+          question: 'من هذا المدرب؟',
+          acceptedAnswers: ['أرسين فينغر'],
+        },
+        ...over,
+      });
+
+    it('does not look when the check is off or the candidate gave no question', async () => {
+      const off = build({});
+      await off.service.enrich(checked());
+      expect(off.check).not.toHaveBeenCalled();
+
+      const noQuestion = build({ looks: {} });
+      await noQuestion.service.enrich(input());
+      expect(noQuestion.check).not.toHaveBeenCalled();
+    });
+
+    it('skips an image that shows the answer and attaches the next one', async () => {
+      const { service, ingestRemote, check } = build({ looks: { a: 'leaks' } });
+      const outcome = await service.enrich(checked());
+      expect(check.mock.calls[0][0]).toMatchObject({
+        jobId: 'job-1',
+        imageUrl: 'https://img.example/a.jpg',
+        question: 'من هذا المدرب؟',
+        acceptedAnswers: ['أرسين فينغر'],
+        mustNotShow: [],
+      });
+      // The leaking image was never downloaded.
+      expect(ingestRemote.mock.calls.map(([call]) => call.url)).toEqual([
+        'https://img.example/b.jpg',
+      ]);
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.visualCheck).toEqual({ status: 'clear' });
+      expect(
+        slot.suggestions?.map((s) => [s.title, s.visualCheck?.status]),
+      ).toEqual([
+        ['Arsène Wenger a.jpg', 'leaks'],
+        ['Arsène Wenger c.jpg', 'clear'],
+      ]);
+      expect(slot.suggestions?.[0].visualCheck?.evidence).toBe('reads "a"');
+    });
+
+    it('attaches nothing when every image shows the answer, and says why', async () => {
+      const { service, ingestRemote } = build({
+        looks: { a: 'leaks', b: 'leaks', c: 'leaks' },
+      });
+      const outcome = await service.enrich(checked());
+      expect(ingestRemote).not.toHaveBeenCalled();
+      expect(outcome.resolved).toEqual([]);
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.failureReason).toBe('MEDIA_ANSWER_VISIBLE_IN_ALL');
+      expect(slot.suggestions).toHaveLength(3);
+    });
+
+    it('treats an image nobody could look at as attachable, and records that nobody looked', async () => {
+      const { service } = build({ looks: { a: 'unchecked' } });
+      const outcome = await service.enrich(checked());
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.asset?.url).toContain('engine-a');
+      expect(slot.visualCheck).toEqual({ status: 'unchecked' });
+    });
+
+    it('uses a different ledger key for each image', async () => {
+      const { service, check } = build({ looks: {} });
+      await service.enrich(checked());
+      const keys = check.mock.calls.map(
+        ([call]) => (call as any).reservationKey,
+      );
+      expect(new Set(keys).size).toBe(keys.length);
+      expect(keys[0]).toMatch(/^cand-1:item-image:[0-9a-f]{16}$/);
     });
   });
 
@@ -219,7 +429,10 @@ describe('CandidateMediaEnrichmentService', () => {
       '/uploads/world-content/content-items/engine-b.jpg',
     );
     // The one that failed is still offered; the one attached is not.
-    expect(slot.suggestions?.map((s) => s.title)).toEqual(['a.jpg', 'c.jpg']);
+    expect(slot.suggestions?.map((s) => s.title)).toEqual([
+      'Arsène Wenger a.jpg',
+      'Arsène Wenger c.jpg',
+    ]);
   });
 
   describe('leaves the slot waiting, with the reason, and never throws', () => {

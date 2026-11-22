@@ -119,6 +119,19 @@ export interface CandidateMediaSuggestion {
   width: number;
   height: number;
   licenceNote: string;
+  previewUrl?: string;
+  visualCheck?: MediaVisualCheck;
+}
+
+/**
+ * What a model saw when it looked at an image for the answer written on it.
+ * `unchecked` means nobody looked (the check is off, or the call failed) —
+ * never that the image is fine. Advisory: a person still reviews every image.
+ */
+export interface MediaVisualCheck {
+  status: 'clear' | 'leaks' | 'unchecked';
+  /** The text seen in the image, or why it gives the answer away. */
+  evidence?: string;
 }
 
 export interface CandidateMediaSlot {
@@ -126,6 +139,8 @@ export interface CandidateMediaSlot {
   purpose: MediaPurpose;
   required: boolean;
   status: CandidateMediaSlotStatus;
+  /** The answer-visibility check of `asset`, when it came from discovery. */
+  visualCheck?: MediaVisualCheck | null;
   /** Alternatives to `asset`, when the asset came from discovery. */
   suggestions?: CandidateMediaSuggestion[] | null;
   asset?: CandidateMediaAsset | null;

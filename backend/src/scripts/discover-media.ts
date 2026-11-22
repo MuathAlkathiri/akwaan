@@ -28,6 +28,7 @@ import {
   MediaDiscoveryError,
 } from '../modules/content-engine/domain/media-discovery';
 import { WikimediaCommonsDiscoveryProvider } from '../modules/content-engine/infrastructure/wikimedia-commons.discovery';
+import { WikidataDiscoveryProvider } from '../modules/content-engine/infrastructure/wikidata.discovery';
 import {
   ImageDownloadService,
   ImageFetchError,
@@ -48,6 +49,7 @@ interface Arguments {
   subject: string;
   alternatives: string[];
   limit?: number;
+  kind?: string;
   download: boolean;
   out: string;
   json: boolean;
@@ -60,10 +62,12 @@ export function parseArguments(argv: string[]): Arguments {
       .map((argument) => argument.slice(flag.length + 1));
   const positional = argv.filter((argument) => !argument.startsWith('--'));
   const limit = value('--limit')[0];
+  const kind = value('--kind')[0];
   return {
     subject: positional.join(' ').trim(),
     alternatives: value('--alt'),
     ...(limit !== undefined ? { limit: Number(limit) } : {}),
+    ...(kind ? { kind } : {}),
     download: argv.includes('--download'),
     out: value('--out')[0] ? resolve(value('--out')[0]) : DEFAULT_OUT,
     json: argv.includes('--json'),
@@ -135,11 +139,12 @@ const cell = (text: string, width: number) =>
 
 function printTable(found: DiscoveredMedia[]): void {
   console.log(
-    `${cell('#', 3)}${cell('SIZE', 12)}${cell('LICENCE', 18)}${cell('AUTHOR', 26)}PAGE`,
+    `${cell('#', 3)}${cell('SOURCE', 20)}${cell('SIZE', 12)}${cell('LICENCE', 18)}${cell('AUTHOR', 26)}PAGE`,
   );
   found.forEach((media, index) => {
     console.log(
-      `${cell(String(index + 1), 3)}${cell(`${media.width}x${media.height}`, 12)}` +
+      `${cell(String(index + 1), 3)}${cell(media.provider + (media.subjectVerified ? ' *' : ''), 20)}` +
+        `${cell(`${media.width}x${media.height}`, 12)}` +
         `${cell(media.licence.name ?? 'not stated', 18)}` +
         `${cell(media.author ?? 'not stated', 26)}${media.pageUrl}`,
     );
@@ -150,12 +155,15 @@ async function main(): Promise<number> {
   const args = parseArguments(process.argv.slice(2));
   if (!args.subject) {
     console.error(
-      'usage: discover-media.ts "<subject>" [--alt="<other name>"]... [--limit=N] [--download] [--out=<dir>] [--json]',
+      'usage: discover-media.ts "<subject>" [--alt="<other name>"]... [--kind=person|place|club-or-brand-mark] [--limit=N] [--download] [--out=<dir>] [--json]',
     );
     return 2;
   }
 
   const service = new MediaDiscoveryService([
+    new WikidataDiscoveryProvider({
+      userAgent: process.env.ENGINE_MEDIA_DISCOVERY_USER_AGENT?.trim(),
+    }),
     new WikimediaCommonsDiscoveryProvider({
       userAgent: process.env.ENGINE_MEDIA_DISCOVERY_USER_AGENT?.trim(),
     }),
@@ -167,6 +175,7 @@ async function main(): Promise<number> {
       subject: args.subject,
       alternatives: args.alternatives,
       ...(args.limit !== undefined ? { limit: args.limit } : {}),
+      ...(args.kind ? { kind: args.kind } : {}),
     });
   } catch (error) {
     console.error(

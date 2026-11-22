@@ -39,6 +39,11 @@ export class MediaDiscoveryService {
     return this.providers.length > 0;
   }
 
+  /** Whether a rights-unknown web search is configured as a last resort. */
+  hasFallback(): boolean {
+    return this.providers.some((provider) => provider.tier === 'fallback');
+  }
+
   providerNames(): string[] {
     return this.providers.map((provider) => provider.name);
   }
@@ -61,7 +66,9 @@ export class MediaDiscoveryService {
     const seen = new Set<string>();
     const reports: MediaDiscoveryReport[] = [];
 
+    const tier = query.tier ?? 'primary';
     for (const provider of this.providers) {
+      if ((provider.tier ?? 'primary') !== tier) continue;
       for (const phrase of phrases) {
         if (candidates.length >= limit) break;
         let found: DiscoveredMedia[];
@@ -70,6 +77,7 @@ export class MediaDiscoveryService {
             // Ask for more than is needed: some results are too small or are
             // the same file found again under another phrase.
             limit: Math.min(limit * 2, 50),
+            ...(query.kind ? { kind: query.kind } : {}),
             signal: options.signal,
           });
         } catch (error) {
