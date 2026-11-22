@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ContentExposureRepository } from '../persistence/content-exposure.repository';
+import { WorldRemainingService } from './world-remaining.service';
 import { MatchDomainError } from '../domain/match.errors';
 
 /**
@@ -37,7 +38,10 @@ export interface ContentExposureScope {
 export class ContentExposureService {
   private readonly logger = new Logger(ContentExposureService.name);
 
-  constructor(private readonly exposures: ContentExposureRepository) {}
+  constructor(
+    private readonly exposures: ContentExposureRepository,
+    private readonly worldRemaining: WorldRemainingService,
+  ) {}
 
   /**
    * The selectable subset of a candidate pool.
@@ -104,6 +108,13 @@ export class ContentExposureService {
         items: contentItemIds.length,
         written,
       });
+      // The screen's count of what a World still owes this account. Kept here
+      // because this is the moment the truth changes; it swallows its own
+      // failures, so a summary can never cost a player their exposure record.
+      await this.worldRemaining.noteExposed(
+        scope.ownerAccountId,
+        contentItemIds,
+      );
     }
     return written;
   }
