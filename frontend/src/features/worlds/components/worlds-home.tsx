@@ -306,8 +306,13 @@ function AkwaanHero() {
           <b className="font-bold text-[hsl(var(--brand-navy))]">
             جوال لكل لاعب
           </b>
-          ، و
-          <b className="font-bold text-[hsl(var(--brand-navy))]">فريق ضد فريق</b>
+          ،{" "}
+          {/* The waw is inside the bold, not beside it. In Arabic it attaches
+              to the word it joins — split out, it renders at the paragraph's
+              weight and detaches from «فريق», which reads as a typo. */}
+          <b className="font-bold text-[hsl(var(--brand-navy))]">
+            وفريق ضد فريق
+          </b>
           .
         </p>
 
@@ -335,7 +340,11 @@ function AkwaanHero() {
           className="block w-full -rotate-[5deg] select-none"
           draggable={false}
         />
-        <FacePlanet tone="purple" className="absolute bottom-0 right-[2%]" />
+        <FacePlanet
+          tone="purple"
+          orbited
+          className="absolute bottom-0 right-[2%]"
+        />
         <FacePlanet tone="gold" className="absolute left-[4%] top-0" />
         <Spark
           className="absolute right-[8%] top-5 size-[1.875rem]"
@@ -358,14 +367,46 @@ function AkwaanHero() {
  */
 function FacePlanet({
   tone,
+  orbited = false,
   className,
 }: {
   tone: "purple" | "gold";
+  /** Draw a tilted ring around this one. Reserved for the hero. */
+  orbited?: boolean;
   className?: string;
 }) {
   const face = tone === "purple" ? "#F7F4ED" : "#1B173B";
   return (
-    <span aria-hidden="true" className={className}>
+    <span aria-hidden="true" className={cn("relative block", className)}>
+      {/* The ring is drawn behind the planet and wider than it, so the planet
+          sits ON the orbit rather than inside a circle. Only one face carries
+          it: two rings in one hero turn a detail into a pattern, and the eye
+          stops reading it as a planet and starts reading it as decoration. */}
+      {orbited && (
+        <svg
+          viewBox="0 0 200 110"
+          className="absolute left-1/2 top-1/2 w-[11rem] -translate-x-1/2 -translate-y-1/2"
+        >
+          <ellipse
+            cx="100"
+            cy="55"
+            rx="94"
+            ry="34"
+            fill="none"
+            stroke="hsl(var(--brand-gold))"
+            strokeWidth="2.5"
+            transform="rotate(-18 100 55)"
+          />
+          <circle
+            cx="12"
+            cy="40"
+            r="5"
+            fill="hsl(var(--brand-gold))"
+            stroke="hsl(var(--brand-navy))"
+            strokeWidth="2"
+          />
+        </svg>
+      )}
       <svg
         viewBox="0 0 40 40"
         className={cn(
