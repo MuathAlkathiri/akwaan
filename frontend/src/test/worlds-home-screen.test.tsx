@@ -188,8 +188,9 @@ describe("home is a dashboard of Worlds", () => {
       screen.getByText("حدد النطاقات اللي تبغون تدخل في المباراة."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "نطاق 1" })).toBeInTheDocument();
-    expect(screen.getAllByTestId("scope-choice-card")[0]).toHaveClass(
-      "aspect-video",
+    expect(screen.getAllByTestId("scope-choice-card")[0]).toHaveAttribute(
+      "aria-pressed",
+      "false",
     );
     expect(screen.getAllByTestId("scope-name-overlay")[0]).toHaveTextContent(
       "نطاق 1",

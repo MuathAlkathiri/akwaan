@@ -6,23 +6,21 @@
  * against the new one they read as leftovers: nothing else on the page has a
  * highlight, a gradient or a soft edge.
  *
- * What replaces them is drawn, not rendered: dotted orbits that cross the page
- * far wider than the content, a few flat discs, and the logo's spark. All of
- * it in the identity's own palette, all of it thin enough to read as paper
- * texture rather than as objects competing with the content.
+ * What replaces them is a few flat discs and the logo's spark, in the
+ * identity's own palette.
+ *
+ * The design also drew long dotted ellipses across the page. In the mockup
+ * they are one still image; on a real page that scrolls they cut across the
+ * reading column at an angle and the eye follows the line instead of the
+ * sentence. Removed on the owner's call — the orbits that survive are the
+ * short ones drawn around a World's disc and around one face in the hero,
+ * where they belong to an object rather than to the page.
  *
  * Positions are percentages of the viewport rather than the mockup's pixel
  * offsets. The canvas was drawn at 1440×2000; pinning decorations to those
  * numbers would stack them in the first screenful of a phone and leave the
  * rest of a tall page bare.
  */
-
-/** Big dotted ellipses, deliberately running off both edges. */
-const ORBITS = [
-  { w: 900, h: 520, top: "3%", left: "-15%", tilt: -18, stroke: "#DDD6F3" },
-  { w: 820, h: 460, top: "30%", right: "-18%", tilt: 14, stroke: "#EBDDBB" },
-  { w: 700, h: 400, top: "62%", left: "-12%", tilt: -10, stroke: "#DDD6F3" },
-] as const;
 
 /** Flat discs. No gradient, no ring, no shine — the point of the change. */
 const DISCS = [
@@ -47,34 +45,6 @@ export function AkwaanBackground() {
       data-testid="akwaan-background"
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-white"
     >
-      {ORBITS.map((orbit, index) => (
-        <svg
-          key={`orbit-${index}`}
-          viewBox={`0 0 ${orbit.w} ${orbit.h}`}
-          width={orbit.w}
-          height={orbit.h}
-          className="absolute max-w-none"
-          style={{
-            top: orbit.top,
-            left: "left" in orbit ? orbit.left : undefined,
-            right: "right" in orbit ? orbit.right : undefined,
-          }}
-        >
-          <ellipse
-            cx={orbit.w / 2}
-            cy={orbit.h / 2}
-            rx={orbit.w / 2 - 4}
-            ry={orbit.h / 2 - 4}
-            fill="none"
-            stroke={orbit.stroke}
-            strokeWidth="2"
-            strokeDasharray="2 10"
-            strokeLinecap="round"
-            transform={`rotate(${orbit.tilt} ${orbit.w / 2} ${orbit.h / 2})`}
-          />
-        </svg>
-      ))}
-
       {DISCS.map((disc, index) => (
         <span
           key={`disc-${index}`}
