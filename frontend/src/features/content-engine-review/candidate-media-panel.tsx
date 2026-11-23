@@ -57,6 +57,23 @@ const RIGHTS_LABELS: Record<string, string> = {
   BLOCKED: "حقوق محظورة",
 };
 
+const FAILURE_REASON_LABELS: Record<string, string> = {
+  MEDIA_DISCOVERY_NO_CONFIDENT_MATCH:
+    "ما لقينا صورة نتأكد إنها للموضوع نفسه. اختر من المقترحات تحت أو ارفع صورة.",
+  MEDIA_DISCOVERY_NO_RESULT: "البحث ما لقى أي صورة. ارفع صورة من عندك.",
+  MEDIA_DISCOVERY_UNAVAILABLE:
+    "مصادر الصور ما ردّت وقت البحث. ارفع صورة أو جرّب دفعة ثانية.",
+  MEDIA_ANSWER_VISIBLE_IN_ALL:
+    "كل الصور اللي لقيناها مكتوب فيها شي يكشف الإجابة. ارفع صورة بدون كتابة، أو اختر من المقترحات لو تشوف إنها تمشي.",
+  MEDIA_INTENT_MISSING: "السؤال ما حدد وش لازم يظهر في الصورة. ارفع صورة من عندك.",
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  wikidata: "ويكي بيانات",
+  "wikimedia-commons": "ويكيميديا كومنز",
+  "brave-search": "بحث الويب (Brave)",
+};
+
 const CONFLICT_NOTICE =
   "تغيّرت وسائط هذا المرشح أثناء عملك. أُعيد تحميله؛ راجع الحالة الحالية واتخذ القرار من جديد.";
 
@@ -229,6 +246,32 @@ export function CandidateMediaPanel({
   );
 }
 
+/** The answer-visibility check, said plainly. Silent when nobody looked. */
+function VisualCheckNote({
+  check,
+  attached = false,
+}: {
+  check?: { status: string; evidence?: string } | null;
+  attached?: boolean;
+}) {
+  if (!check || check.status === "unchecked") return null;
+  if (check.status === "leaks") {
+    return (
+      <p
+        className="mt-1 rounded bg-red-50 p-1 text-xs font-semibold text-red-700"
+        data-testid="media-visual-leak"
+      >
+        تكشف الإجابة{check.evidence ? `: ${check.evidence}` : ""}
+      </p>
+    );
+  }
+  return attached ? (
+    <p className="mt-1 text-xs text-emerald-700" data-testid="media-visual-clear">
+      فحصناها: ما فيها كتابة تكشف الإجابة. القرار الأخير لك.
+    </p>
+  ) : null;
+}
+
 function MediaSlotCard({
   candidate,
   revision,
@@ -285,6 +328,7 @@ function MediaSlotCard({
     mutationFn: (
       action:
         | { kind: "attach"; file: File }
+        | { kind: "suggestion"; downloadUrl: string }
         | { kind: "approve" }
         | { kind: "reject"; reasonCode: string; explanation: string }
         | { kind: "acknowledge"; note: string },
@@ -296,6 +340,15 @@ function MediaSlotCard({
             slotKey,
             revision,
             action.file,
+          );
+        case "suggestion":
+          return api.chooseCandidateMediaSuggestion(
+            candidate.candidateId,
+            slotKey,
+            {
+              expectedMediaReviewRevision: revision,
+              downloadUrl: action.downloadUrl,
+            },
           );
         case "approve":
           return api.reviewCandidateMedia(candidate.candidateId, slotKey, {
@@ -377,9 +430,9 @@ function MediaSlotCard({
           لا توجد وسائط لهذه الخانة بعد.
         </p>
       ) : !assetUrl ? (
-        <p className="text-sm text-muted-foreground">
-          الحالة: {slot.status}
-          {slot.failureReason ? ` (${slot.failureReason})` : ""}
+        <p className="text-sm text-muted-foreground" data-testid="media-slot-waiting">
+          {FAILURE_REASON_LABELS[slot.failureReason ?? ""] ??
+            `الحالة: ${slot.status}${slot.failureReason ? ` (${slot.failureReason})` : ""}`}
         </p>
       ) : (
         <div className="flex flex-wrap gap-3">
@@ -471,6 +524,77 @@ function MediaSlotCard({
         >
           {error.message}
         </p>
+      )}
+
+      {assetUrl && <VisualCheckNote check={slot?.visualCheck} attached />}
+
+      {!locked && (slot?.suggestions?.length ?? 0) > 0 && (
+        <section className="mt-3" data-testid="media-suggestions">
+          <h4 className="mb-1 text-sm font-semibold">
+            صور مقترحة ({slot?.suggestions?.length})
+          </h4>
+          <p className="mb-2 text-xs text-muted-foreground">
+            {assetUrl
+              ? "لو الصورة الحالية ما تناسب، اختر وحدة من هذي. الاختيار يلغي اعتماد الصورة الحالية والإقرار بحقوقها."
+              : "اختر الصورة اللي تناسب السؤال، وبعدها راجعها واعتمدها."}
+          </p>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {slot?.suggestions?.map((suggestion) => (
+              <li
+                key={suggestion.downloadUrl}
+                className="space-y-1 rounded-md border bg-background p-2"
+                data-testid="media-suggestion"
+              >
+                {/* A remote preview only; the stored copy is made on choosing. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={suggestion.previewUrl ?? suggestion.downloadUrl}
+                  alt={suggestion.title}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="h-28 w-full rounded object-cover"
+                />
+                <p className="truncate text-xs" title={suggestion.title}>
+                  {suggestion.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {PROVIDER_LABELS[suggestion.provider] ?? suggestion.provider} ·{" "}
+                  {suggestion.width}×{suggestion.height}
+                </p>
+                <VisualCheckNote check={suggestion.visualCheck} />
+                {suggestion.provider === "brave-search" && (
+                  <p className="text-xs text-amber-700" data-testid="media-suggestion-web">
+                    من بحث الويب: الترخيص غير معروف، تأكد من المصدر قبل ما تعتمدها.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      mutation.mutate({
+                        kind: "suggestion",
+                        downloadUrl: suggestion.downloadUrl,
+                      })
+                    }
+                  >
+                    استخدم هذي
+                  </Button>
+                  <a
+                    href={suggestion.pageUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-xs underline"
+                  >
+                    المصدر والترخيص
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {!locked && descriptor && !uploadSupported && (

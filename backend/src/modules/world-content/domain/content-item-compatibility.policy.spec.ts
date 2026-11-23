@@ -1057,6 +1057,17 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       expect(bombCodes()).toEqual([]);
     });
 
+    it('judges a draft by its shape, not by its not being READY yet', () => {
+      expect(bombCodes({ status: ContentItemStatus.DRAFT })).toEqual([]);
+      // A draft with a real shape problem is still caught.
+      expect(
+        bombCodes({
+          status: ContentItemStatus.DRAFT,
+          media: { type: ContentMediaType.IMAGE, assets: [{ url: ' ' }] },
+        }),
+      ).toContain('BOMB_ITEM_IMAGE_URL_REQUIRED');
+    });
+
     it('accepts a text-only question with match answers', () => {
       expect(bombCodes({ media: undefined })).toEqual([]);
     });

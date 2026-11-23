@@ -202,7 +202,11 @@ export class ContentItemCompatibilityPolicy {
           mode?: string;
           acceptedAnswers?: string[];
         },
-        status: item.status,
+        // Deliberately no `status`. This asks whether the item's *shape* could
+        // be played; the launch path separately refuses items that are not
+        // READY. Passing the status here made every draft a blocker of itself:
+        // a draft could never be judged fit to become READY because it was not
+        // READY yet.
       },
       1,
     );

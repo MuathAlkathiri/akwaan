@@ -1,5 +1,10 @@
 import apiClient from "@/lib/api/client";
-import type { QualityRubric, ReviewCandidate, SpendingSummary } from "./types";
+import type {
+  MediaLibraryEntry,
+  QualityRubric,
+  ReviewCandidate,
+  SpendingSummary,
+} from "./types";
 import type {
   ChallengeType,
   ContentItem,
@@ -520,6 +525,16 @@ export const attachCandidateMedia = (
   );
 };
 
+/** Swap the slot's image for one of the suggestions already stored on it. */
+export const chooseCandidateMediaSuggestion = (
+  candidateId: string,
+  slotKey: string,
+  data: { expectedMediaReviewRevision: number; downloadUrl: string },
+) =>
+  unwrap<ReviewCandidate>(
+    apiClient.post(mediaPath(candidateId, slotKey, "suggestion"), data),
+  );
+
 export const reviewCandidateMedia = (
   candidateId: string,
   slotKey: string,
@@ -542,3 +557,24 @@ export const acknowledgeCandidateMediaRights = (
   unwrap<ReviewCandidate>(
     apiClient.post(mediaPath(candidateId, slotKey, "rights-acknowledgement"), data),
   );
+
+const LIBRARY_PATH = "/admin/content-engine/media-library";
+
+export const listMediaLibrary = () =>
+  unwrap<MediaLibraryEntry[]>(apiClient.get(LIBRARY_PATH));
+
+export const addMediaLibraryEntry = (
+  fields: { name: string; nameAr?: string; aliases?: string; kind: string },
+  file: File,
+) => {
+  const form = new FormData();
+  form.append("name", fields.name.trim());
+  if (fields.nameAr?.trim()) form.append("nameAr", fields.nameAr.trim());
+  if (fields.aliases?.trim()) form.append("aliases", fields.aliases.trim());
+  form.append("kind", fields.kind);
+  form.append("asset", file);
+  return unwrap<MediaLibraryEntry>(apiClient.post(LIBRARY_PATH, form));
+};
+
+export const removeMediaLibraryEntry = (id: string) =>
+  unwrap<{ id: string }>(apiClient.delete(`${LIBRARY_PATH}/${encodeURIComponent(id)}`));

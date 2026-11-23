@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import {
+  BOMB_SLUG,
   EKSHIFNI_SLUG,
   FIRST_NOTE_SLUG,
   MOVING_XO_SLUG,
@@ -15,15 +16,21 @@ import {
  * is therefore blocked, not exempted.
  *
  * Only fixed-cardinality slots whose draft location is unambiguous are listed.
- * Mechanics whose media is a variable-length list (Bomb items, القطها clues,
- * ركّبها segments, Marhala) are deliberately absent until
- * they get an indexed slot contract; listing them here with a guessed path
- * would gate approval on a check that cannot be right.
+ * Mechanics whose media is a variable-length list (القطها clues, ركّبها
+ * segments, Marhala) are deliberately absent until they get an indexed slot
+ * contract; listing them here with a guessed path would gate approval on a
+ * check that cannot be right.
  *
- * None of these mechanics is generatable by the engine today
- * (`MECHANIC_ANSWER_MODES`), so no existing candidate falls under this contract.
- * `media-requirements.spec.ts` pins that, so adding a generatable mechanic here
- * is a deliberate, reviewed decision rather than a silent retroactive gate.
+ * القنبلة is listed although a Bomb *challenge* is a run of 10–15 pictures,
+ * because each of those is its own ContentItem with exactly one image in
+ * `media` (`bomb-content.policy.ts`). The engine authors items, not runs, so
+ * the slot it governs is a single, fixed one.
+ *
+ * القنبلة is also the one mechanic here the engine can generate
+ * (`MECHANIC_ANSWER_MODES`). `media-requirements.spec.ts` pins exactly that
+ * set, so making another governed mechanic generatable — or governing one that
+ * already is — stays a deliberate, reviewed decision rather than a silent
+ * retroactive gate on existing candidates.
  */
 export const MEDIA_CONTRACT_VERSION = 'media-contract-v1' as const;
 
@@ -66,7 +73,29 @@ export interface MediaRequirementEntry {
   slots: readonly MediaSlotRequirement[];
 }
 
+/** القنبلة's one media slot. */
+export const BOMB_IMAGE_SLOT = 'item-image';
+
 export const MEDIA_REQUIREMENTS: readonly MediaRequirementEntry[] = [
+  {
+    // القنبلة: every item is one picture round. Required for every World and
+    // every archetype, name completion included (Product decision 2026-11-22,
+    // roadmap §23.4) — a text-only Bomb item is not authored.
+    mechanicKey: BOMB_SLUG,
+    slots: [
+      {
+        slotKey: BOMB_IMAGE_SLOT,
+        purpose: 'gameplay',
+        required: true,
+        mediaType: 'image',
+        targetPath: 'media',
+        // A real photograph, found or supplied. Never generated: the subject
+        // is a real person, club or place, and a drawn likeness is not one.
+        acquisition: ['retrieve', 'upload'],
+        aspectPolicy: 'native',
+      },
+    ],
+  },
   {
     // اكشفني: one canonical celebrity image under six reveal regions.
     mechanicKey: EKSHIFNI_SLUG,

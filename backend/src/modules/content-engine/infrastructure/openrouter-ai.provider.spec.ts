@@ -60,6 +60,33 @@ const request = {
 };
 
 describe('OpenRouterAiProvider request shape', () => {
+  it('sends pictures as image parts beside the prompt, at low detail unless told otherwise', async () => {
+    const { seen, fetchImpl } = capture();
+    await new OpenRouterAiProvider(config(), fetchImpl).generateText({
+      ...request,
+      images: ['https://img.example/a.jpg'],
+    });
+    const [message] = (
+      seen.body!.messages as Array<{ role: string; content: unknown }>
+    ).filter((entry) => entry.role === 'user');
+    expect(message.content).toEqual([
+      { type: 'text', text: request.prompt },
+      {
+        type: 'image_url',
+        image_url: { url: 'https://img.example/a.jpg', detail: 'low' },
+      },
+    ]);
+  });
+
+  it('keeps the prompt a plain string when there are no pictures', async () => {
+    const { seen, fetchImpl } = capture();
+    await new OpenRouterAiProvider(config(), fetchImpl).generateText(request);
+    const [message] = (
+      seen.body!.messages as Array<{ role: string; content: unknown }>
+    ).filter((entry) => entry.role === 'user');
+    expect(message.content).toBe(request.prompt);
+  });
+
   it('sends temperature by default', async () => {
     const { seen, fetchImpl } = capture();
     await new OpenRouterAiProvider(config(), fetchImpl).generateText(request);

@@ -18,6 +18,7 @@ Archetypes and difficulty tiers are **separate axes**:
 | :--- | :--- | :--- | :--- |
 | **`bomb`** | **Multimodal Assets:** Supports `none` (Text-only), `image` (1 asset with valid URL), or `audio` (1 asset with valid URL). | **A. Runtime Contract** | `backend/src/modules/world-content/domain/bomb-content.policy.ts` |
 | | **Answer Mode:** `mode: 'match'`, 1–10 accepted answers, max 120 chars each. | **A. Runtime Contract** | `bomb-content.policy.ts` |
+| | **Image on every item:** forward Bomb authoring requires exactly one image per item; `none` (text-only) and `audio` are not authored. The runtime row above is unchanged — it still accepts all three, so existing text-only items keep running. | **B. Approved Product Contract** | Roadmap §23.4 (2026-11-22), Bomb Skill |
 | | **Run Cardinality:** 10–15 items per challenge run. | **A. Runtime Contract** | `bomb-content.policy.ts` |
 | | **Production Target:** 15 items per Scope pack. | **B. Approved Product Contract** | Roadmap §16.1, Scope Expansion Plan |
 | | **Prompt Brevity & Friendly Copy:** Rapid-fire prompt (e.g. `"بيلينغهام... وش اسمه الأول؟"` or `"ما هذا الشعار؟"`), recommended $<70$ chars. Bomb prompts should be short, conversational and mechanic-native (e.g. "مين هذا؟", "وش اسم...؟"). Avoid multi-clause AI-style descriptive filler. Image recognition prompts normally use simple "مين هذا/هذي؟" forms. | **C. Authoring Recommendation** | Zero-Leakage Policy, Question Craft Guidelines |

@@ -1,6 +1,7 @@
 import {
   MECHANIC_ANSWER_MODES,
   PROMPT_VERSIONS,
+  promptVersionFor,
 } from './generation-specification';
 import {
   MEDIA_REQUIREMENTS,
@@ -11,18 +12,54 @@ import {
 import { evaluateCandidateMedia } from './candidate-media-plan';
 
 describe('media requirements registry', () => {
-  it('governs no mechanic the engine can generate today, so no existing candidate is retroactively gated', () => {
-    const generatable = Object.keys(MECHANIC_ANSWER_MODES);
-    for (const mechanicKey of generatable) {
-      for (const scopeKey of [
-        'observation-illusions',
-        'assembly-rotation',
-        'paths-motion',
-        'any-scope',
-      ]) {
-        expect(resolveMediaRequirements({ mechanicKey, scopeKey })).toEqual([]);
-      }
+  const scopes = [
+    'observation-illusions',
+    'assembly-rotation',
+    'paths-motion',
+    'any-scope',
+  ];
+
+  it('governs exactly one mechanic the engine can generate — القنبلة — so no other candidate is retroactively gated', () => {
+    // The other generatable mechanics are text-only. One of them drifting into
+    // this registry would gate approval on an asset nobody is required to
+    // supply; this list changing is therefore a decision, not a side effect.
+    const governed = Object.keys(MECHANIC_ANSWER_MODES).filter((mechanicKey) =>
+      scopes.some(
+        (scopeKey) =>
+          resolveMediaRequirements({ mechanicKey, scopeKey }).length > 0,
+      ),
+    );
+    expect(governed).toEqual(['bomb']);
+  });
+
+  it('requires one real picture on every Bomb item, in every Scope', () => {
+    for (const scopeKey of scopes) {
+      expect(
+        resolveMediaRequirements({ mechanicKey: 'bomb', scopeKey }),
+      ).toEqual([
+        {
+          slotKey: 'item-image',
+          purpose: 'gameplay',
+          required: true,
+          mediaType: 'image',
+          targetPath: 'media',
+          // Found or uploaded, never generated: the subject is real.
+          acquisition: ['retrieve', 'upload'],
+          aspectPolicy: 'native',
+        },
+      ]);
     }
+  });
+
+  it('versions the Bomb prompt apart from the other match mechanic', () => {
+    // Two mechanics on one revision string would make a change to either look
+    // like a change to both in every request hash and pinned plan.
+    expect(promptVersionFor('bomb')).toBe('bomb-v2');
+    expect(promptVersionFor('combo')).toBe(PROMPT_VERSIONS.match);
+    expect(promptVersionFor('combo')).toBe('combo-v1');
+    expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');
+    expect(promptVersionFor('closest')).toBe('closest-v2');
+    expect(promptVersionFor('top-5')).toBeUndefined();
   });
 
   it('leaves generator prompt versions untouched (queued jobs keep their provenance)', () => {

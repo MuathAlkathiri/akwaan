@@ -122,6 +122,44 @@ async function openReview() {
 }
 
 describe("Content Engine Review — Phase 1 workspace layout", () => {
+  it("with one click also approves the image and acknowledges its rights, in order, before approving", async () => {
+    const candidate = mockCandidate("cid-1", "من هذا اللاعب؟", {
+      humanAssessment: null, factVerification: null, mediaReviewRevision: 4,
+      reviewEligibility: { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: false, reasons: ["الوسائط أو حقوقها غير جاهزة."], eligibleWithMediaSteps: true, mediaSteps: [{ slotKey: "item-image", review: true, acknowledgeRights: true }] } },
+    });
+    renderWorkspace([candidate]);
+    const order: string[] = [];
+    const review = vi.spyOn(api, "reviewCandidateMedia").mockImplementation(async () => { order.push("review"); return { ...candidate, mediaReviewRevision: 5 }; });
+    const acknowledge = vi.spyOn(api, "acknowledgeCandidateMediaRights").mockImplementation(async () => { order.push("acknowledge"); return { ...candidate, mediaReviewRevision: 6 }; });
+    const approve = vi.spyOn(api, "approveCandidate").mockImplementation(async () => { order.push("approve"); return { ...candidate, reviewStatus: "approved", reviewRevision: 2 }; });
+    vi.spyOn(api, "createCanonicalDraft").mockResolvedValue({ contentItemId: "draft-1", status: "draft", alreadyCreated: false });
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const button = await screen.findByTestId("button-quick-approve-candidate");
+    expect(screen.getByTestId("quick-approve-media-note")).toHaveTextContent("وتسجّل إقرارك باستخدام الصورة");
+    fireEvent.click(button);
+    await waitFor(() => expect(approve).toHaveBeenCalled());
+    expect(order).toEqual(["review", "acknowledge", "approve"]);
+    expect(review).toHaveBeenCalledWith("cid-1", "item-image", { expectedMediaReviewRevision: 4, status: "approved" });
+    expect(acknowledge).toHaveBeenCalledWith("cid-1", "item-image", { expectedMediaReviewRevision: 5, note: expect.stringContaining("اعتماد سريع") });
+    expect(approve).toHaveBeenCalledWith("cid-1", { expectedRevision: 1, assessmentBasis: "HUMAN_DIRECT_REVIEW", readyPublicationAuthorized: true });
+  });
+
+  it("does not approve the question when a media step fails", async () => {
+    const candidate = mockCandidate("cid-1", "من هذا اللاعب؟", {
+      humanAssessment: null, factVerification: null,
+      reviewEligibility: { assessmentCurrent: false, assessmentStale: false, evidenceCount: 0, requiresFactualOverride: false, allowedFactualOverrideCodes: [], canApprove: false, canCreateDraft: false, approvalBlockers: [], quickReview: { eligible: false, reasons: [], eligibleWithMediaSteps: true, mediaSteps: [{ slotKey: "item-image", review: true, acknowledgeRights: false }] } },
+    });
+    renderWorkspace([candidate]);
+    vi.spyOn(api, "reviewCandidateMedia").mockRejectedValue(Object.assign(new Error("conflict"), { response: { status: 409, data: { code: "MEDIA_REVISION_CONFLICT", message: "conflict" } } }));
+    const approve = vi.spyOn(api, "approveCandidate");
+    await openReview();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    fireEvent.click(await screen.findByTestId("button-quick-approve-candidate"));
+    await waitFor(() => expect(api.reviewCandidateMedia).toHaveBeenCalled());
+    expect(approve).not.toHaveBeenCalled();
+  });
+
   it("approves and publishes an eligible human review with one click", async () => {
     const candidate = mockCandidate("cid-1", "السؤال الأول", {
       humanAssessment: null, factVerification: null,
