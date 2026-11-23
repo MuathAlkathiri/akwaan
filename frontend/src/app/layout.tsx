@@ -5,9 +5,13 @@ import { Providers } from "./providers";
 import { Layout } from "@/components/layout";
 import "./globals.css";
 
+// The identity sets headings in 800 and 900. The file is a variable font, so
+// the range is what decides whether a `font-weight: 800` lands on a real 800
+// or is quietly clamped to 700 — which looks like nothing is wrong, only
+// lighter than the design everywhere at once.
 const displayFont = localFont({
   src: "./fonts/NotoKufiArabic/NotoKufiArabic-Variable.ttf",
-  weight: "600 700",
+  weight: "600 900",
   variable: "--font-display",
   display: "swap",
 });

@@ -1,6 +1,5 @@
 import type {
   OddPieceHotspotTutorialScenario,
-  OddPieceLegacyTutorialScenario,
   OddPieceTutorialScenario,
 } from "./tutorial-scenario";
 
@@ -14,17 +13,7 @@ export type OddPieceV2DemoStepId =
   | "reveal"
   | "three-puzzles";
 
-export type OddPieceLegacyDemoStepId =
-  | "opening"
-  | "answer"
-  | "wrong"
-  | "handoff"
-  | "correct"
-  | "reveal"
-  | "three-puzzles";
-
-export type OddPieceDemoStepId =
-  OddPieceV2DemoStepId | OddPieceLegacyDemoStepId;
+export type OddPieceDemoStepId = OddPieceV2DemoStepId;
 
 export interface OddPieceDemoStep {
   id: OddPieceDemoStepId;
@@ -83,52 +72,7 @@ export const ODD_PIECE_V2_DEMO_STEPS: readonly OddPieceDemoStep[] = [
   },
 ];
 
-export const ODD_PIECE_V1_DEMO_STEPS: readonly OddPieceDemoStep[] = [
-  {
-    id: "opening",
-    caption:
-      "أمامكم أربع قطع من تفاصيل سيارات؛ ثلاث منها لنفس السيارة وواحدة دخيلة.",
-    holdSeconds: 3,
-  },
-  {
-    id: "answer",
-    caption:
-      "الفريق الأول يضغط جاوب ويختار القطعة التي يظن أنها لا تنتمي للمجموعة.",
-    holdSeconds: 2.8,
-  },
-  {
-    id: "wrong",
-    caption:
-      "الاختيار الأول غير صحيح؛ القطعة ما زالت من السيارة الهدف، فتضيع المحاولة.",
-    holdSeconds: 2.8,
-  },
-  {
-    id: "handoff",
-    caption:
-      "تنتقل الفرصة الحقيقية للفريق الثاني — لا يتغير السؤال ولا تُعاد المحاولة الأولى.",
-    holdSeconds: 2.8,
-  },
-  {
-    id: "correct",
-    caption: "الفريق الثاني يلتقط القطعة الدخيلة ويحصل على نقطة المباراة.",
-    holdSeconds: 2.8,
-  },
-  {
-    id: "reveal",
-    caption:
-      "بعد الحسم يظهر أصل القطع: ثلاث تفاصيل من BMW M4 G82، والقطعة الدخيلة من Mercedes-AMG C63 W206.",
-    holdSeconds: 5.2,
-  },
-  {
-    id: "three-puzzles",
-    caption: "هذا سؤال واحد من أصل 3 ألغاز في التحدي الكامل.",
-    holdSeconds: 7.4,
-  },
-];
-
 export const ODD_PIECE_DEMO_STEPS = ODD_PIECE_V2_DEMO_STEPS;
-
-const media = (file: string) => `/tutorial-media/odd-piece-v1/${file}`;
 
 // Historical controlled SVG fixtures retained for V2 regression coverage only.
 // The current BMW tutorial scenario below uses the owner-supplied PNG instead.
@@ -221,74 +165,6 @@ export const SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO: OddPieceHotspotTutorialScena
       intruderPartLabel: "العجلة الأمامية الدخيلة (محاكاة)",
       puzzleCount: 3,
       reason: "odd-piece.hotspot-claim-handoff",
-    },
-  };
-
-export const SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO: OddPieceLegacyTutorialScenario =
-  {
-    kind: "odd-piece",
-    version: 1,
-    prompt: "أي قطعة لا تنتمي لنفس السيارة؟",
-    targetVehicleIdentity: "BMW M4 Competition Coupe (G82), 2021-present",
-    targetVehicleLabel: "BMW M4 Competition Coupe (G82)",
-    intruderVehicleIdentity: "Mercedes-AMG C 63 (W206), 2022-present",
-    intruderVehicleLabel: "Mercedes-AMG C 63 (W206)",
-    pieces: [
-      {
-        id: "piece-a-headlight",
-        imageUrl: media("target-headlight.jpg"),
-        altText: "قطعة أ",
-        vehicleIdentity: "BMW M4 Competition Coupe (G82), 2021-present",
-        vehicleLabel: "BMW M4 G82",
-      },
-      {
-        id: "piece-b-brake",
-        imageUrl: media("target-brake.jpg"),
-        altText: "قطعة ب",
-        vehicleIdentity: "BMW M4 Competition Coupe (G82), 2021-present",
-        vehicleLabel: "BMW M4 G82",
-      },
-      {
-        id: "piece-c-diffuser",
-        imageUrl: media("target-diffuser.jpg"),
-        altText: "قطعة ج",
-        vehicleIdentity: "BMW M4 Competition Coupe (G82), 2021-present",
-        vehicleLabel: "BMW M4 G82",
-      },
-      {
-        id: "piece-d-intruder",
-        imageUrl: media("intruder-headlight.jpg"),
-        altText: "قطعة د",
-        vehicleIdentity: "Mercedes-AMG C 63 (W206), 2022-present",
-        vehicleLabel: "Mercedes-AMG C63 W206",
-      },
-    ],
-    wrongSelectionPieceId: "piece-b-brake",
-    correctSelectionPieceId: "piece-d-intruder",
-    targetReveal: {
-      imageUrl: media("reveal-g82-blurred-plate.jpg"),
-      altText: "BMW M4 Competition Coupe G82 بعد كشف الحل، مع طمس لوحة المركبة",
-    },
-    caption: "مثال محلي موثّق — لا يُستخدم كسؤال تنافسي.",
-    outcome: {
-      firstClaimTeam: "team-a",
-      firstClaimPieceId: "piece-b-brake",
-      firstClaimCorrect: false,
-      handoffTeam: "team-b",
-      secondClaimPieceId: "piece-d-intruder",
-      secondClaimCorrect: true,
-      winnerTeam: "team-b",
-      points: { "team-a": 0, "team-b": 1 },
-      matchPointDelta: 1,
-      intruderPieceId: "piece-d-intruder",
-      targetVehicleLabel: "BMW M4 Competition Coupe (G82)",
-      targetReveal: {
-        imageUrl: media("reveal-g82-blurred-plate.jpg"),
-        altText:
-          "BMW M4 Competition Coupe G82 بعد كشف الحل، مع طمس لوحة المركبة",
-      },
-      puzzleCount: 3,
-      reason: "odd-piece.claim-handoff",
     },
   };
 

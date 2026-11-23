@@ -12,7 +12,6 @@ import { COMBO_GAMEPLAY_PLUGIN } from './combo-gameplay.plugin';
 import { CLOSEST_GAMEPLAY_PLUGIN } from './closest-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
 import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
-import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
 import { ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN } from './odd-piece-hotspot-gameplay.plugin';
 import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 import { FIRST_NOTE_GAMEPLAY_PLUGIN } from './first-note-gameplay.plugin';
@@ -76,13 +75,6 @@ export class GameplayModeRegistry {
         MARHALA_GAMEPLAY_PLUGIN.version,
       ),
       MARHALA_GAMEPLAY_PLUGIN,
-    ],
-    [
-      this.registryKey(
-        ODD_PIECE_GAMEPLAY_PLUGIN.key,
-        ODD_PIECE_GAMEPLAY_PLUGIN.version,
-      ),
-      ODD_PIECE_GAMEPLAY_PLUGIN,
     ],
     [
       this.registryKey(

@@ -49,3 +49,46 @@ describe('what the checkout endpoint accepts', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('what the checkout endpoint accepts as a code', () => {
+  const pack = TOKEN_PACKS[0].id;
+
+  it('accepts a body with no code at all', async () => {
+    await expect(pipe.transform({ packId: pack }, asBody)).resolves.toEqual({
+      packId: pack,
+    });
+  });
+
+  it('accepts an ordinary code', async () => {
+    await expect(
+      pipe.transform({ packId: pack, code: 'AKWAAN20' }, asBody),
+    ).resolves.toEqual({ packId: pack, code: 'AKWAAN20' });
+  });
+
+  it('keeps the case the player typed, for the server to normalise', async () => {
+    await expect(
+      pipe.transform({ packId: pack, code: 'akwaan20' }, asBody),
+    ).resolves.toEqual({ packId: pack, code: 'akwaan20' });
+  });
+
+  it.each(['has space', "quote's", '<script>', 'semi;colon'])(
+    'refuses %p, which is not a shape a code comes in',
+    async (code) => {
+      await expect(
+        pipe.transform({ packId: pack, code }, asBody),
+      ).rejects.toThrow();
+    },
+  );
+
+  it('refuses a code longer than any code we issue', async () => {
+    await expect(
+      pipe.transform({ packId: pack, code: 'A'.repeat(33) }, asBody),
+    ).rejects.toThrow();
+  });
+
+  it('refuses an empty code rather than treating it as none', async () => {
+    await expect(
+      pipe.transform({ packId: pack, code: '' }, asBody),
+    ).rejects.toThrow();
+  });
+});

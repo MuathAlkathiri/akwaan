@@ -11,6 +11,7 @@ import {
   PurchaseIntent,
   PurchaseIntentRepository,
 } from '../persistence/purchase-intent.repository';
+import { DiscountCodeRepository } from '../persistence/discount-code.repository';
 
 /** What the webhook did, for the log and for the provider's response. */
 export type FulfilmentOutcome =
@@ -48,6 +49,7 @@ export class FulfilPurchase {
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     private readonly tokens: TokenLedgerService,
     private readonly intents: PurchaseIntentRepository,
+    private readonly codes: DiscountCodeRepository,
   ) {}
 
   async fromWebhook(input: {
@@ -161,10 +163,15 @@ export class FulfilPurchase {
       );
     }
 
-    if (payment.amountHalalas !== pack.priceHalalas) {
+    // Checked against our own record of what we asked for, not against the
+    // catalogue. The two are the same for a full-price sale and differ by the
+    // discount for a coded one, and the intent is written by this system
+    // before the player ever reaches the provider — so it is still a number
+    // nobody outside could choose.
+    if (payment.amountHalalas !== intent.amountHalalas) {
       throw new PaymentError(
         PAYMENT_ERRORS.AMOUNT_MISMATCH,
-        `Charge ${payment.providerPaymentId} captured ${payment.amountHalalas} halalas for a pack priced at ${pack.priceHalalas}`,
+        `Charge ${payment.providerPaymentId} captured ${payment.amountHalalas} halalas for an intent opened at ${intent.amountHalalas}`,
       );
     }
 
@@ -181,6 +188,14 @@ export class FulfilPurchase {
       payment.providerPaymentId,
       new Date(),
     );
+
+    // Counted here and nowhere else: a redemption is a sale, not a visit to
+    // the payment page. The grant above is idempotent on the charge id, and
+    // `markFulfilled` runs before this, so a webhook delivered twice cannot
+    // reach this line twice for the same charge.
+    if (intent.discountCode && !intent.fulfilledAt) {
+      await this.codes.countRedemption(intent.discountCode);
+    }
 
     this.logger.log({
       event: 'purchase_fulfilled',

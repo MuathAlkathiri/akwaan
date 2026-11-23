@@ -16,6 +16,7 @@ import {
   deriveFirstNoteTutorialOutcome,
   deriveLaTahriqhaTutorialOutcome,
   deriveOddPieceTutorialOutcome,
+  isRetiredTutorialScenario,
   findTutorialOverlap,
   ClosestTutorialScenarioInput,
   BombTutorialScenarioInput,
@@ -94,7 +95,7 @@ export class MechanicTutorialService {
   async getPublished(mechanicKey: string) {
     const mechanic = await this.findMechanic(mechanicKey);
     const published = mechanic.tutorial?.published;
-    if (!published) return null;
+    if (!published || isRetiredTutorialScenario(published)) return null;
     return {
       mechanicKey: mechanic.slug,
       revision: mechanic.tutorial?.publishedRevision ?? 0,
@@ -465,7 +466,8 @@ export class MechanicTutorialService {
         worldId,
         String(pair.mechanic._id),
       );
-      if (!record?.published) return null;
+      if (!record?.published || isRetiredTutorialScenario(record.published))
+        return null;
       return {
         source: 'world' as const,
         worldId,
@@ -789,60 +791,31 @@ export class MechanicTutorialService {
     }
     if (tutorialKind(input) === 'odd-piece') {
       const oddPiece = input as OddPieceTutorialScenarioInput;
-      if (oddPiece.version === 2) {
-        return {
-          kind: 'odd-piece',
-          version: 2,
-          prompt: oddPiece.prompt.trim(),
-          targetVehicleIdentity: oddPiece.targetVehicleIdentity.trim(),
-          targetVehicleLabel: oddPiece.targetVehicleLabel.trim(),
-          intruderVehicleIdentity: oddPiece.intruderVehicleIdentity.trim(),
-          intruderVehicleLabel: oddPiece.intruderVehicleLabel.trim(),
-          intruderPartIdentity: oddPiece.intruderPartIdentity.trim(),
-          intruderPartLabel: oddPiece.intruderPartLabel.trim(),
-          modifiedImage: oddPiece.modifiedImage,
-          originalImage: oddPiece.originalImage,
-          ...(oddPiece.tutorialRevealMode
-            ? { tutorialRevealMode: oddPiece.tutorialRevealMode }
-            : {}),
-          ...(oddPiece.tutorialMediaDisclosure?.trim()
-            ? {
-                tutorialMediaDisclosure:
-                  oddPiece.tutorialMediaDisclosure.trim(),
-              }
-            : {}),
-          ...(oddPiece.team1Tap ? { team1Tap: { ...oddPiece.team1Tap } } : {}),
-          ...(oddPiece.team2Tap ? { team2Tap: { ...oddPiece.team2Tap } } : {}),
-          hotspot: oddPiece.hotspot,
-          wrongPoint: oddPiece.wrongPoint,
-          correctPoint: oddPiece.correctPoint,
-          ...(oddPiece.caption?.trim()
-            ? { caption: oddPiece.caption.trim() }
-            : {}),
-          outcome: deriveOddPieceTutorialOutcome(oddPiece),
-        };
-      }
       return {
         kind: 'odd-piece',
-        version: 1,
+        version: 2,
         prompt: oddPiece.prompt.trim(),
         targetVehicleIdentity: oddPiece.targetVehicleIdentity.trim(),
         targetVehicleLabel: oddPiece.targetVehicleLabel.trim(),
         intruderVehicleIdentity: oddPiece.intruderVehicleIdentity.trim(),
         intruderVehicleLabel: oddPiece.intruderVehicleLabel.trim(),
-        pieces: oddPiece.pieces.map((piece) => ({
-          id: piece.id.trim(),
-          imageUrl: piece.imageUrl.trim(),
-          altText: piece.altText.trim(),
-          vehicleIdentity: piece.vehicleIdentity.trim(),
-          vehicleLabel: piece.vehicleLabel.trim(),
-        })),
-        wrongSelectionPieceId: oddPiece.wrongSelectionPieceId.trim(),
-        correctSelectionPieceId: oddPiece.correctSelectionPieceId.trim(),
-        targetReveal: {
-          imageUrl: oddPiece.targetReveal.imageUrl.trim(),
-          altText: oddPiece.targetReveal.altText.trim(),
-        },
+        intruderPartIdentity: oddPiece.intruderPartIdentity.trim(),
+        intruderPartLabel: oddPiece.intruderPartLabel.trim(),
+        modifiedImage: oddPiece.modifiedImage,
+        originalImage: oddPiece.originalImage,
+        ...(oddPiece.tutorialRevealMode
+          ? { tutorialRevealMode: oddPiece.tutorialRevealMode }
+          : {}),
+        ...(oddPiece.tutorialMediaDisclosure?.trim()
+          ? {
+              tutorialMediaDisclosure: oddPiece.tutorialMediaDisclosure.trim(),
+            }
+          : {}),
+        ...(oddPiece.team1Tap ? { team1Tap: { ...oddPiece.team1Tap } } : {}),
+        ...(oddPiece.team2Tap ? { team2Tap: { ...oddPiece.team2Tap } } : {}),
+        hotspot: oddPiece.hotspot,
+        wrongPoint: oddPiece.wrongPoint,
+        correctPoint: oddPiece.correctPoint,
         ...(oddPiece.caption?.trim()
           ? { caption: oddPiece.caption.trim() }
           : {}),

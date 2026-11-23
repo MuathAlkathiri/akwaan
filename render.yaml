@@ -56,9 +56,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
-      # This service's own public URL, e.g. https://akwaan-api.onrender.com
-      - key: APP_BASE_URL
-        sync: false
 
       # Writable scratch space for ffmpeg. Ephemeral by design: the durable
       # copy is the R2 mirror below.
@@ -109,3 +106,199 @@ services:
       # SMS_OTP_NOT_AVAILABLE. The flag is here so enabling it later is config.
       - key: SMS_OTP_ENABLED
         value: "false"
+
+      # --- Payments (مُيسّر) ---
+      # Live keys on this service. The staging service below carries the test
+      # keys instead, so a rehearsal never moves real money.
+      - key: MOYASAR_SECRET_KEY
+        sync: false
+      - key: MOYASAR_WEBHOOK_SECRET
+        sync: false
+
+      # Where the gateway sends a player back to, and the origin used in the
+      # charge description. No trailing slash.
+      - key: PUBLIC_SITE_URL
+        sync: false
+
+      # --- Launch campaign ---
+      # The free month. Verified against the running service 2026-11-23: with
+      # this unset the campaign had no end at all, which is why it is declared
+      # here with its value rather than left to the dashboard.
+      - key: LAUNCH_CAMPAIGN_ENDS_AT
+        value: "2026-12-31T20:59:59.000Z"
+      - key: LAUNCH_CAMPAIGN_TOKENS
+        sync: false
+
+      # --- Content Engine ---
+      # Values live in the dashboard; declared here so a blueprint sync cannot
+      # strip them. Do not put numbers in this file that have not been read off
+      # the running service — a sync would apply the guess.
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_BASE_URL
+        sync: false
+      - key: ENGINE_PROVIDER_NAME
+        sync: false
+      - key: ENGINE_GENERATION_MODEL
+        sync: false
+      - key: ENGINE_QUALITY_MODEL
+        sync: false
+      - key: ENGINE_MODEL_PRICING
+        sync: false
+      - key: ENGINE_MONTHLY_CAP_SAR
+        sync: false
+      - key: ENGINE_BATCH_CAP_SAR
+        sync: false
+      - key: ENGINE_REQUEST_TIMEOUT_MS
+        sync: false
+      - key: ENGINE_AUTHORING_ROOT
+        sync: false
+
+      # --- Misc ---
+      - key: TRUST_PROXY
+        sync: false
+      - key: PERMANENT_DELETION_ADMIN_IDS
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Staging
+  #
+  # A rehearsal copy of the API, so a change can be exercised end to end before
+  # it reaches anyone playing. It exists because the alternative was testing on
+  # production: the branch that carried the shop could not be tried at all
+  # without merging it to `main` first, which is a deploy disguised as a test.
+  #
+  # Everything that could reach a real person or a real riyal is separated:
+  # - its own database (same cluster, different name in the URI path)
+  # - مُيسّر TEST keys, so a rehearsal purchase moves no money
+  # - its own webhook secret, because the test and live webhooks are different
+  #   deliveries signed differently
+  #
+  # It builds the long-lived `staging` branch. Merge a feature branch there,
+  # try it, and only then merge to `main`.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: akwaan-api-staging
+    runtime: docker
+    # Free: this sleeps after 15 minutes idle and takes a minute to wake. That
+    # is the right trade for a service used in bursts — but it means a cold
+    # first request, which is a wake-up and not a bug worth chasing.
+    plan: free
+    region: frankfurt
+    branch: staging
+    autoDeploy: true
+
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+
+    healthCheckPath: /health
+
+    envVars:
+      # Production, not development: the CORS allowlist has no implicit
+      # localhost in production, and staging should refuse what production
+      # refuses. Anything else makes it a rehearsal of a different play.
+      - key: NODE_ENV
+        value: production
+
+      # MUST end in a different database name from the live service, e.g.
+      # .../akwaan_staging. Nothing in the code reads the name — this URI is
+      # the only thing keeping a rehearsal purchase out of the real ledger.
+      - key: MONGODB_URI
+        sync: false
+
+      # Its own secret. Sharing production's would make a staging token open
+      # the real API.
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # Origins, comma separated, no trailing slash. A `*` is allowed and
+      # matches within one label only — it is escaped first and becomes
+      # `[^.]*` afterwards, so it can never cross a dot into another domain
+      # on a crafted subdomain.
+      #
+      # One entry therefore covers every preview build of this project:
+      #   https://akwaan-frontend-git-*.vercel.app
+      # Vercel also names a branch deployment after the branch, so the
+      # `staging` URL is stable enough to list exactly if you prefer.
+      - key: CORS_ORIGINS
+        sync: false
+
+      - key: PUBLIC_SITE_URL
+        sync: false
+
+      - key: UPLOADS_DIR
+        value: /app/uploads
+
+      # Same bucket as production, deliberately: media is read-mostly, the
+      # content copy points at files that already exist there, and a second
+      # bucket would mean re-uploading every clip to rehearse anything.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: MEDIA_PUBLIC_BASE_URL
+        sync: false
+
+      # On here, off in production: the whole point of this service is to be
+      # poked at.
+      - key: SWAGGER_ENABLED
+        value: "true"
+
+      - key: WIGOLO_EXECUTABLE_PATH
+        value: /app/node_modules/.bin/wigolo
+      - key: WIGOLO_CACHE_FILE
+        value: /app/.cache/entity-verification.json
+
+      # --- Payments: TEST keys only ---
+      # A live key here would make every rehearsal a real charge with real
+      # fees. If these are unset the shop simply refuses to open a charge,
+      # which is the safe way to be wrong.
+      - key: MOYASAR_SECRET_KEY
+        sync: false
+      - key: MOYASAR_WEBHOOK_SECRET
+        sync: false
+
+      # --- Launch campaign ---
+      # Set in the past on purpose. Production spends December giving Matches
+      # away, and a staging that did the same could never exercise a single
+      # purchase. Move it forward when the free month itself is what you want
+      # to rehearse.
+      - key: LAUNCH_CAMPAIGN_ENDS_AT
+        value: "2026-01-01T00:00:00.000Z"
+      - key: LAUNCH_CAMPAIGN_TOKENS
+        sync: false
+
+      # --- Passwordless OTP login ---
+      - key: OTP_EXPIRES_SECONDS
+        value: "300"
+      - key: OTP_RESEND_COOLDOWN_SECONDS
+        value: "60"
+      - key: OTP_MAX_VERIFY_PER_IDENTIFIER_MINUTE
+        value: "10"
+      - key: OTP_MAX_VERIFY_PER_IP_MINUTE
+        value: "20"
+      - key: OTP_HASH_PEPPER
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: OTP_MAIL_FROM
+        sync: false
+      - key: SMS_OTP_ENABLED
+        value: "false"
+
+      # --- Content Engine ---
+      # Left unset, so staging cannot spend a riyal of model budget. Set them
+      # only when the Engine itself is what is being rehearsed.
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+      - key: TRUST_PROXY
+        sync: false
+      - key: PERMANENT_DELETION_ADMIN_IDS
+        sync: false

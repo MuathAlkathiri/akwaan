@@ -7,23 +7,14 @@ const value: OddPieceFormState = {
   enabled: true,
   targetVehicleIdentity: "bmw-m4",
   targetVehicleLabel: "BMW M4",
-  targetRevealImageUrl: "https://test/full.jpg",
-  pieces: ["a", "b", "c", "d"].map((localId, index) => ({
-    localId,
-    vehicleIdentity: index < 3 ? "bmw-m4" : "amg-c63",
-    vehicleLabel: index < 3 ? "BMW M4" : "Mercedes-AMG C63",
-    imageUrl: `https://test/${localId}.jpg`,
-  })),
 };
 
 describe("Odd Piece Admin fields", () => {
-  it("shows four ordered visual editors and the mandatory full reveal", () => {
+  it("offers no contract version to choose: there is one القطعة الدخيلة", () => {
     render(<OddPieceFields value={value} onChange={vi.fn()} />);
-    expect(screen.getAllByTestId(/^odd-piece-visual-/)).toHaveLength(4);
-    expect(
-      screen.getByDisplayValue("https://test/full.jpg"),
-    ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("amg-c63")).toBeInTheDocument();
+    expect(screen.queryByTestId("odd-piece-version")).toBeNull();
+    expect(screen.queryAllByTestId(/^odd-piece-visual-/)).toHaveLength(0);
+    expect(screen.getByTestId("odd-piece-v2-fields")).toBeInTheDocument();
   });
 
   it("exposes the V2 difficulty, provenance and normalized hotspot editor", () => {
@@ -31,7 +22,6 @@ describe("Odd Piece Admin fields", () => {
       <OddPieceFields
         value={{
           ...value,
-          version: 2,
           v2: {
             difficulty: "medium",
             modifiedImage: {

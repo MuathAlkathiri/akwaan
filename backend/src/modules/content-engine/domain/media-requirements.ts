@@ -17,9 +17,9 @@ import {
  *
  * Only fixed-cardinality slots whose draft location is unambiguous are listed.
  * Mechanics whose media is a variable-length list (القطها clues, ركّبها
- * segments, Odd Piece V1 pieces, Marhala) are deliberately absent until they
- * get an indexed slot contract; listing them here with a guessed path would
- * gate approval on a check that cannot be right.
+ * segments, Marhala) are deliberately absent until they get an indexed slot
+ * contract; listing them here with a guessed path would gate approval on a
+ * check that cannot be right.
  *
  * القنبلة is listed although a Bomb *challenge* is a run of 10–15 pictures,
  * because each of those is its own ContentItem with exactly one image in

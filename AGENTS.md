@@ -21,6 +21,7 @@ Always distinguish implementation and deployment reality:
 
 ## 3. Operational Guardrails
 - Do not commit or Git push unless explicitly requested.
+- `staging` is merged into, never pushed onto: no `push <branch>:staging`, no force-push. Open a PR with base `staging`. Merge `main` into your branch before you do — see `docs/operations/BRANCHES_AND_STAGING.md`.
 - Do not mutate runtime data during content design/review unless explicitly requested.
 - Agents must not create ad-hoc Python/JS helper scripts in the repository root. New one-off task scripts must go under `ai/workbench/scripts/`. Generated task artifacts must go under `ai/workbench/artifacts/`. Reusable production/authoring tooling belongs in the existing canonical `ai/scripts` architecture and must not be duplicated in workbench.
 - Reuse the existing architecture; do not create parallel content or media systems.

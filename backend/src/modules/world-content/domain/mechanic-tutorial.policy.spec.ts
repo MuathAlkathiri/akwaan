@@ -24,9 +24,9 @@ import {
   FirstNoteTutorialScenarioInput,
   deriveFirstNoteTutorialOutcome,
   validateFirstNoteTutorialScenario,
-  OddPieceV1TutorialScenarioInput,
   OddPieceV2TutorialScenarioInput,
   deriveOddPieceTutorialOutcome,
+  isRetiredTutorialScenario,
   validateOddPieceTutorialScenario,
   deriveOneClueTutorialOutcome,
   validateOneClueTutorialScenario,
@@ -675,52 +675,6 @@ describe('generalized mechanic tutorial policy', () => {
     );
   });
 
-  const oddPiece = (): OddPieceV1TutorialScenarioInput => ({
-    kind: 'odd-piece',
-    version: 1,
-    prompt: 'أي قطعة لا تنتمي لنفس السيارة؟',
-    targetVehicleIdentity: 'BMW M4 G82',
-    targetVehicleLabel: 'BMW M4 Competition Coupe (G82)',
-    intruderVehicleIdentity: 'Mercedes-AMG C63 W206',
-    intruderVehicleLabel: 'Mercedes-AMG C63 (W206)',
-    pieces: [
-      {
-        id: 'a',
-        imageUrl: '/a.jpg',
-        altText: 'قطعة أ',
-        vehicleIdentity: 'BMW M4 G82',
-        vehicleLabel: 'BMW M4 G82',
-      },
-      {
-        id: 'b',
-        imageUrl: '/b.jpg',
-        altText: 'قطعة ب',
-        vehicleIdentity: 'BMW M4 G82',
-        vehicleLabel: 'BMW M4 G82',
-      },
-      {
-        id: 'c',
-        imageUrl: '/c.jpg',
-        altText: 'قطعة ج',
-        vehicleIdentity: 'BMW M4 G82',
-        vehicleLabel: 'BMW M4 G82',
-      },
-      {
-        id: 'd',
-        imageUrl: '/d.jpg',
-        altText: 'قطعة د',
-        vehicleIdentity: 'Mercedes-AMG C63 W206',
-        vehicleLabel: 'Mercedes-AMG C63 W206',
-      },
-    ],
-    wrongSelectionPieceId: 'b',
-    correctSelectionPieceId: 'd',
-    targetReveal: {
-      imageUrl: '/reveal.jpg',
-      altText: 'السيارة الهدف بعد الكشف',
-    },
-  });
-
   const oddPieceV2 = (): OddPieceV2TutorialScenarioInput => ({
     kind: 'odd-piece',
     version: 2,
@@ -770,23 +724,6 @@ describe('generalized mechanic tutorial policy', () => {
     correctPoint: { x: 0.55, y: 0.35 },
   });
 
-  it('accepts and derives the canonical Odd Piece handoff', () => {
-    expect(validateOddPieceTutorialScenario(oddPiece())).toEqual([]);
-    expect(deriveOddPieceTutorialOutcome(oddPiece())).toMatchObject({
-      firstClaimTeam: 'team-a',
-      firstClaimCorrect: false,
-      handoffTeam: 'team-b',
-      secondClaimPieceId: 'd',
-      winnerTeam: 'team-b',
-      points: { 'team-a': 0, 'team-b': 1 },
-      matchPointDelta: 1,
-      puzzleCount: 3,
-    });
-    expect(validateMechanicTutorialScenario('odd-piece', oddPiece())).toEqual(
-      [],
-    );
-  });
-
   it('accepts and derives the Odd Piece V2 single-image hotspot tutorial', () => {
     expect(validateOddPieceTutorialScenario(oddPieceV2())).toEqual([]);
     expect(deriveOddPieceTutorialOutcome(oddPieceV2())).toMatchObject({
@@ -804,18 +741,17 @@ describe('generalized mechanic tutorial policy', () => {
     );
   });
 
-  it('rejects an ambiguous piece count or a pre-reveal identity leak in V1', () => {
-    const input = oddPiece();
-    input.pieces[0].altText = 'BMW M4 G82 headlight';
-    input.pieces = input.pieces.slice(0, 3);
+  it('refuses a scenario written for the retired four-piece contract', () => {
+    const retired = { ...oddPieceV2(), version: 1 } as unknown as Parameters<
+      typeof validateOddPieceTutorialScenario
+    >[0];
     expect(
-      validateOddPieceTutorialScenario(input).map((issue) => issue.code),
-    ).toEqual(
-      expect.arrayContaining([
-        'TUTORIAL_ODD_PIECE_COUNT',
-        'TUTORIAL_ODD_PIECE_ALT_LEAKS_IDENTITY',
-      ]),
-    );
+      validateOddPieceTutorialScenario(retired).map((issue) => issue.code),
+    ).toEqual(['TUTORIAL_VERSION_UNSUPPORTED']);
+    expect(isRetiredTutorialScenario(retired)).toBe(true);
+    expect(isRetiredTutorialScenario(oddPieceV2())).toBe(false);
+    // Other mechanics still use version 1 and are not retired by this.
+    expect(isRetiredTutorialScenario({ kind: 'ryo', version: 1 })).toBe(false);
   });
 
   it('rejects an invalid hotspot or inverted taps in V2', () => {

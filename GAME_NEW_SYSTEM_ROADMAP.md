@@ -40,6 +40,27 @@ Recovery points for future sessions. Both are on `origin/main`.
 
 Performance acceptance state at `4f33704`: **READY TO DEPLOY WITH KNOWN NON-BLOCKING DEBT**.
 
+### Where things stand — 2026-11-23 · القطعة الدخيلة: FOUR-PIECE CONTRACT RETIRED — ⬜ SOURCE ONLY, NOT MERGED, NOT DEPLOYED
+
+**Owner decision (2026-11-23).** القطعة الدخيلة is one thing: a photograph of a real vehicle in which exactly one
+part has been changed — a front grille, the headlights, the exhaust, the steering wheel, the gear selector, and so
+on — and the team points at the changed part. The earlier contract, four numbered part images with one intruder to
+pick, was built on a misreading of the mechanic. It is **retired, not kept for compatibility**, and the owner accepted
+that any record still carrying it becomes unplayable.
+
+| Item | State |
+|---|---|
+| Branch | `chore/remove-odd-piece-v1`, from `main` `7b67c0c9` — ⬜ not pushed, not merged, not deployed |
+| Backend | The four-piece gameplay plugin, its commands, its content validator, plan builder and explainer scenario are removed. One plugin is registered for `odd-piece`. A payload with no `version`, or `version: 1`, is not a payload and is refused wherever one is required. A stored explainer written for it is served as no explainer. |
+| Frontend | The four-piece board, its phone controller, the Admin version selector, the four-piece explainer and its bundled images are removed. A record with the retired payload opens in the Admin form as a blank puzzle. |
+| Data | **No migration and no deletion was run.** Local Docker database: 0 `odd-piece` ContentItems (read 2026-11-23). Production was **not read**; any four-piece record there stays stored and is simply never selected or launched. |
+| Identifiers | The surviving contract keeps its stored `version: 2` field and its `…V2…` / `…Hotspot…` identifiers and issue codes, so existing records and tests keep their meaning. They no longer imply a second version exists. |
+| Verification | Backend unit suites green (224 suites / 3,724 tests across world-content, match, live-game-sessions, content-engine, scripts and the rest); frontend typecheck clean and 2,064 of 2,070 tests green. The 6 failures are in `landing-sections`, `semantic-colour-scope`, `challenge-explainer-colour` (Combo) and `content-engine-overlap-acknowledgment`; all 6 fail identically on untouched `main` `7b67c0c9` and none reads a file this branch changes. Integration specs (need Mongo) were **not run**. |
+
+Earlier entries and §16.7's dated records describe the four-piece contract as it stood when they were written. They
+are history and are not rewritten; where they say it "remains valid" or is "retained for compatibility", this entry
+supersedes them.
+
 ### Where things stand — 2026-11-20 · GIT CONSOLIDATION · MECHANIC TUTORIALS IN PRODUCTION · PR #77 — ⚠️ GITHUB `main` IS AHEAD OF THE DEPLOYED BACKEND
 
 **Git consolidation (2026-11-19/20).** 30 registered worktrees were consolidated into **one clean primary checkout**,
@@ -2533,7 +2554,7 @@ and cleared if the captain changes team or is removed. Bomb's setup adds one opt
 | Moving XO | One holder per team turn: answers and places the earned mark | ✅ Implemented & verified locally — **supersedes §23.11's open-team rule** |
 | الكومبو | One holder per question: answers **and** owns تثبيت / كمل; كسر الكومبو open to any connected opponent | ✅ Implemented & verified locally — see below |
 | القنبلة | Captain chooses each team's **initial** holder; host presses Start; existing ownership after | ✅ Implemented & verified locally — see below |
-| اكشفني · من أول نغمة · القطها · القطعة الدخيلة (V1 + hotspot) | Open team races | Excluded by design — one holder would defeat the race |
+| اكشفني · من أول نغمة · القطها · القطعة الدخيلة | Open team races | Excluded by design — one holder would defeat the race |
 | ركّبها | Needs two or three players at once | Excluded by design — multi-actor |
 
 **الكومبو (approved 2026-11-16).** The question holder — the captain while connected, otherwise the full roster in
@@ -3006,17 +3027,23 @@ media intent; no new media pipeline is invented. Prefer a recognizable musical c
 meaningful. Avoid obvious answer leakage (e.g. immediately exposing the song title through spoken lyrics where that
 would trivialize the question).
 
-### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29; V1 history + V2 reconciliation)*
+### 16.7 القطعة الدخيلة — Cars Signature product design *(approved 2026-08-29; four-piece contract retired 2026-11-23)*
 
-Cars previously had **no approved Signature mechanic**. The original release record below is the historical
-four-piece **Odd Piece V1** record. It remains valid for V1 compatibility and must not be read as evidence that the
-newer single-image **V2** was committed, pushed, deployed, or published.
+**There is one القطعة الدخيلة.** A photograph of a real vehicle with exactly one part changed, and the team points
+at it. It is specified under «Current approved V2 — Single-Image Hotspot» below; "V2" survives only as the name of
+that contract's stored version field and identifiers.
 
-#### Historical V1 release state *(2026-09-01; preserved)*
+The four-piece contract first shipped under this name — four numbered part images, pick the intruder — was a
+misreading of the mechanic. The owner retired it on 2026-11-23 and it was removed from source (see the 2026-11-23
+status entry). The "Historical V1" blocks below are kept as a record of what was built and released at the time.
+**They describe nothing that exists in source any more**, and must not be read as a supported mode, a compatibility
+path, or a design to return to.
+
+#### Historical V1 release state *(2026-09-01; RETIRED 2026-11-23 — record only)*
 
 Product Design was approved for V1 and its source implementation/deployment evidence remains historical. V1 uses
 four independent visual car-part images, `pieceId` selection, three matching target-vehicle pieces, and one
-intruder. Existing V1 sessions and historical records remain compatible.
+intruder. *(Superseded 2026-11-23: no compatibility is kept; a four-piece record is no longer playable.)*
 
 | Concern | Status |
 |---|---|
@@ -3043,8 +3070,8 @@ intruder. Existing V1 sessions and historical records remain compatible.
 #### Current approved V2 — Single-Image Hotspot *(reconciled 2026-11-01)*
 
 V2 is the current approved product direction for future Odd Piece work. It replaces the V1 four-image question with
-one coherent modified vehicle photograph and one authoritative hotspot. V1 remains historical compatibility; the V1
-deployment record above did **not** deploy V2.
+one coherent modified vehicle photograph and one authoritative hotspot. The V1 deployment record above did **not**
+deploy V2. *(Since 2026-11-23 this is the only contract; V1 is removed from source.)*
 
 | V2 concern | Status |
 |---|---|
@@ -3133,7 +3160,7 @@ in a dirty, uncommitted working tree. These are release/content gaps, not claims
 > uncommitted working tree» above is historical. The production build now passes locally. Remaining blockers are
 > content/media and activation decisions only; see the 2026-11-06 closure block.
 
-#### Historical V1 implementation state *(2026-09-01; preserved)*
+#### Historical V1 implementation state *(2026-09-01; RETIRED 2026-11-23 — record only)*
 
 - **Backend:** `odd-piece` GameplayModePlugin; launcher/start use case; content policy; registry/module integration;
   ChallengeType production-definition source; canonical CAS claim flow; existing scoring/convergence integration;
@@ -3149,10 +3176,11 @@ in a dirty, uncommitted working tree. These are release/content gaps, not claims
 - **Timer:** configurable **30-second technical/playtest default** — ⚠️ **PLAYTEST / CONFIGURATION VALUE — NOT
   LOCKED PRODUCT DESIGN**.
 
-#### Historical V1 gameplay contract *(preserved)*
+#### Historical V1 gameplay contract *(RETIRED 2026-11-23 — record only)*
 
-The following V1 contract is retained for existing sessions, records, and compatibility. It is not the current V2
-question design; the V2 contract is documented above.
+The following describes the retired four-piece contract, kept only so the history above can be understood. It is
+not the mechanic, nothing in source implements it, and no session or record is kept compatible with it. The
+mechanic is the single-image contract documented above.
 
 ##### Core identity
 
@@ -6316,6 +6344,10 @@ Documentation only. No runtime, schema, DB, R2 or deployment change.
 The runtime `odd-piece` contract is **unchanged**: 3 puzzles per Challenge, 4 pieces per puzzle, exact
 three-plus-one identity split, stable `localId`s, server-only `vehicleIdentity`, and the mandatory full
 target-vehicle reveal — all already enforced by `backend/src/modules/world-content/domain/odd-piece-content.policy.ts`.
+
+> **Superseded — 2026-11-23.** The paragraph above was true when written. The four-piece contract it describes has
+> since been retired and removed; the `odd-piece` Skill and the scoped media clause were rewritten for the
+> single-image contract (§16.7 and the 2026-11-23 status entry).
 
 ### 30.6 Status correction — 2026-10-16
 

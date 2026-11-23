@@ -16,7 +16,7 @@ import { COMBO_MODE_KEY } from '../modules/live-game-sessions/domain/combo-gamep
 import { CLOSEST_MODE_KEY } from '../modules/live-game-sessions/domain/closest-gameplay.plugin';
 import { ONE_CLUE_MODE_KEY } from '../modules/live-game-sessions/domain/one-clue-gameplay.plugin';
 import { MARHALA_MODE_KEY } from '../modules/live-game-sessions/domain/marhala-board';
-import { ODD_PIECE_MODE_KEY } from '../modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
+import { ODD_PIECE_MODE_KEY } from '../modules/live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../modules/live-game-sessions/domain/laqatha-gameplay.plugin';
 import { FIRST_NOTE_MODE_KEY } from '../modules/live-game-sessions/domain/first-note-gameplay.plugin';
 import { EKSHIFNI_MODE_KEY } from '../modules/live-game-sessions/domain/ekshifni-gameplay.plugin';

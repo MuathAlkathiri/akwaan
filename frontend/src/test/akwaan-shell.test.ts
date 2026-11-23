@@ -117,18 +117,17 @@ describe("the cosmic background covers the player-facing Akwaan surfaces", () =>
     ]);
   });
 
-  it("uses a fixed white environment with the approved planets", () => {
+  it("uses a fixed white environment with a drawn backdrop, no planet images", () => {
     const source = readFileSync(
       resolve(SRC, "components/akwaan/akwaan-background.tsx"),
       "utf8",
     );
     expect(source).toContain("fixed inset-0 z-0");
     expect(source).toContain("bg-white");
-    expect(source).toContain("/brand/cosmic");
-    expect(source).toContain("radial-gradient");
-    expect(source).toContain("luxurious_ringed_planet_illustration.webp");
-    expect(source).toContain("elegant_golden_ringed_blue_planet.webp");
-    expect(source).toContain("glossy_planet_with_golden_orbit.webp");
+    // The rendered planets belonged to the retired identity. The new backdrop
+    // is flat discs and sparks, drawn inline.
+    expect(source).not.toContain("/brand/cosmic");
+    expect(source).not.toContain(".webp");
     expect(source).not.toContain("akwaan-cosmic-bg.webp");
   });
 

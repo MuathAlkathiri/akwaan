@@ -7,7 +7,6 @@ import { LA_TAHRIQHA_GAMEPLAY_PLUGIN } from './la-tahriqha-gameplay.plugin';
 import { LAQATHA_GAMEPLAY_PLUGIN } from './laqatha-gameplay.plugin';
 import { MARHALA_GAMEPLAY_PLUGIN } from './marhala-gameplay.plugin';
 import { MOVING_XO_GAMEPLAY_PLUGIN } from './moving-xo-gameplay.plugin';
-import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
 import { ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN } from './odd-piece-hotspot-gameplay.plugin';
 import { ONE_CLUE_GAMEPLAY_PLUGIN } from './one-clue-gameplay.plugin';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
@@ -248,26 +247,6 @@ describe('currentContentItemId', () => {
   });
 
   describe('odd-piece', () => {
-    const ask = ODD_PIECE_GAMEPLAY_PLUGIN.currentContentItemId!;
-    const state = (ids: string[], i: number) => ({
-      puzzlesJson: JSON.stringify(ids.map((id) => ({ id: id }))),
-      currentPuzzleIndex: i,
-    });
-
-    it('names a non-zero item and follows the round forward', () => {
-      const ids = ['a', 'b', 'c'];
-      expect(ask(state(ids, 1), {})).toBe('b');
-      expect(ask(state(ids, 2), {})).toBe('c');
-    });
-
-    it('is silent for malformed runtime', () => {
-      expect(
-        ask({ puzzlesJson: '{', currentPuzzleIndex: 0 }, {}),
-      ).toBeUndefined();
-    });
-  });
-
-  describe('odd-piece-hotspot', () => {
     const ask = ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN.currentContentItemId!;
     const state = (ids: string[], i: number) => ({
       puzzlesJson: JSON.stringify(ids.map((id) => ({ id: id }))),

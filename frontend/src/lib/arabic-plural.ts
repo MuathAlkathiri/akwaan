@@ -26,14 +26,61 @@ export interface ArabicNounForms {
   few: string;
   /** Eleven and above, singular accusative: "عالمًا". */
   many: string;
+  /**
+   * The noun's gender, which "واحد" has to agree with.
+   *
+   * Arabic has no neuter to fall back on, so this cannot be defaulted: a
+   * feminine noun given the masculine "واحد" reads as broken Arabic, and that
+   * is precisely the tell of a translated interface this module exists to
+   * avoid.
+   */
+  gender: "masculine" | "feminine";
 }
 
 export const ARABIC_NOUNS = {
-  world: { one: "عالم", two: "عالمان", few: "عوالم", many: "عالمًا" },
-  scope: { one: "نطاق", two: "نطاقان", few: "نطاقات", many: "نطاقًا" },
-  challenge: { one: "تحدٍّ", two: "تحدّيان", few: "تحدّيات", many: "تحدّيًا" },
-  player: { one: "لاعب", two: "لاعبان", few: "لاعبين", many: "لاعبًا" },
-  card: { one: "بطاقة", two: "بطاقتان", few: "بطاقات", many: "بطاقة" },
+  world: {
+    one: "عالم",
+    two: "عالمان",
+    few: "عوالم",
+    many: "عالمًا",
+    gender: "masculine",
+  },
+  scope: {
+    one: "نطاق",
+    two: "نطاقان",
+    few: "نطاقات",
+    many: "نطاقًا",
+    gender: "masculine",
+  },
+  challenge: {
+    one: "تحدٍّ",
+    two: "تحدّيان",
+    few: "تحدّيات",
+    many: "تحدّيًا",
+    gender: "masculine",
+  },
+  player: {
+    one: "لاعب",
+    two: "لاعبان",
+    few: "لاعبين",
+    many: "لاعبًا",
+    gender: "masculine",
+  },
+  card: {
+    one: "بطاقة",
+    two: "بطاقتان",
+    few: "بطاقات",
+    many: "بطاقة",
+    gender: "feminine",
+  },
+  /** A playable Match — what a token buys, and what the shop counts in. */
+  match: {
+    one: "مباراة",
+    two: "مباراتان",
+    few: "مباريات",
+    many: "مباراة",
+    gender: "feminine",
+  },
 } as const satisfies Record<string, ArabicNounForms>;
 
 /** The noun alone, in the form the count requires. */
@@ -51,7 +98,8 @@ export function arabicNoun(count: number, forms: ArabicNounForms): string {
  * and printing the digit as well is the tell of a translated interface.
  */
 export function arabicCount(count: number, forms: ArabicNounForms): string {
-  if (count === 1) return `${forms.one} واحد`;
+  if (count === 1)
+    return `${forms.one} ${forms.gender === "feminine" ? "واحدة" : "واحد"}`;
   if (count === 2) return forms.two;
   return `${count} ${arabicNoun(count, forms)}`;
 }

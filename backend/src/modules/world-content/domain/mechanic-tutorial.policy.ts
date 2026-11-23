@@ -294,27 +294,6 @@ export interface OddPieceTutorialMediaInput {
   altText: string;
 }
 
-export interface OddPieceTutorialPieceInput extends OddPieceTutorialMediaInput {
-  id: string;
-  vehicleIdentity: string;
-  vehicleLabel: string;
-}
-
-export interface OddPieceV1TutorialScenarioInput {
-  kind: 'odd-piece';
-  version: 1;
-  prompt: string;
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  intruderVehicleIdentity: string;
-  intruderVehicleLabel: string;
-  pieces: OddPieceTutorialPieceInput[];
-  wrongSelectionPieceId: string;
-  correctSelectionPieceId: string;
-  targetReveal: OddPieceTutorialMediaInput;
-  caption?: string;
-}
-
 export interface OddPieceV2TutorialScenarioInput {
   kind: 'odd-piece';
   version: 2;
@@ -337,8 +316,7 @@ export interface OddPieceV2TutorialScenarioInput {
   caption?: string;
 }
 
-export type OddPieceTutorialScenarioInput =
-  OddPieceV1TutorialScenarioInput | OddPieceV2TutorialScenarioInput;
+export type OddPieceTutorialScenarioInput = OddPieceV2TutorialScenarioInput;
 
 /** Legacy callers still use the old name for an untagged RYO draft. */
 export type TutorialScenarioInput =
@@ -685,48 +663,36 @@ export interface OddPieceTutorialOutcome {
   reason: 'odd-piece.claim-handoff';
 }
 
+/**
+ * A stored القطعة الدخيلة explainer written for the retired four-piece contract.
+ *
+ * Such a record can still be sitting in a database. It describes a game that
+ * no longer exists, so it is treated as "no explainer" wherever one is served
+ * to players, rather than shown or allowed to break the renderer.
+ */
+export function isRetiredTutorialScenario(scenario: unknown): boolean {
+  const value = scenario as { kind?: unknown; version?: unknown } | null;
+  return value?.kind === 'odd-piece' && value.version !== 2;
+}
+
 export function deriveOddPieceTutorialOutcome(
   input: OddPieceTutorialScenarioInput,
 ): OddPieceTutorialOutcome {
-  if (input.version === 2) {
-    return {
-      firstClaimTeam: 'team-a',
-      firstClaimPieceId: 'wrong-hotspot',
-      firstClaimCorrect: false,
-      handoffTeam: 'team-b',
-      secondClaimPieceId: 'correct-hotspot',
-      secondClaimCorrect: true,
-      winnerTeam: 'team-b',
-      points: { 'team-a': 0, 'team-b': 1 },
-      matchPointDelta: 1,
-      intruderPieceId: input.intruderPartIdentity,
-      targetVehicleLabel: input.targetVehicleLabel.trim(),
-      targetReveal: {
-        imageUrl: input.originalImage?.media?.assets?.[0]?.url ?? '',
-        altText: input.targetVehicleLabel.trim(),
-      },
-      puzzleCount: 3,
-      reason: 'odd-piece.claim-handoff',
-    };
-  }
-  const intruder = input.pieces.find(
-    (piece) => piece.vehicleIdentity !== input.targetVehicleIdentity,
-  );
   return {
     firstClaimTeam: 'team-a',
-    firstClaimPieceId: input.wrongSelectionPieceId,
+    firstClaimPieceId: 'wrong-hotspot',
     firstClaimCorrect: false,
     handoffTeam: 'team-b',
-    secondClaimPieceId: input.correctSelectionPieceId,
+    secondClaimPieceId: 'correct-hotspot',
     secondClaimCorrect: true,
     winnerTeam: 'team-b',
     points: { 'team-a': 0, 'team-b': 1 },
     matchPointDelta: 1,
-    intruderPieceId: intruder?.id ?? input.correctSelectionPieceId,
+    intruderPieceId: input.intruderPartIdentity,
     targetVehicleLabel: input.targetVehicleLabel.trim(),
     targetReveal: {
-      imageUrl: input.targetReveal.imageUrl.trim(),
-      altText: input.targetReveal.altText.trim(),
+      imageUrl: input.originalImage?.media?.assets?.[0]?.url ?? '',
+      altText: input.targetVehicleLabel.trim(),
     },
     puzzleCount: 3,
     reason: 'odd-piece.claim-handoff',
@@ -738,7 +704,7 @@ export function validateOddPieceTutorialScenario(
 ): WorldContentIssue[] {
   const issues: WorldContentIssue[] = [];
   const add = (code: string, message: string) => issues.push({ code, message });
-  if (input.version !== 1 && input.version !== 2) {
+  if (input.version !== 2) {
     add('TUTORIAL_VERSION_UNSUPPORTED', 'نسخة شرح القطعة الدخيلة غير مدعومة.');
     return issues;
   }
@@ -850,85 +816,6 @@ export function validateOddPieceTutorialScenario(
     }
     return issues;
   }
-
-  const pieces = Array.isArray(input.pieces) ? input.pieces : [];
-  if (pieces.length !== 4)
-    add(
-      'TUTORIAL_ODD_PIECE_COUNT',
-      'شرح القطعة الدخيلة يحتاج أربع قطع بالضبط.',
-    );
-  if (
-    pieces.some(
-      (piece) =>
-        !piece?.id?.trim() ||
-        !piece?.imageUrl?.trim() ||
-        !piece?.altText?.trim() ||
-        !piece?.vehicleIdentity?.trim() ||
-        !piece?.vehicleLabel?.trim(),
-    )
-  )
-    add(
-      'TUTORIAL_ODD_PIECE_INCOMPLETE',
-      'كل قطعة تحتاج صورة وهوية ومعلومات بديلة.',
-    );
-  const ids = pieces.map((piece) => piece?.id?.trim()).filter(Boolean);
-  if (new Set(ids).size !== ids.length)
-    add('TUTORIAL_ODD_PIECE_IDS_DUPLICATED', 'معرّفات القطع مكررة.');
-  const targetCount = pieces.filter(
-    (piece) => piece?.vehicleIdentity === input.targetVehicleIdentity,
-  ).length;
-  if (targetCount !== 3)
-    add(
-      'TUTORIAL_ODD_PIECE_TARGET_COUNT',
-      'يجب أن تنتمي ثلاث قطع للسيارة الهدف.',
-    );
-  const intruders = pieces.filter(
-    (piece) => piece?.vehicleIdentity !== input.targetVehicleIdentity,
-  );
-  if (intruders.length !== 1)
-    add(
-      'TUTORIAL_ODD_PIECE_INTRUDER_COUNT',
-      'يجب أن توجد قطعة دخيلة واحدة فقط.',
-    );
-  const byId = new Map(pieces.map((piece) => [piece?.id, piece]));
-  const wrong = byId.get(input.wrongSelectionPieceId);
-  const correct = byId.get(input.correctSelectionPieceId);
-  if (!wrong || wrong.vehicleIdentity !== input.targetVehicleIdentity)
-    add(
-      'TUTORIAL_ODD_PIECE_WRONG_SELECTION_INVALID',
-      'اختيار الفريق الأول يجب أن يكون قطعة صحيحة من السيارة الهدف.',
-    );
-  if (!correct || correct.vehicleIdentity === input.targetVehicleIdentity)
-    add(
-      'TUTORIAL_ODD_PIECE_CORRECT_SELECTION_INVALID',
-      'اختيار الفريق الثاني يجب أن يكون القطعة الدخيلة.',
-    );
-  if (input.wrongSelectionPieceId === input.correctSelectionPieceId)
-    add(
-      'TUTORIAL_ODD_PIECE_SELECTIONS_DUPLICATED',
-      'اختيارا الفريقين يجب أن يكونا مختلفين.',
-    );
-  if (
-    !input.targetReveal?.imageUrl?.trim() ||
-    !input.targetReveal?.altText?.trim()
-  )
-    add('TUTORIAL_ODD_PIECE_REVEAL_REQUIRED', 'صورة الكشف الكاملة مطلوبة.');
-  const leakedLabels = [
-    input.targetVehicleIdentity,
-    input.targetVehicleLabel,
-    input.intruderVehicleIdentity,
-    input.intruderVehicleLabel,
-  ]
-    .filter(Boolean)
-    .map(normalizeArabicText);
-  pieces.forEach((piece) => {
-    const alt = normalizeArabicText(piece?.altText ?? '');
-    if (leakedLabels.some((label) => label && alt.includes(label)))
-      add(
-        'TUTORIAL_ODD_PIECE_ALT_LEAKS_IDENTITY',
-        'النص البديل للقطعة لا يجوز أن يكشف هوية السيارة قبل الكشف.',
-      );
-  });
   return issues;
 }
 

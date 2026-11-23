@@ -1,38 +1,6 @@
 export const ODD_PIECE_MODE_KEY = "odd-piece";
 export const ODD_PIECE_CHALLENGE_NAME = "القطعة الدخيلة";
 
-export interface OddPieceView {
-  phase: "preparing" | "open" | "selecting" | "revealed" | "completed";
-  puzzleIndex: number;
-  puzzleCount: number;
-  prompt: string;
-  pieces: Array<{ id: string; imageUrl: string; altText?: string }>;
-  answerOwnerTeamId?: string;
-  failedTeamIds: string[];
-  /** This actor's own team, when the projection is actor-specific. */
-  actorTeamId?: string;
-  canClaim: boolean;
-  canSelect: boolean;
-  attemptUsed: boolean;
-  deadlineAt?: string;
-  /**
-   * Who picked what, released on the same terms as the answer: empty while a
-   * transfer is still open, because a selection narrows the puzzle.
-   */
-  attempts: Array<{ teamId: string; pieceId: string; correct: boolean }>;
-  reveal?: {
-    oddPieceId: string;
-    targetVehicleLabel: string;
-    intruderVehicleLabel: string;
-    targetReveal: { imageUrl: string; altText?: string };
-  };
-  result?: {
-    winnerTeamId: string | null;
-    tie: boolean;
-    points: Record<string, number>;
-  };
-}
-
 export interface OddPieceHotspotImage {
   width: number;
   height: number;
@@ -79,40 +47,6 @@ const json = <T>(value: unknown, fallback: T): T => {
     return fallback;
   }
 };
-
-export function readOddPieceView(
-  state: Record<string, string | number | boolean | null>,
-): OddPieceView {
-  return {
-    phase: String(state.phase ?? "preparing") as OddPieceView["phase"],
-    puzzleIndex: Number(state.currentPuzzleIndex ?? 0),
-    puzzleCount: Number(state.puzzleCount ?? 3),
-    prompt: String(state.prompt ?? "اختر القطعة الدخيلة"),
-    pieces: json<OddPieceView["pieces"]>(state.piecesJson, []),
-    ...(typeof state.answerOwnerTeamId === "string"
-      ? { answerOwnerTeamId: state.answerOwnerTeamId }
-      : {}),
-    failedTeamIds: json<string[]>(state.failedTeamIdsJson, []),
-    ...(typeof state.actorTeamId === "string"
-      ? { actorTeamId: state.actorTeamId }
-      : {}),
-    attempts: json<
-      Array<{ teamId: string; pieceId: string; correct: boolean }>
-    >(state.attemptsJson, []),
-    canClaim: state.canClaim === true,
-    canSelect: state.canSelect === true,
-    attemptUsed: state.attemptUsed === true,
-    ...(typeof state.deadlineAt === "string"
-      ? { deadlineAt: state.deadlineAt }
-      : {}),
-    ...(state.revealJson
-      ? { reveal: json<OddPieceView["reveal"]>(state.revealJson, undefined) }
-      : {}),
-    ...(state.resultJson
-      ? { result: json<OddPieceView["result"]>(state.resultJson, undefined) }
-      : {}),
-  };
-}
 
 export function readOddPieceHotspotView(
   state: Record<string, string | number | boolean | null>,

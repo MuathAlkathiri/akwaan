@@ -58,11 +58,18 @@ const item = (
 });
 
 describe('Odd Piece V2 content policy', () => {
-  it('keeps missing and explicit version 1 payloads on the legacy path', () => {
-    expect(oddPiecePayloadVersion({ variant: 'odd-piece' })).toBe(1);
-    expect(oddPiecePayloadVersion({ variant: 'odd-piece', version: 1 })).toBe(
-      1,
-    );
+  it('recognises only the current payload; the retired four-piece contract is not a payload at all', () => {
+    expect(oddPiecePayloadVersion(payload())).toBe(2);
+    expect(oddPiecePayloadVersion({ variant: 'odd-piece' })).toBeUndefined();
+    expect(
+      oddPiecePayloadVersion({ variant: 'odd-piece', version: 1 }),
+    ).toBeUndefined();
+    // And such a record is refused wherever a payload is required.
+    expect(
+      validateOddPiecePayload({ variant: 'odd-piece' } as never).map(
+        (problem) => problem.code,
+      ),
+    ).toContain('ODD_PIECE_V2_PAYLOAD_REQUIRED');
   });
 
   it('accepts the complete versioned hotspot contract', () => {

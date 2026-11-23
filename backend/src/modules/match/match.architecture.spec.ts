@@ -279,7 +279,7 @@ describe('Match module architecture', () => {
       'live-game-sessions/domain/one-clue-gameplay.plugin',
       'live-game-sessions/domain/bomb-gameplay.plugin',
       'live-game-sessions/domain/marhala-gameplay.plugin',
-      'live-game-sessions/domain/odd-piece-gameplay.plugin',
+      'live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin',
       'live-game-sessions/domain/laqatha-gameplay.plugin',
       'live-game-sessions/domain/first-note-gameplay.plugin',
       'live-game-sessions/domain/ekshifni-gameplay.plugin',

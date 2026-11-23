@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SUPPORT_EMAIL } from "@/lib/support";
 
 export const metadata: Metadata = {
-  title: "سياسة الاسترجاع | أكوان",
+  title: "سياسة الاسترجاع",
   description: "شروط استرجاع مدفوعات جلسات أكوان الرقمية وطريقة تقديم الطلب ومدته.",
 };
 

@@ -217,10 +217,6 @@ export const MODE_COMMAND_TYPES: readonly string[] = [
   'refresh-marhala-availability',
   'exhaust-marhala-content',
   // القطعة الدخيلة.
-  'claim-odd-piece',
-  'submit-odd-piece',
-  'advance-odd-piece',
-  'expire-odd-piece',
   'claim-odd-piece-hotspot',
   'submit-odd-piece-hotspot',
   'advance-odd-piece-hotspot',

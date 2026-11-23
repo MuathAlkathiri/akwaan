@@ -7,6 +7,7 @@ import {
   PurchaseIntent,
   PurchaseIntentRepository,
 } from '../persistence/purchase-intent.repository';
+import { DiscountCodeRepository } from '../persistence/discount-code.repository';
 
 /**
  * The line between a paid charge and a granted Match.
@@ -48,6 +49,7 @@ const deliver = (
 ) => {
   const grant = jest.fn().mockResolvedValue({});
   const markFulfilled = jest.fn().mockResolvedValue(undefined);
+  const countRedemption = jest.fn().mockResolvedValue(undefined);
   const provider: PaymentProvider = {
     key: 'moyasar',
     start: jest.fn(),
@@ -62,10 +64,12 @@ const deliver = (
       markFulfilled,
       record: jest.fn(),
     } as unknown as PurchaseIntentRepository,
+    { countRedemption } as unknown as DiscountCodeRepository,
   );
   return {
     grant,
     markFulfilled,
+    countRedemption,
     run: () => useCase.fromWebhook({ rawBody: '{}', headers: {} }),
   };
 };
@@ -183,6 +187,7 @@ describe('turning a paid charge into tokens', () => {
         markFulfilled: jest.fn(),
         record: jest.fn(),
       } as unknown as PurchaseIntentRepository,
+      { countRedemption: jest.fn() } as unknown as DiscountCodeRepository,
     );
     await expect(
       useCase.fromWebhook({ rawBody: '{}', headers: {} }),
@@ -243,6 +248,7 @@ describe('a delivery that is about the endpoint, not about money', () => {
         markFulfilled: jest.fn(),
         record: jest.fn(),
       } as unknown as PurchaseIntentRepository,
+      { countRedemption: jest.fn() } as unknown as DiscountCodeRepository,
     );
     return {
       grant,
@@ -304,6 +310,7 @@ describe('settling a charge the player came back with', () => {
         markFulfilled: jest.fn().mockResolvedValue(undefined),
         record: jest.fn(),
       } as unknown as PurchaseIntentRepository,
+      { countRedemption: jest.fn() } as unknown as DiscountCodeRepository,
     );
     return {
       grant,
@@ -372,6 +379,73 @@ describe('settling a charge the player came back with', () => {
     // The price check belongs to the shared core, so every route in gets it.
     const { run, grant } = returning(
       payment({ amountHalalas: tokenPackById('single')!.priceHalalas }),
+    );
+    await expect(run()).rejects.toBeInstanceOf(PaymentError);
+    expect(grant).not.toHaveBeenCalled();
+  });
+});
+
+describe('a charge that carried a discount code', () => {
+  const DISCOUNTED = FIVE.priceHalalas - 1000;
+
+  it('settles on the amount we opened it at, not the catalogue price', async () => {
+    // The whole point of the change: the intent is the authority on what this
+    // particular charge was supposed to cost.
+    const { run, grant } = deliver(
+      payment({ amountHalalas: DISCOUNTED }),
+      intentFor({ amountHalalas: DISCOUNTED, discountCode: 'AKWAAN20' }),
+    );
+    await run();
+    expect(grant).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: FIVE.tokens }),
+    );
+  });
+
+  it('counts the redemption once the money is real', async () => {
+    const { run, countRedemption } = deliver(
+      payment({ amountHalalas: DISCOUNTED }),
+      intentFor({ amountHalalas: DISCOUNTED, discountCode: 'AKWAAN20' }),
+    );
+    await run();
+    expect(countRedemption).toHaveBeenCalledWith('AKWAAN20');
+  });
+
+  it('does not count it again for a charge already settled', async () => {
+    // Every provider delivers a webhook twice eventually. The second one must
+    // not spend another of a creator's allocation.
+    const { run, countRedemption } = deliver(
+      payment({ amountHalalas: DISCOUNTED }),
+      intentFor({
+        amountHalalas: DISCOUNTED,
+        discountCode: 'AKWAAN20',
+        fulfilledAt: new Date(),
+      }),
+    );
+    await run();
+    expect(countRedemption).not.toHaveBeenCalled();
+  });
+
+  it('counts nothing when no code was used', async () => {
+    const { run, countRedemption } = deliver(payment(), intentFor());
+    await run();
+    expect(countRedemption).not.toHaveBeenCalled();
+  });
+
+  it('still refuses a charge captured for a different amount than we opened', async () => {
+    const { run, grant } = deliver(
+      payment({ amountHalalas: 100 }),
+      intentFor({ amountHalalas: DISCOUNTED, discountCode: 'AKWAAN20' }),
+    );
+    await expect(run()).rejects.toMatchObject({
+      code: PAYMENT_ERRORS.AMOUNT_MISMATCH,
+    });
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('refuses a full-price charge redirected at a discounted intent', async () => {
+    const { run, grant } = deliver(
+      payment({ amountHalalas: FIVE.priceHalalas }),
+      intentFor({ amountHalalas: DISCOUNTED, discountCode: 'AKWAAN20' }),
     );
     await expect(run()).rejects.toBeInstanceOf(PaymentError);
     expect(grant).not.toHaveBeenCalled();

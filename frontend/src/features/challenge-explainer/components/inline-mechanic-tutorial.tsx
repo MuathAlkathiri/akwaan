@@ -24,7 +24,6 @@ import { LA_TAHRIQHA_DEMO_STEPS } from "../la-tahriqha-demo-scenario";
 import { LAQATHA_DEMO_STEPS } from "../laqatha-demo-scenario";
 import { MARHALA_DEMO_STEPS } from "../marhala-demo-scenario";
 import {
-  ODD_PIECE_V1_DEMO_STEPS,
   ODD_PIECE_V2_DEMO_STEPS,
 } from "../odd-piece-demo-scenario";
 import { ONE_CLUE_DEMO_STEPS } from "../one-clue-demo-scenario";
@@ -160,11 +159,7 @@ function scenesFor(scenario: TutorialScenario): readonly Scene[] {
   if (kind === "la-tahriqha") return LA_TAHRIQHA_DEMO_STEPS;
   if (kind === "laqatha") return LAQATHA_DEMO_STEPS;
   if (kind === "marhala") return MARHALA_DEMO_STEPS;
-  if (kind === "odd-piece") {
-    return scenario.version === 2
-      ? ODD_PIECE_V2_DEMO_STEPS
-      : ODD_PIECE_V1_DEMO_STEPS;
-  }
+  if (kind === "odd-piece") return ODD_PIECE_V2_DEMO_STEPS;
   if (kind === "one-clue") return ONE_CLUE_DEMO_STEPS;
   if (kind === "top-5") return TOP5_DEMO_STEPS;
   return RYO_DEMO_STEPS;

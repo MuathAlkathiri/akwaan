@@ -5,10 +5,7 @@ import {
   OddPieceExplainer,
   SAMPLE_ODD_PIECE_TUTORIAL_SCENARIO,
 } from "@/features/challenge-explainer";
-import {
-  SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO,
-  SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
-} from "@/features/challenge-explainer/odd-piece-demo-scenario";
+import { SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/odd-piece-demo-scenario";
 
 describe("القطعة الدخيلة V2 mechanic tutorial", () => {
   const reducedMotion = () => {
@@ -149,14 +146,15 @@ describe("القطعة الدخيلة V2 mechanic tutorial", () => {
     );
   });
 
-  it("maintains historical compatibility for V1 legacy four-image scenario", async () => {
+  it("shows nothing for a stored scenario from the retired four-piece contract", () => {
     reducedMotion();
-    render(
-      <OddPieceExplainer
-        scenario={SAMPLE_ODD_PIECE_V1_TUTORIAL_SCENARIO}
-        mode="preview"
-      />,
+    const retired = {
+      ...SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
+      version: 1,
+    } as unknown as typeof SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO;
+    const { container } = render(
+      <OddPieceExplainer scenario={retired} mode="preview" />,
     );
-    expect(screen.getByTestId("odd-piece-grid")).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });

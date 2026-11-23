@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SUPPORT_EMAIL } from "@/lib/support";
 
 export const metadata: Metadata = {
-  title: "سياسة الخصوصية | أكوان",
+  title: "سياسة الخصوصية",
   description: "توضح سياسة خصوصية أكوان البيانات المستخدمة في اللعب والدفع وحقوق طلب حذفها.",
 };
 

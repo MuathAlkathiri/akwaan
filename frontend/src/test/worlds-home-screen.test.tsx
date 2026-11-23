@@ -58,6 +58,26 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 import { WorldsHome } from "@/features/worlds";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+/**
+ * The page reads the player's remaining questions per World, so it needs a
+ * query client the way every other screen in the app does. Retries are off:
+ * a test should fail on the first wrong answer, not after three.
+ *
+ * Nothing else about these tests changed — this supplies a provider the real
+ * application already wraps the page in.
+ */
+function renderHome() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <WorldsHome />
+    </QueryClientProvider>,
+  );
+}
 
 function world(
   slug: string,
@@ -135,10 +155,15 @@ function chooseFourScopes() {
 
 describe("home is a dashboard of Worlds", () => {
   it("leads with the approved product explanation and real World controls", () => {
-    render(<WorldsHome />);
+    renderHome();
 
     const headline = screen.getByRole("heading", { level: 1 });
-    expect(headline).toHaveTextContent("3 عوالم مختلفة، منافسة واحدة");
+    // The approved identity breaks the promise over two lines and colours the
+    // second, so the comma that used to join them is gone. Asserted as two
+    // phrases rather than one string: the guard is that the headline still
+    // makes the product's claim, not that it is punctuated a particular way.
+    expect(headline).toHaveTextContent("3 عوالم مختلفة");
+    expect(headline).toHaveTextContent("منافسة واحدة");
     // Each active World is a circular portal button keyed by its name.
     expect(
       screen.getByRole("button", { name: "كرة القدم" }),
@@ -151,7 +176,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("enters inline Scope Focus Mode instead of a modal or navigation", () => {
-    render(<WorldsHome />);
+    renderHome();
     fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
     expect(screen.getByTestId("scope-focus-mode")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -163,8 +188,9 @@ describe("home is a dashboard of Worlds", () => {
       screen.getByText("حدد النطاقات اللي تبغون تدخل في المباراة."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "نطاق 1" })).toBeInTheDocument();
-    expect(screen.getAllByTestId("scope-choice-card")[0]).toHaveClass(
-      "aspect-video",
+    expect(screen.getAllByTestId("scope-choice-card")[0]).toHaveAttribute(
+      "aria-pressed",
+      "false",
     );
     expect(screen.getAllByTestId("scope-name-overlay")[0]).toHaveTextContent(
       "نطاق 1",
@@ -173,7 +199,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("builds a guest selection locally and updates the selected Worlds rail", () => {
-    render(<WorldsHome />);
+    renderHome();
     fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
     const confirm = screen.getAllByRole("button", {
       name: /تأكيد النطاقات/,
@@ -200,7 +226,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("discards unconfirmed Scope changes when returning to Worlds", () => {
-    render(<WorldsHome />);
+    renderHome();
     fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
     fireEvent.click(screen.getByRole("button", { name: "نطاق 1" }));
     fireEvent.click(screen.getByRole("button", { name: "نطاق 2" }));
@@ -223,7 +249,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("hydrates confirmed Scopes when editing without reordering the World", () => {
-    render(<WorldsHome />);
+    renderHome();
     fireEvent.click(screen.getByRole("button", { name: "كرة القدم" }));
     chooseFourScopes();
     fireEvent.click(
@@ -255,7 +281,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("keeps the exactly-three World limit after confirmed Scope selections", () => {
-    render(<WorldsHome />);
+    renderHome();
     for (const worldName of ["كرة القدم", "أنمي", "ألعاب الفيديو"]) {
       fireEvent.click(screen.getByRole("button", { name: worldName }));
       chooseFourScopes();
@@ -274,7 +300,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("communicates every ordered selection step and enables the start only at 3/3", () => {
-    render(<WorldsHome />);
+    renderHome();
     // This page builds the whole plan, so its one action creates the Match and
     // opens its room — there is no second page to continue to.
     const start = screen.getByTestId("worlds-home-start");
@@ -311,7 +337,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("creates the Match from here and opens its room", async () => {
-    render(<WorldsHome />);
+    renderHome();
     for (const worldName of ["كرة القدم", "أنمي", "ألعاب الفيديو"]) {
       fireEvent.click(screen.getByRole("button", { name: worldName }));
       chooseFourScopes();
@@ -331,7 +357,7 @@ describe("home is a dashboard of Worlds", () => {
 
   it("keeps every coming-soon World muted and outside the interactive controls", () => {
     // The names come from the catalog now, not from a list in this file.
-    render(<WorldsHome />);
+    renderHome();
 
     for (const label of ["الأفلام", "المسلسلات"]) {
       expect(
@@ -345,7 +371,7 @@ describe("home is a dashboard of Worlds", () => {
   });
 
   it("does not infer an active Match from local browser state", () => {
-    render(<WorldsHome />);
+    renderHome();
     expect(
       screen.queryByRole("region", { name: "أكمل من حيث توقفت" }),
     ).toBeNull();

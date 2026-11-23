@@ -258,14 +258,14 @@ export class MatchContentSelector {
       ...(typeof payload.marhalaDifficulty === 'string'
         ? { marhalaDifficulty: payload.marhalaDifficulty }
         : {}),
-      ...(payload.variant === 'odd-piece'
+      // A record still carrying the retired four-piece payload gets no
+      // version here, so the launcher's `isPlayableItem` never selects it.
+      ...(payload.variant === 'odd-piece' && payload.version === 2
         ? {
-            oddPieceVersion:
-              payload.version === 2 ? (2 as const) : (1 as const),
-            ...(payload.version === 2 &&
-            (payload.difficulty === 'easy' ||
-              payload.difficulty === 'medium' ||
-              payload.difficulty === 'hard')
+            oddPieceVersion: 2 as const,
+            ...(payload.difficulty === 'easy' ||
+            payload.difficulty === 'medium' ||
+            payload.difficulty === 'hard'
               ? { oddPieceDifficulty: payload.difficulty }
               : {}),
           }
