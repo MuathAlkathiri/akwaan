@@ -102,7 +102,12 @@ export class StartPurchase {
         ...(quote.code ? { discountCode: quote.code } : {}),
       },
       description: `أكوان — ${pack.label}`,
-      callbackUrl: `${siteUrl}/matches`,
+      // Back to the shop, not to the Matches list. The return is the second
+      // chance to settle a charge whose webhook was lost, and the code that
+      // takes it lives on the shop screen — which is also where a player who
+      // just paid is told what happened to their money. Sending them anywhere
+      // else makes the return a dead end that only the sweeper can rescue.
+      callbackUrl: `${siteUrl}/shop`,
     });
 
     await this.intents.record({

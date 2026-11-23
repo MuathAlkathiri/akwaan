@@ -200,7 +200,10 @@ function useSettlement() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const settle = useSettlePurchase();
-  const invoiceId = params.get("invoice_id");
+  // Moyasar returns the charge as `id`. `invoice_id` is kept because an
+  // invoice redirect has used it, and reading only one of the two is how a
+  // paid player lands here carrying proof we then ignore.
+  const invoiceId = params.get("id") ?? params.get("invoice_id");
   const asked = useRef<string | null>(null);
   const [outcome, setOutcome] = useState<"settled" | "unsettled" | undefined>();
   const [tokensAdded, setTokensAdded] = useState<number | undefined>();
