@@ -311,7 +311,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   // withdraw it on disconnect. Single-surface mechanics keep the HTTP ack.
   const multiSurface = gameplay?.presentationSurface?.running === true;
   const deferOddPieceHotspotAck =
-    gameplay?.mode.key === ODD_PIECE_MODE_KEY && gameplay.mode.version === 2;
+    gameplay?.mode.key === ODD_PIECE_MODE_KEY;
   // The acknowledgement is keyed to the exact runtime revision, and is pinned
   // ONLY once the request has actually been issued and accepted. An attempt that
   // could not be delivered (or that the server rejected) leaves the key open, so
