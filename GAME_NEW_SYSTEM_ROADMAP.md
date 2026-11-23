@@ -4377,6 +4377,8 @@ evidence (§16.1), never upgraded here.
   *(Clarified 2026-11-06, §33.1: there is no universal batch-wide quota outside such mechanics.)*
 - **Text-native exceptions remain valid:** Top-5, intentional Football Bomb name-fragment items, and any
   mechanic where text itself is the interaction.
+  *(Narrowed for Bomb 2026-11-22, §23.4: name-fragment items remain a valid archetype, but they are no longer
+  text-only — every Bomb item carries an image.)*
 - **Wigolo-first authentic media:** when authentic real media exists (footballers, moments/stadiums, anime
   characters/scenes, game characters/maps/weapons/UI, real audio cues), source it via the established Wigolo
   MCP/media workflow — do **not** generate synthetic replacements merely because it is easier. Programmatic /
@@ -4419,6 +4421,22 @@ evidence (§16.1), never upgraded here.
 - **Anime / Video Games Bomb:** media-native recognition (character/org/object/place; character/weapon/map/audio).
 - **Puzzles Bomb:** fast visual micro-puzzle, not trivia.
 - Do **not** generalise Football's name-fragment ratio to every World.
+- **Every Bomb item carries an image — Product decision 2026-11-22.** A text-only Bomb item is no longer authored,
+  in any World. Football's ≈ 1/3 name-fragment share is unchanged as an *archetype*; what changes is that such an
+  item shows the person it names (`وش الاسم الأول لمودريتش؟` with Modrić's photo). The image there is context, not
+  the clue, and must not show the answer as readable text. Reason given by the Product Owner: a Bomb question
+  without a picture is dull.
+  - ✅ **Authoring rule recorded** — Bomb Skill (`ai/.opencode/skills/challenge-types/bomb/SKILL.md`) and
+    `MECHANIC-COMPATIBILITY.md`; source only.
+  - ✅ **Upload gate available** — `deployment/scripts/copy-media-to-r2.sh --require-media` fails a pack with an
+    item that has no media (PR #88).
+  - ⬜ **Engine enforcement NOT STARTED** — Bomb is not generatable by the Content Engine, so no required image
+    slot exists for it in `media-requirements.ts` yet.
+  - ⬜ **Runtime contract UNCHANGED** — `bomb-content.policy.ts` still accepts `none`, `image` and `audio`. This is a
+    forward authoring rule, not a readiness gate; turning it into one would block items that are live today.
+  - ⚠️ **KNOWN DEBT** — the 19 text-only Bomb items already in Production (§21.3, 15 Football R1 + 15 Saudi League R1:
+    19 Text, 11 Image) predate this decision and are untouched. The Product Owner has indicated they may be removed
+    rather than given images; no decision is recorded and nothing was changed.
 
 ### 23.5 Puzzles World content identity (product-approved)
 
@@ -5023,7 +5041,7 @@ The approved forward identity for the Music World is a **living, current catalog
 - **First Note:** Skews Current/Recent for maximum bidding tension.
 - **RYO:** Mix current culture with enduring knowledge. Opponent-reading tension is strongest with modern cultural relevance.
 - **Closest:** Avoid volatile numbers (streams, views, followers). Use durable numeric facts, allowing more historical/modern anchors, but inject enough 2024-2026 subject matter to avoid feeling like a history quiz.
-- **Bomb:** Text + Image ONLY. 🚫 **AUDIO IS BANNED** for forward Bomb gameplay due to server-authoritative team clock constraints. (Historical audio playtests and backend audio capabilities remain preserved but are SUPERSEDED/NOT ALLOWED for forward authoring).
+- **Bomb:** Image ONLY for forward authoring — every item carries an image, and text-only items are no longer authored (2026-11-22, §23.4; before that date this line read "Text + Image ONLY"). 🚫 **AUDIO IS BANNED** for forward Bomb gameplay due to server-authoritative team clock constraints. (Historical audio playtests and backend audio capabilities remain preserved but are SUPERSEDED/NOT ALLOWED for forward authoring).
 
 ### 25.3 Content Re-Scoping & Impact Analysis
 

@@ -520,6 +520,16 @@ export const attachCandidateMedia = (
   );
 };
 
+/** Swap the slot's image for one of the suggestions already stored on it. */
+export const chooseCandidateMediaSuggestion = (
+  candidateId: string,
+  slotKey: string,
+  data: { expectedMediaReviewRevision: number; downloadUrl: string },
+) =>
+  unwrap<ReviewCandidate>(
+    apiClient.post(mediaPath(candidateId, slotKey, "suggestion"), data),
+  );
+
 export const reviewCandidateMedia = (
   candidateId: string,
   slotKey: string,

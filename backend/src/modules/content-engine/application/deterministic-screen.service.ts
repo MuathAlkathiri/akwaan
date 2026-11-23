@@ -10,7 +10,13 @@ import {
   type RyoConfidenceBand,
 } from './candidate-generator.service';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { COMBO_MAX_ACCEPTED_ANSWERS } from './candidate-generator.service';
+import {
+  BOMB_MAX_PROMPT_LENGTH,
+  COMBO_MAX_ACCEPTED_ANSWERS,
+} from './candidate-generator.service';
+import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
+import { mediaIntentOf } from '../domain/candidate-media-intent';
+import { BOMB_IMAGE_SLOT } from '../domain/media-requirements';
 import {
   ScreenFinding,
   EngineCandidateDocument,
@@ -79,6 +85,13 @@ export interface ScreenOptions {
   candidateId?: string;
   scopeKey?: string;
   worldKey?: string;
+  /**
+   * The mechanic the candidate was authored for. Two mechanics share the
+   * `match` answer mode, and only this tells them apart. Absent means الكومبو:
+   * a caller that does not say is held to the stricter of the two contracts,
+   * so a forgotten argument blocks a candidate instead of waving it through.
+   */
+  mechanicKey?: string;
   session?: DeterministicScreenSession;
   historicalRecords?: HistoricalContentRecord[];
 }
@@ -873,7 +886,9 @@ export class DeterministicScreenService {
     }
     if (payload.mode === 'match') {
       findings.push(
-        ...this.screenCombo(draft, prompt, payload.acceptedAnswers),
+        ...(screenOptions?.mechanicKey === BOMB_SLUG
+          ? this.screenBomb(prompt, payload.acceptedAnswers, authoring)
+          : this.screenCombo(draft, prompt, payload.acceptedAnswers)),
       );
       findings.push(...this.screenFamilyCompliance(draft, authoring));
       findings.push(...this.deferredNotes());
@@ -1156,6 +1171,75 @@ export class DeterministicScreenService {
     prompt: string,
     rawAnswers: unknown,
   ): ScreenFinding[] {
+    const findings = this.screenMatchAnswers(prompt, rawAnswers);
+
+    const stage = (
+      draft.mechanicPayload as { comboStage?: unknown } | undefined
+    )?.comboStage;
+    if (
+      typeof stage !== 'number' ||
+      !Number.isInteger(stage) ||
+      stage < 1 ||
+      stage > 4
+    ) {
+      findings.push(
+        blocking(
+          'COMBO_STAGE_REQUIRED',
+          'mechanicPayload.comboStage must be an integer from 1 to 4',
+        ),
+      );
+    }
+
+    findings.push(...this.screenPromptHygiene(prompt));
+    return findings;
+  }
+
+  /**
+   * القنبلة: a typed answer about one picture, read at a glance.
+   *
+   * The answer contract is الكومبو's, so it is screened by the same rules.
+   * What is Bomb's own is the glance: the Skill bounds the prompt, and a prompt
+   * over that bound is a blocker rather than a note, because the clock does not
+   * stop while a player reads.
+   *
+   * The picture itself is not screened here. That it exists is the canonical
+   * media contract's job (the required `item-image` slot), and whether it is
+   * the right picture is a person's. This only notices when a candidate cannot
+   * be searched for, so the reviewer knows the image must be supplied by hand.
+   */
+  private screenBomb(
+    prompt: string,
+    rawAnswers: unknown,
+    authoring?: Record<string, unknown> | null,
+  ): ScreenFinding[] {
+    const findings = this.screenMatchAnswers(prompt, rawAnswers);
+
+    if ([...prompt].length >= BOMB_MAX_PROMPT_LENGTH) {
+      findings.push(
+        blocking(
+          'BOMB_PROMPT_TOO_LONG',
+          `a Bomb prompt must be under ${BOMB_MAX_PROMPT_LENGTH} characters; this one is ${[...prompt].length}`,
+        ),
+      );
+    }
+    if (!mediaIntentOf(authoring, BOMB_IMAGE_SLOT)) {
+      findings.push(
+        warning(
+          'BOMB_IMAGE_SUBJECT_MISSING',
+          'the candidate does not name the subject of its picture, so no image can be found for it automatically',
+        ),
+      );
+    }
+
+    findings.push(...this.screenPromptHygiene(prompt));
+    return findings;
+  }
+
+  /** What every text-matched answer list is held to, whatever the mechanic. */
+  private screenMatchAnswers(
+    prompt: string,
+    rawAnswers: unknown,
+  ): ScreenFinding[] {
     const findings: ScreenFinding[] = [];
 
     const answers = (Array.isArray(rawAnswers) ? rawAnswers : [])
@@ -1217,23 +1301,11 @@ export class DeterministicScreenService {
       }
     }
 
-    const stage = (
-      draft.mechanicPayload as { comboStage?: unknown } | undefined
-    )?.comboStage;
-    if (
-      typeof stage !== 'number' ||
-      !Number.isInteger(stage) ||
-      stage < 1 ||
-      stage > 4
-    ) {
-      findings.push(
-        blocking(
-          'COMBO_STAGE_REQUIRED',
-          'mechanicPayload.comboStage must be an integer from 1 to 4',
-        ),
-      );
-    }
+    return findings;
+  }
 
+  private screenPromptHygiene(prompt: string): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
     if (prompt !== prompt.replace(/\s{2,}/g, ' ')) {
       findings.push(
         warning('PROMPT_WHITESPACE', 'collapse repeated whitespace'),

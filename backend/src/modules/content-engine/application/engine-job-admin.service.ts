@@ -174,11 +174,16 @@ export class EngineJobAdminService {
     private readonly historicalScreen?: DeterministicScreenService,
   ) {}
 
-  private async historicalInventoryComplete(
+  /**
+   * Null when the Scope's history was read in full; otherwise a short reason
+   * the operator can act on. The reason is the whole point: "incomplete" alone
+   * does not say whether the Scope is unknown, too large, or unreadable.
+   */
+  private async historicalInventoryGap(
     worldKey: string,
     scopeKey: string,
-  ): Promise<boolean> {
-    if (!this.historicalScreen) return false;
+  ): Promise<string | null> {
+    if (!this.historicalScreen) return 'UNAVAILABLE: screen not wired';
     try {
       const session = this.historicalScreen.createSession({
         worldKey,
@@ -188,9 +193,13 @@ export class EngineJobAdminService {
         { worldKey, scopeKey },
         session,
       );
-      return result.status === 'COMPLETE';
-    } catch {
-      return false;
+      if (result.status === 'COMPLETE') return null;
+      const detail = result.isTruncated
+        ? `more than ${result.canonicalCount} items or ${result.candidateCount} approved candidates in this Scope`
+        : (result.error ?? 'no detail');
+      return `${result.status}: ${detail}`;
+    } catch (error) {
+      return `UNAVAILABLE: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 
@@ -1160,14 +1169,12 @@ export class EngineJobAdminService {
       };
     }
 
-    if (
-      !(await this.historicalInventoryComplete(
-        resolvedWorldKey!,
-        resolvedScopeKey!,
-      ))
-    ) {
-      const message =
-        'Historical inventory could not be verified completely; resolve inventory issues before generation.';
+    const inventoryGap = await this.historicalInventoryGap(
+      resolvedWorldKey!,
+      resolvedScopeKey!,
+    );
+    if (inventoryGap) {
+      const message = `Historical inventory could not be verified completely (${inventoryGap}); resolve inventory issues before generation.`;
       return {
         resolvable: true,
         submissionReady: false,
@@ -1473,16 +1480,14 @@ export class EngineJobAdminService {
       });
     }
 
-    if (
-      !(await this.historicalInventoryComplete(
-        resolvedWorldKey,
-        resolvedScopeKey,
-      ))
-    ) {
+    const inventoryGap = await this.historicalInventoryGap(
+      resolvedWorldKey,
+      resolvedScopeKey,
+    );
+    if (inventoryGap) {
       throw new BadRequestException({
         code: 'HISTORICAL_INVENTORY_INCOMPLETE',
-        message:
-          'Historical inventory could not be verified completely; resolve inventory issues before generation.',
+        message: `Historical inventory could not be verified completely (${inventoryGap}); resolve inventory issues before generation.`,
       });
     }
 

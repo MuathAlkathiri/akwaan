@@ -576,6 +576,97 @@ describe("Candidate media panel", () => {
     });
   });
 
+  describe("suggested images", () => {
+    const suggestion = (name: string) => ({
+      provider: "wikimedia-commons",
+      title: `${name}.jpg`,
+      downloadUrl: `https://img.example/${name}.jpg`,
+      pageUrl: `https://commons.example/File:${name}.jpg`,
+      width: 1280,
+      height: 960,
+      licenceNote: "CC BY-SA 4.0",
+    });
+
+    it("offers the stored suggestions and swaps to the chosen one against the media revision", async () => {
+      vi.spyOn(api, "chooseCandidateMediaSuggestion");
+      const updated = candidate({ mediaReviewRevision: 2 });
+      vi.mocked(api.chooseCandidateMediaSuggestion).mockResolvedValue(updated);
+      const { setData } = renderPanel(
+        candidate({
+          mediaPlan: [resolvedSlot({ suggestions: [suggestion("one"), suggestion("two")] })],
+        }),
+      );
+      const offered = within(slotCard()).getAllByTestId("media-suggestion");
+      expect(offered).toHaveLength(2);
+      expect(within(offered[1]).getByRole("link", { name: "المصدر والترخيص" })).toHaveAttribute(
+        "href",
+        "https://commons.example/File:two.jpg",
+      );
+      fireEvent.click(within(offered[1]).getByRole("button", { name: "استخدم هذي" }));
+      await waitFor(() =>
+        expect(api.chooseCandidateMediaSuggestion).toHaveBeenCalledWith("media-1", SLOT, {
+          expectedMediaReviewRevision: 1,
+          downloadUrl: "https://img.example/two.jpg",
+        }),
+      );
+      await waitFor(() =>
+        expect(setData).toHaveBeenCalledWith(["content-engine-review-detail", "media-1"], updated),
+      );
+    });
+
+    it("explains a slot left empty because no image could be trusted, and still offers what was found", () => {
+      renderPanel(
+        candidate({
+          mediaPlan: [
+            {
+              slotKey: SLOT,
+              purpose: "gameplay",
+              required: true,
+              status: "planned",
+              failureReason: "MEDIA_DISCOVERY_NO_CONFIDENT_MATCH",
+              suggestions: [suggestion("one")],
+            },
+          ],
+        }),
+      );
+      expect(within(slotCard()).getByTestId("media-slot-waiting")).toHaveTextContent(
+        "ما لقينا صورة نتأكد إنها للموضوع نفسه",
+      );
+      expect(within(slotCard()).getAllByTestId("media-suggestion")).toHaveLength(1);
+    });
+
+    it("marks a suggestion that shows the answer, with what was read in it", () => {
+      renderPanel(
+        candidate({
+          mediaPlan: [
+            resolvedSlot({
+              visualCheck: { status: "clear" },
+              suggestions: [
+                {
+                  ...suggestion("crest"),
+                  visualCheck: { status: "leaks", evidence: "CRYSTAL PALACE F.C." },
+                },
+                { ...suggestion("plain"), visualCheck: { status: "unchecked" } },
+              ],
+            }),
+          ],
+        }),
+      );
+      const offered = within(slotCard()).getAllByTestId("media-suggestion");
+      expect(within(offered[0]).getByTestId("media-visual-leak")).toHaveTextContent(
+        "تكشف الإجابة: CRYSTAL PALACE F.C.",
+      );
+      // Nobody looked at the second one, so it claims nothing either way.
+      expect(within(offered[1]).queryByTestId("media-visual-leak")).toBeNull();
+      expect(within(slotCard()).getByTestId("media-visual-clear")).toBeInTheDocument();
+    });
+
+    it("shows no suggestions section when there are none", () => {
+      renderPanel(candidate());
+      expect(within(slotCard()).queryByTestId("media-suggestions")).toBeNull();
+    });
+  });
+
   describe("locks and unsupported slots", () => {
     it.each([
       ["rejected", { reviewStatus: "rejected" as const }, "المرشح مرفوض"],

@@ -65,6 +65,43 @@ export const ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED =
   'ENGINE_MEDIA_DISCOVERY_WIGOLO_ENABLED';
 
 /**
+ * Wikimedia Commons image discovery. Off by default. Free and keyless, but it
+ * is still an outbound call made on a reviewer's behalf, so it is switched on
+ * deliberately like every other enrichment strategy. Discovery finds images;
+ * it is never proof of rights.
+ */
+export const ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED =
+  'ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED';
+
+/**
+ * Wikidata image discovery: the picture a subject's own catalogue entry names.
+ * Off by default, for the same reason as Commons discovery above.
+ */
+export const ENGINE_MEDIA_DISCOVERY_WIKIDATA_ENABLED =
+  'ENGINE_MEDIA_DISCOVERY_WIKIDATA_ENABLED';
+
+/**
+ * Brave Search API key. Setting it adds general web image search as a last
+ * resort: asked only when the licensed sources found nothing trustworthy, and
+ * only ever to offer a reviewer images to choose from. Unset means off.
+ */
+export const ENGINE_MEDIA_DISCOVERY_BRAVE_API_KEY =
+  'ENGINE_MEDIA_DISCOVERY_BRAVE_API_KEY';
+
+/**
+ * Looking at each found image before it is used: does it show, in readable
+ * text, the answer the question asks for? Off by default — every look is a
+ * paid model call. `ENGINE_MEDIA_VISION_MODEL` overrides the quality model.
+ */
+export const ENGINE_MEDIA_VISION_CHECK_ENABLED =
+  'ENGINE_MEDIA_VISION_CHECK_ENABLED';
+export const ENGINE_MEDIA_VISION_MODEL = 'ENGINE_MEDIA_VISION_MODEL';
+
+/** Identifies this deployment to image providers that require it. Optional. */
+export const ENGINE_MEDIA_DISCOVERY_USER_AGENT =
+  'ENGINE_MEDIA_DISCOVERY_USER_AGENT';
+
+/**
  * Money is integer **micros of SAR** everywhere — 1 SAR = 1_000_000 micros.
  *
  * Floats are not allowed near a spending cap. `0.1 + 0.2 !== 0.3` is a rounding
