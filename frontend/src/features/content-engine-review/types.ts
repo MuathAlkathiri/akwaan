@@ -355,3 +355,15 @@ export interface SpendingSummary {
     unknownUsage: number;
   }>;
 }
+
+/** A picture the Admin chose, once, to stand for a named subject. */
+export interface MediaLibraryEntry {
+  id: string;
+  name: string;
+  nameAr: string | null;
+  aliases: string[];
+  kind: string;
+  asset: { url: string; mimetype: string; width: number; height: number; sha256: string };
+  createdByEmail: string;
+  createdAt: string | null;
+}

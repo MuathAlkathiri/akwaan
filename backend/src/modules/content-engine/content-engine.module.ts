@@ -55,6 +55,12 @@ import { LocalImageStorageService } from '../../common/uploads/local-image-stora
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
 import { CandidateMediaReviewService } from './application/candidate-media-review.service';
 import { MediaDiscoveryService } from './application/media-discovery.service';
+import { MediaLibraryService } from './application/media-library.service';
+import { ContentEngineMediaLibraryController } from './presentation/content-engine-media-library.controller';
+import {
+  EngineMediaLibraryDocument,
+  EngineMediaLibrarySchema,
+} from './schemas/engine-media-library.schema';
 import { MediaVisualCheckService } from './application/media-visual-check.service';
 import { CandidateMediaEnrichmentService } from './application/candidate-media-enrichment.service';
 import {
@@ -133,6 +139,10 @@ import {
         name: EngineDraftPublicationDocument.name,
         schema: EngineDraftPublicationSchema,
       },
+      {
+        name: EngineMediaLibraryDocument.name,
+        schema: EngineMediaLibrarySchema,
+      },
     ]),
     // Explicit, though global in the app: the engine's media ingestion needs
     // the R2 mirror token even where the module is compiled on its own.
@@ -140,7 +150,11 @@ import {
     // Rights are read live from the authoritative record for media gates.
     MediaRightsModule,
   ],
-  controllers: [ContentEngineReviewController, ContentEngineJobsController],
+  controllers: [
+    ContentEngineReviewController,
+    ContentEngineJobsController,
+    ContentEngineMediaLibraryController,
+  ],
   providers: [
     ContentEngineDeletionParticipant,
     {
@@ -247,6 +261,7 @@ import {
     },
     MediaDiscoveryService,
     MediaVisualCheckService,
+    MediaLibraryService,
     CandidateMediaEnrichmentService,
   ],
   exports: [

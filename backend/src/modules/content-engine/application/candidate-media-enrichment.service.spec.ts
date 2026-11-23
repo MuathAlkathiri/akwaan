@@ -80,6 +80,8 @@ const build = (options: {
   ingest?: (url: string) => EngineImageIngestionResult;
   available?: boolean;
   web?: DiscoveredMedia[];
+  /** The Admin's own picture for the subject, when the library has one. */
+  owned?: { url: string } | null;
   /** Verdict per image title; presence switches the visual check on. */
   looks?: Record<string, 'clear' | 'leaks' | 'unchecked'>;
 }) => {
@@ -114,6 +116,22 @@ const build = (options: {
       : { status };
   });
   const visual = { isAvailable: () => options.looks !== undefined, check };
+  const find = jest.fn(async () =>
+    options.owned
+      ? {
+          id: 'entry-1',
+          name: 'Arsène Wenger',
+          asset: {
+            url: options.owned.url,
+            mimetype: 'image/png',
+            width: 600,
+            height: 600,
+            sha256: 'c'.repeat(64),
+          },
+        }
+      : null,
+  );
+  const library = { find };
   const service = new CandidateMediaEnrichmentService(
     {
       discover,
@@ -122,10 +140,11 @@ const build = (options: {
     } as never,
     { ingestRemote } as never,
     visual as never,
+    library as never,
   );
   const pause = jest.fn(async () => undefined);
   service.pause = pause;
-  return { service, discover, ingestRemote, pause, check };
+  return { service, discover, ingestRemote, pause, check, find };
 };
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -376,6 +395,74 @@ describe('CandidateMediaEnrichmentService', () => {
       );
       expect(new Set(keys).size).toBe(keys.length);
       expect(keys[0]).toMatch(/^cand-1:item-image:[0-9a-f]{16}$/);
+    });
+  });
+
+  describe("the Admin's own library", () => {
+    const LOCAL = '/uploads/world-content/content-items/engine-lib.png';
+    const PUBLIC = 'https://media.example/engine-lib.png';
+    const checked = () =>
+      input({
+        check: {
+          jobId: 'job-1',
+          candidateId: 'cand-1',
+          question: 'من هذا المدرب؟',
+          acceptedAnswers: ['أرسين فينغر'],
+        },
+      });
+
+    it('uses the library picture without searching or downloading anything', async () => {
+      const { service, discover, ingestRemote, find } = build({
+        owned: { url: LOCAL },
+      });
+      const outcome = await service.enrich(input());
+      expect(find).toHaveBeenCalledWith(
+        ['Arsène Wenger', 'أرسين فينغر'],
+        'person',
+      );
+      expect(discover).not.toHaveBeenCalled();
+      expect(ingestRemote).not.toHaveBeenCalled();
+      expect(outcome.resolved).toEqual(['item-image']);
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot).toMatchObject({
+        status: 'resolved',
+        asset: { url: LOCAL },
+        provenance: { acquisition: 'upload', provider: 'media-library' },
+        rights: { status: 'UNKNOWN' },
+      });
+      expect(outcome.set['draft.media']).toEqual({
+        type: 'image',
+        assets: [{ url: LOCAL, altText: 'مدرب فرنسي يقف على خط التماس.' }],
+      });
+    });
+
+    it('still looks at a public library picture, and searches instead when it shows the answer', async () => {
+      const leaking = build({
+        owned: { url: PUBLIC },
+        looks: { 'engine-lib': 'leaks' },
+      });
+      const outcome = await leaking.service.enrich(checked());
+      expect(leaking.check).toHaveBeenCalledWith(
+        expect.objectContaining({ imageUrl: PUBLIC }),
+      );
+      // Fell back to discovery and attached a found image instead.
+      expect(leaking.discover).toHaveBeenCalled();
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.asset?.url).not.toBe(PUBLIC);
+
+      const clear = build({ owned: { url: PUBLIC }, looks: {} });
+      const kept = await clear.service.enrich(checked());
+      const [used] = kept.set.mediaPlan as CandidateMediaSlot[];
+      expect(used.asset?.url).toBe(PUBLIC);
+      expect(used.visualCheck).toEqual({ status: 'clear' });
+    });
+
+    it('does not show a local address to a model, and records that nobody looked', async () => {
+      const { service, check } = build({ owned: { url: LOCAL }, looks: {} });
+      const outcome = await service.enrich(checked());
+      expect(check).not.toHaveBeenCalled();
+      const [slot] = outcome.set.mediaPlan as CandidateMediaSlot[];
+      expect(slot.visualCheck).toBeUndefined();
     });
   });
 

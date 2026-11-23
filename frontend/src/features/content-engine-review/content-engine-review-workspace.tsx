@@ -29,6 +29,7 @@ import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
 import { CandidateMediaPanel } from "./candidate-media-panel";
+import { MediaLibraryPanel } from "./media-library-panel";
 
 /** Recorded with a rights acknowledgment made as part of a one-click approval. */
 const QUICK_RIGHTS_NOTE =
@@ -58,7 +59,7 @@ import {
   isShortcutBlockedTarget,
 } from "./review-navigation";
 
-export type StudioSurface = "generate" | "jobs" | "review";
+export type StudioSurface = "generate" | "jobs" | "review" | "library";
 
 export const STUDIO_STORAGE_KEY = "akwaan.contentEngineStudio.state.v1";
 const DEDUPLICATION_FINDING_CODES = new Set<string>([
@@ -100,7 +101,8 @@ const readInitialStudioState = (): PersistedStudioState => {
       if (
         parsed.surface === "generate" ||
         parsed.surface === "jobs" ||
-        parsed.surface === "review"
+        parsed.surface === "review" ||
+        parsed.surface === "library"
       ) {
         fallback.surface = parsed.surface;
       }
@@ -615,7 +617,7 @@ export function ContentEngineReviewWorkspace() {
       try {
         const params = new URLSearchParams(window.location.search);
         const surface = params.get("surface");
-        if (surface === "generate" || surface === "jobs" || surface === "review") {
+        if (surface === "generate" || surface === "jobs" || surface === "review" || surface === "library") {
           setActiveSurface(surface);
         }
         setSelectedId(params.get(CANDIDATE_URL_PARAM) ?? undefined);
@@ -1255,6 +1257,18 @@ export function ContentEngineReviewWorkspace() {
           >
             3. مراجعة المرشحين (Candidate Review)
           </button>
+          <button
+            type="button"
+            data-testid="surface-tab-library"
+            onClick={() => setActiveSurface("library")}
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeSurface === "library"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            4. مكتبة الصور
+          </button>
         </div>
 
         {(activeJobId || filters.jobId) && (
@@ -1275,6 +1289,8 @@ export function ContentEngineReviewWorkspace() {
           </div>
         )}
       </nav>
+
+      {activeSurface === "library" && <MediaLibraryPanel />}
 
       {activeSurface === "generate" && (
         <BatchSubmissionPanel

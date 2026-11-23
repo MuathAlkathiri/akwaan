@@ -18,6 +18,10 @@ import {
 import { resolveMediaRequirements } from '../domain/media-requirements';
 import { EngineImageIngestionService } from '../infrastructure/engine-image-ingestion.service';
 import { MediaDiscoveryService } from './media-discovery.service';
+import {
+  MEDIA_LIBRARY_PROVIDER,
+  MediaLibraryService,
+} from './media-library.service';
 import { MediaVisualCheckService } from './media-visual-check.service';
 
 /** One image attached and up to three more to choose from. */
@@ -82,6 +86,7 @@ export class CandidateMediaEnrichmentService {
     private readonly discovery: MediaDiscoveryService,
     private readonly ingestion: EngineImageIngestionService,
     @Optional() private readonly visual?: MediaVisualCheckService,
+    @Optional() private readonly library?: MediaLibraryService,
   ) {}
 
   /** False when no discovery provider is switched on. */
@@ -137,14 +142,13 @@ export class CandidateMediaEnrichmentService {
 
       // What a model saw written in each image it was shown. Empty when the
       // check is off; a missing entry always means "nobody looked".
-      const looks = new Map<DiscoveredMedia, MediaVisualCheck>();
-      const look = async (
-        media: DiscoveredMedia,
+      const looks = new Map<string, MediaVisualCheck>();
+      const lookAt = async (
+        imageUrl: string,
       ): Promise<MediaVisualCheck | undefined> => {
         if (!input.check || !this.visual?.isAvailable()) return undefined;
-        const known = looks.get(media);
+        const known = looks.get(imageUrl);
         if (known) return known;
-        const imageUrl = media.previewUrl ?? media.downloadUrl;
         const verdict = await this.visual.check({
           jobId: input.check.jobId,
           reservationKey: `${input.check.candidateId}:${requirement.slotKey}:${createHash(
@@ -158,9 +162,12 @@ export class CandidateMediaEnrichmentService {
           acceptedAnswers: input.check.acceptedAnswers,
           mustNotShow: intent.mustNotShow,
         });
-        looks.set(media, verdict);
+        looks.set(imageUrl, verdict);
         return verdict;
       };
+      const shown = (media: DiscoveredMedia) =>
+        media.previewUrl ?? media.downloadUrl;
+      const look = (media: DiscoveredMedia) => lookAt(shown(media));
       const suggest = async (
         offered: DiscoveredMedia[],
       ): Promise<CandidateMediaSuggestion[]> => {
@@ -168,7 +175,7 @@ export class CandidateMediaEnrichmentService {
         // and concurrent reservations contend for the same ledger row.
         for (const media of offered) await look(media);
         return offered.map((media) => {
-          const seen = looks.get(media);
+          const seen = looks.get(shown(media));
           return {
             ...toSuggestion(media),
             ...(seen ? { visualCheck: seen } : {}),
@@ -188,6 +195,56 @@ export class CandidateMediaEnrichmentService {
         touched = true;
         unresolved.push(requirement.slotKey);
       };
+
+      // The Admin's own picture for this subject, if they have uploaded one:
+      // already chosen, already stored, so nothing is searched for or fetched.
+      const owned = await this.library?.find(
+        [intent.subject, intent.subjectAr],
+        intent.kind,
+      );
+      if (owned) {
+        // Only a public address can be shown to a model; a local one is used
+        // unlooked-at, which records as "nobody looked", never as clear.
+        const seen = /^https:\/\//i.test(owned.asset.url)
+          ? await lookAt(owned.asset.url)
+          : undefined;
+        if (seen?.status !== 'leaks') {
+          const next = replaceMediaSlotAsset(
+            { mediaPlan: plan, mediaReviewRevision: revision },
+            {
+              requirement,
+              expectedMediaReviewRevision: revision,
+              asset: owned.asset,
+              provenance: {
+                acquisition: 'upload',
+                provider: MEDIA_LIBRARY_PROVIDER,
+              },
+              rights: { status: 'UNKNOWN', source: 'unrecorded' },
+            },
+          );
+          plan = next.mediaPlan.map((entry) =>
+            entry.slotKey === requirement.slotKey && seen
+              ? { ...entry, visualCheck: seen }
+              : entry,
+          );
+          revision = next.mediaReviewRevision;
+          set[`draft.${requirement.targetPath}`] = {
+            type: requirement.mediaType,
+            assets: [
+              {
+                url: owned.asset.url,
+                ...(intent.altText
+                  ? { altText: intent.altText.slice(0, 200) }
+                  : {}),
+              },
+            ],
+          };
+          touched = true;
+          resolved.push(requirement.slotKey);
+          continue;
+        }
+        // It shows the answer for this particular question: search instead.
+      }
 
       let found: DiscoveredMedia[];
       try {
@@ -287,7 +344,7 @@ export class CandidateMediaEnrichmentService {
           ...confident.filter((other) => other !== media),
           ...others,
         ]);
-        const seen = looks.get(media);
+        const seen = looks.get(shown(media));
         plan = next.mediaPlan.map((entry) =>
           entry.slotKey === requirement.slotKey
             ? { ...entry, suggestions, ...(seen ? { visualCheck: seen } : {}) }
