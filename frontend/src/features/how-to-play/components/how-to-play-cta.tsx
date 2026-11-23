@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { STICKER } from "@/components/akwaan/sticker";
 
 /**
  * The close of the story: the same primary action the home hero offers, in the
@@ -11,20 +12,22 @@ import { Button } from "@/components/ui/button";
  */
 export function HowToPlayCta() {
   return (
-    <section className="relative z-10 px-4 pb-20 pt-4 text-center sm:px-6 lg:pb-28">
-      <div className="mx-auto flex max-w-2xl flex-col items-center">
-        <p className="text-lg font-black leading-8 text-[hsl(var(--brand-navy))] sm:text-xl">
-          جاهزين تجمعون أصحابكم وتبدأون المنافسة؟
-        </p>
-
-        <Button
-          asChild
-          size="lg"
-          className="akwaan-primary-action mt-6 rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-10 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] hover:shadow-[0_18px_38px_-16px_hsl(var(--brand-gold)/.42)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <Link href="/#worlds">ابدأ اللعبة</Link>
-        </Button>
-      </div>
+    <section className="flex flex-col items-center gap-[26px] pt-4 text-center">
+      <h2 className="max-w-[760px] font-display text-[26px] font-black leading-[1.5] text-[hsl(var(--brand-navy))] sm:text-4xl">
+        جاهزين تجمعون أصحابكم وتبدأون المنافسة؟
+      </h2>
+      <Link
+        href="/#worlds"
+        className={cn(
+          "inline-flex min-h-[3.5rem] items-center justify-center rounded-full px-10 sm:min-h-[4.25rem] sm:px-[52px]",
+          "font-display text-[19px] font-extrabold sm:text-[22px]",
+          "bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]",
+          "transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))]",
+          STICKER.base,
+        )}
+      >
+        ابدأ اللعبة
+      </Link>
     </section>
   );
 }

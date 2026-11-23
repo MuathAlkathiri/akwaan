@@ -18,7 +18,7 @@ import { HowToPlayJourney } from "./how-to-play-journey";
  */
 export function HowToPlayPage() {
   return (
-    <div className="relative pb-4">
+    <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-20 pt-2 sm:px-8 lg:gap-[76px] lg:pb-24">
       <HowToPlayHero />
       <HowToPlayJourney />
       <HowToPlayDetails />
