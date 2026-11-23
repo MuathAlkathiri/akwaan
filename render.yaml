@@ -213,15 +213,15 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
 
-      # Exact origins, comma separated. The allowlist is a literal match —
-      # there is no wildcard support, and a pattern here would be compared as
-      # a string and silently refuse every request.
+      # Origins, comma separated, no trailing slash. A `*` is allowed and
+      # matches within one label only — it is escaped first and becomes
+      # `[^.]*` afterwards, so it can never cross a dot into another domain
+      # on a crafted subdomain.
       #
-      # Vercel names a branch deployment after the branch, so the `staging`
-      # branch keeps one stable preview URL and a single entry holds. A
-      # feature branch gets its own URL and would need adding here, which is
-      # the argument for pointing previews at staging rather than per-branch
-      # APIs.
+      # One entry therefore covers every preview build of this project:
+      #   https://akwaan-frontend-git-*.vercel.app
+      # Vercel also names a branch deployment after the branch, so the
+      # `staging` URL is stable enough to list exactly if you prefer.
       - key: CORS_ORIGINS
         sync: false
 
