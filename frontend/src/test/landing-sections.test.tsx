@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -98,7 +98,10 @@ describe("the how to play walkthrough", () => {
   it("tells the four steps in the order a group lives them", () => {
     renderPage();
 
-    const steps = screen.getAllByRole("listitem");
+    // Scoped to the steps list: the sections below it are lists too.
+    const steps = within(
+      screen.getByRole("list", { name: "خطوات اللعب" }),
+    ).getAllByRole("listitem").filter((item) => item.querySelector("h3"));
     expect(
       steps.map((step) => step.querySelector("h3")?.textContent),
     ).toEqual([

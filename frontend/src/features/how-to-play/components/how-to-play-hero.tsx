@@ -1,89 +1,127 @@
 import { cn } from "@/lib/utils";
-import { PhoneFrame, SharedScreenFrame } from "./device-frames";
-import { BoardPreview, PhoneScreen } from "./product-visuals";
 
-/**
- * One phone in the hero cluster.
- *
- * The tilt and the float sit on two different elements on purpose: an animated
- * `transform` replaces a static one outright, so a phone that carried both on a
- * single node would snap upright the moment the float started.
- */
-function HeroPhone({
-  slot,
-  tilt,
-  delay,
+/** One of the two little faces from the logo, drawn the way the logo draws it. */
+function Face({
+  tone,
   className,
 }: {
-  slot: "1" | "2";
-  tilt: string;
-  delay: string;
+  tone: "purple" | "gold";
   className?: string;
 }) {
+  const fill =
+    tone === "purple" ? "hsl(var(--brand-purple))" : "hsl(var(--brand-gold))";
+  const ink = tone === "purple" ? "#F7F4ED" : "hsl(var(--brand-navy))";
   return (
-    <div className={cn("shrink-0", tilt, className)}>
-      <PhoneFrame className="akwaan-float w-full" style={{ animationDelay: delay }}>
-        <PhoneScreen slot={slot} />
-      </PhoneFrame>
-    </div>
+    <svg aria-hidden viewBox="0 0 40 40" className={className}>
+      <circle
+        cx="21.5"
+        cy="22"
+        r="14"
+        fill="hsl(var(--brand-navy))"
+        stroke="hsl(var(--brand-navy))"
+        strokeWidth="4"
+      />
+      <circle
+        cx="19"
+        cy="19"
+        r="14"
+        fill={fill}
+        stroke="hsl(var(--brand-navy))"
+        strokeWidth="4"
+      />
+      <ellipse cx="14.5" cy="18" rx="2.3" ry="3.4" fill={ink} />
+      <ellipse cx="23.5" cy="18" rx="2.3" ry="3.4" fill={ink} />
+      <path
+        d="M15.5 24.5 Q19 27.5 22.5 24.5"
+        fill="none"
+        stroke={ink}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ToyPhone({
+  tilt,
+  action,
+}: {
+  tilt: string;
+  action: "purple" | "gold";
+}) {
+  return (
+    <span
+      className={cn(
+        "flex h-32 w-[74px] shrink-0 flex-col gap-2 rounded-2xl bg-white px-2.5 py-3",
+        "border-[3px] border-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+        tilt,
+      )}
+    >
+      <span className="h-2.5 rounded-full bg-[#E3DFF0]" />
+      <span className="h-2.5 w-[70%] rounded-full bg-[#E3DFF0]" />
+      <span
+        className={cn(
+          "mt-auto h-[26px] rounded-[10px] border-2 border-[hsl(var(--brand-navy))]",
+          action === "purple"
+            ? "bg-[hsl(var(--brand-purple))]"
+            : "bg-[hsl(var(--brand-gold))]",
+        )}
+      />
+    </span>
   );
 }
 
 /**
- * The one picture the whole page rests on: a room around a single screen.
+ * The opening: what Akwaan is, in two sentences and one picture.
  *
- * The composition is the argument — the shared screen is large and central and
- * carries the real board, while the phones are small, angled and clearly
- * separate. A reader should understand "we all watch that, and I hold this"
- * before reading a word of the steps below.
- *
- * Phones are dropped at narrow widths rather than shrunk, which is what keeps
- * the row from overflowing: two on a phone, four from `lg` up.
+ * The picture is a toy, not a screenshot — one big navy screen between two
+ * small tilted phones. That is the whole idea of the game, and the real
+ * screens come in the steps right under it.
  */
 export function HowToPlayHero() {
   return (
-    <section className="relative z-10 px-4 pb-4 pt-10 text-center sm:px-6 lg:pt-14">
-      <div className="mx-auto flex max-w-3xl flex-col items-center">
-        <h1 className="akwaan-hero-copy-in text-3xl font-black leading-[1.25] text-[hsl(var(--brand-navy))] sm:text-4xl lg:text-[2.9rem]">
-          كيف تلعب أكوان؟
+    <section className="flex flex-wrap items-center justify-between gap-x-14 gap-y-10 pb-2 pt-6 lg:pt-10">
+      <div className="flex max-w-[620px] flex-[1_1_440px] flex-col items-start">
+        <h1 className="font-display text-[40px] font-black leading-[1.3] text-[hsl(var(--brand-navy))] sm:text-[62px]">
+          كيف تلعب{" "}
+          <span className="text-[hsl(var(--brand-purple))]">أكوان؟</span>
         </h1>
-        <p className="akwaan-hero-copy-in mt-4 max-w-xl text-base font-bold leading-8 text-[hsl(var(--brand-navy)/.72)] [animation-delay:80ms] sm:text-lg">
+        <p className="mt-5 text-lg leading-[1.8] text-[#4A5468] sm:text-[23px]">
           شاشة وحدة تجمعكم، وجوال كل لاعب يصير أداة اللعب
+        </p>
+        <p className="mt-5 max-w-[560px] text-base leading-[1.9] text-[#4A5468] sm:text-[17px]">
+          أكوان لعبة جماعية تلعبونها وأنتم في نفس الجلسة: شاشة وحدة قدامكم، وكل
+          لاعب يمسك جواله. فكرة اللعبة إن المعرفة وحدها ما تكفي — تحتاج تقرأ
+          خصمك، وتعرف العالم اللي اخترتوه.
         </p>
       </div>
 
       <div
         aria-hidden
-        className="akwaan-hero-cta-in mx-auto mt-9 flex w-full max-w-4xl items-end justify-center gap-2 [animation-delay:160ms] sm:gap-5 lg:mt-12 lg:gap-7"
+        className="relative mx-auto flex min-h-[300px] max-w-[480px] flex-[1_1_340px] items-end justify-center gap-3.5"
       >
-        <HeroPhone
-          slot="2"
-          tilt="-rotate-6"
-          delay="0ms"
-          className="hidden w-[78px] lg:block"
+        <ToyPhone tilt="-rotate-[8deg]" action="purple" />
+        <span
+          className={cn(
+            "mb-[26px] flex h-[190px] w-[260px] min-w-0 shrink flex-col gap-3 rounded-[20px] bg-[hsl(var(--brand-navy))] p-5",
+            "border-[3px] border-[hsl(var(--brand-navy))] shadow-[6px_7px_0_hsl(var(--brand-gold))]",
+          )}
+        >
+          <span className="h-3.5 w-[60%] rounded-full bg-[hsl(var(--brand-gold))]" />
+          <span className="h-3 w-[80%] rounded-full bg-[#3A3470]" />
+          <span className="mt-auto flex gap-2.5">
+            <span className="h-10 flex-1 rounded-xl bg-[hsl(var(--brand-purple))]" />
+            <span className="h-10 flex-1 rounded-xl bg-white" />
+          </span>
+        </span>
+        <ToyPhone tilt="rotate-[7deg]" action="gold" />
+        <Face
+          tone="purple"
+          className="absolute right-[6%] top-0 size-[62px] -rotate-[10deg]"
         />
-        <HeroPhone
-          slot="1"
-          tilt="-rotate-3"
-          delay="900ms"
-          className="w-[54px] sm:w-[76px]"
-        />
-
-        <SharedScreenFrame className="min-w-0 max-w-[30rem] flex-1">
-          <BoardPreview detail="compact" />
-        </SharedScreenFrame>
-
-        <HeroPhone
-          slot="2"
-          tilt="rotate-3"
-          delay="1800ms"
-          className="w-[54px] sm:w-[76px]"
-        />
-        <HeroPhone
-          slot="1"
-          tilt="rotate-6"
-          delay="2700ms"
-          className="hidden w-[78px] lg:block"
+        <Face
+          tone="gold"
+          className="absolute left-[8%] top-[30px] size-12 rotate-12"
         />
       </div>
     </section>
