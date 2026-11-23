@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DeterministicScreenService } from './deterministic-screen.service';
 import {
+  BOMB_ANGLES,
   BOMB_CANDIDATE_SCHEMA,
   BOMB_MAX_PROMPT_LENGTH,
   BOMB_TASK_GUIDANCE,
@@ -90,7 +91,7 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
 
   it('is a mechanic the engine can author, in the match answer mode', () => {
     expect(generatorAnswerModeFor(BOMB_SLUG)).toBe('match');
-    expect(promptVersionFor(BOMB_SLUG)).toBe('bomb-v1');
+    expect(promptVersionFor(BOMB_SLUG)).toBe('bomb-v2');
   });
 
   describe('prompt and schema', () => {
@@ -132,6 +133,45 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
           'factualClaims',
         ]),
       );
+    });
+
+    it('makes the model commit to an angle and to the moment its answer is true for', () => {
+      const item = (
+        BOMB_CANDIDATE_SCHEMA.properties as {
+          candidates: {
+            items: {
+              required: string[];
+              properties: Record<string, { enum?: string[] }>;
+            };
+          };
+        }
+      ).candidates.items;
+      expect(item.required).toEqual(
+        expect.arrayContaining(['angle', 'timeAnchor']),
+      );
+      // Chosen before the wording, like the picture.
+      expect(item.required.indexOf('angle')).toBeLessThan(
+        item.required.indexOf('prompt'),
+      );
+      expect(item.properties.angle.enum).toEqual([...BOMB_ANGLES]);
+    });
+
+    it('tells the model to spread the angles and to pin changeable answers to a date', () => {
+      expect(BOMB_TASK_GUIDANCE).toContain('SPREAD THE ANGLES');
+      expect(BOMB_TASK_GUIDANCE).toContain(
+        'at least min(N, 4) different angles',
+      );
+      expect(BOMB_TASK_GUIDANCE).toContain('at most one item per batch');
+      // Recall angles are the slow ones and are rationed.
+      expect(BOMB_TASK_GUIDANCE).toContain(
+        'Use at most ceil(N / 3) of them in a batch of N',
+      );
+      expect(BOMB_TASK_GUIDANCE).toContain('two or three seconds of thought');
+      expect(BOMB_TASK_GUIDANCE).toContain(
+        'ANSWERS THAT CAN CHANGE MUST BE PINNED TO A DATE',
+      );
+      // The old instruction that there were only two shapes is gone.
+      expect(BOMB_TASK_GUIDANCE).not.toContain('only two');
     });
 
     it('tells the model the image is found, never drawn', () => {
@@ -200,6 +240,22 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
         subject: 'Luka Modrić',
         mustNotShow: ['the first name Luka as readable text'],
       });
+    });
+
+    it('keeps the angle and the time anchor beside the draft, and drops an angle it does not know', () => {
+      const [pinned] = parse({
+        angle: 'affiliation',
+        timeAnchor: 'موسم 2003-04',
+        prompt: 'وش النادي اللي درّبه هذا المدرب موسم 2003-04؟',
+        acceptedAnswers: ['أرسنال'],
+      });
+      expect(pinned.authoring).toMatchObject({
+        angle: 'affiliation',
+        timeAnchor: 'موسم 2003-04',
+      });
+      const [plain] = parse({ angle: 'something-else', timeAnchor: '' });
+      expect(plain.authoring).not.toHaveProperty('angle');
+      expect(plain.authoring).not.toHaveProperty('timeAnchor');
     });
 
     it('keeps an item whose kind it does not recognise', () => {
@@ -413,6 +469,46 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
       );
     });
 
+    it.each(['حاليًا', 'الحين', 'هذا الموسم'])(
+      'blocks a question about the present moment (%s), whose answer will change',
+      (word) => {
+        expect(
+          findings({
+            prompt: { ar: `وش النادي اللي يدربه هذا المدرب ${word}؟` },
+          }),
+        ).toContain('BOMB_ANSWER_NOT_PINNED_IN_TIME');
+      },
+    );
+
+    it('accepts a changeable answer once it is pinned to a season in the prompt', () => {
+      const [candidate] = parse({
+        angle: 'affiliation',
+        timeAnchor: 'موسم 2003-04',
+      });
+      const pinned = {
+        prompt: { ar: 'وش النادي اللي درّبه هذا المدرب موسم 2003-04؟' },
+        answerPayload: { mode: 'match', acceptedAnswers: ['أرسنال'] },
+      };
+      const authoring = candidate.authoring as Record<string, unknown>;
+      expect(findings(pinned, { authoring })).toEqual([]);
+      expect(
+        findings(pinned, { authoring, severity: 'warning' }),
+      ).not.toContain('BOMB_TIME_ANCHOR_NOT_IN_PROMPT');
+    });
+
+    it('warns when the item names a moment its prompt never mentions', () => {
+      const [candidate] = parse({ timeAnchor: 'موسم 2003-04' });
+      expect(
+        findings(
+          {},
+          {
+            authoring: candidate.authoring as Record<string, unknown>,
+            severity: 'warning',
+          },
+        ),
+      ).toContain('BOMB_TIME_ANCHOR_NOT_IN_PROMPT');
+    });
+
     it('blocks a prompt too long to read at a glance', () => {
       const long = 'من هذا المدرب الذي '.repeat(5);
       expect([...long.trim()].length).toBeGreaterThanOrEqual(
@@ -481,7 +577,7 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
         targetCount: 10,
       });
       expect(spec.answerMode).toBe('match');
-      expect(spec.promptVersion).toBe('bomb-v1');
+      expect(spec.promptVersion).toBe('bomb-v2');
       expect(spec.difficulty).toBeNull();
       expect(isGenerationSpecificationComplete(spec)).toBe(true);
     });

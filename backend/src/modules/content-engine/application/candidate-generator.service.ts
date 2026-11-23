@@ -418,6 +418,25 @@ export const COMBO_TASK_GUIDANCE = [
 /** The Bomb Skill's own bound: a prompt a player reads in one glance. */
 export const BOMB_MAX_PROMPT_LENGTH = 70;
 
+/**
+ * What a Bomb question asks about the thing in its picture. Named so a batch
+ * can be told to spread across them: left alone, a generator settles on "who
+ * is this?" and "what is his first name?" and a round of it is a drill.
+ */
+export const BOMB_ANGLES = [
+  'identify',
+  'name-part',
+  'affiliation',
+  'origin',
+  'home',
+  'known-for',
+  'moved',
+  'opponent',
+  'succession',
+] as const;
+
+export type BombAngle = (typeof BOMB_ANGLES)[number];
+
 export const BOMB_CANDIDATE_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
@@ -433,6 +452,8 @@ export const BOMB_CANDIDATE_SCHEMA: Record<string, unknown> = {
         // decoration, which is the thing the mechanic exists to avoid.
         required: [
           'concept',
+          'angle',
+          'timeAnchor',
           'imageSubject',
           'imageSubjectAr',
           'imageKind',
@@ -447,6 +468,17 @@ export const BOMB_CANDIDATE_SCHEMA: Record<string, unknown> = {
             type: 'string',
             description:
               'The idea in one line, before any wording exists: what the player recognises or recalls, and why it belongs to this Scope.',
+          },
+          angle: {
+            type: 'string',
+            enum: [...BOMB_ANGLES],
+            description:
+              'What the question asks about the pictured subject. identify: its name. name-part: a part of its name, the rest given in the prompt. affiliation: the team, club, maker, series or organisation it belongs to or is best known for. origin: the country, national team or city it comes from. home: for a place, what is based there or which city holds it. known-for: the title, role, work or event it is famous for. moved: where it came from or went next — a transfer, a move, a previous or following work. opponent: who it faced or beat at a named event. succession: who or what came immediately before or after it in the same role or series.',
+          },
+          timeAnchor: {
+            type: 'string',
+            description:
+              'The season, year or named event the answer is true for, exactly as it appears in the prompt — "موسم 2015-16", "نهائي 2005". Empty string ONLY when the answer can never change (a name, a birthplace, a nationality, the city a stadium stands in).',
           },
           imageSubject: {
             type: 'string',
@@ -502,7 +534,12 @@ export const BOMB_TASK_GUIDANCE = [
   '## BOMB TASK',
   'القنبلة is a recognition race against a running clock. A player glances, knows, types. Anything that needs working out belongs to another mechanic.',
   'EVERY item is about ONE real picture. Decide the picture first, then write the question for it.',
-  'There are two shapes, and only two. Recognition: the picture is the clue and the answer names what it shows ("من هذا؟", "وش اسم هذا الملعب؟"). Completion: the prompt names the subject and asks for a part of its name, and the picture shows that subject ("وش الاسم الأول لمودريتش؟" beside a photograph of Modrić).',
+  'The picture always shows the subject; what changes is what you ask about it. Choose the `angle` before the wording. identify — name what the picture shows ("من هذا اللاعب؟", "وش اسم هذا الملعب؟"). name-part — the prompt gives part of the name and asks for the rest ("وش الاسم الأول لمودريتش؟"). affiliation — what it belongs to or is best known for ("وش النادي اللي اشتهر فيه هذا اللاعب؟", "وش الشركة اللي تصنع هذي السيارة؟"). origin — where it is from ("من أي منتخب هذا اللاعب؟", "من أي بلد هذا المدرب؟"). home — for a place, what is based there or where it stands ("وش النادي صاحب هذا الملعب؟", "في أي مدينة هذا الملعب؟"). known-for — the title, role, work or event it is famous for ("وش البطولة اللي ترمز لها هذي الكأس؟"). moved — where it came from or went next ("من أي نادي انتقل هذا اللاعب لليفربول؟", "وش النادي اللي راح له بعد أرسنال؟"). opponent — who it faced at a named event ("ضد مين سجل هذا اللاعب في نهائي 2014؟"). succession — who came right before or after it in the same role ("مين المدرب اللي جا بعده في مانشستر يونايتد؟").',
+  'moved, opponent and succession ask the player to recall, not just recognise, so they are the slow ones. Use at most ceil(N / 3) of them in a batch of N, and only where the fact is one a follower of this Scope actually remembers: a famous transfer, a final everyone watched, a succession people argued about.',
+  'SPREAD THE ANGLES. A batch that asks the same thing five times is a drill, not a game. In a batch of N items use at least min(N, 4) different angles, use no angle more than ceil(N / 3) times, and never give two items the same prompt wording. `name-part` is one angle among nine, not the default: at most one item per batch.',
+  'Spread the pictures too: players, managers, stadiums, trophies, kits, crests, and whatever else this Scope has that people know on sight. Not five photographs of five players.',
+  'ANSWERS THAT CAN CHANGE MUST BE PINNED TO A DATE. Who someone plays for, who manages a club, who is captain, who holds a record — all of these change, and an item that was right when written becomes wrong in play. Either ask for something that cannot change (a name, a nationality, a birthplace, the city a stadium stands in, a finished event) or pin the question to a season, a year or a named event inside the prompt itself: "وش النادي اللي لعب له هذا اللاعب موسم 2015-16؟", "من درّب هذا الفريق في نهائي 2005؟". Put that same anchor in `timeAnchor`. Never write "currently", "now", "this season", "الحين", "حاليًا" or "هذا الموسم": an unpinned changeable answer is not allowed at all.',
+  'A pinned question still needs an answer the table can recall. Pin to seasons and events people remember — a title win, a famous final, a long spell at one club — not to an arbitrary year.',
   'The subject must be something a real photograph of already exists: a named person, club, stadium, vehicle, place, object or work. Give its exact encyclopedia name in `imageSubject`. Never describe an illustration to be drawn, never invent a scene, never ask for two subjects in one picture.',
   'The picture must not answer the question in writing. List in `imageMustNotShow` whatever would: for a completion item that is the answer itself appearing as readable text; for a recognition item it is the name on a shirt, a caption, a scoreboard, a spelled-out badge.',
   `The prompt is under ${BOMB_MAX_PROMPT_LENGTH} characters and is one plain spoken question. No scene-setting, no clauses, no "which of the following".`,
@@ -510,8 +547,9 @@ export const BOMB_TASK_GUIDANCE = [
   'If two correct players would plausibly type genuinely different words, the item has no stable written answer. Replace it.',
   'Grading folds أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, case and a leading ال, so never spend an accepted answer on those. List only forms that differ as words.',
   'Digits are NOT folded: ٧ and 7 grade as different answers, so an answer that is a number belongs to another mechanic.',
-  'A question the whole table answers before looking at the picture is wasted. A question nobody at the table could answer is wasted too. Aim between them.',
+  'DIFFICULTY HAS ONE TARGET: someone who follows this Scope well — not an expert, not a casual — should need two or three seconds of thought and then know it. If that person answers before the picture has finished loading, it is too easy: drop it or change the angle. If they would have to guess, look it up, or be a specialist, it is too hard: drop it. A world-famous face asked "who is this?" is too easy; the same face asked where he moved from is about right. An obscure squad player is too hard from any angle.',
   'Vary the subjects across the batch: do not return several items about the same person, club or place.',
+  'An answer is still ONE short name whatever the angle: a club, a country, a city, a person. If the honest answer is a number, a date or a sentence, pick another angle.',
 ].join('\n');
 
 /**
@@ -1418,6 +1456,8 @@ export class CandidateGeneratorService {
       prompt?: unknown;
       acceptedAnswers?: unknown;
       factualClaims?: unknown;
+      angle?: unknown;
+      timeAnchor?: unknown;
     };
 
     const factualClaims = Array.isArray(value.factualClaims)
@@ -1463,6 +1503,7 @@ export class CandidateGeneratorService {
       );
     }
 
+    const angle = text(value.angle);
     const kind = text(value.imageKind);
     const mustNotShow = (
       Array.isArray(value.imageMustNotShow) ? value.imageMustNotShow : []
@@ -1493,6 +1534,14 @@ export class CandidateGeneratorService {
       },
       authoring: {
         ...(text(value.concept) ? { concept: text(value.concept) } : {}),
+        // Kept so a reviewer, and the screen, can see what the item set out to
+        // ask and which moment its answer is true for.
+        ...((BOMB_ANGLES as readonly string[]).includes(angle ?? '')
+          ? { angle }
+          : {}),
+        ...(text(value.timeAnchor)
+          ? { timeAnchor: text(value.timeAnchor) }
+          : {}),
         mediaIntent,
       },
     };

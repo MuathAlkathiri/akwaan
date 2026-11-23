@@ -54,7 +54,7 @@ describe('media requirements registry', () => {
   it('versions the Bomb prompt apart from the other match mechanic', () => {
     // Two mechanics on one revision string would make a change to either look
     // like a change to both in every request hash and pinned plan.
-    expect(promptVersionFor('bomb')).toBe('bomb-v1');
+    expect(promptVersionFor('bomb')).toBe('bomb-v2');
     expect(promptVersionFor('combo')).toBe(PROMPT_VERSIONS.match);
     expect(promptVersionFor('combo')).toBe('combo-v1');
     expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');

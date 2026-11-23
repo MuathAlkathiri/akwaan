@@ -96,6 +96,17 @@ export interface ScreenOptions {
   historicalRecords?: HistoricalContentRecord[];
 }
 
+/** Words that ask about the present moment, which no stored item can answer for long. */
+const BOMB_UNPINNED_NOW = [
+  'حاليًا',
+  'حالياً',
+  'حاليا',
+  'الحين',
+  'الآن',
+  'هذا الموسم',
+  'الموسم الحالي',
+] as const;
+
 export interface DeterministicScreenSession {
   worldKey?: string;
   scopeKey?: string;
@@ -1227,6 +1238,34 @@ export class DeterministicScreenService {
         warning(
           'BOMB_IMAGE_SUBJECT_MISSING',
           'the candidate does not name the subject of its picture, so no image can be found for it automatically',
+        ),
+      );
+    }
+
+    // A changeable answer has to be pinned to a moment, in the prompt itself:
+    // "who does he play for" is right today and wrong after a transfer.
+    const unpinned = BOMB_UNPINNED_NOW.find((word) => prompt.includes(word));
+    if (unpinned) {
+      findings.push(
+        blocking(
+          'BOMB_ANSWER_NOT_PINNED_IN_TIME',
+          `the prompt asks about "${unpinned}", so its answer will change; name the season, year or event instead`,
+        ),
+      );
+    }
+    const anchor = (authoring as { timeAnchor?: unknown } | null | undefined)
+      ?.timeAnchor;
+    if (
+      typeof anchor === 'string' &&
+      anchor.trim() &&
+      !(anchor.match(/[0-9٠-٩]{4}/g) ?? [anchor.trim()]).every((part) =>
+        prompt.includes(part),
+      )
+    ) {
+      findings.push(
+        warning(
+          'BOMB_TIME_ANCHOR_NOT_IN_PROMPT',
+          `the item says its answer is true for "${anchor.trim()}", but the prompt does not say so; a player cannot know which moment is meant`,
         ),
       );
     }
