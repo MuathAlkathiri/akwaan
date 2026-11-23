@@ -20,10 +20,14 @@ import { ARABIC_NOUNS, arabicCount, arabicNoun } from "@/lib/arabic-plural";
  * It opens the buy panel in place rather than linking to the shop. Running out
  * happens in the middle of an evening with people waiting, and the fix should
  * not begin by taking the host to another page.
+ *
+ * Players only. An admin account has no Matches and buys none, so the chip
+ * would sit in their header reading zero — an alarming number next to a shop
+ * neither of them has any use for.
  */
 export function TokenChip() {
-  const { isAuthenticated } = useAuth();
-  const { data: balance } = useTokenBalance(isAuthenticated);
+  const { isAdmin, isAuthenticated } = useAuth();
+  const { data: balance } = useTokenBalance(isAuthenticated && !isAdmin);
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
 
@@ -37,7 +41,7 @@ export function TokenChip() {
     return () => document.removeEventListener("mousedown", onPointer);
   }, [open]);
 
-  if (!isAuthenticated || balance === undefined) return null;
+  if (!isAuthenticated || isAdmin || balance === undefined) return null;
 
   // One and two carry no numeral in Arabic — "مباراة واحدة", "مباراتان" — so
   // the design's emphasised digit only exists from three up. Printing "1" next

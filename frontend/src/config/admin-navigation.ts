@@ -1,4 +1,10 @@
-import { LayoutDashboard, ScanSearch, Users, Network } from "lucide-react";
+import {
+  LayoutDashboard,
+  ScanSearch,
+  Ticket,
+  Users,
+  Network,
+} from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
 export interface AdminNavigationItem {
@@ -36,6 +42,14 @@ export const adminNavigation: AdminNavigationItem[] = [
     showOnDashboard: true,
     dashboardTitle: "Users",
     dashboardDescription: "إدارة اشتراكات وصلاحيات المستخدمين.",
+  },
+  {
+    label: "أكواد الخصم",
+    href: "/admin/discount-codes",
+    icon: Ticket,
+    showOnDashboard: true,
+    dashboardTitle: "Discount Codes",
+    dashboardDescription: "سوِّ أكواد خصم وأوقفها، وشوف كم استُخدم كل واحد.",
   },
 ];
 
