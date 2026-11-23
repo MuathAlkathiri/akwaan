@@ -43,10 +43,10 @@ export function WorldDisc({
   world: PlayableWorld;
   className?: string;
 }) {
-  // `icon` is the cut-out the design wants — a subject on transparency that
-  // can break the disc's edge. `banner` is the wide artwork and is only a
-  // fallback, since a full-bleed image clipped to a circle has no silhouette
-  // to pop out with.
+  // The artwork fills the disc and is clipped to it. The pop-out version (a
+  // transparent cut-out breaking the disc's edge) was tried on staging and the
+  // owner preferred the original planet art, which has its own background and
+  // so cannot leave the circle. `banner` is only a fallback for `icon`.
   //
   // `getMediaUrl` answers with an empty string, not null, for anything it
   // cannot resolve, so the fallback is written on emptiness rather than nullish.
@@ -88,36 +88,20 @@ export function WorldDisc({
       {/* The disc. Its tint shows through wherever the artwork does not cover,
           which is what gives an empty World a finished look rather than a hole. */}
       <span
-        aria-hidden="true"
         className="absolute left-0 top-[3.125rem] block size-[12.5rem] overflow-hidden rounded-full"
         style={{ background: tint }}
       >
         {artwork && (
           <Image
             src={artwork}
-            alt=""
+            alt={world.icon?.altText ?? ""}
             unoptimized
-            width={220}
-            height={220}
-            className="absolute -left-2.5 -top-8 block size-[13.75rem] max-w-none object-contain"
+            fill
+            sizes="220px"
+            className="object-cover"
           />
         )}
       </span>
-
-      {/* The same artwork again, clipped to its top half and drawn over the
-          disc's edge. Two draws of one file is what makes the subject look as
-          if it is standing in front of the disc rather than printed on it. */}
-      {artwork && (
-        <Image
-          src={artwork}
-          alt={world.icon?.altText ?? ""}
-          unoptimized
-          width={220}
-          height={220}
-          className="absolute -left-2.5 top-[1.125rem] block size-[13.75rem] max-w-none object-contain"
-          style={{ clipPath: "inset(0 0 52% 0)" }}
-        />
-      )}
     </span>
   );
 }
