@@ -24,6 +24,12 @@ import { playableWorlds, upcomingWorlds } from "../utils/featured-worlds";
 import { isSelectableScope } from "../utils/scopes";
 import { worldSignatureLabel } from "../utils/world-signature";
 import type { PlayableScope, PlayableWorld } from "../types";
+import { ChallengePill, STICKER } from "@/components/akwaan/sticker";
+import { WorldDisc, WorldShadow } from "./world-disc";
+import { useAuth } from "@/components/auth/auth-provider";
+import { useWorldRemaining } from "../api/world-remaining";
+import { GoldPill, Spark } from "@/components/akwaan/sticker";
+import { SectionTag } from "@/components/akwaan/sticker";
 
 function withViewTransition(update: () => void) {
   const startViewTransition = (
@@ -57,6 +63,14 @@ export function WorldsHome() {
   // review step with nothing left to review.
   const setup = useMatchSetup();
   const { draft, act: dispatch } = setup;
+  // One request for the whole row rather than one per card. A signed-out
+  // visitor has no progress to read, so the hook stays idle and the cards
+  // simply carry no count — which is the truth, not a zero.
+  const { isAuthenticated } = useAuth();
+  const remaining = useWorldRemaining(
+    worlds.map((world) => world.id),
+    isAuthenticated,
+  );
   const [focusedWorld, setFocusedWorld] = useState<{
     world: PlayableWorld;
     occurrenceIndex: number;
@@ -208,6 +222,7 @@ export function WorldsHome() {
                             selected={Boolean(occurrence)}
                             order={order}
                             selectedScopeIds={occurrence?.selectedScopeIds ?? []}
+                            remaining={remaining.data?.get(world.id)}
                             disabled={
                               selectedCount >= OCCURRENCE_COUNT && !occurrence
                             }
@@ -258,6 +273,7 @@ export function WorldsHome() {
           </div>
         </section>
 
+        <HowToPlaySection />
       </div>
     </JourneyShell>
   );
@@ -265,116 +281,196 @@ export function WorldsHome() {
 
 function AkwaanHero() {
   return (
-    <section className="relative z-10 px-4 pb-8 pt-8 text-center lg:pb-10 lg:pt-10">
-      <div className="mx-auto flex max-w-3xl flex-col items-center">
-        <div className="akwaan-hero-logo-in">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/logo/akwaan-primary-logo-transparent.png"
-            alt="أكوان"
-            width={870}
-            height={310}
-            className="mx-auto h-auto w-[min(82vw,264px)] select-none sm:w-[min(76vw,410px)]"
-            draggable={false}
-          />
-        </div>
-
-        <h1 className="akwaan-hero-copy-in mt-3 text-3xl font-black leading-[1.25] text-[hsl(var(--brand-navy))] [animation-delay:50ms] sm:text-4xl lg:text-[2.9rem]">
-          3 عوالم مختلفة، منافسة واحدة
+    <section className="relative z-10 flex flex-wrap items-center justify-between gap-x-14 gap-y-12 px-4 pb-10 pt-10 sm:px-8 lg:pb-16 lg:pt-16">
+      {/* Right column. Its inline padding lines the headline up with the header
+          logo's edge above it, which is the one alignment the eye checks on a
+          page this sparse. */}
+      <div className="flex max-w-[37.5rem] flex-1 basis-[28.75rem] flex-col items-start ps-2.5">
+        <h1 className="font-display text-[2.75rem] font-black leading-[1.3] text-[hsl(var(--brand-navy))] sm:text-[3.5rem] lg:text-[4.125rem]">
+          {/* The numeral is set in the body face on purpose: the display face
+              draws Arabic beautifully and Western digits stiffly, and this
+              digit is the first thing on the page. */}
+          <span className="font-body font-bold">3</span> عوالم مختلفة
+          <br />
+          <span className="text-[0.82em] text-[hsl(var(--brand-purple))]">
+            منافسة واحدة
+          </span>
         </h1>
-        {/* One line between the headline and the button, not three. What the
-            second paragraph explained — teams, the kinds of challenge — the
-            page itself shows a moment later, and a visitor reads none of it
-            before they have decided to start. */}
-        <p className="akwaan-hero-copy-in mt-4 max-w-xl text-base font-bold leading-7 text-[hsl(var(--brand-navy))] [animation-delay:100ms] sm:text-lg sm:leading-8">
-          مو مجرد أسئلة. كل عالم له{" "}
-          <span className="text-[hsl(var(--brand-gold))]">تحديه الخاص</span>{" "}
-          وطريقة لعب تميّزه.
+
+        <p className="mt-7 max-w-[35rem] text-lg leading-[1.8] text-[#4A5468] sm:text-[23px]">
+          مو مجرد أسئلة، كل عالم له تحديه الخاص.{" "}
+          <b className="font-bold text-[hsl(var(--brand-navy))]">
+            شاشة وحدة للكل
+          </b>
+          ،{" "}
+          <b className="font-bold text-[hsl(var(--brand-navy))]">
+            جوال لكل لاعب
+          </b>
+          ، و
+          <b className="font-bold text-[hsl(var(--brand-navy))]">فريق ضد فريق</b>
+          .
         </p>
 
-        <Button
-          asChild
-          size="lg"
-          className="akwaan-primary-action akwaan-hero-cta-in mt-6 rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-10 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] [animation-delay:200ms] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] hover:shadow-[0_18px_38px_-16px_hsl(var(--brand-gold)/.42)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        <GoldPill
+          className="mt-10"
+          onClick={() => {
+            document
+              .getElementById("worlds")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         >
-          <a href="#worlds">
-            ابدأ مباراة
-          </a>
-        </Button>
+          ابدأ مباراة
+        </GoldPill>
       </div>
-      {/* Tucked into the hero's lower left rather than set beside the wordmark.
-          Level with it the two read as columns of equal weight and the hero
-          splits down the middle; down here the wordmark, the line and the
-          button keep the page's centre line and the drawing fills the empty
-          corner they leave. Out of the flow entirely, so it moves nothing.
-          Narrow screens have no such corner, so it follows underneath. */}
-      <HowItPlays className="mx-auto mt-6 w-[min(78vw,290px)] lg:absolute lg:-bottom-2 lg:left-[6%] lg:mt-0 lg:w-[300px] xl:left-[10%]" />
+
+      {/* Left column: the logo, tilted, orbited by two faces and two sparks.
+          Hidden from assistive technology as a group — the wordmark is already
+          announced in the header, and a second "أكوان" here is noise. */}
+      <div className="relative flex min-h-[23.75rem] max-w-[28.75rem] flex-1 basis-[22.5rem] items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/logo-full.svg"
+          alt=""
+          aria-hidden="true"
+          className="block w-full -rotate-[5deg] select-none"
+          draggable={false}
+        />
+        <FacePlanet tone="purple" className="absolute bottom-0 right-[2%]" />
+        <FacePlanet tone="gold" className="absolute left-[4%] top-0" />
+        <Spark
+          className="absolute right-[8%] top-5 size-[1.875rem]"
+          fill="hsl(var(--brand-gold))"
+        />
+        <Spark
+          className="absolute bottom-6 left-[20%] size-5"
+          fill="hsl(var(--brand-gold))"
+        />
+      </div>
     </section>
   );
 }
 
 /**
- * What the room looks like, drawn rather than written.
+ * A little planet with a face, from the identity's cast.
  *
- * The page never said the game runs on one screen with everyone on their own
- * phone, and «كيف تلعب» is a click a first visitor has no reason to take. No
- * caption: if the drawing needs a sentence under it, the drawing has failed.
- *
- * Square-edged on purpose. The Worlds own the circles on this page, and a
- * second ring of them would blur what can be clicked.
+ * Two circles offset by a few pixels give the hard-edged depth the rest of the
+ * identity gets from its shadows — the back circle is the shadow.
  */
-function HowItPlays({ className = "" }: { className?: string }) {
-  const Phone = ({
-    x,
-    y,
-    tone,
-    tilt,
-  }: {
-    x: number;
-    y: number;
-    tone: string;
-    tilt: number;
-  }) => (
-    // Tilted, because an upright rectangle beside a television reads as a
-    // second screen rather than as a phone somebody is holding.
-    <g transform={`translate(${x} ${y}) rotate(${tilt} 15 26)`}>
-      <rect
-        x="0"
-        y="0"
-        width="30"
-        height="52"
-        rx="7"
-        fill="white"
-        stroke="hsl(var(--brand-navy))"
-        strokeWidth="3"
-      />
-      <rect x="6" y="9" width="18" height="9" rx="3" fill={tone} />
-      <rect x="6" y="23" width="18" height="4.5" rx="2.25" fill="hsl(var(--brand-navy)/.2)" />
-      <rect x="6" y="32" width="12" height="4.5" rx="2.25" fill="hsl(var(--brand-navy)/.2)" />
-    </g>
-  );
+function FacePlanet({
+  tone,
+  className,
+}: {
+  tone: "purple" | "gold";
+  className?: string;
+}) {
+  const face = tone === "purple" ? "#F7F4ED" : "#1B173B";
   return (
-    <svg
-      viewBox="0 0 380 160"
-      className={className}
-      role="img"
-      aria-label="شاشة واحدة يشاهدها الجميع، وكل لاعب يلعب من جواله"
-    >
-      {/* The shared screen, mid-challenge: a question and two team scores. */}
-      <rect x="112" y="6" width="156" height="94" rx="11" fill="hsl(var(--brand-navy))" />
-      <rect x="136" y="24" width="108" height="9" rx="4.5" fill="hsl(40 57% 63% / .5)" />
-      <rect x="152" y="40" width="76" height="7" rx="3.5" fill="hsl(43 38% 95% / .28)" />
-      <rect x="134" y="64" width="50" height="18" rx="9" fill="hsl(226 72% 50%)" />
-      <rect x="196" y="64" width="50" height="18" rx="9" fill="hsl(358 72% 58%)" />
-      {/* The stand, so it reads as a television in a room. */}
-      <rect x="180" y="100" width="20" height="12" fill="hsl(var(--brand-navy)/.55)" />
-      <rect x="154" y="112" width="72" height="7" rx="3.5" fill="hsl(var(--brand-navy)/.55)" />
-      {/* Two phones a side, each in its team's colour. */}
-      <Phone x={48} y={54} tilt={-14} tone="hsl(226 72% 50%)" />
-      <Phone x={80} y={88} tilt={-7} tone="hsl(226 72% 50%)" />
-      <Phone x={270} y={88} tilt={7} tone="hsl(358 72% 58%)" />
-      <Phone x={302} y={54} tilt={14} tone="hsl(358 72% 58%)" />
-    </svg>
+    <span aria-hidden="true" className={className}>
+      <svg
+        viewBox="0 0 40 40"
+        className={cn(
+          "block",
+          tone === "purple" ? "size-[5.25rem] -rotate-[10deg]" : "size-16 rotate-12",
+        )}
+      >
+        <circle
+          cx="21.5"
+          cy="22"
+          r="14"
+          fill="hsl(var(--brand-navy))"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth="4"
+        />
+        <circle
+          cx="19"
+          cy="19"
+          r="14"
+          fill={
+            tone === "purple"
+              ? "hsl(var(--brand-purple))"
+              : "hsl(var(--brand-gold))"
+          }
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth="4"
+        />
+        <ellipse cx="14.5" cy="18" rx="2.3" ry="3.4" fill={face} />
+        <ellipse cx="23.5" cy="18" rx="2.3" ry="3.4" fill={face} />
+        <path
+          d="M15.5 24.5 Q19 27.5 22.5 24.5"
+          fill="none"
+          stroke={face}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * The three steps, as sticker cards.
+ *
+ * It replaces the small illustration that used to sit in the hero's corner.
+ * The drawing said "one screen, many phones" in a picture a visitor had to
+ * decode; these say it in three sentences they can read at a glance, which is
+ * what the approved design asks for.
+ */
+const HOW_TO_PLAY = [
+  {
+    tone: "gold" as const,
+    title: "افتح أكوان على الشاشة",
+    body: "على التلفزيون أو اللابتوب، واختر 3 عوالم.",
+  },
+  {
+    tone: "purple" as const,
+    title: "الكل يدخل من جواله",
+    body: "امسحوا الكود وانقسموا فريقين.",
+  },
+  {
+    tone: "gold" as const,
+    title: "العبوا وشوفوا مين يفوز",
+    body: "كل عالم فيه تحدي غير، والمعرفة لحالها ما تكفي.",
+  },
+];
+
+function HowToPlaySection() {
+  return (
+    <section className="relative z-10 flex flex-col gap-8 px-4 py-6 sm:px-8">
+      <div className="flex justify-center">
+        <SectionTag tone="gold" tilt={1.5}>
+          كيف تلعب
+        </SectionTag>
+      </div>
+
+      <ol className="flex list-none flex-wrap gap-7 p-0">
+        {HOW_TO_PLAY.map((step, index) => (
+          <li
+            key={step.title}
+            className={cn(
+              "flex flex-1 basis-[17.5rem] flex-col gap-2.5 rounded-[20px] bg-[#FEFDFB] p-6",
+              STICKER.raised,
+            )}
+          >
+            <span
+              className={cn(
+                "inline-grid size-13 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] text-2xl font-extrabold",
+                step.tone === "gold"
+                  ? "bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
+                  : "bg-[hsl(var(--brand-purple))] text-[#FEFDFB]",
+              )}
+            >
+              {index + 1}
+            </span>
+            <span className="font-display text-[22px] font-extrabold text-[hsl(var(--brand-navy))]">
+              {step.title}
+            </span>
+            <span className="text-base leading-[1.8] text-[#3D3A5C]">
+              {step.body}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -384,6 +480,7 @@ function WorldSelectCard({
   order,
   selectedScopeIds,
   disabled,
+  remaining,
   onSelect,
   onRemove,
 }: {
@@ -392,13 +489,14 @@ function WorldSelectCard({
   order?: number;
   selectedScopeIds: string[];
   disabled: boolean;
+  /** Questions this World still owes the player, when we know it. */
+  remaining?: number;
   onSelect: () => void;
   onRemove?: () => void;
 }) {
   const signature = worldSignatureLabel(world);
   return (
-    <div className="relative mx-auto flex w-full max-w-[20rem] flex-col items-center gap-4">
-      {/* The World as a floating circular portal — artwork first, no card frame. */}
+    <div className="relative mx-auto flex w-full max-w-[14rem] flex-col items-center gap-2.5">
       <button
         type="button"
         data-world-id={world.id}
@@ -408,49 +506,55 @@ function WorldSelectCard({
         onClick={onSelect}
         style={{ viewTransitionName: `akwaan-world-${world.id}` }}
         className={cn(
-          "akwaan-portal group relative aspect-square w-full max-w-[17rem] rounded-full outline-none transition-[transform,filter] duration-200 focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-4 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:saturate-[.45] disabled:opacity-55 motion-reduce:transform-none motion-reduce:transition-none",
-          selected
-            ? "-translate-y-1 scale-[1.02] hover:-translate-y-1.5 hover:scale-[1.025] max-sm:scale-100 max-sm:hover:-translate-y-0.5 max-sm:hover:scale-100"
-            : "hover:-translate-y-1.5 hover:scale-[1.02] max-sm:hover:-translate-y-0.5 max-sm:hover:scale-100",
+          "group flex flex-col items-center gap-2.5 rounded-3xl outline-none",
+          "transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none",
+          "focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-navy))] focus-visible:ring-offset-4 focus-visible:ring-offset-white",
+          "disabled:cursor-not-allowed disabled:opacity-55 disabled:saturate-[.45]",
+          selected ? "-translate-y-1" : "hover:-translate-y-1",
         )}
       >
-        {/* Outer cream ring + accent ring + soft glow live on ::before/::after. */}
-        <span
-          className={cn(
-            "absolute inset-[6px] overflow-hidden rounded-full border-2 shadow-[0_20px_44px_-18px_rgba(24,16,54,.4)] transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none",
-            selected
-              ? "border-[hsl(var(--brand-gold))] shadow-[0_24px_52px_-18px_hsl(var(--brand-navy)/.48)] ring-2 ring-[hsl(var(--brand-navy)/.18)] group-hover:border-[hsl(var(--brand-gold)/.9)] group-hover:shadow-[0_26px_56px_-16px_hsl(var(--brand-gold)/.34)]"
-              : "border-white/90 group-hover:border-[hsl(var(--brand-gold)/.52)] group-hover:shadow-[0_24px_50px_-18px_hsl(var(--brand-navy)/.45)]",
+        <span className="relative block">
+          <WorldDisc world={world} />
+
+          {/* The count rides the disc at a tilt, the way a price sticker sits on
+              a jar. Hidden rather than zeroed when unknown: a card that says
+              "0 سؤال" to a signed-out visitor is a lie about an empty World. */}
+          {remaining !== undefined && (
+            <span
+              style={{ transform: "rotate(12deg)" }}
+              className={cn(
+                "absolute -right-4 top-10 z-10 inline-flex min-h-9 items-baseline gap-1.5",
+                "whitespace-nowrap rounded-xl bg-white px-3.5 pt-1 text-[13px] font-bold",
+                "text-[hsl(var(--brand-navy))]",
+                STICKER.small,
+              )}
+            >
+              <span className="text-[18px] font-extrabold tabular-nums">
+                {remaining}
+              </span>
+              سؤال
+            </span>
           )}
-        >
-          <WorldCover world={world} sizes="(min-width:1024px) 260px, 44vw" />
-          {selected && (
-            <span className="akwaan-soft-pop absolute inset-0 rounded-full ring-[3px] ring-inset ring-[hsl(var(--brand-gold)/.55)]" />
+
+          {/* Selection order, on the opposite corner from the count. */}
+          {selected && order && (
+            <span className="absolute -top-1 left-2 z-10 grid size-9 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] font-display text-base font-extrabold text-[hsl(var(--brand-navy))]">
+              {order}
+            </span>
           )}
         </span>
-        {/* Selection order badge. */}
-        {selected && order && (
-          <span className="akwaan-soft-pop absolute -top-1 right-3 z-10 grid size-9 place-items-center rounded-full border-2 border-[hsl(var(--brand-gold))] bg-[hsl(var(--brand-navy))] text-base font-black text-white shadow-[0_7px_18px_rgba(24,16,54,.32)] sm:size-10">
-            <span className="akwaan-numeral">{order}</span>
-          </span>
-        )}
-        {/* The satellite dot is gone. Selection never needed it — a gold border, an
-            inner ring and the order badge all say it — and five grey specks
-            scattered over the row read as dust rather than as life. */}
-        </button>
 
-      {/* A fixed height, so the gold mechanic label sits on the same baseline for
-          every World. A two-line name pushed its own label down and the row read
+        <WorldShadow />
+      </button>
+
+      {/* A fixed height, so the challenge pill sits on one baseline across the
+          row. A two-line name used to push its own pill down and the row read
           as though it had been dropped. */}
-      <div className="flex min-h-[4.8rem] flex-col items-center justify-between gap-1 text-center">
-        <span className="text-xl font-black text-[hsl(var(--brand-navy))]">
+      <div className="flex min-h-[4.5rem] flex-col items-center gap-1.5 text-center">
+        <span className="font-display text-[22px] font-extrabold text-[hsl(var(--brand-navy))]">
           {world.name}
         </span>
-        {signature && (
-          <span className="text-xs font-bold text-[hsl(var(--brand-gold))]">
-            {signature}
-          </span>
-        )}
+        {signature && <ChallengePill>{signature}</ChallengePill>}
         {selected && (
           <WorldCardScopes
             worldId={world.id}
@@ -464,7 +568,7 @@ function WorldSelectCard({
           type="button"
           onClick={onRemove}
           aria-label={`إزالة ${world.name}`}
-          className="absolute -top-1 left-3 z-10 grid size-8 place-items-center rounded-full border border-[hsl(var(--brand-navy)/.08)] bg-white text-muted-foreground shadow-[0_6px_16px_rgba(24,16,54,.2)] transition-colors duration-200 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2"
+          className="absolute -top-1 right-2 z-10 grid size-9 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] transition-colors duration-200 hover:bg-[hsl(var(--brand-navy)/.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-navy))] focus-visible:ring-offset-2"
         >
           <Trash2 className="size-4" />
         </button>
