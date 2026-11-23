@@ -862,11 +862,14 @@ function WorldScopeFocusMode({
     >
       <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-start lg:gap-12">
         <div className="min-w-0 flex-[3]">
-          <header className="mb-7 flex flex-col items-start gap-3">
+          <header className="mb-7 flex flex-col items-start gap-4">
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg text-[15px] font-semibold text-[hsl(var(--brand-navy))] hover:text-[#7A5C14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))]"
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 rounded-[14px] bg-white px-4 text-[15px] font-bold text-[hsl(var(--brand-navy))] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))]",
+                STICKER.small,
+              )}
             >
               <ArrowLeft className="size-[18px] rotate-180" aria-hidden />
               رجوع للعوالم
