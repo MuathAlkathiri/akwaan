@@ -350,48 +350,6 @@ export interface LaTahriqhaTutorialScenario {
   };
 }
 
-export interface OddPieceTutorialPiece {
-  id: string;
-  imageUrl: string;
-  altText: string;
-  vehicleIdentity: string;
-  vehicleLabel: string;
-}
-
-export interface OddPieceLegacyTutorialScenario {
-  kind: "odd-piece";
-  version: 1;
-  prompt: string;
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  intruderVehicleIdentity: string;
-  intruderVehicleLabel: string;
-  pieces: OddPieceTutorialPiece[];
-  wrongSelectionPieceId: string;
-  correctSelectionPieceId: string;
-  targetReveal: {
-    imageUrl: string;
-    altText: string;
-  };
-  caption?: string;
-  outcome: {
-    firstClaimTeam: "team-a";
-    firstClaimPieceId: string;
-    firstClaimCorrect: false;
-    handoffTeam: "team-b";
-    secondClaimPieceId: string;
-    secondClaimCorrect: true;
-    winnerTeam: "team-b";
-    points: { "team-a": 0; "team-b": number };
-    matchPointDelta: 1;
-    intruderPieceId: string;
-    targetVehicleLabel: string;
-    targetReveal: { imageUrl: string; altText: string };
-    puzzleCount: 3;
-    reason: "odd-piece.claim-handoff";
-  };
-}
-
 export interface OddPieceHotspotTutorialScenario {
   kind: "odd-piece";
   version: 2;
@@ -431,8 +389,7 @@ export interface OddPieceHotspotTutorialScenario {
   };
 }
 
-export type OddPieceTutorialScenario =
-  OddPieceHotspotTutorialScenario | OddPieceLegacyTutorialScenario;
+export type OddPieceTutorialScenario = OddPieceHotspotTutorialScenario;
 
 export interface EkshifniTutorialScenario {
   kind: "ekshifni";

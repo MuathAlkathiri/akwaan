@@ -40,7 +40,7 @@ export enum ChallengeAnswerMode {
   VOTE = 'vote',
   SPLIT = 'split',
   TOP_5 = 'top_5',
-  /** Cars Signature: four visual pieces with one server-graded intruder. */
+  /** القطعة الدخيلة: one photograph of a real vehicle with one part swapped in; the team points at it. */
   ODD_PIECE = 'odd_piece',
   /** Progressive five-clue wrapper; ContentItems keep a MATCH answer payload. */
   ONE_CLUE = 'one_clue',

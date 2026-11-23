@@ -180,7 +180,7 @@ Akwaan offers a diverse suite of Arabic-native party game mechanics designed for
 | **لا تحرقها** | *La Tahriqha* | Taboo deduction mechanic where players describe a target secret term without uttering forbidden clue words. |
 | **اكشفني** | *Ekshifni* | Progressive image tile reveal challenge where visual puzzle clues are uncovered step-by-step. |
 | **من أول نغمة** | *First Note* | Auditory quiz mechanic where teams bid on the shortest audio snippet duration needed to recognize regional melodies. |
-| **القطعة الدخيلة** | *Odd Piece* | Visual pattern recognition where players inspect sets of themed vehicle or object images and identify the incongruous intruder. |
+| **القطعة الدخيلة** | *Odd Piece* | Players study one photograph of a real vehicle in which a single part has been swapped for another car's, and race to point at the part that does not belong. |
 | **إكس أو المتحركة** | *Moving XO* | Strategic tic-tac-toe variant combined with trivia questions to earn tactical board placements. |
 
 ---

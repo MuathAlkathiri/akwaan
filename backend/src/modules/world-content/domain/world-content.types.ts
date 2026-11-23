@@ -326,24 +326,6 @@ export interface FirstNotePayload {
   clueLabel?: LocalizedText;
 }
 
-export interface OddPieceVisual {
-  localId: string;
-  /** Server-only grading identity; never projected while the puzzle is live. */
-  vehicleIdentity: string;
-  /** Player-facing identity used only in the post-resolution proof. */
-  vehicleLabel: string;
-  media: ContentItemMedia;
-}
-
-/** Canonical Cars Signature authoring payload. */
-export interface OddPiecePayload {
-  variant: 'odd-piece';
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  targetVehicleReveal: ContentItemMedia;
-  pieces: OddPieceVisual[];
-}
-
 /** A normalized point used by the V2 hotspot contract. */
 export interface OddPieceNormalizedPoint {
   x: number;
@@ -477,7 +459,7 @@ export interface ContentItemView {
     | Top5Payload
     | RakkibhaPayload
     | OneCluePayload
-    | OddPiecePayload
+    | OddPieceHotspotPayload
     | LaqathaPayload
     | EkshifniPayload
     | LaTahriqhaPayload;
@@ -834,43 +816,6 @@ export interface StoredLaTahriqhaTutorialScenario {
   };
 }
 
-export interface StoredOddPieceV1TutorialScenario {
-  kind: 'odd-piece';
-  version: 1;
-  prompt: string;
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  intruderVehicleIdentity: string;
-  intruderVehicleLabel: string;
-  pieces: Array<{
-    id: string;
-    imageUrl: string;
-    altText: string;
-    vehicleIdentity: string;
-    vehicleLabel: string;
-  }>;
-  wrongSelectionPieceId: string;
-  correctSelectionPieceId: string;
-  targetReveal: { imageUrl: string; altText: string };
-  caption?: string;
-  outcome: {
-    firstClaimTeam: 'team-a';
-    firstClaimPieceId: string;
-    firstClaimCorrect: false;
-    handoffTeam: 'team-b';
-    secondClaimPieceId: string;
-    secondClaimCorrect: true;
-    winnerTeam: 'team-b';
-    points: { 'team-a': 0; 'team-b': 1 };
-    matchPointDelta: 1;
-    intruderPieceId: string;
-    targetVehicleLabel: string;
-    targetReveal: { imageUrl: string; altText: string };
-    puzzleCount: 3;
-    reason: 'odd-piece.claim-handoff';
-  };
-}
-
 export interface StoredOddPieceV2TutorialScenario {
   kind: 'odd-piece';
   version: 2;
@@ -909,8 +854,7 @@ export interface StoredOddPieceV2TutorialScenario {
   };
 }
 
-export type StoredOddPieceTutorialScenario =
-  StoredOddPieceV1TutorialScenario | StoredOddPieceV2TutorialScenario;
+export type StoredOddPieceTutorialScenario = StoredOddPieceV2TutorialScenario;
 
 export type StoredTutorialScenario =
   | StoredRyoTutorialScenario

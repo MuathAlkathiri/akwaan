@@ -13,7 +13,9 @@ import {
 } from './gameplay-mode.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
 
-export const ODD_PIECE_HOTSPOT_MODE_KEY = 'odd-piece';
+/** The mechanic's one mode key. There is one القطعة الدخيلة: this one. */
+export const ODD_PIECE_MODE_KEY = 'odd-piece';
+export const ODD_PIECE_HOTSPOT_MODE_KEY = ODD_PIECE_MODE_KEY;
 export const ODD_PIECE_HOTSPOT_VERSION = 2;
 export const ODD_PIECE_HOTSPOT_DEFAULT_DISCUSSION_SECONDS = 30;
 export const ODD_PIECE_HOTSPOT_DEFAULT_ANSWER_SECONDS = 5;

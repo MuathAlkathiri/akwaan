@@ -10,14 +10,9 @@ import { ChallengeCountdown } from "@/features/live-game-session/match/component
 import { SharedScreenFrame } from "@/features/how-to-play/components/device-frames";
 import type { ExplainerMode } from "./ryo-explainer";
 import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
-import type { OddPieceLegacyDemoStepId } from "../odd-piece-demo-scenario";
-import {
-  ODD_PIECE_V1_DEMO_STEPS,
-  ODD_PIECE_V2_DEMO_STEPS,
-} from "../odd-piece-demo-scenario";
+import { ODD_PIECE_V2_DEMO_STEPS } from "../odd-piece-demo-scenario";
 import type {
   OddPieceHotspotTutorialScenario,
-  OddPieceLegacyTutorialScenario,
   OddPieceTutorialScenario,
 } from "../tutorial-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
@@ -31,21 +26,11 @@ export function OddPieceExplainer({
   compact?: boolean;
   mode?: ExplainerMode;
 }) {
-  if (scenario.version === 2) {
-    return (
-      <OddPieceHotspotExplainer
-        scenario={scenario as OddPieceHotspotTutorialScenario}
-        compact={compact}
-        mode={mode}
-      />
-    );
-  }
+  // A record written for the retired four-piece contract can still be loaded
+  // by an Admin. It describes a game that no longer exists, so nothing is shown.
+  if (scenario.version !== 2) return null;
   return (
-    <OddPieceLegacyExplainer
-      scenario={scenario as OddPieceLegacyTutorialScenario}
-      compact={compact}
-      mode={mode}
-    />
+    <OddPieceHotspotExplainer scenario={scenario} compact={compact} mode={mode} />
   );
 }
 
@@ -882,176 +867,6 @@ function OddPieceHotspotExplainer({
             </p>
           </div>
         </details>
-      )}
-    </div>
-  );
-}
-
-/**
- * Backward compatibility: Legacy 4-image explainer for version 1 scenarios
- */
-function OddPieceLegacyExplainer({
-  scenario,
-  compact = false,
-  mode = "player",
-}: {
-  scenario: OddPieceLegacyTutorialScenario;
-  compact?: boolean;
-  mode?: ExplainerMode;
-}) {
-  const scope = useRef<HTMLDivElement | null>(null);
-  const timeline = useExplainerTimeline(ODD_PIECE_V1_DEMO_STEPS, scope, {
-    visibilityThreshold: 0.25,
-  });
-  const step = ODD_PIECE_V1_DEMO_STEPS[timeline.index];
-
-  return (
-    <div
-      ref={scope}
-      dir="rtl"
-      data-testid="odd-piece-explainer"
-      data-demo-step={step.id}
-      data-variant={compact ? "compact" : "full"}
-      className={cn("w-full", compact ? "space-y-3" : "space-y-6")}
-    >
-      {showsExplainerControls(mode, timeline) ? (
-        <ExplainerControls
-          step={timeline.index}
-          total={ODD_PIECE_V1_DEMO_STEPS.length}
-          caption={step.caption}
-          phase={
-            step.id === "reveal" || step.id === "three-puzzles"
-              ? "resolved"
-              : "simulation"
-          }
-          timeline={timeline}
-          compact={compact}
-          stackOnNarrow
-        />
-      ) : (
-        <ExplainerCaption caption={step.caption} compact={compact} />
-      )}
-
-      <div
-        data-odd-piece-scene
-        className={cn(
-          "grid gap-3 lg:gap-4",
-          step.id === "reveal" || step.id === "three-puzzles"
-            ? "lg:grid-cols-1"
-            : "lg:grid-cols-[minmax(0,2fr)_minmax(14rem,.75fr)]",
-        )}
-      >
-        <SharedScreenFrame stand={!compact}>
-          <ChallengeFrame
-            eyebrow="القطعة الدخيلة (V1 Legacy)"
-            title={
-              step.id === "reveal" || step.id === "three-puzzles"
-                ? "كشف الحل"
-                : "أي قطعة لا تنتمي؟"
-            }
-            progressLabel="اللغز 1 من 3"
-            progressValue={
-              step.id === "opening"
-                ? 24
-                : step.id === "reveal" || step.id === "three-puzzles"
-                  ? 100
-                  : 62
-            }
-            compact={compact}
-          >
-            {step.id === "reveal" || step.id === "three-puzzles" ? (
-              <OddPieceLegacyReveal
-                scenario={scenario}
-                showReminder={step.id === "three-puzzles"}
-                compact={compact}
-              />
-            ) : (
-              <OddPieceLegacyQuestion
-                scenario={scenario}
-                step={step.id as OddPieceLegacyDemoStepId}
-                compact={compact}
-              />
-            )}
-          </ChallengeFrame>
-        </SharedScreenFrame>
-        {step.id !== "reveal" && step.id !== "three-puzzles" && (
-          <aside className="space-y-2" data-testid="odd-piece-status">
-            <StatusTeam
-              name="الفريق الأول"
-              points={0}
-              active={["opening", "answer", "wrong"].includes(step.id)}
-              lost={step.id === "wrong"}
-            />
-            <StatusTeam
-              name="الفريق الثاني"
-              points={step.id === "correct" ? 1 : 0}
-              active={step.id === "handoff"}
-              winner={step.id === "correct"}
-            />
-          </aside>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function OddPieceLegacyQuestion({
-  scenario,
-}: {
-  scenario: OddPieceLegacyTutorialScenario;
-  step: OddPieceLegacyDemoStepId;
-  compact: boolean;
-}) {
-  return (
-    <div className="space-y-3" data-testid="odd-piece-question">
-      <div className="grid grid-cols-2 gap-2" data-testid="odd-piece-grid">
-        {scenario.pieces.map((piece, index) => (
-          <div
-            key={piece.id}
-            className="rounded-lg border overflow-hidden relative aspect-video bg-black/5"
-            data-testid={`odd-piece-card-${piece.id}`}
-          >
-            <img
-              src={piece.imageUrl}
-              alt={piece.altText}
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 rounded">
-              {["أ", "ب", "ج", "د"][index]}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OddPieceLegacyReveal({
-  scenario,
-  showReminder,
-}: {
-  scenario: OddPieceLegacyTutorialScenario;
-  showReminder: boolean;
-  compact: boolean;
-}) {
-  return (
-    <div className="space-y-2 text-center" data-testid="odd-piece-reveal">
-      <img
-        src={scenario.targetReveal.imageUrl}
-        alt={scenario.targetReveal.altText}
-        className="max-h-56 mx-auto rounded-lg object-contain"
-      />
-      <p className="font-black text-sm">{scenario.targetVehicleLabel}</p>
-      <p className="text-xs text-success font-bold">
-        الفريق الثاني +1 Match point
-      </p>
-      <p className="text-xs text-muted-foreground">
-        الدخيلة: {scenario.intruderVehicleLabel}
-      </p>
-      {showReminder && (
-        <p className="text-xs font-bold text-primary">
-          3 ألغاز في التحدي الكامل
-        </p>
       )}
     </div>
   );

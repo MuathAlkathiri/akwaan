@@ -53,7 +53,7 @@ import {
   RakkibhaPayload,
   Top5Payload,
   OneCluePayload,
-  OddPiecePayload,
+  OddPieceHotspotPayload,
   LaqathaPayload,
   FirstNotePayload,
   EkshifniPayload,
@@ -249,7 +249,7 @@ export class ContentItemCompatibilityPolicy {
   ): WorldContentIssue[] {
     if (!challengeTypes.some((type) => type.slug === ODD_PIECE_SLUG)) return [];
     return validateOddPiecePayload(
-      item.mechanicPayload as Partial<OddPiecePayload>,
+      item.mechanicPayload as Partial<OddPieceHotspotPayload>,
     );
   }
 

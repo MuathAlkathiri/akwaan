@@ -3,7 +3,6 @@ import { WorldContentValidationError } from './world-content.errors';
 import {
   ContentItemMedia,
   LocalizedText,
-  OddPiecePayload,
   OddPieceHotspotPayload,
   OddPieceHotspotImage,
   OddPieceDifficulty,
@@ -15,7 +14,6 @@ import {
 } from './odd-piece-hotspot.geometry';
 
 export const ODD_PIECE_ITEM_COUNT = 3;
-export const ODD_PIECE_VISUAL_COUNT = 4;
 export const ODD_PIECE_V2_DIFFICULTY_PROGRESSION = [
   'easy',
   'medium',
@@ -29,22 +27,6 @@ export interface OddPieceCandidateItem {
   scopeId: string;
   prompt: LocalizedText;
   mechanicPayload?: Record<string, unknown>;
-}
-
-export interface OddPieceAuthoredPuzzle {
-  contentItemId: string;
-  scopeId: string;
-  prompt: string;
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  targetReveal: { imageUrl: string; altText?: string };
-  pieces: Array<{
-    id: string;
-    imageUrl: string;
-    altText?: string;
-    vehicleIdentity: string;
-    vehicleLabel: string;
-  }>;
 }
 
 export interface OddPieceHotspotAuthoredPuzzle {
@@ -209,16 +191,21 @@ function answerBearingPromptProblem(prompt: string, identities: string[]) {
     : undefined;
 }
 
-export function oddPiecePayloadVersion(raw: unknown): 1 | 2 | undefined {
+/**
+ * The payload version, when the record is a القطعة الدخيلة payload at all.
+ *
+ * There is one contract: version 2, a single photograph with one altered part
+ * and the region that holds it. The earlier four-piece contract was retired; a
+ * record that still carries it (no version, or version 1) reads as `undefined`
+ * here and is refused wherever a payload is required.
+ */
+export function oddPiecePayloadVersion(raw: unknown): 2 | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const value = raw as { variant?: unknown; version?: unknown };
-  if (value.variant !== 'odd-piece') return undefined;
-  if (value.version === undefined || value.version === 1) return 1;
-  if (value.version === 2) return 2;
-  return undefined;
+  return value.variant === 'odd-piece' && value.version === 2 ? 2 : undefined;
 }
 
-/** V2 is opt-in; a missing version remains the legacy four-piece contract. */
+/** Every structural rule of the payload, shared by authoring and launch. */
 export function validateOddPieceHotspotPayload(
   raw: Partial<OddPieceHotspotPayload> | undefined,
 ): WorldContentIssue[] {
@@ -308,146 +295,18 @@ export function validateOddPieceHotspotPayload(
   return problems;
 }
 
-/** One structural predicate shared by authoring and launch. */
+/**
+ * The name the compatibility policy calls. Kept as the single entry point so
+ * a caller cannot validate against anything but the one current contract.
+ */
 export function validateOddPiecePayload(
-  raw: Partial<OddPiecePayload> | undefined,
+  raw: Partial<OddPieceHotspotPayload> | undefined,
 ): WorldContentIssue[] {
-  // V2 is an opt-in contract. Keep the legacy four-piece validator intact for
-  // unversioned/version 1 records, but route version 2 through the hotspot
-  // validator everywhere ContentItem compatibility/readiness is checked.
-  if (oddPiecePayloadVersion(raw) === 2)
-    return validateOddPieceHotspotPayload(
-      raw as Partial<OddPieceHotspotPayload>,
-    );
-  const problems: WorldContentIssue[] = [];
-  if (raw?.variant !== 'odd-piece')
-    problems.push(
-      issue(
-        'ODD_PIECE_PAYLOAD_REQUIRED',
-        'القطعة الدخيلة requires its canonical visual payload',
-      ),
-    );
-  if (!raw?.targetVehicleIdentity?.trim() || !raw.targetVehicleLabel?.trim())
-    problems.push(
-      issue(
-        'ODD_PIECE_TARGET_REQUIRED',
-        'A target vehicle identity and reveal label are required',
-      ),
-    );
-  const revealProblem = imageProblem(
-    raw?.targetVehicleReveal,
-    'The full target-vehicle reveal',
-  );
-  if (revealProblem) problems.push(revealProblem);
-
-  const pieces = Array.isArray(raw?.pieces) ? raw.pieces : [];
-  if (pieces.length !== ODD_PIECE_VISUAL_COUNT)
-    problems.push(
-      issue(
-        'ODD_PIECE_VISUAL_COUNT_INVALID',
-        `القطعة الدخيلة requires exactly ${ODD_PIECE_VISUAL_COUNT} visual pieces`,
-      ),
-    );
-  const ids = pieces.map((piece) => piece?.localId?.trim()).filter(Boolean);
-  if (ids.length !== pieces.length || new Set(ids).size !== pieces.length)
-    problems.push(
-      issue(
-        'ODD_PIECE_LOCAL_IDS_INVALID',
-        'Every piece needs a unique stable local id',
-      ),
-    );
-  pieces.forEach((piece, index) => {
-    if (!piece?.vehicleIdentity?.trim() || !piece?.vehicleLabel?.trim())
-      problems.push(
-        issue(
-          'ODD_PIECE_IDENTITY_INVALID',
-          `Piece ${index + 1} needs a vehicle identity and reveal label`,
-        ),
-      );
-    const mediaProblem = imageProblem(piece?.media, `Piece ${index + 1}`);
-    if (mediaProblem) problems.push(mediaProblem);
-  });
-  const identities = new Map<string, number>();
-  for (const piece of pieces) {
-    const identity = piece?.vehicleIdentity?.trim();
-    if (identity) identities.set(identity, (identities.get(identity) ?? 0) + 1);
-  }
-  const counts = [...identities.values()].sort((a, b) => a - b);
-  if (counts.join(',') !== '1,3')
-    problems.push(
-      issue(
-        'ODD_PIECE_IDENTITY_SPLIT_INVALID',
-        'The four pieces must have an exact three-plus-one vehicle identity split',
-      ),
-    );
-  if (
-    raw?.targetVehicleIdentity?.trim() &&
-    identities.get(raw.targetVehicleIdentity.trim()) !== 3
-  )
-    problems.push(
-      issue(
-        'ODD_PIECE_TARGET_MISMATCH',
-        'targetVehicleIdentity must identify the three matching pieces',
-      ),
-    );
-  return problems;
+  return validateOddPieceHotspotPayload(raw);
 }
 
 function reject(problems: WorldContentIssue[]): never {
   throw new WorldContentValidationError(problems, problems[0]?.message);
-}
-
-export function readOddPieceItem(
-  item: OddPieceCandidateItem,
-  input: { worldId: string; position: number },
-): OddPieceAuthoredPuzzle {
-  const problems = validateOddPiecePayload(
-    item.mechanicPayload as Partial<OddPiecePayload> | undefined,
-  );
-  if (item.status !== ContentItemStatus.READY)
-    problems.push(
-      issue(
-        'ODD_PIECE_ITEM_NOT_READY',
-        `Puzzle ${input.position} is not ready`,
-      ),
-    );
-  if (item.worldId !== input.worldId)
-    problems.push(
-      issue(
-        'ODD_PIECE_WORLD_MISMATCH',
-        `Puzzle ${input.position} belongs to another World`,
-      ),
-    );
-  if (!item.prompt?.ar?.trim())
-    problems.push(
-      issue(
-        'ODD_PIECE_PROMPT_REQUIRED',
-        `Puzzle ${input.position} needs Arabic copy`,
-      ),
-    );
-  if (problems.length) reject(problems);
-  const payload = item.mechanicPayload as unknown as OddPiecePayload;
-  const asset = payload.targetVehicleReveal.assets[0];
-  return {
-    contentItemId: item.id,
-    scopeId: item.scopeId,
-    prompt: item.prompt.ar.trim(),
-    targetVehicleIdentity: payload.targetVehicleIdentity.trim(),
-    targetVehicleLabel: payload.targetVehicleLabel.trim(),
-    targetReveal: {
-      imageUrl: asset.url.trim(),
-      ...(asset.altText?.trim() ? { altText: asset.altText.trim() } : {}),
-    },
-    pieces: payload.pieces.map((piece) => {
-      const pieceAsset = piece.media.assets[0];
-      return {
-        id: piece.localId.trim(),
-        imageUrl: pieceAsset.url.trim(),
-        vehicleIdentity: piece.vehicleIdentity.trim(),
-        vehicleLabel: piece.vehicleLabel.trim(),
-      };
-    }),
-  };
 }
 
 export function readOddPieceHotspotItem(
@@ -543,7 +402,7 @@ export function buildOddPieceHotspotPlan(
     reject([
       issue(
         'ODD_PIECE_MIXED_VERSIONS',
-        'Odd Piece V2 bundles must contain only version 2 payloads',
+        'Every القطعة الدخيلة puzzle must carry the current (version 2) payload',
       ),
     ]);
   const puzzles = items.map((item, index) =>
@@ -576,40 +435,4 @@ export function buildOddPieceHotspotPlan(
       (order.get(left.difficulty) ?? Number.MAX_SAFE_INTEGER) -
       (order.get(right.difficulty) ?? Number.MAX_SAFE_INTEGER),
   );
-}
-
-/** Build exactly three distinct persisted puzzles; ordering is committed by launch. */
-export function buildOddPiecePlan(
-  items: OddPieceCandidateItem[],
-  input: { worldId: string; shuffle?: <T>(values: T[]) => T[] },
-): OddPieceAuthoredPuzzle[] {
-  if (
-    items.length !== ODD_PIECE_ITEM_COUNT ||
-    new Set(items.map((item) => item.id)).size !== ODD_PIECE_ITEM_COUNT
-  ) {
-    reject([
-      issue(
-        'ODD_PIECE_REQUIRES_THREE_ITEMS',
-        `القطعة الدخيلة requires exactly ${ODD_PIECE_ITEM_COUNT} distinct puzzles`,
-      ),
-    ]);
-  }
-  const versions = items.map((item) =>
-    oddPiecePayloadVersion(item.mechanicPayload),
-  );
-  if (versions.some((version) => version !== 1))
-    reject([
-      issue(
-        'ODD_PIECE_MIXED_VERSIONS',
-        'Legacy Odd Piece bundles must contain only unversioned/version 1 payloads',
-      ),
-    ]);
-  const shuffle = input.shuffle ?? ((values) => values);
-  return items.map((item, index) => {
-    const puzzle = readOddPieceItem(item, {
-      worldId: input.worldId,
-      position: index + 1,
-    });
-    return { ...puzzle, pieces: shuffle([...puzzle.pieces]) };
-  });
 }

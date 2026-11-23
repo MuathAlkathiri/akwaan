@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { ContentItemRepository } from '../../world-content/persistence/content-item.repository';
 import { ChallengeTypeRepository } from '../../world-content/persistence/challenge-type.repository';
@@ -10,11 +10,7 @@ import {
 import {
   ODD_PIECE_ITEM_COUNT,
   OddPieceCandidateItem,
-  OddPieceAuthoredPuzzle,
-  OddPieceHotspotAuthoredPuzzle,
   buildOddPieceHotspotPlan,
-  buildOddPiecePlan,
-  oddPiecePayloadVersion,
 } from '../../world-content/domain/odd-piece-content.policy';
 import {
   GAMEPLAY_RUNTIME_REPOSITORY,
@@ -26,13 +22,10 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import {
-  ODD_PIECE_DEFAULT_OPEN_SECONDS,
-  ODD_PIECE_MODE_KEY,
-} from '../domain/odd-piece-gameplay.plugin';
-import {
   ODD_PIECE_HOTSPOT_DEFAULT_ANSWER_SECONDS,
   ODD_PIECE_HOTSPOT_DEFAULT_DISCUSSION_SECONDS,
   ODD_PIECE_HOTSPOT_VERSION,
+  ODD_PIECE_MODE_KEY,
 } from '../domain/odd-piece-hotspot-gameplay.plugin';
 import {
   CreateGameplayRuntime,
@@ -43,14 +36,6 @@ import {
   StartGameplayRound,
   StartGameplayRuntime,
 } from './gameplay-runtime.lifecycle';
-
-const shuffle = <T>(values: T[]): T[] => {
-  for (let index = values.length - 1; index > 0; index -= 1) {
-    const swapWith = randomInt(index + 1);
-    [values[index], values[swapWith]] = [values[swapWith], values[index]];
-  }
-  return values;
-};
 
 /** Build and persist one complete three-puzzle Cars Signature runtime. */
 @Injectable()
@@ -136,28 +121,12 @@ export class StartOddPieceGameplay {
         mechanicPayload: item.mechanicPayload,
       };
     });
-    const versions = candidates.map((candidate) =>
-      oddPiecePayloadVersion(candidate.mechanicPayload),
-    );
-    if (
-      versions.some((version) => version === undefined) ||
-      new Set(versions).size !== 1
-    ) {
-      throw new LiveSessionDomainError(
-        'ODD_PIECE_MIXED_VERSIONS',
-        'Odd Piece launch cannot mix legacy and V2 payloads',
-      );
-    }
-    const version = versions[0] ?? 1;
-    const plan =
-      version === ODD_PIECE_HOTSPOT_VERSION
-        ? (buildOddPieceHotspotPlan(candidates, {
-            worldId: input.worldId,
-          }) as OddPieceHotspotAuthoredPuzzle[])
-        : (buildOddPiecePlan(candidates, {
-            worldId: input.worldId,
-            shuffle,
-          }) as OddPieceAuthoredPuzzle[]);
+    // The plan builder refuses anything that is not the one current payload,
+    // so a stray record from the retired four-piece contract fails here with
+    // its reason instead of reaching a runtime that cannot play it.
+    const plan = buildOddPieceHotspotPlan(candidates, {
+      worldId: input.worldId,
+    });
     const teams = sessionState.teams
       .filter((team) => team.active)
       .map((team) => team.id);
@@ -170,9 +139,7 @@ export class StartOddPieceGameplay {
     const openSeconds =
       Number.isFinite(configuredSeconds) && configuredSeconds > 0
         ? configuredSeconds
-        : version === ODD_PIECE_HOTSPOT_VERSION
-          ? ODD_PIECE_HOTSPOT_DEFAULT_DISCUSSION_SECONDS
-          : ODD_PIECE_DEFAULT_OPEN_SECONDS;
+        : ODD_PIECE_HOTSPOT_DEFAULT_DISCUSSION_SECONDS;
     const configuredAnswerSeconds = Number(
       mechanic.defaultPresentation.answerTimerSeconds,
     );
@@ -180,24 +147,14 @@ export class StartOddPieceGameplay {
       Number.isFinite(configuredAnswerSeconds) && configuredAnswerSeconds > 0
         ? configuredAnswerSeconds
         : ODD_PIECE_HOTSPOT_DEFAULT_ANSWER_SECONDS;
-    const persistedPuzzles =
-      version === ODD_PIECE_HOTSPOT_VERSION
-        ? (plan as OddPieceHotspotAuthoredPuzzle[]).map((puzzle) => ({
-            // The authored/content policy calls this field `contentItemId`,
-            // while the runtime state schema identifies the active puzzle as
-            // `id`. Keep the launch boundary explicit so V2 reaches the
-            // runtime validator with the contract it consumes.
-            id: puzzle.contentItemId,
-            ...puzzle,
-          }))
-        : (plan as OddPieceAuthoredPuzzle[]).map((puzzle) => ({
-            id: puzzle.contentItemId,
-            prompt: puzzle.prompt,
-            pieces: puzzle.pieces,
-            targetVehicleIdentity: puzzle.targetVehicleIdentity,
-            targetVehicleLabel: puzzle.targetVehicleLabel,
-            targetReveal: puzzle.targetReveal,
-          }));
+    const persistedPuzzles = plan.map((puzzle) => ({
+      // The authored/content policy calls this field `contentItemId`, while
+      // the runtime state schema identifies the active puzzle as `id`. Keep
+      // the launch boundary explicit so the plan reaches the runtime validator
+      // with the contract it consumes.
+      id: puzzle.contentItemId,
+      ...puzzle,
+    }));
     const actor = { kind: 'user' as const, actorId: input.actorId };
     await this.createRuntime.execute({
       sessionId: input.sessionId,
@@ -205,7 +162,7 @@ export class StartOddPieceGameplay {
       commandId: randomUUID(),
       expectedSessionRevision: session.revision,
       modeKey: ODD_PIECE_MODE_KEY,
-      modeVersion: version,
+      modeVersion: ODD_PIECE_HOTSPOT_VERSION,
       initialState: {
         challengeId: randomUUID(),
         worldId: input.worldId,
@@ -220,16 +177,12 @@ export class StartOddPieceGameplay {
         phase: 'preparing',
         deadlineAt: null,
         openSeconds,
-        ...(version === ODD_PIECE_HOTSPOT_VERSION
-          ? {
-              discussionSeconds: openSeconds,
-              answerSeconds,
-              // Fair Start is team-bound, not launch-representative-bound:
-              // whichever eligible teammate is actually connected may ack the
-              // shared image. A reconnect never inherits a stale phone's slot.
-              requiredPresentationTeamIdsJson: JSON.stringify(teams),
-            }
-          : {}),
+        discussionSeconds: openSeconds,
+        answerSeconds,
+        // Fair Start is team-bound, not launch-representative-bound:
+        // whichever eligible teammate is actually connected may ack the
+        // shared image. A reconnect never inherits a stale phone's slot.
+        requiredPresentationTeamIdsJson: JSON.stringify(teams),
       },
     });
     let runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

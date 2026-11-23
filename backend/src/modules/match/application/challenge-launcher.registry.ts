@@ -33,9 +33,9 @@ export interface MatchSelectableContentItem {
   comboStage?: number;
   /** "المرحلة" risk band, from `mechanicPayload.marhalaDifficulty`. */
   marhalaDifficulty?: string;
-  /** Versioned mechanic contract; absent means the legacy payload. */
-  oddPieceVersion?: 1 | 2;
-  /** V2 difficulty tier, kept available to a future gated stratified draw. */
+  /** Set when the item carries the القطعة الدخيلة payload; anything else is unplayable. */
+  oddPieceVersion?: 2;
+  /** Difficulty tier, one of each per launch. */
   oddPieceDifficulty?: OddPieceDifficulty;
 }
 
