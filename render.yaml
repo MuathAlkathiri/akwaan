@@ -56,9 +56,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
-      # This service's own public URL, e.g. https://akwaan-api.onrender.com
-      - key: APP_BASE_URL
-        sync: false
 
       # Writable scratch space for ffmpeg. Ephemeral by design: the durable
       # copy is the R2 mirror below.
@@ -216,14 +213,18 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
 
-      # The Vercel preview origins. A wildcard is allowed in the leftmost
-      # label only and never crosses a dot, so one entry covers every preview
-      # build of this project without opening the whole of vercel.app.
+      # Exact origins, comma separated. The allowlist is a literal match —
+      # there is no wildcard support, and a pattern here would be compared as
+      # a string and silently refuse every request.
+      #
+      # Vercel names a branch deployment after the branch, so the `staging`
+      # branch keeps one stable preview URL and a single entry holds. A
+      # feature branch gets its own URL and would need adding here, which is
+      # the argument for pointing previews at staging rather than per-branch
+      # APIs.
       - key: CORS_ORIGINS
         sync: false
 
-      - key: APP_BASE_URL
-        sync: false
       - key: PUBLIC_SITE_URL
         sync: false
 
