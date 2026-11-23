@@ -30,6 +30,7 @@ export function Shop() {
   const checkout = useStartCheckout();
   const settlement = useSettlement();
 
+  const freeUntil = freeUntilLabel(catalogue.data?.freeUntil);
   const state = shopState({
     catalogue: catalogue.data,
     balance: balance.data,
@@ -42,7 +43,7 @@ export function Shop() {
       <ShopBanner
         state={state}
         tokensAdded={settlement.tokensAdded}
-        freeUntil={freeUntilLabel(catalogue.data?.freeUntil)}
+        freeUntil={freeUntil}
       />
 
       <Balance balance={balance.data} />
@@ -54,7 +55,13 @@ export function Shop() {
             pack={pack}
             disabled={!selling || !isAuthenticated}
             disabledLabel={
-              selling ? "سجّل دخولك عشان تشتري" : "يفتح بعد انتهاء المجانية"
+              selling
+                ? "سجّل دخولك عشان تشتري"
+                : // Naming the day is the approved copy, and a date a player
+                  // can plan around beats a vague "once the free month ends".
+                  freeUntil
+                  ? `يفتح بعد ${freeUntil}`
+                  : "يفتح بعد انتهاء المجانية"
             }
             buyLabel={state === "empty" ? "اشترِ وكمّل مباراتك" : "اشترِ"}
             busy={checkout.isPending && checkout.variables === pack.id}

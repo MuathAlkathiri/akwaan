@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Shop } from "@/features/payments/components/shop";
 
 export const metadata: Metadata = {
-  title: "المتجر | أكوان",
+  title: "المتجر",
   description:
     "اشترِ رصيد مباريات في أكوان. مباراة وحدة 15 ريال، 5 مباريات 60 ريال، 15 مباراة 150 ريال. بلا اشتراك ولا تجديد تلقائي.",
 };

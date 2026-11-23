@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SUPPORT_EMAIL } from "@/lib/support";
 
 export const metadata: Metadata = {
-  title: "شروط الاستخدام | أكوان",
+  title: "شروط الاستخدام",
   description:
     "شروط استخدام لعبة أكوان الرقمية، بما في ذلك الدفع والاستخدام المقبول.",
 };
