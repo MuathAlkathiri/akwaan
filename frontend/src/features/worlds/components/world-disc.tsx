@@ -96,6 +96,7 @@ export function WorldDisc({
           <Image
             src={artwork}
             alt=""
+            unoptimized
             width={220}
             height={220}
             className="absolute -left-2.5 -top-8 block size-[13.75rem] max-w-none object-contain"
@@ -110,6 +111,7 @@ export function WorldDisc({
         <Image
           src={artwork}
           alt={world.icon?.altText ?? ""}
+          unoptimized
           width={220}
           height={220}
           className="absolute -left-2.5 top-[1.125rem] block size-[13.75rem] max-w-none object-contain"
