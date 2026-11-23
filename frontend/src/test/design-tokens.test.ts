@@ -77,7 +77,11 @@ describe("the semantic typography experiment", () => {
   it("loads one display face and one body face through Next font variables", () => {
     const layout = read("src/app/layout.tsx");
     expect(layout).toContain("NotoKufiArabic-Variable.ttf");
-    expect(layout).toContain('weight: "600 700"');
+    // The approved identity sets headings in 800 and 900. The face is a
+    // variable font, so this range is what decides whether `font-weight: 800`
+    // lands on a real 800 or is silently clamped to 700 — which looks like
+    // nothing is broken, only lighter than the design on every screen at once.
+    expect(layout).toContain('weight: "600 900"');
     expect(layout).toContain("Readex_Pro");
     expect(layout).toContain('variable: "--font-display"');
     expect(layout).toContain('variable: "--font-body"');
