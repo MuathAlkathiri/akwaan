@@ -267,9 +267,9 @@ function SiteHeader({ merged }: { merged: boolean }) {
           {/* Matches left, and the door to buying more. Hidden on the narrowest
               screens, where the burger and the sign-in action already fill the
               row and a third chip would push the logo off. */}
-          <span className="hidden sm:inline-flex">
+          <div className="hidden sm:block">
             <TokenChip />
-          </span>
+          </div>
           {showNav && (
             <button
               type="button"
@@ -313,6 +313,18 @@ function SiteHeader({ merged }: { merged: boolean }) {
             className="absolute inset-x-3 top-[calc(100%_-_2px)] grid gap-1 rounded-2xl border border-[hsl(var(--brand-navy)/.08)] bg-white p-3 text-right shadow-[0_18px_42px_-24px_rgba(24,16,54,.32)] md:hidden"
           >
             {navItems(true)}
+            {isAuthenticated && !isAdmin ? (
+              // The chip is hidden on this width, so the menu carries the way
+              // to buy. It goes to the shop page rather than opening the panel:
+              // a panel inside a dropdown on a phone is a box inside a box.
+              <Link
+                href="/shop"
+                onClick={() => setMobileOpen(false)}
+                className="relative whitespace-nowrap px-1 py-2 text-[15px] font-bold text-[hsl(var(--brand-navy))]"
+              >
+                زد مبارياتك
+              </Link>
+            ) : null}
           </nav>
         )}
       </div>

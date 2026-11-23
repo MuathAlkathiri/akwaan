@@ -9,6 +9,12 @@ import { FulfilPurchase } from './application/fulfil-purchase.use-case';
 import { UnsettledPurchaseSweeper } from './application/unsettled-purchase.sweeper';
 import { PurchaseIntentRepository } from './persistence/purchase-intent.repository';
 import { PaymentsController } from './presentation/payments.controller';
+import { DiscountCodesAdminController } from './presentation/discount-codes.admin.controller';
+import { DiscountCodeRepository } from './persistence/discount-code.repository';
+import {
+  DiscountCodeDocument,
+  DiscountCodeSchema,
+} from './persistence/discount-code.schema';
 import {
   PurchaseIntentDocument,
   PurchaseIntentSchema,
@@ -27,11 +33,13 @@ import {
     EntitlementsModule,
     MongooseModule.forFeature([
       { name: PurchaseIntentDocument.name, schema: PurchaseIntentSchema },
+      { name: DiscountCodeDocument.name, schema: DiscountCodeSchema },
     ]),
   ],
-  controllers: [PaymentsController],
+  controllers: [PaymentsController, DiscountCodesAdminController],
   providers: [
     PurchaseIntentRepository,
+    DiscountCodeRepository,
     StartPurchase,
     FulfilPurchase,
     UnsettledPurchaseSweeper,

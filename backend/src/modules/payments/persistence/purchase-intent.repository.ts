@@ -9,6 +9,8 @@ export interface PurchaseIntent {
   accountId: string;
   packId: string;
   amountHalalas: number;
+  listPriceHalalas?: number;
+  discountCode?: string;
   fulfilledAt?: Date;
   /** Set by the schema's timestamps. Used to bound what the sweeper re-checks. */
   createdAt?: Date;

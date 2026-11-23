@@ -64,9 +64,9 @@ export function Shop() {
                   : "يفتح بعد انتهاء المجانية"
             }
             buyLabel={state === "empty" ? "اشترِ وكمّل مباراتك" : "اشترِ"}
-            busy={checkout.isPending && checkout.variables === pack.id}
+            busy={checkout.isPending && checkout.variables?.packId === pack.id}
             onBuy={() =>
-              checkout.mutate(pack.id, {
+              checkout.mutate({ packId: pack.id }, {
                 onSuccess: (url) => {
                   window.location.href = url;
                 },

@@ -42,13 +42,60 @@ export const useShopCatalogue = () =>
  */
 export const useStartCheckout = () =>
   useMutation({
-    mutationFn: async (packId: string): Promise<string> => {
+    mutationFn: async (input: {
+      packId: string;
+      code?: string;
+    }): Promise<string> => {
       const response = await apiClient.post<{ redirectUrl: string }>(
         "/payments/checkout",
-        { packId },
+        input.code ? { packId: input.packId, code: input.code } : input,
       );
       return response.data.redirectUrl;
     },
+  });
+
+/** Why a code did not apply. The server names it; the shop translates it. */
+export type DiscountRefusal =
+  | "unknown"
+  | "inactive"
+  | "expired"
+  | "used-up"
+  | "wrong-pack"
+  | "too-small";
+
+export interface Quote {
+  packId: string;
+  listPriceHalalas: number;
+  discountHalalas: number;
+  totalHalalas: number;
+  code?: string;
+  refused?: DiscountRefusal;
+}
+
+export const quoteQueryKey = (packId: string, code?: string) =>
+  ["payments", "quote", packId, code ?? ""] as const;
+
+/**
+ * What the selected pack costs right now, code included.
+ *
+ * Priced by the server on every change of pack or code, never worked out here.
+ * A total computed in the browser is a total the browser could be wrong about
+ * — and the one place a player must never be surprised is the amount on the
+ * button they are about to press.
+ */
+export const useQuote = (packId: string | undefined, code?: string) =>
+  useQuery({
+    queryKey: quoteQueryKey(packId ?? "", code),
+    enabled: Boolean(packId),
+    queryFn: async (): Promise<Quote> =>
+      (
+        await apiClient.post<Quote>("/payments/quote", {
+          packId,
+          ...(code ? { code } : {}),
+        })
+      ).data,
+    staleTime: 60_000,
+    retry: false,
   });
 
 export type SettlementOutcome =

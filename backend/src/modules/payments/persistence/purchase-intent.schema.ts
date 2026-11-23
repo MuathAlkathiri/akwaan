@@ -32,9 +32,24 @@ export class PurchaseIntentDocument {
   @Prop({ required: true })
   packId!: string;
 
-  /** What we asked the provider to charge, in halalas. */
+  /**
+   * What we asked the provider to charge, in halalas.
+   *
+   * With a discount this is below the pack's listed price, and it — not the
+   * catalogue — is what the captured amount is checked against. The catalogue
+   * price alone could not settle a discounted charge without being told to
+   * accept less, and a rule that accepts less is a rule that accepts anything.
+   */
   @Prop({ required: true, min: 1 })
   amountHalalas!: number;
+
+  /** The pack's price before any code, kept so the discount stays legible. */
+  @Prop({ min: 1 })
+  listPriceHalalas?: number;
+
+  /** The code applied, if any. Counted as redeemed once the charge settles. */
+  @Prop()
+  discountCode?: string;
 
   /** Set once the webhook has been honoured, so a human can see what landed. */
   @Prop()
