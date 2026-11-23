@@ -16,7 +16,7 @@ import {
  *
  * Only fixed-cardinality slots whose draft location is unambiguous are listed.
  * Mechanics whose media is a variable-length list (Bomb items, القطها clues,
- * ركّبها segments, Odd Piece V1 pieces, Marhala) are deliberately absent until
+ * ركّبها segments, Marhala) are deliberately absent until
  * they get an indexed slot contract; listing them here with a guessed path
  * would gate approval on a check that cannot be right.
  *

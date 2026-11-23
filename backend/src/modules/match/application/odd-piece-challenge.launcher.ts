@@ -6,12 +6,11 @@ import {
 } from '../../live-game-sessions/domain/gameplay-runtime.repository';
 import { GameplayRuntimeState } from '../../live-game-sessions/domain/gameplay-runtime';
 import {
-  ODD_PIECE_GAMEPLAY_PLUGIN,
   ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN,
   ODD_PIECE_MODE_KEY,
-  OddPieceChallengeResult,
-  OddPieceResult,
-} from '../../live-game-sessions/domain/odd-piece-gameplay.plugin';
+  OddPieceHotspotChallengeResult,
+  OddPieceHotspotResult,
+} from '../../live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin';
 import { ODD_PIECE_ITEM_COUNT } from '../../world-content/domain/odd-piece-content.policy';
 import { ChallengeAnswerMode } from '../../world-content/domain/world-content.constants';
 import { MatchDomainError } from '../domain/match.errors';
@@ -103,10 +102,7 @@ export class OddPieceChallengeLauncher
     runtime: GameplayRuntimeState;
     orderedContentItemIds: readonly string[];
   }): string[] {
-    const plugin =
-      input.runtime.modeVersion === 2
-        ? ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN
-        : ODD_PIECE_GAMEPLAY_PLUGIN;
+    const plugin = ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN;
     if (
       !input.runtime.presentationActivatedAt ||
       !plugin.presentedContentItemIds
@@ -126,11 +122,12 @@ export class OddPieceChallengeLauncher
   buildCompletionSummary(
     runtime: GameplayRuntimeState,
   ): MatchChallengeCompletionSummary {
-    const result = this.parse<OddPieceChallengeResult>(
+    const result = this.parse<OddPieceHotspotChallengeResult>(
       runtime.runtimeState?.resultJson,
     ) ?? { winnerTeamId: null, tie: true, points: {} };
     const puzzles =
-      this.parse<OddPieceResult[]>(runtime.runtimeState?.resultsJson) ?? [];
+      this.parse<OddPieceHotspotResult[]>(runtime.runtimeState?.resultsJson) ??
+      [];
     return {
       challengeKey: this.key,
       winnerTeamId: result.winnerTeamId,

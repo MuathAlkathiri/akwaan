@@ -631,20 +631,26 @@ export function extractMechanicPayloadIdentity(
   }
 
   if (mode === ChallengeAnswerMode.ODD_PIECE) {
+    // One photograph of a real vehicle with one part swapped in from another.
+    // Two puzzles are the same puzzle when the same part of the same vehicle
+    // was replaced from the same donor.
     const mech = input.mechanicPayload as
       | {
-          pieces?: Array<{ vehicleIdentity?: string; vehicleLabel?: string }>;
+          targetVehicleIdentity?: string;
+          intruderVehicleIdentity?: string;
+          intruderPartIdentity?: string;
         }
       | undefined;
-    const pieces = (mech?.pieces ?? [])
-      .map((p) => normalizeAnswer(p.vehicleIdentity || p.vehicleLabel || ''))
-      .filter(Boolean)
-      .sort();
+    const pieces = [
+      mech?.targetVehicleIdentity,
+      mech?.intruderVehicleIdentity,
+      mech?.intruderPartIdentity,
+    ].map((value) => normalizeAnswer(value ?? ''));
 
     return {
       answerMode: mode,
       structureKey: `odd_piece:${pieces.join('~')}`,
-      pieces,
+      pieces: pieces.filter(Boolean),
       mediaSubjectKeys:
         mediaSubjectKeys.length > 0 ? mediaSubjectKeys : undefined,
     };

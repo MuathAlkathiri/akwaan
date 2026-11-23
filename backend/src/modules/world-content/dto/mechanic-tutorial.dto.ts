@@ -193,21 +193,6 @@ export class LaTahriqhaTutorialCaptainRotationDto {
   teamB: string[];
 }
 
-export class OddPieceTutorialMediaDto {
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(500) imageUrl: string;
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(240) altText: string;
-}
-
-export class OddPieceTutorialPieceDto extends OddPieceTutorialMediaDto {
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(80) id: string;
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(180)
-  vehicleIdentity: string;
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(160) vehicleLabel: string;
-}
-
 export class OddPieceTutorialAssetDto {
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(500) url: string;
   @ApiPropertyOptional()
@@ -738,45 +723,6 @@ export class TutorialScenarioDto {
   @MinLength(1)
   @MaxLength(160)
   intruderVehicleLabel?: string;
-
-  @ApiPropertyOptional({ type: [OddPieceTutorialPieceDto] })
-  @ValidateIf(
-    (value: TutorialScenarioDto) =>
-      value.kind === 'odd-piece' && value.version !== 2,
-  )
-  @IsArray()
-  @ArrayMinSize(4)
-  @ArrayMaxSize(4)
-  @ValidateNested({ each: true })
-  @Type(() => OddPieceTutorialPieceDto)
-  pieces?: OddPieceTutorialPieceDto[];
-
-  @ApiPropertyOptional()
-  @ValidateIf(
-    (value: TutorialScenarioDto) =>
-      value.kind === 'odd-piece' && value.version !== 2,
-  )
-  @IsString()
-  @MinLength(1)
-  wrongSelectionPieceId?: string;
-
-  @ApiPropertyOptional()
-  @ValidateIf(
-    (value: TutorialScenarioDto) =>
-      value.kind === 'odd-piece' && value.version !== 2,
-  )
-  @IsString()
-  @MinLength(1)
-  correctSelectionPieceId?: string;
-
-  @ApiPropertyOptional({ type: OddPieceTutorialMediaDto })
-  @ValidateIf(
-    (value: TutorialScenarioDto) =>
-      value.kind === 'odd-piece' && value.version !== 2,
-  )
-  @ValidateNested()
-  @Type(() => OddPieceTutorialMediaDto)
-  targetReveal?: OddPieceTutorialMediaDto;
 
   @ApiPropertyOptional()
   @ValidateIf(

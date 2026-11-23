@@ -19,7 +19,7 @@ import {
   WorldContentStatus,
 } from '../../src/modules/world-content/domain/world-content.constants';
 import { SCORING_RULE_IDS } from '../../src/modules/scoring/domain/scoring-rule';
-import { ODD_PIECE_MODE_KEY } from '../../src/modules/live-game-sessions/domain/odd-piece-gameplay.plugin';
+import { ODD_PIECE_MODE_KEY } from '../../src/modules/live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin';
 import { RYO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/ryo-gameplay.plugin';
 import { BOMB_MODE_KEY } from '../../src/modules/live-game-sessions/domain/bomb-gameplay.plugin';
 import { COMBO_MODE_KEY } from '../../src/modules/live-game-sessions/domain/combo-gameplay.plugin';
