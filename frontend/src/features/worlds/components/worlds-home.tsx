@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ArrowLeft, Check, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import {
   OCCURRENCE_COUNT,
   SCOPES_PER_OCCURRENCE,
@@ -11,9 +10,9 @@ import {
 } from "@/features/match-setup/state/match-setup-draft";
 import { useMatchSetup } from "@/features/match-setup/state/use-match-setup";
 import { cn } from "@/lib/utils";
-import { JourneyShell, SectionHeading } from "./journey-shell";
+import { JourneyShell } from "./journey-shell";
 import { JourneyError } from "./journey-error";
-import { WorldCover } from "./world-cover";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { ResumeMatchCard } from "./resume-match-card";
 import { ScopeCardMedia } from "./scope-card-media";
 import {
@@ -171,24 +170,19 @@ export function WorldsHome() {
           aria-labelledby="worlds-title"
           className="relative scroll-mt-24"
         >
-          <div
-            className="grid items-start gap-7 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10"
-            dir="ltr"
-          >
-            <WorldSelectionSidebar
-              draft={draft}
-              submitting={setup.submitting}
-              onStart={setup.start}
-              worlds={worlds}
-              selectedCount={selectedCount}
-              onEdit={openWorld}
-            />
-
+          <div className="flex flex-col gap-8">
             <div className="min-w-0" dir="rtl">
-              <SectionHeading id="worlds-title" title="اختر عوالمك" />
-              <p className="-mt-4 mb-8 text-center text-sm leading-7 text-muted-foreground sm:text-base">
-                اختر 3 عوالم. والترتيب اللي تختاره هو ترتيب اللعب.
-              </p>
+              <div className="flex flex-col items-center gap-4">
+                <SectionTag tone="purple" tilt={-2}>
+                  <h2 id="worlds-title" className="m-0 font-[inherit]">
+                    اختر عوالمك
+                  </h2>
+                </SectionTag>
+                <p className="text-center text-lg text-[#4A5468]">
+                  اختر 3 عوالم، والترتيب اللي تختاره هو ترتيب اللعب.
+                </p>
+              </div>
+              <div className="h-8" />
 
               {query.isLoading ? (
                 <CardSkeletons count={4} />
@@ -250,11 +244,17 @@ export function WorldsHome() {
                       nothing, rather than an empty heading over an empty grid. */}
                   {upcoming.length > 0 && (
                     <>
-                      <h3 className="mb-8 mt-12 text-center text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl">
-                        عوالم جديدة في الطريق
-                      </h3>
+                      <div className="mb-7 mt-16 flex justify-center">
+                        <SectionTag
+                          tone="white"
+                          tilt={-1.5}
+                          className="min-h-14 px-6 text-[24px] sm:text-[28px]"
+                        >
+                          <h3 className="m-0 font-[inherit]">العوالم القادمة</h3>
+                        </SectionTag>
+                      </div>
                       <ul
-                        className="flex list-none flex-wrap justify-center gap-x-5 gap-y-8 [&>li]:basis-[clamp(9.5rem,17.5%,13.5rem)]"
+                        className="flex list-none flex-wrap justify-center gap-5 p-0 [&>li]:max-w-[25rem] [&>li]:flex-1 [&>li]:basis-[18.75rem]"
                         data-testid="upcoming-worlds"
                       >
                         {upcoming.map((world, index) => (
@@ -270,6 +270,14 @@ export function WorldsHome() {
                 <EmptyWorlds />
               )}
             </div>
+            <WorldSelectionSidebar
+              draft={draft}
+              submitting={setup.submitting}
+              onStart={setup.start}
+              worlds={worlds}
+              selectedCount={selectedCount}
+              onEdit={openWorld}
+            />
           </div>
         </section>
 
@@ -637,106 +645,37 @@ function WorldCardScopes({
   );
 }
 
-/**
- * A World that is not open yet: same portal language, plainly muted, and not
- * selectable — never a playable choice.
- *
- * It shows the World's own artwork when the catalog has any, and the neutral
- * dashed placeholder when it does not, which is the ordinary state of a World
- * announced before its art exists.
- */
-/**
- * A World with no artwork yet.
- *
- * Drawn rather than fetched, so a World is never a dotted outline waiting for a
- * designer: the row reads as a row of planets whether or not every one of them
- * has been painted. Brand colours only, and no text — the name sits beneath it
- * like every other card's.
- */
-function FallbackPlanet({ seed, index }: { seed: string; index: number }) {
-  // Not 212, 238, 264… in order: stepping evenly through the band put 290 next
-  // to 316, and 26° apart they read as purple beside pink rather than as two
-  // colours. The order below interleaves the band so neighbours sit 52° to 78°
-  // apart while the set stays inside 212–342, clear of brand gold and the
-  // error crimson.
-  //
-  // Position and not a hash of the slug: hashing looked tidier and collided —
-  // `general` and `movies` fell in the same bucket and came out the same pink.
-  // A placeholder stops existing the moment its World has artwork, so being
-  // distinct in the row is worth more than a colour that never changes.
-  const hue = [212, 290, 238, 316, 264, 342][index % 6];
-  const id = `akwaan-fallback-${seed.replace(/[^a-z0-9]/gi, "") || "world"}`;
-  return (
-    <svg viewBox="0 0 160 160" className="size-full" aria-hidden role="presentation">
-      <defs>
-        <radialGradient id={id} cx="38%" cy="32%" r="78%">
-          <stop offset="0%" stopColor={`hsl(${hue} 90% 86%)`} />
-          <stop offset="52%" stopColor={`hsl(${hue} 58% 62%)`} />
-          <stop offset="100%" stopColor="hsl(239 40% 24%)" />
-        </radialGradient>
-      </defs>
-      <circle cx="80" cy="80" r="52" fill={`url(#${id})`} />
-      {/* Two continents and a crater, so it reads as a world and not as a ball. */}
-      <path
-        d="M52 66c10-9 22-6 30 1s18 6 24-2c3 13-6 25-19 28-14 3-29-4-35-13-3-5-3-10 0-14Z"
-        fill="hsl(43 38% 95% / .22)"
-      />
-      <path
-        d="M96 104c7-2 14 1 18 7-7 7-17 10-26 8 1-6 4-12 8-15Z"
-        fill="hsl(43 38% 95% / .16)"
-      />
-      <circle cx="62" cy="96" r="7" fill="hsl(239 40% 17% / .22)" />
-      {/* The ring the brand's own logo carries. */}
-      <ellipse
-        cx="80"
-        cy="80"
-        rx="72"
-        ry="24"
-        fill="none"
-        stroke="hsl(40 57% 63%)"
-        strokeWidth="2.5"
-        opacity=".75"
-        transform="rotate(-21 80 80)"
-      />
-      <circle cx="18" cy="63" r="3" fill="hsl(40 57% 63%)" />
-    </svg>
-  );
-}
-
 function ComingSoonCard({
   world,
-  index,
 }: {
   world: PlayableWorld;
   index: number;
 }) {
-  const art = world.banner ?? world.icon;
+  // Artwork is the admin's to supply, here as everywhere. With none, the
+  // dashed disc stands on its own.
+  const art = getMediaUrl(world.icon?.url) || getMediaUrl(world.banner?.url);
   return (
     <div
       aria-disabled
       data-testid={`upcoming-world-${world.slug}`}
-      className="mx-auto flex w-full max-w-[13rem] flex-col items-center gap-3 text-center"
+      /* Dashed where a live World is solid: the outline itself says "not yet",
+         before the badge is read. No vote button — voting has no backend, and
+         a button that does nothing is worse than no button. */
+      className="flex w-full items-center gap-4 rounded-[20px] border-2 border-dashed border-[#B9B2D9] bg-white px-5 py-[18px]"
     >
-      {/* No grayscale and no dimming: a World on the way is still worth looking
-          at, and draining the art was what made this row look unfinished. The
-          «قريبًا» badge is what says it cannot be picked yet.
-          `relative` is load-bearing. WorldCover's root is `absolute inset-0`,
-          and the grayscale filter that used to sit here was quietly acting as
-          its containing block; dropping the filter without replacing it let the
-          artwork climb to the nearest positioned ancestor and cover the whole
-          Worlds section, swallowing every click on it. */}
-      <span className="relative grid aspect-square w-full max-w-[9.5rem] place-items-center overflow-hidden rounded-full">
+      <span className="relative grid size-[5.25rem] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-[#B9B2D9] bg-[#EFECF8]">
         {art ? (
-          <WorldCover world={world} sizes="(min-width:640px) 152px, 40vw" />
-        ) : (
-          <FallbackPlanet seed={world.slug} index={index} />
-        )}
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={art} alt="" className="size-full object-cover" />
+        ) : null}
       </span>
-      <span className="text-base font-black text-muted-foreground">
-        {world.name}
-      </span>
-      <span className="rounded-full bg-secondary/70 px-2.5 py-0.5 text-[0.7rem] font-black text-muted-foreground">
-        قريبًا
+      <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
+        <span className="font-display text-xl font-extrabold text-[hsl(var(--brand-navy))]">
+          {world.name}
+        </span>
+        <span className="inline-flex min-h-6 items-center rounded-full bg-[#EFECF8] px-2.5 text-xs font-bold text-[#4B4380]">
+          قريبًا
+        </span>
       </span>
     </div>
   );
@@ -767,86 +706,112 @@ function WorldSelectionSidebar({
   submitting: boolean;
 }) {
   const ready = selectedCount === OCCURRENCE_COUNT;
+  const left = OCCURRENCE_COUNT - selectedCount;
+
   return (
     <aside
-      /* A card rather than a translucent sheet: a background planet passed
-         straight through it and the 0/3 counter sat on top of the planet, so
-         the one panel that tracks your choices read as debris. */
-      className="sticky top-[5.25rem] z-10 rounded-2xl border border-[hsl(var(--brand-navy)/.1)] bg-white px-3.5 py-4 shadow-[0_10px_30px_-22px_hsl(var(--brand-navy)/.45)] lg:top-28"
+      /* Under the row rather than beside it, which is where the approved
+         design puts it — and where it belongs: the slots fill left to right in
+         play order, and a vertical list could not show an order a player is
+         meant to read as a sequence.
+
+         Sticky, so the bar follows while the row is being browsed. A player
+         choosing their third World should not have to scroll back up to find
+         out that they have finished. */
+      className={cn(
+        "sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-x-6 gap-y-4",
+        "rounded-[22px] bg-[#F6F3FC] px-5 py-4",
+        STICKER.base,
+      )}
       data-testid="world-selection-sidebar"
       dir="rtl"
       aria-label="العوالم المختارة"
     >
-      <div className="flex items-center justify-between gap-3 lg:block">
-        <h3 className="text-sm font-black text-[hsl(var(--brand-navy))] lg:text-lg">
-          عوالمك
-        </h3>
-        <span className="akwaan-numeral text-xs font-black text-[hsl(var(--brand-navy)/.58)] lg:mt-1 lg:block lg:text-sm">
-          {selectedCount}/{OCCURRENCE_COUNT}
+      <div className="flex flex-wrap items-center gap-x-[18px] gap-y-3.5">
+        <span className="inline-flex items-baseline gap-2 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))]">
+          عوالمك{" "}
+          {/* Written tight, as «0/3». The mockup spaces the slash out, but a
+              test has long pinned this counter as one string, and the spacing
+              is not something the identity rests on — the guard is worth more
+              than two spaces. */}
+          <span
+            dir="ltr"
+            className="font-body text-base font-bold tabular-nums text-[#4A5468]"
+          >
+            {selectedCount}/{OCCURRENCE_COUNT}
+          </span>
         </span>
+
+        <ol className="m-0 flex list-none flex-wrap items-center gap-3 p-0">
+          {draft.occurrences.map((occurrence, index) => {
+            const world = worlds.find(
+              (entry) => entry.id === occurrence.worldId,
+            );
+            return (
+              <li key={occurrence.occurrenceIndex}>
+                {world ? (
+                  <span className="inline-flex min-h-14 items-center gap-2.5 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-white py-0 pe-4 ps-2.5">
+                    <span className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-navy))] text-[13px] font-extrabold text-white">
+                      {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onEdit(world, occurrence.occurrenceIndex)}
+                      aria-label={`تعديل ${world.name}`}
+                      className="whitespace-nowrap text-base font-bold text-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:underline"
+                    >
+                      {world.name}
+                    </button>
+                  </span>
+                ) : (
+                  /* The empty slot is dashed and carries its number, so three
+                     slots read as three places rather than as one control
+                     that has not been used yet. */
+                  <span className="inline-flex min-h-14 items-center gap-2.5 rounded-2xl border-[3px] border-dashed border-[#B9B2D9] px-4 text-[#4B4380]">
+                    <span className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-[#B9B2D9] text-[13px] font-extrabold text-[hsl(var(--brand-navy))]">
+                      {index + 1}
+                    </span>
+                    <span className="whitespace-nowrap text-[15px] font-semibold">
+                      {index === selectedCount ? "اختر العالم الجاي" : "فاضي"}
+                    </span>
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
       </div>
 
-      <ol className="mt-3 flex min-w-0 list-none items-center gap-2 lg:mt-5 lg:flex-col lg:items-stretch lg:gap-3">
-        {draft.occurrences.map((occurrence, index) => {
-          const world = worlds.find((entry) => entry.id === occurrence.worldId);
-          return (
-            <li key={occurrence.occurrenceIndex} className="min-w-0 flex-1 lg:w-full">
-              {world ? (
-                <button
-                  type="button"
-                  onClick={() => onEdit(world, occurrence.occurrenceIndex)}
-                  aria-label={`تعديل ${world.name}`}
-                  className="group flex w-full min-w-0 items-center gap-2 rounded-xl py-1 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] lg:px-1 lg:py-1.5"
-                >
-                  <span className="relative size-8 shrink-0 overflow-hidden rounded-full border border-[hsl(var(--brand-gold)/.5)] bg-white lg:size-9">
-                    <WorldCover world={world} sizes="36px" />
-                  </span>
-                  <span className="hidden min-w-0 flex-1 truncate text-xs font-bold text-[hsl(var(--brand-navy)/.76)] group-hover:text-[hsl(var(--brand-navy))] lg:block">
-                    {world.name}
-                  </span>
-                  <span className="akwaan-numeral grid size-5 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-gold)/.14)] text-[0.65rem] font-black text-[hsl(var(--brand-navy))]">
-                    {index + 1}
-                  </span>
-                </button>
-              ) : (
-                <div className="flex min-w-0 items-center gap-2 py-1 text-[hsl(var(--brand-navy)/.3)] lg:px-1 lg:py-1.5">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full border border-dashed border-[hsl(var(--brand-navy)/.14)] bg-white/70 text-xs lg:size-9">
-                    —
-                  </span>
-                  <span className="hidden min-w-0 flex-1 text-xs font-medium lg:block">
-                    اختر عالم
-                  </span>
-                  <span className="akwaan-numeral text-[0.65rem] font-bold">
-                    {index + 1}
-                  </span>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      <Button
-        type="button"
-        size="sm"
-        data-testid="worlds-home-start"
-        disabled={!ready || submitting}
-        onClick={onStart}
-        className={cn(
-          "akwaan-primary-action mt-3 h-10 w-full rounded-xl border border-[hsl(var(--brand-gold)/.28)] bg-[hsl(var(--brand-navy))] px-3 text-xs font-black text-white shadow-[0_10px_24px_-16px_hsl(var(--brand-navy))] hover:border-[hsl(var(--brand-gold)/.65)] disabled:pointer-events-none disabled:opacity-40 lg:mt-6 lg:h-11",
-        )}
-      >
-        {submitting ? "نجهّز الغرفة…" : "ابدأ المباراة"}
-      </Button>
-      {draft.issue && (
-        <p
-          role="alert"
-          data-testid="worlds-home-start-error"
-          className="mt-2 text-[0.7rem] font-bold leading-5 text-[hsl(var(--destructive))]"
+      <div className="flex flex-col items-stretch gap-2">
+        <GoldPill
+          data-testid="worlds-home-start"
+          disabled={!ready || submitting}
+          onClick={onStart}
+          className="min-h-[3.375rem] px-7 text-[17px] sm:min-h-[3.375rem] sm:text-[17px]"
         >
-          {draft.issue.message}
-        </p>
-      )}
+          {/* The disabled label counts down rather than scolding. "باقي عالم
+              واحد" tells the player what to do next; "اختر 3 عوالم" repeats
+              a rule they are already obeying. */}
+          {submitting
+            ? "نجهّز الغرفة…"
+            : ready
+              ? "كمّل لغرفة الانتظار"
+              : left === 1
+                ? "باقي عالم واحد"
+                : left === 2
+                  ? "باقي عالمين"
+                  : `باقي ${left} عوالم`}
+        </GoldPill>
+        {draft.issue && (
+          <p
+            role="alert"
+            data-testid="worlds-home-start-error"
+            className="max-w-[18rem] text-[0.7rem] font-bold leading-5 text-[hsl(var(--destructive))]"
+          >
+            {draft.issue.message}
+          </p>
+        )}
+      </div>
     </aside>
   );
 }
@@ -893,69 +858,31 @@ function WorldScopeFocusMode({
     <section
       aria-labelledby="scope-focus-title"
       data-testid="scope-focus-mode"
-      className="animate-in fade-in slide-in-from-bottom-2 py-5 duration-300 motion-reduce:animate-none lg:py-10"
+      className="animate-in fade-in slide-in-from-bottom-2 py-5 duration-300 motion-reduce:animate-none lg:py-8"
     >
-      <div
-        className="grid items-start gap-8 lg:grid-cols-[minmax(260px,28%)_minmax(0,72%)] lg:gap-10"
-        dir="ltr"
-      >
-        <aside
-          className="akwaan-focus-context-in flex flex-col items-center text-center lg:sticky lg:top-28"
-          dir="rtl"
-        >
-          <div
-            className="akwaan-portal relative aspect-square w-[min(54vw,190px)] rounded-full sm:w-[210px] lg:w-full lg:max-w-[250px]"
-            style={{
-              viewTransitionName: `akwaan-world-${state.world.id}`,
-            }}
-          >
-            <span className="absolute inset-[7px] overflow-hidden rounded-full border-2 border-[hsl(var(--brand-gold)/.55)] bg-white shadow-[0_26px_64px_-28px_hsl(var(--brand-navy)/.58)] ring-1 ring-[hsl(var(--brand-gold)/.2)]">
-              <WorldCover
-                world={state.world}
-                sizes="(min-width: 1024px) 250px, 210px"
-              />
-            </span>
-          </div>
-          <h2 className="mt-5 text-2xl font-black text-[hsl(var(--brand-navy))] sm:text-3xl">
-            {state.world.name}
-          </h2>
-          {signature && (
-            <span className="mt-3 rounded-full bg-[hsl(var(--brand-gold)/.12)] px-4 py-1.5 text-sm font-bold text-[hsl(var(--brand-navy)/.78)]">
-              {signature}
-            </span>
-          )}
-          <span
-            data-testid="scope-count"
-            className={cn(
-              "mt-4 rounded-full px-4 py-2 text-sm font-bold",
-              complete
-                ? "bg-[hsl(var(--brand-gold)/.11)] text-[hsl(var(--brand-navy))]"
-                : "bg-[hsl(var(--brand-navy)/.045)] text-[hsl(var(--brand-navy)/.6)]",
-            )}
-          >
-            <span className="akwaan-numeral">{selectedScopeIds.length}</span>{" "}
-            من <span className="akwaan-numeral">{SCOPES_PER_OCCURRENCE}</span>{" "}
-            مختارة
-          </span>
-          <FocusActions
-            complete={complete}
-            onConfirm={onConfirm}
-            onBack={onBack}
-            className="mt-6 hidden w-full max-w-[270px] lg:flex"
-          />
-        </aside>
-
-        <div className="akwaan-focus-scopes-in min-w-0" dir="rtl">
-          <header className="mb-7 text-center lg:text-right">
+      <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-start lg:gap-12">
+        <div className="min-w-0 flex-[3]">
+          <header className="mb-7 flex flex-col items-start gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg text-[15px] font-semibold text-[hsl(var(--brand-navy))] hover:text-[#7A5C14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))]"
+            >
+              <ArrowLeft className="size-[18px] rotate-180" aria-hidden />
+              رجوع للعوالم
+            </button>
             <h1
               ref={headingRef}
               id="scope-focus-title"
               tabIndex={-1}
-              className="text-2xl font-black leading-relaxed text-[hsl(var(--brand-navy))] outline-none sm:text-3xl"
+              className="font-display text-[30px] font-black leading-[1.35] text-[hsl(var(--brand-navy))] outline-none sm:text-[44px]"
             >
-              اختر نطاقات {state.world.name}
+              اختر نطاقات{" "}
+              <span className="text-[hsl(var(--brand-purple))]">
+                {state.world.name}
+              </span>
             </h1>
-            <p className="mt-1 text-sm leading-7 text-[hsl(var(--brand-navy)/.58)] sm:text-base">
+            <p className="text-base leading-[1.8] text-[#4A5468] sm:text-[19px]">
               حدد النطاقات اللي تبغون تدخل في المباراة.
             </p>
           </header>
@@ -970,9 +897,10 @@ function WorldScopeFocusMode({
               retrying={query.isFetching}
             />
           ) : scopes.length ? (
-            <ul className="grid list-none gap-4 sm:grid-cols-2">
+            <ul className="grid list-none gap-x-[26px] gap-y-[30px] p-0 sm:grid-cols-2">
               {scopes.map((scope, index) => {
-                const selected = selectedScopeIds.includes(scope.id);
+                const order = selectedScopeIds.indexOf(scope.id) + 1;
+                const selected = order > 0;
                 return (
                   <li
                     key={scope.id}
@@ -987,48 +915,134 @@ function WorldScopeFocusMode({
                       onClick={() => toggle(scope)}
                       data-testid="scope-choice-card"
                       className={cn(
-                        "group relative aspect-video w-full overflow-hidden rounded-[1.15rem] border-2 bg-[hsl(var(--brand-navy)/.04)] text-right shadow-[0_8px_24px_rgba(24,16,54,.05)] transition-[transform,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none",
+                        "group relative flex w-full flex-col rounded-[22px] bg-white text-start text-[hsl(var(--brand-navy))] transition-transform duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+                        STICKER.base,
+                        // Selection is the gold outline plus the order sticker;
+                        // the card itself never changes colour.
                         selected
-                          ? "border-[hsl(var(--brand-gold))] shadow-[0_12px_30px_-16px_hsl(var(--brand-gold)/.65)] ring-1 ring-[hsl(var(--brand-gold)/.24)]"
-                          : "border-[hsl(var(--brand-navy)/.1)] hover:-translate-y-[3px] hover:border-[hsl(var(--brand-gold)/.4)] hover:shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.38)]",
+                          ? "outline outline-4 outline-[hsl(var(--brand-gold))]"
+                          : "hover:-translate-y-0.5",
                       )}
                     >
                       <ScopeCardMedia
                         scope={scope}
-                        className="absolute inset-0 m-0 h-full w-full sm:h-full"
-                      >
-                        <span className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[hsl(var(--brand-navy)/.84)] via-[hsl(var(--brand-navy)/.28)] to-transparent" />
-                        {selected && (
-                          <span className="akwaan-soft-pop absolute left-3 top-3 grid size-8 place-items-center rounded-full border border-white/80 bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))] shadow-[0_5px_15px_rgba(24,16,54,.2)]">
-                            <Check className="size-4" strokeWidth={3} aria-hidden />
-                          </span>
-                        )}
+                        className="m-0 h-[150px] w-full rounded-t-[18px] border-b-[3px] border-[hsl(var(--brand-navy))] bg-[#F1DCEC] sm:h-[190px]"
+                      />
+                      <span className="flex items-center justify-between gap-3 px-[18px] py-3.5">
                         <span
                           dir="auto"
                           data-testid="scope-name-overlay"
-                          className="absolute inset-x-0 bottom-0 px-4 pb-4 text-right text-base font-black text-white drop-shadow-sm sm:px-5 sm:pb-5 sm:text-lg"
+                          className="font-display text-lg font-extrabold sm:text-[21px]"
                         >
                           {scope.name}
                         </span>
-                      </ScopeCardMedia>
+                        {scope.readyContentItemCount > 0 && (
+                          <span className="whitespace-nowrap text-sm font-semibold text-[#4A5468]">
+                            <span className="font-extrabold text-[hsl(var(--brand-navy))]">
+                              {scope.readyContentItemCount}
+                            </span>{" "}
+                            سؤال
+                          </span>
+                        )}
+                      </span>
+                      {selected && (
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "akwaan-soft-pop absolute -left-3.5 -top-3.5 grid size-[46px] -rotate-[8deg] place-items-center rounded-full bg-[hsl(var(--brand-gold))] text-xl font-extrabold",
+                            STICKER.small,
+                          )}
+                        >
+                          {order}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="rounded-3xl border border-[hsl(var(--brand-navy)/.1)] bg-white/80 p-10 text-center text-sm leading-6 text-muted-foreground">
-              لا توجد نطاقات جاهزة في هذا العالم بعد.
+            <p className="rounded-[22px] border-2 border-dashed border-[#B9B2D9] bg-white p-10 text-center text-sm leading-6 text-[#4A5468]">
+              ما فيه نطاقات جاهزة في هالعالم للحين.
             </p>
           )}
-
-          <FocusActions
-            complete={complete}
-            onConfirm={onConfirm}
-            onBack={onBack}
-            className="mt-7 rounded-2xl border border-[hsl(var(--brand-navy)/.08)] bg-white/95 p-3 shadow-[0_18px_45px_-24px_hsl(var(--brand-navy)/.42)] lg:hidden"
-          />
         </div>
+
+        {/* On a phone the panel loses the planet and rides the bottom edge, so
+            the count and the confirm button stay in reach while the list
+            scrolls. */}
+        <aside
+          className={cn(
+            "sticky bottom-3 z-10 flex flex-col items-center gap-3 rounded-[26px] bg-[#F6F3FC] px-5 py-4 text-center lg:top-28 lg:bottom-auto lg:w-[340px] lg:shrink-0 lg:gap-3.5 lg:px-6 lg:pb-7 lg:pt-6",
+            STICKER.base,
+          )}
+        >
+          <div
+            className="relative hidden w-[220px] lg:block"
+            style={{ viewTransitionName: `akwaan-world-${state.world.id}` }}
+          >
+            <svg
+              aria-hidden
+              viewBox="0 0 280 150"
+              className="absolute -inset-x-10 top-[28%] w-[calc(100%+5rem)]"
+            >
+              <ellipse
+                cx="140"
+                cy="75"
+                rx="134"
+                ry="46"
+                fill="none"
+                stroke="hsl(var(--brand-gold))"
+                strokeWidth="2.5"
+                transform="rotate(-14 140 75)"
+              />
+              <circle
+                cx="18"
+                cy="100"
+                r="7"
+                fill="hsl(var(--brand-gold))"
+                stroke="hsl(var(--brand-navy))"
+                strokeWidth="2"
+              />
+            </svg>
+            <WorldDisc world={state.world} className="relative w-full" />
+          </div>
+          <h2 className="font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] lg:text-[28px]">
+            {state.world.name}
+          </h2>
+          {signature && <ChallengePill>{signature}</ChallengePill>}
+          <div className="flex flex-col items-center gap-2.5 lg:mt-2">
+            <span
+              data-testid="scope-count"
+              className="text-[17px] font-bold text-[hsl(var(--brand-navy))]"
+            >
+              <span className="text-[22px] font-extrabold">
+                {selectedScopeIds.length}
+              </span>{" "}
+              من {SCOPES_PER_OCCURRENCE} مختارة
+            </span>
+            <span aria-hidden className="flex gap-1.5">
+              {Array.from({ length: SCOPES_PER_OCCURRENCE }, (_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "h-3 w-[34px] rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                    i < selectedScopeIds.length
+                      ? "bg-[hsl(var(--brand-gold))]"
+                      : "bg-[#E3DFF0]",
+                  )}
+                />
+              ))}
+            </span>
+          </div>
+          <GoldPill
+            disabled={!complete}
+            onClick={onConfirm}
+            className="w-full px-4 text-[19px] shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:min-h-[62px] sm:text-xl lg:mt-2"
+          >
+            تأكيد النطاقات
+          </GoldPill>
+        </aside>
       </div>
     </section>
   );
@@ -1036,47 +1050,13 @@ function WorldScopeFocusMode({
 
 function ScopeCardSkeletons({ count }: { count: number }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2" aria-hidden>
+    <div className="grid gap-x-[26px] gap-y-[30px] sm:grid-cols-2" aria-hidden>
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className="aspect-video animate-pulse rounded-[1.15rem] border border-[hsl(var(--brand-navy)/.08)] bg-[hsl(var(--brand-navy)/.05)]"
+          className="h-[250px] animate-pulse rounded-[22px] border-2 border-dashed border-[#B9B2D9] bg-[#F6F3FC]"
         />
       ))}
-    </div>
-  );
-}
-
-function FocusActions({
-  complete,
-  onConfirm,
-  onBack,
-  className,
-}: {
-  complete: boolean;
-  onConfirm: () => void;
-  onBack: () => void;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <Button
-        type="button"
-        size="lg"
-        disabled={!complete}
-        onClick={onConfirm}
-        className="akwaan-primary-action h-12 w-full rounded-xl border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] font-black text-white shadow-[0_14px_30px_-18px_hsl(var(--brand-navy)/.8)] hover:border-[hsl(var(--brand-gold)/.7)] hover:bg-[hsl(var(--brand-navy)/.93)] hover:shadow-[0_17px_34px_-16px_hsl(var(--brand-gold)/.38)] disabled:border-transparent disabled:bg-[hsl(var(--brand-navy)/.12)] disabled:text-[hsl(var(--brand-navy)/.36)] disabled:opacity-100"
-      >
-        تأكيد النطاقات
-      </Button>
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-[hsl(var(--brand-navy)/.68)] transition-colors hover:bg-[hsl(var(--brand-navy)/.05)] hover:text-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))]"
-      >
-        <ArrowLeft className="size-4 rotate-180" aria-hidden />
-        رجوع للعوالم
-      </button>
     </div>
   );
 }
