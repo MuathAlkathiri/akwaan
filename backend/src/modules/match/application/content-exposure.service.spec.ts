@@ -3,6 +3,7 @@ import {
   ContentExposureScope,
   ContentExposureService,
 } from './content-exposure.service';
+import { WorldRemainingService } from './world-remaining.service';
 
 /**
  * The account's per-mechanic content history.
@@ -33,7 +34,14 @@ describe('ContentExposureService', () => {
       releaseReservations: jest.fn().mockResolvedValue(3),
       releaseReservedItems: jest.fn().mockResolvedValue(1),
     } as unknown as ContentExposureRepository;
-    return { service: new ContentExposureService(repository), repository };
+    const worldRemaining = {
+      noteExposed: jest.fn().mockResolvedValue(undefined),
+    } as unknown as WorldRemainingService;
+    return {
+      service: new ContentExposureService(repository, worldRemaining),
+      repository,
+      worldRemaining,
+    };
   };
 
   it('removes only what this account has seen in this mechanic', async () => {

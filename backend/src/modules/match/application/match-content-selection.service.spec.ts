@@ -376,14 +376,16 @@ describe('MatchContentSelector', () => {
     it('refuses to launch when only legacy/V1 puzzles exist or a V2 difficulty stratum is missing', async () => {
       const legacyOnly = [oddPiece('legacy', 's0'), oddPiece('v1', 's1', 1)];
       await expect(
-        select(legacyOnly, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
+        select(legacyOnly, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS })
+          .result,
       ).rejects.toThrow();
 
       const missingStrata = POOL_0.map((scopeId) =>
         oddPiece(`${scopeId}-v2`, scopeId, 2, 'easy'),
       );
       await expect(
-        select(missingStrata, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS }).result,
+        select(missingStrata, { requirements: ODD_PIECE_LAUNCHER_REQUIREMENTS })
+          .result,
       ).rejects.toThrow();
     });
   });

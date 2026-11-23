@@ -35,6 +35,39 @@ export function resolveCorsOrigins(
 }
 
 /**
+ * Origins allowed by shape rather than by name, for deployments whose address
+ * is not known in advance.
+ *
+ * A preview build gets a fresh host for every branch
+ * (`akwaan-frontend-git-<branch>-<scope>.vercel.app`), so an exact allowlist
+ * can never contain tomorrow's. Without this, previewing anything means either
+ * editing the API's environment per branch or skipping the preview and pushing
+ * straight to the live site — and the second is what actually happens.
+ *
+ * One `*` per pattern, and it never matches a dot. That is the whole security
+ * of this: `https://akwaan-frontend-git-*-scope.vercel.app` cannot be widened
+ * into another domain by a crafted subdomain, because the wildcard stops at
+ * the first label boundary.
+ */
+export function resolveCorsOriginPatterns(
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  return (env.CORS_ORIGIN_PATTERNS ?? '')
+    .split(',')
+    .map((pattern) => pattern.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
+
+/** Does this origin match a pattern, with `*` standing for one host label. */
+export function originMatchesPattern(origin: string, pattern: string): boolean {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // The escape above turned `*` into `\*`; only now does it become a wildcard,
+  // so nothing else in the pattern can be read as a regular expression.
+  const expression = new RegExp(`^${escaped.replace(/\\\*/g, '[^.]*')}$`);
+  return expression.test(origin);
+}
+
+/**
  * Socket.IO and Express both accept an origin callback. Using one keeps the
  * decision lazy and lets a same-origin or non-browser client (no `Origin`
  * header) through, which is how curl and the health checker reach the API.
@@ -51,7 +84,16 @@ export function corsOriginDelegate(
       return;
     }
 
-    const allowed = resolveCorsOrigins(env);
-    callback(null, allowed.includes(origin.replace(/\/$/, '')));
+    const asked = origin.replace(/\/$/, '');
+    if (resolveCorsOrigins(env).includes(asked)) {
+      callback(null, true);
+      return;
+    }
+    callback(
+      null,
+      resolveCorsOriginPatterns(env).some((pattern) =>
+        originMatchesPattern(asked, pattern),
+      ),
+    );
   };
 }

@@ -35,7 +35,8 @@ export const ODD_PIECE_LAUNCHER_REQUIREMENTS = {
   selectionStrata: {
     strata: ['easy', 'medium', 'hard'],
     perStratum: 1,
-    stratumOf: (item: MatchSelectableContentItem) => item.oddPieceDifficulty ?? '',
+    stratumOf: (item: MatchSelectableContentItem) =>
+      item.oddPieceDifficulty ?? '',
   },
   isPlayableItem: (item: MatchSelectableContentItem) =>
     item.answerMode === ChallengeAnswerMode.ODD_PIECE &&

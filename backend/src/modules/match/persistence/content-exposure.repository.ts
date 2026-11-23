@@ -210,6 +210,48 @@ export class ContentExposureRepository {
     return result.deletedCount ?? 0;
   }
 
+  /**
+   * Which challenges this account has already been shown each of these items in.
+   *
+   * The one read that deliberately crosses mechanics. Selection never needs it
+   * — it always works inside one — but a question counts as spent only when it
+   * has been seen in every challenge it can be played through, and no
+   * single-mechanic query can answer that. Still bounded: the caller passes the
+   * items it is asking about, so nothing unbounded is built here either.
+   */
+  async exposedChallengeKeysByItem(
+    ownerAccountId: string,
+    contentItemIds: string[],
+  ): Promise<Map<string, Set<string>>> {
+    const byItem = new Map<string, Set<string>>();
+    if (!contentItemIds.length) return byItem;
+    const rows = await this.model
+      .find(
+        {
+          ownerAccountId,
+          contentItemId: { $in: contentItemIds },
+          state: 'exposed' as ContentExposureState,
+        },
+        { contentItemId: 1, challengeTypeKey: 1, _id: 0 },
+      )
+      .lean<Array<{ contentItemId: string; challengeTypeKey: string }>>()
+      .exec();
+    for (const row of rows) {
+      const keys = byItem.get(row.contentItemId) ?? new Set<string>();
+      keys.add(row.challengeTypeKey);
+      byItem.set(row.contentItemId, keys);
+    }
+    return byItem;
+  }
+
+  /** Every item this account has been shown at least once, anywhere. */
+  async exposedContentItemIds(ownerAccountId: string): Promise<string[]> {
+    return this.model.distinct('contentItemId', {
+      ownerAccountId,
+      state: 'exposed' as ContentExposureState,
+    }) as unknown as Promise<string[]>;
+  }
+
   /** Test and diagnostic read; never used by selection. */
   async listForOwner(
     key: ContentExposureKey,

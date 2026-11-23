@@ -50,6 +50,17 @@ import {
   ContentExposureSchema,
 } from './persistence/content-exposure.schema';
 import { ContentExposureRepository } from './persistence/content-exposure.repository';
+import {
+  WorldRemainingDocument,
+  WorldRemainingSchema,
+} from './persistence/world-remaining.schema';
+import { WorldRemainingRepository } from './persistence/world-remaining.repository';
+import { WorldRemainingService } from './application/world-remaining.service';
+import { WorldRemainingController } from './presentation/world-remaining.controller';
+import {
+  ChallengeType,
+  ChallengeTypeSchema,
+} from '../world-content/schemas/challenge-type.schema';
 import { ContentExposureService } from './application/content-exposure.service';
 import { MatchDocument, MatchSchema } from './persistence/match.schema';
 import { MongooseMatchRepository } from './persistence/mongoose-match.repository';
@@ -92,9 +103,18 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
       // Read-only: the answer-guard catalog reader projects a World's READY
       // match answers. Writes stay with world-content's own repository.
       { name: ContentItem.name, schema: ContentItemSchema },
+      // Read-only: the remaining-questions summary needs a challenge's slug to
+      // decide whether an item has been seen in every challenge it can appear
+      // in. Writes stay with world-content.
+      { name: ChallengeType.name, schema: ChallengeTypeSchema },
+      {
+        name: WorldRemainingDocument.name,
+        schema: WorldRemainingSchema,
+      },
     ]),
   ],
   controllers: [
+    WorldRemainingController,
     MatchController,
     UnifiedMatchController,
     MatchParticipantController,
@@ -112,6 +132,8 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
     ChallengeLaunchabilityPublisher,
     ContentExposureRepository,
     ContentExposureService,
+    WorldRemainingRepository,
+    WorldRemainingService,
     RuntimeScoreEventCollector,
     MatchTransitionNotifier,
     MatchContentPool,

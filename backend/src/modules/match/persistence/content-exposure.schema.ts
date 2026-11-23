@@ -98,6 +98,17 @@ ContentExposureSchema.index(
 ContentExposureSchema.index({ matchId: 1, state: 1 });
 
 /**
+ * Reading one account's exposures ACROSS mechanics, for a bounded set of items.
+ *
+ * Selection never asks this — it is always inside one mechanic, which the
+ * unique index above serves. The remaining-questions summary is the exception
+ * and must cross mechanics by its nature: a question is spent only once it has
+ * been seen in every challenge it can be played through, which cannot be
+ * answered from within any single one of them.
+ */
+ContentExposureSchema.index({ ownerAccountId: 1, contentItemId: 1, state: 1 });
+
+/**
  * Expiry for reservations only.
  *
  * Mongo's TTL monitor deletes a document when its indexed date passes, and

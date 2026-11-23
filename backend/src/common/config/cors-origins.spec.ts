@@ -83,3 +83,65 @@ describe('corsOriginDelegate', () => {
     expect(allow(env, 'https://late.example')).toBe(true);
   });
 });
+
+describe('allowing a preview by its shape', () => {
+  const PATTERN =
+    'https://akwaan-frontend-git-*-muaths-projects-b32b0e77.vercel.app';
+  const env = {
+    NODE_ENV: 'production',
+    CORS_ORIGINS: 'https://playakwaan.com',
+    CORS_ORIGIN_PATTERNS: PATTERN,
+  } as unknown as NodeJS.ProcessEnv;
+
+  const asks = (origin: string): Promise<boolean> =>
+    new Promise((resolve) => {
+      corsOriginDelegate(env)(origin, (_error, allow) => resolve(!!allow));
+    });
+
+  it('lets through a branch preview of this project', async () => {
+    await expect(
+      asks(
+        'https://akwaan-frontend-git-feat-new-identity-muaths-projects-b32b0e77.vercel.app',
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('still lets through the named origins', async () => {
+    await expect(asks('https://playakwaan.com')).resolves.toBe(true);
+  });
+
+  it('refuses a host that merely ends the same way', async () => {
+    // The wildcard stands for ONE label. If it could cross a dot, anyone able
+    // to register a subdomain could mint an allowed origin.
+    await expect(
+      asks('https://evil.attacker-git-x-muaths-projects-b32b0e77.vercel.app'),
+    ).resolves.toBe(false);
+  });
+
+  it('refuses another Vercel project in the same account', async () => {
+    await expect(
+      asks('https://something-else-muaths-projects-b32b0e77.vercel.app'),
+    ).resolves.toBe(false);
+  });
+
+  it('refuses everything when no pattern is configured', async () => {
+    const bare = {
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://playakwaan.com',
+    } as unknown as NodeJS.ProcessEnv;
+    const allowed = await new Promise<boolean>((resolve) => {
+      corsOriginDelegate(bare)(
+        'https://akwaan-frontend-git-x-muaths-projects-b32b0e77.vercel.app',
+        (_error, allow) => resolve(!!allow),
+      );
+    });
+    expect(allowed).toBe(false);
+  });
+
+  it('treats a dot in the pattern as a dot, not as any character', async () => {
+    // Without escaping, "vercel.app" would also match "vercelXapp".
+    await expect(
+      asks('https://akwaan-frontend-git-x-muaths-projects-b32b0e77.vercelXapp'),
+    ).resolves.toBe(false);
+  });
+});
