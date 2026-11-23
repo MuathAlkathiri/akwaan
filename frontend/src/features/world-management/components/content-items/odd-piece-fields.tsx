@@ -22,21 +22,8 @@ export function OddPieceFields({
   onUploadImage?: (file: File) => Promise<string>;
 }) {
   const v2 = value.v2 ?? emptyOddPieceV2State();
-  const version = value.version ?? 1;
-
-  const setPiece = (
-    index: number,
-    patch: Partial<OddPieceFormState["pieces"][number]>,
-  ) =>
-    onChange({
-      ...value,
-      pieces: value.pieces.map((piece, pieceIndex) =>
-        pieceIndex === index ? { ...piece, ...patch } : piece,
-      ),
-    });
-
   const setV2 = (patch: Partial<typeof v2>) =>
-    onChange({ ...value, version: 2, v2: { ...v2, ...patch } });
+    onChange({ ...value, v2: { ...v2, ...patch } });
 
   const setV2Image = (
     key: "modifiedImage" | "originalImage",
@@ -200,30 +187,10 @@ export function OddPieceFields({
       <div>
         <h3 className="font-bold">القطعة الدخيلة</h3>
         <p className="text-xs text-muted-foreground">
-          اختر عقد V1 القديم أو عقد V2 الجديد. لا تتحول السجلات القديمة
-          تلقائياً.
+          صورة سيارة حقيقية فيها قطعة وحدة متغيرة (شبك، شمعات، شكمان، دركسون،
+          قير…)، والفريق يحدد مكانها على الصورة.
         </p>
       </div>
-      <label className="block space-y-1 text-sm">
-        <span>إصدار العقد</span>
-        <select
-          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-          value={version}
-          onChange={(event) => {
-            const next = Number(event.target.value) as 1 | 2;
-            onChange({
-              ...value,
-              version: next,
-              v2: value.v2 ?? emptyOddPieceV2State(),
-            });
-          }}
-          data-testid="odd-piece-version"
-        >
-          <option value={1}>V1 — أربع صور</option>
-          <option value={2}>V2 — صورة واحدة ونقطة ساخنة</option>
-        </select>
-      </label>
-
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1 text-sm">
           <span>هوية السيارة الأساسية</span>
@@ -247,167 +214,100 @@ export function OddPieceFields({
         </label>
       </div>
 
-      {version === 2 ? (
-        <div className="space-y-4" data-testid="odd-piece-v2-fields">
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1 text-sm">
-              <span>الصعوبة</span>
-              <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={v2.difficulty}
-                onChange={(event) =>
-                  setV2({
-                    difficulty: event.target.value as typeof v2.difficulty,
-                  })
-                }
-                data-testid="odd-piece-v2-difficulty"
-              >
-                <option value="">اختر الصعوبة</option>
-                {ODD_PIECE_DIFFICULTIES.map((entry) => (
-                  <option key={entry.value} value={entry.value}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>تسامح النقر (منسوب للصورة)</span>
-              <Input
-                type="number"
-                min={0}
-                max={0.25}
-                step="0.001"
-                value={v2.tolerance}
-                onChange={(event) => setV2({ tolerance: event.target.value })}
-                dir="ltr"
-                data-testid="odd-piece-v2-tolerance"
-              />
-            </label>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1 text-sm">
-              <span>هوية السيارة الدخيلة</span>
-              <Input
-                value={v2.intruderVehicleIdentity}
-                onChange={(event) =>
-                  setV2({ intruderVehicleIdentity: event.target.value })
-                }
-                dir="ltr"
-              />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>اسم السيارة الدخيلة</span>
-              <Input
-                value={v2.intruderVehicleLabel}
-                onChange={(event) =>
-                  setV2({ intruderVehicleLabel: event.target.value })
-                }
-              />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>هوية القطعة الدخيلة</span>
-              <Input
-                value={v2.intruderPartIdentity}
-                onChange={(event) =>
-                  setV2({ intruderPartIdentity: event.target.value })
-                }
-                dir="ltr"
-              />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>اسم القطعة الدخيلة</span>
-              <Input
-                value={v2.intruderPartLabel}
-                onChange={(event) =>
-                  setV2({ intruderPartLabel: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          {renderImageSource("modifiedImage", "الصورة المعدّلة")}
-          <OddPieceHotspotEditor
-            imageUrl={v2.modifiedImage.url}
-            width={editorDimensions.width}
-            height={editorDimensions.height}
-            polygon={v2.polygon}
-            tolerance={Number(v2.tolerance)}
-            onPolygonChange={(polygon) => setV2({ polygon })}
-            onImageDimensionsChange={(dimensions) =>
-              setV2Image("modifiedImage", {
-                width: String(dimensions.width),
-                height: String(dimensions.height),
-                orientation: dimensions.orientation,
-              })
-            }
-          />
-          {renderImageSource("originalImage", "الصورة الأصلية للكشف")}
-        </div>
-      ) : (
-        <>
-          <p className="text-xs text-muted-foreground">
-            ثلاث صور من السيارة الأساسية وصورة واحدة من سيارة مختلفة، مع صورة
-            كاملة تظهر بعد الحل.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {value.pieces.map((piece, index) => (
-              <fieldset
-                key={index}
-                className="grid gap-2 rounded-lg border p-3"
-                data-testid={`odd-piece-visual-${index + 1}`}
-              >
-                <legend className="px-1 text-sm font-bold">
-                  القطعة {index + 1}
-                </legend>
-                <Input
-                  aria-label={`معرف القطعة ${index + 1}`}
-                  value={piece.localId}
-                  onChange={(event) =>
-                    setPiece(index, { localId: event.target.value })
-                  }
-                  placeholder="piece-1"
-                  dir="ltr"
-                />
-                <Input
-                  aria-label={`هوية سيارة القطعة ${index + 1}`}
-                  value={piece.vehicleIdentity}
-                  onChange={(event) =>
-                    setPiece(index, { vehicleIdentity: event.target.value })
-                  }
-                  placeholder="bmw-m4"
-                  dir="ltr"
-                />
-                <Input
-                  aria-label={`اسم سيارة القطعة ${index + 1}`}
-                  value={piece.vehicleLabel}
-                  onChange={(event) =>
-                    setPiece(index, { vehicleLabel: event.target.value })
-                  }
-                  placeholder="BMW M4"
-                />
-                <Input
-                  aria-label={`صورة القطعة ${index + 1}`}
-                  value={piece.imageUrl}
-                  onChange={(event) =>
-                    setPiece(index, { imageUrl: event.target.value })
-                  }
-                  placeholder="https://…"
-                  dir="ltr"
-                />
-              </fieldset>
-            ))}
-          </div>
+      <div className="space-y-4" data-testid="odd-piece-v2-fields">
+        <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span>صورة السيارة الكاملة</span>
-            <Input
-              value={value.targetRevealImageUrl}
+            <span>الصعوبة</span>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={v2.difficulty}
               onChange={(event) =>
-                onChange({ ...value, targetRevealImageUrl: event.target.value })
+                setV2({
+                  difficulty: event.target.value as typeof v2.difficulty,
+                })
+              }
+              data-testid="odd-piece-v2-difficulty"
+            >
+              <option value="">اختر الصعوبة</option>
+              {ODD_PIECE_DIFFICULTIES.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>تسامح النقر (منسوب للصورة)</span>
+            <Input
+              type="number"
+              min={0}
+              max={0.25}
+              step="0.001"
+              value={v2.tolerance}
+              onChange={(event) => setV2({ tolerance: event.target.value })}
+              dir="ltr"
+              data-testid="odd-piece-v2-tolerance"
+            />
+          </label>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span>هوية السيارة الدخيلة</span>
+            <Input
+              value={v2.intruderVehicleIdentity}
+              onChange={(event) =>
+                setV2({ intruderVehicleIdentity: event.target.value })
               }
               dir="ltr"
             />
           </label>
-        </>
-      )}
+          <label className="space-y-1 text-sm">
+            <span>اسم السيارة الدخيلة</span>
+            <Input
+              value={v2.intruderVehicleLabel}
+              onChange={(event) =>
+                setV2({ intruderVehicleLabel: event.target.value })
+              }
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>هوية القطعة الدخيلة</span>
+            <Input
+              value={v2.intruderPartIdentity}
+              onChange={(event) =>
+                setV2({ intruderPartIdentity: event.target.value })
+              }
+              dir="ltr"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>اسم القطعة الدخيلة</span>
+            <Input
+              value={v2.intruderPartLabel}
+              onChange={(event) =>
+                setV2({ intruderPartLabel: event.target.value })
+              }
+            />
+          </label>
+        </div>
+        {renderImageSource("modifiedImage", "الصورة المعدّلة")}
+        <OddPieceHotspotEditor
+          imageUrl={v2.modifiedImage.url}
+          width={editorDimensions.width}
+          height={editorDimensions.height}
+          polygon={v2.polygon}
+          tolerance={Number(v2.tolerance)}
+          onPolygonChange={(polygon) => setV2({ polygon })}
+          onImageDimensionsChange={(dimensions) =>
+            setV2Image("modifiedImage", {
+              width: String(dimensions.width),
+              height: String(dimensions.height),
+              orientation: dimensions.orientation,
+            })
+          }
+        />
+        {renderImageSource("originalImage", "الصورة الأصلية للكشف")}
+      </div>
     </section>
   );
 }

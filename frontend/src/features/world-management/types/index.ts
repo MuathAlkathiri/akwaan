@@ -284,22 +284,6 @@ export interface Top5Payload {
   explanation?: string;
 }
 
-export interface OddPiecePayload {
-  variant: "odd-piece";
-  targetVehicleIdentity: string;
-  targetVehicleLabel: string;
-  targetVehicleReveal: {
-    type: "image";
-    assets: ContentAsset[];
-  };
-  pieces: Array<{
-    localId: string;
-    vehicleIdentity: string;
-    vehicleLabel: string;
-    media: { type: "image"; assets: ContentAsset[] };
-  }>;
-}
-
 export type OddPieceDifficulty = "easy" | "medium" | "hard";
 export type OddPieceAssetOrigin = "authentic" | "ai-edited";
 
@@ -445,11 +429,7 @@ export interface FirstNotePayload {
 /* Permanent deletion and detach (roadmap §19.1) */
 
 export type DeletionEntityKind =
-  | "world"
-  | "scope"
-  | "challengeType"
-  | "contentItem"
-  | "configuration";
+  "world" | "scope" | "challengeType" | "contentItem" | "configuration";
 
 /** `detach` removes an association only; `permanent_delete` removes records. */
 export type DeletionOperation = "permanent_delete" | "detach";

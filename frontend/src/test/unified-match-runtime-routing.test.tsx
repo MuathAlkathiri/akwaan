@@ -1072,7 +1072,10 @@ describe("fair-start presentation acknowledgement", () => {
     expect(screen.queryByTestId("challenge-preparing")).toBeNull();
   });
 
-  it.each(["first-note", "marhala", "laqatha", "odd-piece"])(
+  // القطعة الدخيلة is absent on purpose: it acknowledges from its own image
+  // gate, only once the photograph has actually loaded on that phone, so the
+  // shared surface never acknowledges for it.
+  it.each(["first-note", "marhala", "laqatha"])(
     "recovers the mid-flight race for %s as well (the surface is mechanic-agnostic)",
     async (modeKey) => {
       // Fair-start readiness lives on the shared surface, not in any mechanic, so

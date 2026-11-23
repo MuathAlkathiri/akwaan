@@ -48,7 +48,7 @@ import {
   isEligibleTeamParticipant,
 } from '../domain/team-participant-eligibility';
 import { applyGameplaySessionEffects } from './gameplay-session-effects';
-import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-gameplay.plugin';
+import { ODD_PIECE_MODE_KEY } from '../domain/odd-piece-hotspot-gameplay.plugin';
 import { LAQATHA_MODE_KEY } from '../domain/laqatha-gameplay.plugin';
 import { EKSHIFNI_MODE_KEY } from '../domain/ekshifni-gameplay.plugin';
 import { LA_TAHRIQHA_MODE_KEY } from '../domain/la-tahriqha-gameplay.plugin';

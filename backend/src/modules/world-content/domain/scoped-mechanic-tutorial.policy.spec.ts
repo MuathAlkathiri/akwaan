@@ -142,11 +142,7 @@ describe('scoped mechanic tutorial flow contract', () => {
       targetVehicleLabel: 'الهدف',
       intruderVehicleIdentity: 'intruder',
       intruderVehicleLabel: 'الدخيل',
-      pieces: [],
-      wrongSelectionPieceId: 'wrong',
-      correctSelectionPieceId: 'correct',
-      targetReveal: { imageUrl: '/reveal.jpg', altText: 'كشف' },
-    });
+    } as never);
     expect(issues.map((item) => item.code)).toContain(
       'SCOPED_TUTORIAL_VERSION_LOCKED',
     );
@@ -307,19 +303,54 @@ describe('scoped mechanic tutorial flow contract', () => {
       kind: 'combo' as const,
       version: 1 as const,
       stages: [
-        { stage: 1 as const, prompt: 'س1', correctAnswer: 'ج1', submittedAnswer: 'ج1' },
-        { stage: 2 as const, prompt: 'س2', correctAnswer: 'ج2', submittedAnswer: 'ج2' },
-        { stage: 3 as const, prompt: 'س3', correctAnswer: 'ج3', submittedAnswer: 'خطأ' },
+        {
+          stage: 1 as const,
+          prompt: 'س1',
+          correctAnswer: 'ج1',
+          submittedAnswer: 'ج1',
+        },
+        {
+          stage: 2 as const,
+          prompt: 'س2',
+          correctAnswer: 'ج2',
+          submittedAnswer: 'ج2',
+        },
+        {
+          stage: 3 as const,
+          prompt: 'س3',
+          correctAnswer: 'ج3',
+          submittedAnswer: 'خطأ',
+        },
       ],
     };
     const fourStageScoped = {
       kind: 'combo' as const,
       version: 1 as const,
       stages: [
-        { stage: 1 as const, prompt: 'من قائد قراصنة قبعة القش؟', correctAnswer: 'لوفي', submittedAnswer: 'لوفي' },
-        { stage: 2 as const, prompt: 'ما اسم قرية ناروتو؟', correctAnswer: 'كونوها', submittedAnswer: 'كونوها' },
-        { stage: 3 as const, prompt: 'من يمتلك العملاق المدرع؟', correctAnswer: 'راينر براون', submittedAnswer: 'راينر براون' },
-        { stage: 4 as const, prompt: 'ما الاسم الحقيقي لشخصية باين في ناروتو؟', correctAnswer: 'ناغاتو', submittedAnswer: 'إيتاتشي' },
+        {
+          stage: 1 as const,
+          prompt: 'من قائد قراصنة قبعة القش؟',
+          correctAnswer: 'لوفي',
+          submittedAnswer: 'لوفي',
+        },
+        {
+          stage: 2 as const,
+          prompt: 'ما اسم قرية ناروتو؟',
+          correctAnswer: 'كونوها',
+          submittedAnswer: 'كونوها',
+        },
+        {
+          stage: 3 as const,
+          prompt: 'من يمتلك العملاق المدرع؟',
+          correctAnswer: 'راينر براون',
+          submittedAnswer: 'راينر براون',
+        },
+        {
+          stage: 4 as const,
+          prompt: 'ما الاسم الحقيقي لشخصية باين في ناروتو؟',
+          correctAnswer: 'ناغاتو',
+          submittedAnswer: 'إيتاتشي',
+        },
       ],
     };
     expect(

@@ -3,7 +3,7 @@ import { ChallengeLauncherRegistry } from './challenge-launcher.registry';
 import type { MatchChallengeLauncher } from './challenge-launcher.registry';
 import { MatchSlotLaunchability } from '../domain/match.constants';
 import { WorldReadinessService } from '../../world-content/application/world-readiness.service';
-import { ODD_PIECE_MODE_KEY } from '../../live-game-sessions/domain/odd-piece-gameplay.plugin';
+import { ODD_PIECE_MODE_KEY } from '../../live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin';
 import { MARHALA_MODE_KEY } from '../../live-game-sessions/domain/marhala-board';
 
 /**

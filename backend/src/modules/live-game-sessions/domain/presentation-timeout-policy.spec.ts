@@ -4,7 +4,7 @@ import {
   pendingDeadline,
 } from '../application/gameplay-deadline.scheduler';
 import { RYO_GAMEPLAY_PLUGIN } from './ryo-gameplay.plugin';
-import { ODD_PIECE_GAMEPLAY_PLUGIN } from './odd-piece-gameplay.plugin';
+import { ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN } from './odd-piece-hotspot-gameplay.plugin';
 import type { GameplayRuntimeState } from './gameplay-runtime';
 
 /**
@@ -107,7 +107,7 @@ describe('presentation timeout policy', () => {
       // The default is what every fair-start mechanic did before failure
       // existed. A mechanic that never opts in is untouched by this mechanism.
       expect(
-        ODD_PIECE_GAMEPLAY_PLUGIN.presentationTimeoutPolicy,
+        ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN.presentationTimeoutPolicy,
       ).toBeUndefined();
     });
   });

@@ -130,17 +130,6 @@ const OddPieceTutorialMediaDefinition = new MongooseSchema(
   { _id: false },
 );
 
-const OddPieceTutorialPieceDefinition = new MongooseSchema(
-  {
-    id: { type: String, required: true, trim: true },
-    imageUrl: { type: String, required: true, trim: true },
-    altText: { type: String, required: true, trim: true },
-    vehicleIdentity: { type: String, required: true, trim: true },
-    vehicleLabel: { type: String, required: true, trim: true },
-  },
-  { _id: false },
-);
-
 const OddPieceTutorialProvenanceDefinition = new MongooseSchema(
   {
     assetOrigin: {
@@ -374,10 +363,6 @@ export const TutorialScenarioDefinition = new MongooseSchema(
     targetVehicleLabel: { type: String, trim: true, default: undefined },
     intruderVehicleIdentity: { type: String, trim: true, default: undefined },
     intruderVehicleLabel: { type: String, trim: true, default: undefined },
-    pieces: { type: [OddPieceTutorialPieceDefinition], default: undefined },
-    wrongSelectionPieceId: { type: String, trim: true, default: undefined },
-    correctSelectionPieceId: { type: String, trim: true, default: undefined },
-    targetReveal: { type: OddPieceTutorialMediaDefinition, default: undefined },
     intruderPartIdentity: { type: String, trim: true, default: undefined },
     intruderPartLabel: { type: String, trim: true, default: undefined },
     tutorialRevealMode: {
