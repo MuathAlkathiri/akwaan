@@ -705,7 +705,7 @@ function V6RyoIntegratedSection({
           title="الخطوة السابقة"
           disabled={activeStep < 0 || !timelineControls}
           onClick={() => selectStep(activeStep - 1)}
-          className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-[52px] place-items-center rounded-full border-[3px] border-brand-navy bg-white text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronRight className="size-5" aria-hidden />
         </button>
@@ -719,7 +719,7 @@ function V6RyoIntegratedSection({
             title="تشغيل أو إيقاف"
             disabled={!timelineControls}
             onClick={handleTogglePlay}
-            className="grid size-[60px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[0_5px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="grid size-[68px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {playing ? (
               <Pause className="size-6 fill-current" aria-hidden />
@@ -736,7 +736,7 @@ function V6RyoIntegratedSection({
           title="الخطوة التالية"
           disabled={activeStep >= RYO_V6_STEPS.length - 1 || !timelineControls}
           onClick={() => selectStep(activeStep + 1)}
-          className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-[52px] place-items-center rounded-full border-[3px] border-brand-navy bg-white text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronLeft className="size-5" aria-hidden />
         </button>
@@ -832,7 +832,7 @@ function V6RyoIntegratedStage({
       data-testid="ryo-explainer"
       data-variant="integrated"
       data-step={activeStep}
-      className="v6-tv-bezel rounded-[20px] bg-brand-navy p-2.5 shadow-[0_5px_14px_hsl(var(--brand-navy)/0.16)] sm:p-4 lg:p-[clamp(13px,1.4vw,22px)]"
+      className="v6-tv-bezel rounded-[26px] border-[3px] border-brand-navy bg-brand-navy p-2.5 shadow-[6px_7px_0_hsl(var(--brand-purple))] sm:p-4 lg:p-[clamp(13px,1.4vw,22px)]"
       aria-label="محاكاة الشرح: السؤال وجوالا الفريقين داخل شاشة واحدة"
     >
       <div className="mb-1.5 flex min-h-[24px] items-center justify-between gap-2">
@@ -1774,7 +1774,7 @@ function GenericV6TutorialSection({
           aria-label="الخطوة السابقة"
           disabled={introActive || !timelineControls}
           onClick={() => selectStep(activeStep - 1)}
-          className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-[52px] place-items-center rounded-full border-[3px] border-brand-navy bg-white text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronRight className="size-5" aria-hidden />
         </button>
@@ -1787,7 +1787,7 @@ function GenericV6TutorialSection({
             aria-label={playing ? "إيقاف الشرح" : "تشغيل الشرح"}
             disabled={!timelineControls}
             onClick={handleTogglePlay}
-            className="grid size-[60px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[0_5px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="grid size-[68px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform active:translate-y-0.5 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {playing ? (
               <Pause className="size-6 fill-current" aria-hidden />
@@ -1806,7 +1806,7 @@ function GenericV6TutorialSection({
             !timelineControls
           }
           onClick={() => selectStep(introActive ? 0 : activeStep + 1)}
-          className="grid size-[46px] place-items-center rounded-full border-2 border-brand-navy bg-card text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-[52px] place-items-center rounded-full border-[3px] border-brand-navy bg-white text-brand-navy transition-colors hover:bg-muted disabled:border-border disabled:text-disabled-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronLeft className="size-5" aria-hidden />
         </button>
