@@ -35,9 +35,9 @@ export function ShopBanner({
           الشهر الأول علينا
         </span>
         <span className="flex-1 basis-[26rem] text-[17px] leading-8">
-          كل المباريات مجانية للكل
-          {freeUntil ? <> لين <b>{freeUntil}</b></> : null}، ورصيدك ما ينقص.
-          عشان كذا ما نبيعك شي بتاخذه ببلاش، والشراء يفتح بعدها.
+          كل حساب له <b>3 مباريات ببلاش كل أسبوع</b>
+          {freeUntil ? <> لين <b>{freeUntil}</b></> : null}، تتجدد يوم الخميس.
+          الشراء ما انفتح للحين، والأسعار تحت عشان تعرفها من الحين.
         </span>
       </div>
     );

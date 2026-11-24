@@ -171,6 +171,11 @@ describe("home is a dashboard of Worlds", () => {
     // The ordered selection surface and the action that finishes the plan.
     expect(screen.getByTestId("world-selection-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("worlds-home-start")).toBeInTheDocument();
+    // With nothing chosen the bar sits in the page, not pinned over it.
+    expect(screen.getByTestId("world-selection-sidebar")).toHaveAttribute(
+      "data-pinned",
+      "false",
+    );
     // A World's signature label still renders (anime → الكومبو).
     expect(screen.getAllByText("الكومبو").length).toBeGreaterThan(0);
   });

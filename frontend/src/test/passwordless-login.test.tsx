@@ -61,9 +61,17 @@ describe("passwordless login", () => {
     expect(requestButton.querySelector("svg")).toBeNull();
   });
 
+  it("offers email only while SMS is not live", () => {
+    render(<PasswordlessLoginForm />);
+    // No tab at all: a phone tab that sends nothing leaves a player waiting.
+    expect(screen.queryByTestId("otp-channel-phone")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.getByTestId("otp-email-input")).toBeInTheDocument();
+  });
+
   it("switches between the existing email and phone methods", async () => {
     const user = userEvent.setup();
-    render(<PasswordlessLoginForm />);
+    render(<PasswordlessLoginForm allowPhone />);
 
     expect(screen.getByTestId("otp-email-input")).toBeInTheDocument();
     await user.click(screen.getByTestId("otp-channel-phone"));
@@ -234,7 +242,7 @@ describe("passwordless login", () => {
     ["Persian", "۰۵۱۲۳۴۵۶۷۸"],
   ])("normalizes %s digits while typing a phone number", async (_name, phone) => {
     const user = userEvent.setup();
-    render(<PasswordlessLoginForm />);
+    render(<PasswordlessLoginForm allowPhone />);
     await user.click(screen.getByTestId("otp-channel-phone"));
     await user.type(screen.getByTestId("otp-phone-input"), phone);
 
@@ -262,7 +270,7 @@ describe("passwordless login", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<PasswordlessLoginForm />);
+    render(<PasswordlessLoginForm allowPhone />);
 
     await user.click(screen.getByTestId("otp-channel-phone"));
     await user.type(screen.getByTestId("otp-phone-input"), "0512345678");

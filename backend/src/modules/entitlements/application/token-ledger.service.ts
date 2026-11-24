@@ -40,7 +40,11 @@ export class TokenLedgerService {
     amount: number;
     reason: Extract<
       TokenLedgerReason,
-      'campaign.launch-month' | 'purchase' | 'match.refund' | 'admin.grant'
+      | 'campaign.launch-month'
+      | 'purchase'
+      | 'match.refund'
+      | 'admin.grant'
+      | 'gift-code'
     >;
     reference?: string;
     idempotencyKey: string;

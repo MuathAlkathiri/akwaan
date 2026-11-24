@@ -11,9 +11,9 @@ export const metadata: Metadata = {
  * The questions a first-time visitor actually asks, in their own words.
  *
  * One array feeds both the page and its `FAQPage` structured data, so a search
- * engine and a reader can never be told two different things. Anything the
- * product has not settled — pricing in particular — is answered honestly as
- * unannounced rather than guessed at.
+ * engine and a reader can never be told two different things. The cost answer
+ * follows `claude/akwaan-pricing-launch-decisions.md` and names no date for
+ * when buying opens, because that waits on a condition, not a calendar.
  */
 const FAQ = [
   {
@@ -64,7 +64,7 @@ const FAQ = [
   {
     question: "كم تكلفة أكوان؟",
     answer:
-      "تفاصيل الأسعار ما انعلنت بعد، وما نحب نعطيكم رقم قبل ما يستقر. الانطلاق الرسمي يوم 1 ديسمبر 2026، وتفاصيل الاشتراك تُنشر على الموقع قبلها.",
+      "أول شهر ببلاش: من 1 ديسمبر 2026 لين 1 يناير 2027 كل حساب له 3 مباريات مجانية كل أسبوع، تتجدد يوم الخميس. وأول مباراة لأي حساب جديد مجانية دايمًا. بعدها الباقات تبدأ من 35 ريال لـ3 مباريات، بدون اشتراك ولا تجديد تلقائي. اللي يحتاج مباريات هو المضيف بس، وباقي اللاعبين ينضمون بدون أي رسوم.",
   },
   {
     question: "متى تنطلق أكوان؟",
@@ -84,62 +84,80 @@ export default function FaqPage() {
     })),
   };
 
+  const link =
+    "font-bold text-brand-navy underline decoration-2 underline-offset-4 hover:text-brand-bronze";
+
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="relative z-10 mx-auto w-full max-w-[1180px] px-4 pb-20 pt-8 sm:px-8 sm:pt-12">
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <h1 className="text-center text-3xl font-black leading-[1.3] text-[hsl(var(--brand-navy))] sm:text-4xl">
-        الأسئلة الشائعة
+      <h1 className="font-display text-[36px] font-black leading-[1.3] text-brand-navy sm:text-[56px]">
+        الأسئلة <span className="text-brand-purple">الشائعة</span>
       </h1>
-      <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-loose text-[hsl(var(--brand-navy)/.72)] sm:text-lg">
+      <p className="mt-4 max-w-2xl text-base leading-[1.9] text-brand-slate sm:text-lg">
         كل اللي يسأل عنه أي أحد قبل أول مباراة، بأقصر جواب ممكن. وإذا تبغى
         الشرح الكامل من الصفر، فيه صفحة{" "}
-        <Link
-          href="/how-to-play"
-          className="font-black text-[hsl(var(--brand-navy))] underline decoration-[hsl(var(--brand-gold))] decoration-2 underline-offset-4"
-        >
+        <Link href="/how-to-play" className={link}>
           كيف تلعب
         </Link>
         .
       </p>
 
-      <dl className="mt-10 space-y-5">
-        {FAQ.map(({ question, answer }) => (
-          <div
-            key={question}
-            className="rounded-3xl border border-[hsl(var(--brand-navy)/.1)] bg-white/80 p-6 shadow-[0_10px_30px_rgba(24,16,54,.05)]"
-          >
-            <dt className="text-lg font-black text-[hsl(var(--brand-navy))]">
-              {question}
-            </dt>
-            <dd className="mt-3 text-sm leading-8 text-[hsl(var(--brand-navy)/.7)] sm:text-base">
-              {answer}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="mt-10 flex flex-col items-start gap-8 lg:flex-row">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
+          {FAQ.map(({ question, answer }, index) => (
+            // Native disclosure: it opens with a keyboard, a screen reader
+            // announces its state, and it needs no script to work.
+            <details
+              key={question}
+              open={index === 0}
+              className="group rounded-[20px] border-[3px] border-brand-navy bg-brand-paper open:bg-brand-lavender open:shadow-[6px_7px_0_hsl(var(--brand-navy))]"
+            >
+              <summary className="flex min-h-[4.25rem] cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 font-display text-lg font-extrabold text-brand-navy sm:px-6 sm:text-xl [&::-webkit-details-marker]:hidden">
+                {question}
+                <span
+                  aria-hidden
+                  className="grid size-9 shrink-0 place-items-center rounded-full border-[3px] border-brand-navy bg-white text-xl font-bold leading-none group-open:bg-brand-gold"
+                >
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
+              </summary>
+              <p className="px-5 pb-6 text-base leading-[1.95] text-brand-navy sm:px-6 sm:text-[17px]">
+                {answer}
+              </p>
+            </details>
+          ))}
+        </div>
 
-      <p className="mt-10 text-center text-base leading-loose text-[hsl(var(--brand-navy)/.72)]">
-        باقي سؤال؟ شوف{" "}
-        <Link
-          href="/worlds"
-          className="font-black text-[hsl(var(--brand-navy))] underline decoration-[hsl(var(--brand-gold))] decoration-2 underline-offset-4"
-        >
-          صفحة العوالم
-        </Link>{" "}
-        أو راسلنا على{" "}
-        <a
-          href="mailto:support@playakwaan.com"
-          className="font-black text-[hsl(var(--brand-navy))] underline decoration-[hsl(var(--brand-gold))] decoration-2 underline-offset-4"
-        >
-          support@playakwaan.com
-        </a>
-        .
-      </p>
+        <aside className="w-full shrink-0 rounded-3xl border-[3px] border-brand-navy bg-brand-navy p-6 text-white shadow-[6px_7px_0_hsl(var(--brand-gold))] lg:sticky lg:top-28 lg:w-[320px]">
+          <h2 className="font-display text-2xl font-extrabold">باقي سؤال؟</h2>
+          <p className="mt-2 text-base leading-[1.8] text-white/85">
+            راسلنا ونرد عليك.
+          </p>
+          <a
+            href="mailto:support@playakwaan.com"
+            dir="ltr"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full border-[3px] border-brand-navy bg-brand-gold px-4 text-[15px] font-bold text-brand-navy no-underline"
+          >
+            support@playakwaan.com
+          </a>
+          <p className="mt-4 text-[15px] leading-[1.8] text-white/85">
+            وتبغى تعرف العوالم وتحدياتها؟ شوف{" "}
+            <Link
+              href="/worlds"
+              className="font-bold text-brand-gold underline decoration-2 underline-offset-4"
+            >
+              صفحة العوالم
+            </Link>
+            .
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }

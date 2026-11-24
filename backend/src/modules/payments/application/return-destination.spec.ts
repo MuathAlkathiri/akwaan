@@ -29,7 +29,7 @@ describe('the page the gateway returns a player to', () => {
       { findByCode: jest.fn() } as unknown as DiscountCodeRepository,
       { get: () => 'https://playakwaan.com' } as unknown as ConfigService,
     );
-    await useCase.execute({ accountId: 'acc-1', packId: 'five' });
+    await useCase.execute({ accountId: 'acc-1', packId: 'six' });
     return start.mock.calls.at(-1)![0] as { callbackUrl: string };
   };
 

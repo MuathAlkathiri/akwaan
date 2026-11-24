@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { BuyPanel } from "@/features/payments/components/buy-panel";
-import { useTokenBalance } from "@/features/entitlements/api/token-balance";
+import {
+  playableMatches,
+  useTokenAccount,
+} from "@/features/entitlements/api/token-balance";
 import { ARABIC_NOUNS, arabicCount, arabicNoun } from "@/lib/arabic-plural";
 
 /**
@@ -27,7 +30,11 @@ import { ARABIC_NOUNS, arabicCount, arabicNoun } from "@/lib/arabic-plural";
  */
 export function TokenChip() {
   const { isAdmin, isAuthenticated } = useAuth();
-  const { data: balance } = useTokenBalance(isAuthenticated && !isAdmin);
+  const { data: account } = useTokenAccount(isAuthenticated && !isAdmin);
+  // What the player can start right now: this week's free Matches plus
+  // whatever is on their balance. During the launch month a bare balance
+  // would read zero to somebody who can play three times.
+  const balance = account ? playableMatches(account) : undefined;
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
 

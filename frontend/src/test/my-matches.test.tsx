@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("My Games page", () => {
-  it("renders loading, errors with retry, and both empty states", () => {
+  it("renders loading, errors with retry, and the empty state", () => {
     state.query = { isLoading: true, isError: false };
     const view = render(<MyMatchesPage />);
     // The initial query shows card skeletons in the final geometry, not text.
@@ -115,12 +115,13 @@ describe("My Games page", () => {
 
     state.query = { data: data(), isLoading: false, isError: false };
     view.rerender(<MyMatchesPage />);
+    // Nothing played at all is one invitation, not two empty boxes.
+    expect(screen.getByTestId("my-matches-empty")).toHaveTextContent(
+      "ما لعبت ولا مباراة للحين",
+    );
     expect(
-      screen.getByText("ما عندك مباراة جارية حاليًا."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("ما لعبت مباريات مكتملة حتى الآن."),
-    ).toBeInTheDocument();
+      screen.getByRole("link", { name: "ابدأ أول مباراة" }),
+    ).toHaveAttribute("href", "/#worlds");
   });
 
   it("shows an RTL active card whose Resume link keeps the same session id", () => {

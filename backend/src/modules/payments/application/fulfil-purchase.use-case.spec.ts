@@ -16,7 +16,7 @@ import { DiscountCodeRepository } from '../persistence/discount-code.repository'
  * provider's own word. The webhook body is a POST from the open internet; the
  * pack's listed price is the only authority on what a pack costs.
  */
-const FIVE = tokenPackById('five')!;
+const FIVE = tokenPackById('six')!;
 
 const payment = (over: Partial<VerifiedPayment> = {}): VerifiedPayment => ({
   providerPaymentId: 'pay_123',
@@ -104,7 +104,7 @@ describe('turning a paid charge into tokens', () => {
     // The attack this exists for: start the cheapest charge, hand back a body
     // naming the largest pack.
     const { run, grant } = deliver(
-      payment({ amountHalalas: tokenPackById('single')!.priceHalalas }),
+      payment({ amountHalalas: tokenPackById('three')!.priceHalalas }),
     );
     await expect(run()).rejects.toBeInstanceOf(PaymentError);
     expect(grant).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('turning a paid charge into tokens', () => {
     // The whole reason the intent exists: a forged body naming another account
     // and a larger pack must change neither.
     const { run, grant } = deliver(
-      payment({ metadata: { accountId: 'someone-else', packId: 'fifteen' } }),
+      payment({ metadata: { accountId: 'someone-else', packId: 'twelve' } }),
     );
     await run();
     expect(grant).toHaveBeenCalledWith(
@@ -378,7 +378,7 @@ describe('settling a charge the player came back with', () => {
   it('still refuses a charge that paid less than the pack costs', async () => {
     // The price check belongs to the shared core, so every route in gets it.
     const { run, grant } = returning(
-      payment({ amountHalalas: tokenPackById('single')!.priceHalalas }),
+      payment({ amountHalalas: tokenPackById('three')!.priceHalalas }),
     );
     await expect(run()).rejects.toBeInstanceOf(PaymentError);
     expect(grant).not.toHaveBeenCalled();

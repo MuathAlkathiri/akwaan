@@ -1,6 +1,9 @@
 "use client";
 
+import { GiftCodeForm } from "@/features/entitlements/components/gift-code-form";
+import { moreMatchesMailto } from "@/features/entitlements/contact";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Loader2, X } from "lucide-react";
 import { useShopCatalogue, useQuote, useStartCheckout } from "../api/shop";
 import { freeUntilLabel } from "./shop-state";
@@ -25,6 +28,7 @@ export function BuyPanel({ onClose }: { onClose: () => void }) {
   const [typed, setTyped] = useState("");
   const [applied, setApplied] = useState<string>();
   const checkout = useStartCheckout();
+  const { user } = useAuth();
   const panel = useRef<HTMLDivElement>(null);
 
   const selling = catalogue?.selling ?? false;
@@ -98,9 +102,10 @@ export function BuyPanel({ onClose }: { onClose: () => void }) {
         // nothing here can take money, so nothing here pretends it can.
         <div className="space-y-3">
           <p className="rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold)/.2)] p-3 text-sm font-bold leading-6 text-[hsl(var(--brand-navy))]">
-            كل المباريات مجانية
-            {closesOn ? ` لين ${closesOn}` : ""} — العب براحتك.
+            أول شهر ببلاش: 3 مباريات كل أسبوع لكل حساب
+            {closesOn ? `، لين ${closesOn}` : ""}. والشراء ما انفتح للحين.
           </p>
+          <GiftCodeForm />
           <ul className="space-y-2">
             {list.map((pack) => (
               <li
@@ -108,13 +113,19 @@ export function BuyPanel({ onClose }: { onClose: () => void }) {
                 className="flex items-center justify-between rounded-2xl border-2 border-[hsl(var(--brand-navy)/.18)] px-4 py-3 text-sm font-bold text-[hsl(var(--brand-navy)/.55)]"
               >
                 <span>{pack.label}</span>
-                <span className="tabular-nums">{pack.priceRiyals} ريال</span>
+                <span className="akwaan-numeral">{pack.priceRiyals} ريال</span>
               </li>
             ))}
           </ul>
           <p className="text-center text-xs text-[hsl(var(--brand-navy)/.55)]">
-            الأسعار ذي تشتغل بعد انتهاء المجانية
+            هذي أسعار الباقات لما ينفتح الشراء
           </p>
+          <a
+            href={moreMatchesMailto(user?.email)}
+            className="flex min-h-11 items-center justify-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-sm font-bold text-[hsl(var(--brand-navy))] no-underline"
+          >
+            تبي أكثر؟ كلمنا
+          </a>
         </div>
       ) : (
         <div className="space-y-2">

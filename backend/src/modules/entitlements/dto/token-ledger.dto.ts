@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, Min, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class GrantTokensDto {
   @ApiProperty({
@@ -46,4 +56,59 @@ export class TokenMovementDto {
 
 export class TokenBalanceDto {
   @ApiProperty({ example: 4 }) balance!: number;
+}
+
+const GIFT_CODE_SHAPE = /^[A-Za-z0-9_-]+$/;
+
+export class RedeemGiftCodeDto {
+  @ApiProperty({ example: 'FEEDBACK' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(32)
+  @Matches(GIFT_CODE_SHAPE)
+  code!: string;
+}
+
+export class CreateGiftCodeDto {
+  @ApiProperty({ example: 'FEEDBACK' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(32)
+  @Matches(GIFT_CODE_SHAPE)
+  code!: string;
+
+  @ApiProperty({ description: 'Matches each account gets.', example: 2 })
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  tokens!: number;
+
+  @ApiProperty({ description: 'How many accounts may use it.', example: 50 })
+  @IsInt()
+  @Min(1)
+  @Max(100000)
+  maxRedemptions!: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  note?: string;
+}
+
+export class SetGiftCodeActiveDto {
+  @ApiProperty()
+  @IsBoolean()
+  active!: boolean;
+}
+
+export class SetWeeklyLimitDto {
+  @ApiProperty({
+    description: 'Free Matches per account per week.',
+    example: 3,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  weeklyFreeMatches!: number;
 }

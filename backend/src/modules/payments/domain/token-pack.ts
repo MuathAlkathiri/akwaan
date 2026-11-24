@@ -26,15 +26,18 @@ export const HALALAS_PER_RIYAL = 100;
 /**
  * The catalogue.
  *
- * The single token exists to lower the cost of trying the game, not because it
- * is good business: a fixed fee of about one riyal per transaction eats roughly
- * 8% of a 15-riyal sale and under 3% of a 60-riyal one. The packs are where the
- * margin is, which is why they are cheaper per Match and listed first.
+ * No single Match is sold: the smallest thing to buy is three. A fixed fee of
+ * about a riyal per transaction eats too much of a one-Match sale, and a
+ * player who has decided to pay is deciding to play more than once.
+ *
+ * One price for everybody from the first day. Any future offer adds Matches
+ * to a pack; it never lowers a price, because a price that has been lowered
+ * cannot be raised back.
  */
 export const TOKEN_PACKS: readonly TokenPack[] = [
-  { id: 'single', tokens: 1, priceHalalas: 1500, label: 'مباراة وحدة' },
-  { id: 'five', tokens: 5, priceHalalas: 6000, label: '5 مباريات' },
-  { id: 'fifteen', tokens: 15, priceHalalas: 15000, label: '15 مباراة' },
+  { id: 'three', tokens: 3, priceHalalas: 3500, label: '3 مباريات' },
+  { id: 'six', tokens: 6, priceHalalas: 5900, label: '6 مباريات' },
+  { id: 'twelve', tokens: 12, priceHalalas: 9900, label: '12 مباراة' },
 ] as const;
 
 export function tokenPackById(id: string): TokenPack | undefined {

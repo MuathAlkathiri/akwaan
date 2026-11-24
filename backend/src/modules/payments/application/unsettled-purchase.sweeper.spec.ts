@@ -18,7 +18,7 @@ const intentFor = (over: Partial<PurchaseIntent> = {}): PurchaseIntent => ({
   providerPaymentId: 'pay_1',
   provider: 'moyasar',
   accountId: 'acc-1',
-  packId: 'five',
+  packId: 'six',
   amountHalalas: 6000,
   ...over,
 });

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MATCH_SETUP_ROUTE, writeStoredDraft } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
+import { Spark } from "@/components/akwaan/sticker";
 import { cn } from "@/lib/utils";
 import { createReplayDraft } from "./replay";
 import type { MyMatchSummary } from "./types";
@@ -32,33 +33,67 @@ function MyMatchesContent() {
     [worlds.data],
   );
 
+  const nothingYet =
+    query.data !== undefined &&
+    query.data.active.length === 0 &&
+    query.data.completed.length === 0 &&
+    page === 1;
+
   return (
     <div
       dir="rtl"
-      className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:py-14"
+      className="relative z-10 mx-auto w-full max-w-[1180px] px-4 pb-20 pt-8 sm:px-8 sm:pt-12"
     >
-      <header className="mb-10 text-center">
-        <p className="mb-2 text-sm font-bold text-[hsl(var(--brand-gold))]">
-          سجل مبارياتك
-        </p>
-        <h1 className="font-display text-4xl font-black text-[hsl(var(--brand-navy))] sm:text-5xl">
-          مبارياتي
-        </h1>
+      <header className="mb-10 flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <h1 className="font-display text-[40px] font-black leading-[1.3] text-brand-navy sm:text-[56px]">
+            مبارياتي
+          </h1>
+          <p className="mt-2 text-base leading-[1.8] text-brand-slate sm:text-lg">
+            كل مباراة لعبتها، واللي ما كملت تقدر تكملها من هنا.
+          </p>
+        </div>
+        {!nothingYet && (
+          <Link href="/#worlds" className={GOLD_LINK}>
+            مباراة جديدة
+          </Link>
+        )}
       </header>
 
       {query.isLoading ? (
         <MyMatchesSkeleton />
       ) : query.isError ? (
         <div className="surface-card grid justify-items-center gap-4 p-10 text-center">
-          <p className="font-bold text-foreground">تعذر تحميل مبارياتك.</p>
+          <p className="font-bold text-brand-navy">تعذر تحميل مبارياتك.</p>
           <Button variant="outline" onClick={() => void query.refetch()}>
             حاول مرة ثانية
           </Button>
         </div>
+      ) : nothingYet ? (
+        <div
+          data-testid="my-matches-empty"
+          className="mx-auto flex max-w-xl flex-col items-center gap-5 rounded-[28px] border-[3px] border-brand-navy bg-brand-lavender px-6 py-12 text-center shadow-[6px_7px_0_hsl(var(--brand-navy))]"
+        >
+          <span
+            aria-hidden
+            className="grid size-24 place-items-center rounded-full border-[3px] border-brand-navy bg-brand-purple"
+          >
+            <Spark className="size-10" fill="#fff" />
+          </span>
+          <h2 className="font-display text-[26px] font-black text-brand-navy sm:text-[32px]">
+            ما لعبت ولا مباراة للحين
+          </h2>
+          <p className="max-w-sm text-base leading-[1.8] text-brand-slate sm:text-lg">
+            اختر 3 عوالم، اجمع ربعك، وأول مباراة تطلع لك هنا.
+          </p>
+          <Link href="/#worlds" className={GOLD_LINK}>
+            ابدأ أول مباراة
+          </Link>
+        </div>
       ) : (
         <div className="space-y-12">
           <MatchSection
-            title="مباريات جارية"
+            title="مباراة ما كملت"
             empty="ما عندك مباراة جارية حاليًا."
           >
             {query.data?.active.map((match) => (
@@ -67,7 +102,7 @@ function MyMatchesContent() {
           </MatchSection>
 
           <MatchSection
-            title="مباريات سابقة"
+            title="مباريات خلصت"
             empty="ما لعبت مباريات مكتملة حتى الآن."
           >
             {query.data?.completed.map((match) => (
@@ -92,7 +127,7 @@ function MyMatchesContent() {
               >
                 الأحدث
               </Button>
-              <span className="akwaan-numeral text-sm font-bold text-muted-foreground">
+              <span className="akwaan-numeral text-sm font-bold text-brand-slate">
                 {page}
               </span>
               <Button
@@ -110,6 +145,9 @@ function MyMatchesContent() {
   );
 }
 
+const GOLD_LINK =
+  "inline-flex min-h-[3.5rem] items-center justify-center rounded-full border-[3px] border-brand-navy bg-brand-gold px-8 font-display text-lg font-extrabold text-brand-navy no-underline shadow-[5px_6px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 sm:text-xl";
+
 /**
  * The initial-query placeholder: the real two-section, two-column card geometry
  * so the list resolves in place without a layout shift. The page header and site
@@ -121,12 +159,9 @@ function MyMatchesSkeleton() {
       {[0, 1].map((section) => (
         <section key={section}>
           <Skeleton className="mb-5 h-8 w-40 rounded-lg" />
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             {[0, 1].map((card) => (
-              <Skeleton
-                key={card}
-                className="h-64 w-full rounded-[1.5rem]"
-              />
+              <Skeleton key={card} className="h-64 w-full rounded-3xl" />
             ))}
           </div>
         </section>
@@ -151,14 +186,14 @@ function MatchSection({
     <section aria-labelledby={`section-${title}`}>
       <h2
         id={`section-${title}`}
-        className="mb-5 font-display text-2xl font-black text-[hsl(var(--brand-navy))]"
+        className="mb-5 font-display text-2xl font-extrabold text-brand-navy sm:text-[28px]"
       >
         {title}
       </h2>
       {hasChildren ? (
-        <div className="grid gap-5 md:grid-cols-2">{children}</div>
+        <div className="grid gap-6 md:grid-cols-2">{children}</div>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border bg-white/65 p-8 text-center text-muted-foreground">
+        <p className="rounded-[20px] border-2 border-dashed border-brand-dash bg-white p-8 text-center text-brand-slate">
           {empty}
         </p>
       )}
@@ -187,33 +222,43 @@ function MatchCard({
   const winner = match.result?.winnerTeamId
     ? match.teams.find((team) => team.id === match.result?.winnerTeamId)
     : undefined;
-  const date = new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(
-    new Date(match.completedAt ?? match.createdAt),
-  );
+  // Gregorian with Western digits: the site writes every number one way.
+  const date = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+    dateStyle: "medium",
+  }).format(new Date(match.completedAt ?? match.createdAt));
+  const tie = Boolean(match.result?.tie);
+  const total = match.progress.totalChallenges;
+  const done = match.progress.completedChallenges;
+
   return (
-    <article className="flex min-w-0 flex-col gap-5 rounded-[1.5rem] border border-[hsl(var(--brand-gold)/.28)] bg-white/85 p-5 shadow-[0_18px_44px_-34px_hsl(var(--brand-navy)/.4)] sm:p-6">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2 text-sm font-bold text-muted-foreground">
-          <CalendarDays
-            className="size-4 shrink-0 text-[hsl(var(--brand-gold))]"
-            aria-hidden
-          />
+    <article
+      className={cn(
+        "flex min-w-0 flex-col gap-5 rounded-3xl border-[3px] border-brand-navy p-5 sm:p-6",
+        // An unfinished Match is the one thing here to act on, so it is the
+        // card that stands off the page.
+        completed
+          ? "bg-brand-paper"
+          : "bg-brand-lavender shadow-[6px_7px_0_hsl(var(--brand-navy))]",
+      )}
+    >
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2 text-sm font-bold text-brand-slate">
+          <CalendarDays className="size-4 shrink-0" aria-hidden />
           <span>{date}</span>
         </div>
         {completed ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--brand-gold)/.1)] px-3 py-1 text-xs font-black text-[hsl(var(--brand-navy))]">
-            <Trophy
-              className="size-3.5 text-[hsl(var(--brand-gold))]"
-              aria-hidden
-            />
-            {match.result?.tie
-              ? "تعادل"
-              : winner
-                ? `فاز ${winner.name}`
-                : "مكتملة"}
+          <span
+            className={cn(
+              "inline-flex min-h-7 items-center gap-1.5 rounded-full border-2 border-brand-navy px-3 text-xs font-bold text-brand-navy",
+              // Gold for a win; lavender for a draw. Never green or red.
+              tie || !winner ? "bg-brand-lavender" : "bg-brand-gold",
+            )}
+          >
+            {!tie && winner && <Trophy className="size-3.5" aria-hidden />}
+            {tie ? "تعادل" : winner ? `فاز ${winner.name}` : "مكتملة"}
           </span>
         ) : !match.resumable ? (
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
+          <span className="rounded-full border-2 border-brand-dash bg-white px-3 py-1 text-xs font-bold text-brand-plum">
             {match.resumeState === "session_expired"
               ? "انتهت صلاحية الجلسة"
               : "غير متاحة للمتابعة"}
@@ -221,56 +266,83 @@ function MatchCard({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-center">
+      <p className="font-display text-lg font-extrabold leading-relaxed text-brand-navy sm:text-xl">
+        {match.occurrences.map((occurrence, index) => (
+          <span key={occurrence.occurrenceIndex}>
+            {index > 0 && <span className="text-brand-dash"> · </span>}
+            {worldNames.get(occurrence.worldId) ?? "عالم"}
+          </span>
+        ))}
+      </p>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-[18px] border-2 border-brand-mist bg-white px-4 py-3 text-center">
         {match.teams.slice(0, 2).map((team, index) => (
           <div
             key={team.id}
             className={cn("min-w-0", index === 1 && "col-start-3")}
           >
             <p
-              className="truncate font-display text-base font-black text-foreground"
+              className="truncate text-sm font-bold text-brand-navy sm:text-base"
               title={team.name}
             >
               {team.name}
             </p>
-            <p className="akwaan-numeral mt-1 text-3xl font-black text-[hsl(var(--brand-navy))]">
+            <p
+              className={cn(
+                "akwaan-numeral mt-0.5 text-4xl font-bold leading-none",
+                completed && (tie || team.id === winner?.id)
+                  ? "text-[hsl(40_57%_42%)]"
+                  : "text-brand-navy",
+              )}
+            >
               {team.displayScore}
             </p>
           </div>
         ))}
-        <span className="col-start-2 row-start-1 text-xs font-black text-[hsl(var(--brand-gold))]">
+        <span className="col-start-2 row-start-1 font-display text-sm font-extrabold text-brand-bronze">
           VS
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {match.occurrences.map((occurrence) => (
-          <span
-            key={occurrence.occurrenceIndex}
-            className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-bold text-[hsl(var(--brand-navy)/.72)]"
-          >
-            {worldNames.get(occurrence.worldId) ?? "عالم"}
-          </span>
-        ))}
+      <div className="space-y-2">
+        <p className="text-sm font-bold text-brand-slate">
+          <span className="akwaan-numeral">
+            {done}/{total}
+          </span>{" "}
+          تحديات مكتملة
+        </p>
+        {!completed && total > 0 && total <= 24 && (
+          <div aria-hidden className="flex flex-wrap gap-1">
+            {Array.from({ length: total }, (_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  "h-2.5 min-w-4 flex-1 rounded-full border-2 border-brand-navy",
+                  index < done ? "bg-brand-gold" : "bg-white",
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      <p className="akwaan-numeral text-sm font-bold text-muted-foreground">
-        {match.progress.completedChallenges}/{match.progress.totalChallenges}{" "}
-        تحديات مكتملة
-      </p>
-
       {completed ? (
-        <Button className="mt-auto gap-2" onClick={replay}>
+        <Button
+          variant="outline"
+          className="mt-auto h-12 gap-2 rounded-full border-[3px] border-brand-navy bg-white text-base font-bold text-brand-navy hover:bg-brand-lavender"
+          onClick={replay}
+        >
           <RotateCcw className="size-4" aria-hidden />
           العب مرة ثانية
         </Button>
       ) : match.resumable ? (
-        <Button asChild className="mt-auto gap-2">
-          <Link href={`/matches/${match.liveSessionId}`}>
-            كمّل المباراة
-            <ChevronLeft className="size-4" aria-hidden />
-          </Link>
-        </Button>
+        <Link
+          href={`/matches/${match.liveSessionId}`}
+          className={cn(GOLD_LINK, "mt-auto gap-2")}
+        >
+          كمّل المباراة
+          <ChevronLeft className="size-5" aria-hidden />
+        </Link>
       ) : null}
     </article>
   );

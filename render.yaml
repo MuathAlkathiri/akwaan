@@ -121,13 +121,15 @@ services:
         sync: false
 
       # --- Launch campaign ---
-      # The free month. Verified against the running service 2026-11-23: with
-      # this unset the campaign had no end at all, which is why it is declared
-      # here with its value rather than left to the dashboard.
+      # The free month: 3 free Matches a week per account until the end of
+      # Friday 1 January 2027 in Riyadh. The weekly number itself is set from
+      # the admin, not here. Unset, the code falls back to this same instant.
       - key: LAUNCH_CAMPAIGN_ENDS_AT
-        value: "2026-12-31T20:59:59.000Z"
-      - key: LAUNCH_CAMPAIGN_TOKENS
-        sync: false
+        value: "2027-01-01T21:00:00.000Z"
+      # Whether the shop takes money. A switch, not a date: it goes to "true"
+      # only once live payment keys and a verified webhook are in place.
+      - key: SALES_OPEN
+        value: "false"
 
       # --- Content Engine ---
       # Values live in the dashboard; declared here so a blueprint sync cannot
@@ -271,8 +273,9 @@ services:
       # to rehearse.
       - key: LAUNCH_CAMPAIGN_ENDS_AT
         value: "2026-01-01T00:00:00.000Z"
-      - key: LAUNCH_CAMPAIGN_TOKENS
-        sync: false
+      # Staging sells, with test keys, so the purchase path can be rehearsed.
+      - key: SALES_OPEN
+        value: "true"
 
       # --- Passwordless OTP login ---
       - key: OTP_EXPIRES_SECONDS

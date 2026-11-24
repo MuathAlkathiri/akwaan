@@ -23,6 +23,8 @@ export const TOKEN_LEDGER_REASONS = [
   'match.refund',
   /** An operator put it there by hand, for a player who was owed it. */
   'admin.grant',
+  /** A code a player typed in, worth a fixed number of Matches. */
+  'gift-code',
 ] as const;
 
 export type TokenLedgerReason = (typeof TOKEN_LEDGER_REASONS)[number];
