@@ -267,6 +267,9 @@ const mechanicRetiredPhrases = (profile?: string): string[][] => {
  */
 export const CLOSEST_ANCHOR_CENTRE_BAND = 0.1;
 
+/** The World whose items are solved from the prompt rather than recalled. */
+const PUZZLES_WORLD_KEY = 'puzzles';
+
 const blocking = (code: string, message: string): ScreenFinding => ({
   code,
   severity: 'blocking',
@@ -994,10 +997,20 @@ export class DeterministicScreenService {
     const normalizedPrompt = normalizeAnswer(prompt);
     if (correctLabel && this.detectAnswerLeakage(prompt, correctLabel)) {
       findings.push(
-        blocking(
-          'ANSWER_LEAKAGE',
-          'the correct answer appears in the prompt text',
-        ),
+        // A Puzzles item is solved from what the prompt states, so the right
+        // option is routinely built from the prompt's own words — «5 مكائن
+        // تصنع 5 ألعاب في 5 دقائق» is answered «5 دقائق», and a ووردل prompt
+        // lists every option. There the overlap is the trap, not a giveaway,
+        // and only a reader can tell the two apart.
+        screenOptions?.worldKey === PUZZLES_WORLD_KEY
+          ? warning(
+              'ANSWER_WORDING_IN_PROMPT',
+              'the correct option also appears in the prompt text; check the prompt does not give it away',
+            )
+          : blocking(
+              'ANSWER_LEAKAGE',
+              'the correct answer appears in the prompt text',
+            ),
       );
     }
 

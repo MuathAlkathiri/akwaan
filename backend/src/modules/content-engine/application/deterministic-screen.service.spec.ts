@@ -773,6 +773,32 @@ describe('DeterministicScreenService', () => {
 
     const STEM = 'ما العنصر الدخيل؟';
 
+    it('blocks a leaked answer outside Puzzles, and only flags the overlap inside it', () => {
+      // The first real إكس أو batch: the right option is the trap itself.
+      const item = mc(
+        '5 مكائن تصنع 5 ألعاب في 5 دقائق. كم دقيقة تحتاج 100 مكينة عشان تصنع 100 لعبة؟',
+        ['100 دقيقة', '5 دقائق', '20 دقيقة'],
+        1,
+      );
+      expect(codes(item)).toContain('ANSWER_LEAKAGE');
+
+      const inPuzzles = service.screen(item, undefined, {
+        worldKey: 'puzzles',
+        mechanicKey: 'moving-xo',
+      }).findings;
+      expect(
+        inPuzzles.filter((f) => f.severity === 'blocking').map((f) => f.code),
+      ).not.toContain('ANSWER_LEAKAGE');
+      expect(inPuzzles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'ANSWER_WORDING_IN_PROMPT',
+            severity: 'warning',
+          }),
+        ]),
+      );
+    });
+
     it('1. accepts two different puzzles sharing a generic stem', () => {
       // Phase 2p P5 and P6: the stem is identical, the puzzles are not. The
       // old prompt-only identity blocked the second one.
