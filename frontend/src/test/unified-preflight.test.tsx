@@ -330,7 +330,7 @@ describe("challenge preflight", () => {
     renderRouter(match());
 
     // No QR anywhere on the board.
-    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
     await user.click(screen.getByTestId("unified-position-2#slot_1"));
 
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
@@ -357,7 +357,7 @@ describe("challenge preflight", () => {
     expect(view.textContent).toContain("العالم الثالث");
     expect(view.textContent).not.toContain("اجمعوا المقاطع ثم أجيبوا");
     expect(view.textContent).not.toContain("نطاق أول");
-    expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
       "ABC123",
     );
     // A real QR, carrying the absolute join URL for this origin.
@@ -413,7 +413,7 @@ describe("challenge preflight", () => {
     expect(enlarged).toBe(inline);
 
     // The join code and copy control the room relies on are still there.
-    expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
       "ABC123",
     );
 
@@ -504,9 +504,9 @@ describe("challenge preflight", () => {
       screen.getByTestId("preflight-players-paired").textContent,
     ).toContain("اللاعبين متصلين وجاهزين");
     // No QR taking over the screen, but the code is one tap away.
-    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
     await user.click(screen.getByTestId("preflight-join-toggle"));
-    expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
       "ABC123",
     );
   });
@@ -524,7 +524,7 @@ describe("challenge preflight", () => {
       "aria-expanded",
       "false",
     );
-    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
 
     // A different Match gets its own first-join presentation state.
     first.unmount();
@@ -565,7 +565,7 @@ describe("challenge preflight", () => {
 
     renderRouter(state);
     expect(screen.getByTestId("challenge-preflight").textContent).toBe(before);
-    expect(screen.getByTestId("preflight-join-code").textContent).toBe(
+    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
       "ABC123",
     );
     // Nothing was re-requested to get back here.
@@ -601,7 +601,7 @@ describe("challenge preflight", () => {
 
     expect(screen.queryByTestId("challenge-preflight")).toBeNull();
     expect(screen.queryByTestId("preflight-start")).toBeNull();
-    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
     // It still says what is happening.
     const waiting = screen.getByTestId("preflight-waiting");
     expect(waiting.textContent).toContain("ركّبها");
@@ -628,7 +628,7 @@ describe("challenge preflight", () => {
       }),
     );
 
-    expect(screen.queryByTestId("preflight-join-code")).toBeNull();
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
     expect(screen.getByTestId("challenge-preflight").textContent).toContain(
       "يُلعب هذا التحدي من الشاشة المشتركة",
     );

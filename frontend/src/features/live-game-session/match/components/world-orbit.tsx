@@ -200,7 +200,7 @@ function OrbitNode({
       <span
         className={cn(
           "text-sm font-bold whitespace-nowrap sm:text-base xl:text-[19px]",
-          completed && "text-[#4A5468]",
+          completed && "text-brand-slate",
           unplayable && "text-disabled-foreground",
         )}
       >

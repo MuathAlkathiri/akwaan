@@ -138,13 +138,13 @@ export function MobileGameplayShell({
           already has a screen showing the score to everyone. */}
           <header
             data-testid="mobile-shell-header"
-            className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-2"
+            className="flex shrink-0 items-center justify-between gap-2 border-b-[3px] border-[hsl(var(--brand-navy))] bg-white px-3 py-2.5"
           >
             <div className="min-w-0">
-              <p className="truncate text-[0.7rem] font-black text-muted-foreground">
+              <p className="truncate text-[0.7rem] font-bold text-brand-slate">
                 {challengeName?.worldName ?? "أكوان"}
               </p>
-              <p className="truncate text-sm font-black leading-tight text-foreground">
+              <p className="truncate font-display text-[15px] font-extrabold leading-tight text-[hsl(var(--brand-navy))]">
                 {challengeName?.challengeName ?? "المباراة"}
               </p>
             </div>
@@ -159,16 +159,14 @@ export function MobileGameplayShell({
                   data-testid="mobile-shell-team"
                   data-team-id={team.id}
                   className={cn(
-                    "inline-flex max-w-[7.5rem] items-center gap-1.5 rounded-full border px-2 py-1 text-[0.7rem] font-black",
-                    identity.surface,
-                    identity.border,
-                    identity.text,
+                    // The team is a dot and a name. Never a tinted chip.
+                    "inline-flex max-w-[8.5rem] items-center gap-1.5 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-2.5 py-1 text-[0.7rem] font-bold text-[hsl(var(--brand-navy))]",
                   )}
                 >
                   <span
                     aria-hidden
                     className={cn(
-                      "size-1.5 shrink-0 rounded-full",
+                      "size-2.5 shrink-0 rounded-full border border-[hsl(var(--brand-navy))]",
                       identity.dot,
                     )}
                   />
@@ -224,10 +222,8 @@ export function MobileStatus({ phase }: { phase: MobilePhase }) {
       role="status"
       aria-live="polite"
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[0.7rem] font-black",
-        phase === "action"
-          ? "border-brand-gold/60 bg-brand-gold/15 text-foreground"
-          : "border-border bg-muted/60 text-muted-foreground",
+        "inline-flex shrink-0 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] px-2.5 py-1 text-[0.7rem] font-bold text-[hsl(var(--brand-navy))]",
+        phase === "action" ? "bg-[hsl(var(--brand-gold))]" : "bg-brand-wash",
       )}
     >
       {PHASE_LABEL[phase]}

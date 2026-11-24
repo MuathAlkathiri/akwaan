@@ -73,7 +73,7 @@ export function MatchScoreHud({
                 "flex min-h-11 min-w-0 items-center gap-1.5 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-2.5 sm:min-h-[3.25rem] sm:gap-3 sm:px-4",
                 // The side on turn is lifted off the page; the other lies flat.
                 isActive &&
-                  "bg-[#F6F3FC] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+                  "bg-brand-lavender shadow-[4px_5px_0_hsl(var(--brand-navy))]",
               )}
             >
               <span
@@ -105,7 +105,7 @@ export function MatchScoreHud({
                     type="button"
                     aria-label={`إنقاص نقطة من ${team.name}`}
                     disabled={isPending}
-                    className="grid size-7 place-items-center rounded-full border-2 border-[#B9B2D9] bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
+                    className="grid size-7 place-items-center rounded-full border-2 border-brand-dash bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
                     onClick={() => onScore(team.id, -1)}
                   >
                     <Minus className="size-3.5" aria-hidden />
@@ -119,7 +119,7 @@ export function MatchScoreHud({
                     type="button"
                     aria-label={`إضافة نقطة إلى ${team.name}`}
                     disabled={isPending}
-                    className="grid size-7 place-items-center rounded-full border-2 border-[#B9B2D9] bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
+                    className="grid size-7 place-items-center rounded-full border-2 border-brand-dash bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
                     onClick={() => onScore(team.id, 1)}
                   >
                     <Plus className="size-3.5" aria-hidden />
@@ -134,7 +134,7 @@ export function MatchScoreHud({
         data-testid="hud-vs"
         aria-hidden
         dir="ltr"
-        className="col-start-2 row-start-1 shrink-0 px-0.5 font-display text-xs font-extrabold text-[#7A5C14] sm:text-lg"
+        className="col-start-2 row-start-1 shrink-0 px-0.5 font-display text-xs font-extrabold text-brand-bronze sm:text-lg"
       >
         VS
       </span>

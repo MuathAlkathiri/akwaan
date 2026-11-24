@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import type { PlayableScope, PlayableWorld } from "@/features/worlds/types";
@@ -84,6 +85,16 @@ const setCatalog = (worlds: PlayableWorld[]) => {
   mocks.worlds = { data: worlds, isLoading: false, isError: false };
 };
 
+/** The home reads remaining-question counts through the app's query client. */
+const renderHome = () =>
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <WorldsHome />
+    </QueryClientProvider>,
+  );
+
 const upcomingList = () => screen.queryByTestId("upcoming-worlds");
 
 beforeEach(() => {
@@ -95,7 +106,7 @@ beforeEach(() => {
 
 describe("the worlds page reads availability from the catalog", () => {
   it("never shows one World in both rows", () => {
-    render(<WorldsHome />);
+    renderHome();
     const upcoming = upcomingList()!;
     // الأغاني is selectable, so it must not also be announced as coming.
     expect(within(upcoming).queryByText("الأغاني")).toBeNull();
@@ -113,7 +124,7 @@ describe("the worlds page reads availability from the catalog", () => {
   });
 
   it("announces an upcoming World without making it selectable", () => {
-    render(<WorldsHome />);
+    renderHome();
     const card = screen.getByTestId("upcoming-world-movies");
     expect(card).toHaveAttribute("aria-disabled", "true");
     expect(card).toHaveTextContent("الأفلام");
@@ -125,7 +136,7 @@ describe("the worlds page reads availability from the catalog", () => {
   it("promotes a World on new API data alone, with no code that knows its slug", () => {
     // Before: the catalog calls الأغاني upcoming, so it is announced only.
     setCatalog([MUSIC_UPCOMING, world("anime", "أنمي", 2), MOVIES]);
-    const first = render(<WorldsHome />);
+    const first = renderHome();
     expect(
       within(upcomingList()!).getByText("الأغاني"),
     ).toBeInTheDocument();
@@ -133,20 +144,20 @@ describe("the worlds page reads availability from the catalog", () => {
 
     // After: the same World, now available. Nothing about this page changed.
     setCatalog([MUSIC_AVAILABLE, world("anime", "أنمي", 2), MOVIES]);
-    render(<WorldsHome />);
+    renderHome();
     expect(within(upcomingList()!).queryByText("الأغاني")).toBeNull();
   });
 
   it("hides the whole section when nothing is coming", () => {
     setCatalog([MUSIC_AVAILABLE, world("anime", "أنمي", 2)]);
-    render(<WorldsHome />);
+    renderHome();
     expect(screen.queryByText(UPCOMING_SECTION)).toBeNull();
     expect(upcomingList()).toBeNull();
     expect(screen.queryByText("قريبًا")).toBeNull();
   });
 
   it("falls back to the neutral placeholder when a World has no artwork", () => {
-    render(<WorldsHome />);
+    renderHome();
     const card = screen.getByTestId("upcoming-world-movies");
     // The neutral dashed plate, not a broken image and not a blank hole.
     expect(card.querySelector("img")).toBeNull();
@@ -163,7 +174,7 @@ describe("the worlds page reads availability from the catalog", () => {
         altText: "المسلسلات",
       }),
     ]);
-    render(<WorldsHome />);
+    renderHome();
     const card = screen.getByTestId("upcoming-world-series");
     expect(card.querySelector("img")).toBeTruthy();
     expect(card).toHaveTextContent("المسلسلات");
@@ -190,7 +201,7 @@ describe("the worlds page reads availability from the catalog", () => {
         altText: "المسلسلات",
       }),
     ]);
-    render(<WorldsHome />);
+    renderHome();
     const covers = document.querySelectorAll("[data-has-artwork]");
     expect(covers.length).toBeGreaterThan(0);
     for (const cover of covers) {

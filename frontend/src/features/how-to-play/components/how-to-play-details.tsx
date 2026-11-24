@@ -96,7 +96,7 @@ const CHALLENGES: {
 const TAG = "min-h-[60px] self-center px-[26px] text-[22px] sm:text-[30px]";
 const CARD = cn("rounded-[20px] p-6", STICKER.base);
 const LINK =
-  "font-bold text-[hsl(var(--brand-navy))] underline decoration-2 underline-offset-4 hover:text-[#7A5C14]";
+  "font-bold text-[hsl(var(--brand-navy))] underline decoration-2 underline-offset-4 hover:text-brand-bronze";
 
 function ChallengeCard({
   Icon,
@@ -142,17 +142,17 @@ export function HowToPlayDetails() {
         </SectionTag>
         <ul className="grid list-none gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
           {NEEDS.map(({ Icon, title, copy }) => (
-            <li key={title} className={cn(CARD, "flex flex-col gap-2.5 bg-[#FEFDFB]")}>
+            <li key={title} className={cn(CARD, "flex flex-col gap-2.5 bg-brand-paper")}>
               <span
                 aria-hidden
-                className="grid size-14 shrink-0 place-items-center rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[#F6F3FC]"
+                className="grid size-14 shrink-0 place-items-center rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender"
               >
                 <Icon className="size-7 text-[hsl(var(--brand-navy))]" strokeWidth={2} />
               </span>
               <h3 className="font-display text-[21px] font-extrabold text-[hsl(var(--brand-navy))]">
                 {title}
               </h3>
-              <p className="text-base leading-[1.85] text-[#4A5468]">{copy}</p>
+              <p className="text-base leading-[1.85] text-brand-slate">{copy}</p>
             </li>
           ))}
         </ul>
@@ -164,11 +164,11 @@ export function HowToPlayDetails() {
         </SectionTag>
         <div
           className={cn(
-            "flex flex-wrap items-center gap-x-10 gap-y-8 rounded-3xl bg-[#F6F3FC] p-6 sm:p-8",
+            "flex flex-wrap items-center gap-x-10 gap-y-8 rounded-3xl bg-brand-lavender p-6 sm:p-8",
             STICKER.base,
           )}
         >
-          <div className="flex flex-[1_1_420px] flex-col gap-4 text-base leading-[1.85] text-[#4A5468] sm:text-[17px]">
+          <div className="flex flex-[1_1_420px] flex-col gap-4 text-base leading-[1.85] text-brand-slate sm:text-[17px]">
             <p className="text-[hsl(var(--brand-navy))]">
               المضيف يفتح المباراة على الشاشة المشتركة، وتظهر غرفة انتظار فيها
               رمز QR. كل لاعب يمسح الرمز بكاميرا جواله، يكتب اسمه، يختار شخصيته
@@ -222,14 +222,14 @@ export function HowToPlayDetails() {
               <p
                 className={cn(
                   "text-base leading-[1.85]",
-                  index % 2 === 0 ? "text-[hsl(var(--brand-navy))]" : "text-[#4A5468]",
+                  index % 2 === 0 ? "text-[hsl(var(--brand-navy))]" : "text-brand-slate",
                 )}
               >
                 {copy}
               </p>
             </li>
           ))}
-          <li className={cn(CARD, "flex flex-col gap-2.5 bg-[#FEFDFB]")}>
+          <li className={cn(CARD, "flex flex-col gap-2.5 bg-brand-paper")}>
             <ArrowLeftRight
               aria-hidden
               className="size-14 text-[hsl(var(--brand-navy))]"
@@ -238,7 +238,7 @@ export function HowToPlayDetails() {
             <h3 className="font-display text-[21px] font-extrabold text-[hsl(var(--brand-navy))]">
               الترتيب على النظام
             </h3>
-            <p className="text-base leading-[1.85] text-[#4A5468]">
+            <p className="text-base leading-[1.85] text-brand-slate">
               ما تختارون التحديات بنفسكم — أكوان هو اللي يركّب اللوحة ويغيّر
               ترتيب العرض من مباراة لمباراة.
             </p>
@@ -255,7 +255,7 @@ export function HowToPlayDetails() {
         <SectionTag tone="purple" tilt={-1} className={TAG}>
           <h2 id="challenges-title">التحديات اللي تلعبونها</h2>
         </SectionTag>
-        <p className="max-w-[720px] self-center text-center text-[17px] leading-[1.8] text-[#4A5468] sm:text-lg">
+        <p className="max-w-[720px] self-center text-center text-[17px] leading-[1.8] text-brand-slate sm:text-lg">
           3 تحديات مشتركة تلقونها في كل العوالم، ويضاف لها تحدي خاص يميّز كل
           عالم عن الثاني:
         </p>
@@ -268,7 +268,7 @@ export function HowToPlayDetails() {
           <ChallengeCard
             Icon={Sparkles}
             title="التحدي الخاص بكل عالم"
-            surface="bg-[#F6F3FC] text-[hsl(var(--brand-navy))]"
+            surface="bg-brand-lavender text-[hsl(var(--brand-navy))]"
           >
             كل عالم يملك تحدي ما تلقاه في غيره — مثل «أفضل 5» في عالم كرة
             القدم، و«الكومبو» في الأنمي، و«المرحلة» في فيديو قيمز، و«ركّبها» في
@@ -285,7 +285,7 @@ export function HowToPlayDetails() {
         <SectionTag tone="white" tilt={1.5} className={TAG}>
           <h2 id="scoring-title">كيف تُحسب النقاط؟</h2>
         </SectionTag>
-        <div className="flex flex-col gap-4 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] bg-[#FEFDFB] px-6 py-7 text-base leading-[1.85] text-[#4A5468] shadow-[6px_7px_0_hsl(var(--brand-gold))] sm:px-9 sm:py-8 sm:text-[17px]">
+        <div className="flex flex-col gap-4 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper px-6 py-7 text-base leading-[1.85] text-brand-slate shadow-[6px_7px_0_hsl(var(--brand-gold))] sm:px-9 sm:py-8 sm:text-[17px]">
           <p className="text-[hsl(var(--brand-navy))]">
             ما فيه حكم ولا شخص يوقف عن اللعب عشان يصحّح. كل إجابة تتحسب
             تلقائيًا، وما أحد يشوف إجابة غيره قبل الكشف — عشان كذا ما تحتاجون

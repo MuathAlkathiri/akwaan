@@ -125,7 +125,8 @@ describe("team colour never means correct or wrong", () => {
       "src/features/live-game-session/match/components/answer-option.tsx",
     );
     expect(option).not.toMatch(SEMANTIC_UTILITY);
-    expect(option).toContain("border-selected");
+    // Gold is the identity's "this one" — a choice, not a verdict.
+    expect(option).toContain("brand-gold");
   });
 });
 

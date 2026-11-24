@@ -95,7 +95,7 @@ export function GoldPill({
         // A disabled primary keeps the outline and loses the gold: the shape
         // still reads as the main action, so the player looks for what unlocks
         // it rather than for a different button.
-        "disabled:translate-y-0 disabled:bg-[#E9E6F2] disabled:text-[#4B4380] disabled:shadow-none",
+        "disabled:translate-y-0 disabled:bg-[#E9E6F2] disabled:text-brand-plum disabled:shadow-none",
         className,
       )}
     >
