@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 /**
  * The movement a correct answer bought, presented as a short reel.
  *
- * Deliberately **not** a die. المرحلة's movement is not a d6: each band can only
- * produce the values inside its own range (سهل is 1–2, never 1–6), so a six-faced
- * object would misrepresent the exact thing the team elected. What reels past here
- * is the band's real value set and nothing else.
+ * Drawn as a die face, which is what the room calls it («النرد»), but it never
+ * behaves like a d6: each band can only produce the values inside its own range
+ * (سهل is 1–2, never 1–6), so the faces that reel past are that band's real
+ * value set and nothing else.
  *
  * Three lines keep it honest:
  *
@@ -76,12 +76,81 @@ export function useMarhalaMovementRoll({
   };
 }
 
+/** Where the pips sit on a 3×3 grid, per face. */
+const PIPS: Record<number, number[]> = {
+  1: [4],
+  2: [2, 6],
+  3: [2, 4, 6],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
+
+/**
+ * One face of the die, in the sticker style: white, navy outline, hard shadow,
+ * tilted a little so it reads as thrown rather than printed.
+ */
+export function MarhalaDie({
+  value,
+  size = 120,
+  dimmed = false,
+  className,
+}: {
+  value: number;
+  size?: number;
+  /** A face that is only passing by, before the server's value lands. */
+  dimmed?: boolean;
+  className?: string;
+}) {
+  const pips = PIPS[value];
+  return (
+    <span
+      role="img"
+      aria-label={`النرد: ${value}`}
+      data-die-value={value}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.22,
+        padding: size * 0.17,
+        borderWidth: Math.max(3, Math.round(size / 30)),
+        boxShadow: `${Math.round(size / 20)}px ${Math.round(size / 17)}px 0 hsl(var(--brand-navy))`,
+      }}
+      className={cn(
+        "grid -rotate-[8deg] grid-cols-3 grid-rows-3 place-items-center border-[hsl(var(--brand-navy))] bg-white transition-opacity duration-fast",
+        dimmed && "opacity-60",
+        className,
+      )}
+    >
+      {pips ? (
+        Array.from({ length: 9 }, (_unused, cell) => (
+          <span
+            key={cell}
+            aria-hidden
+            style={{ width: size / 6, height: size / 6 }}
+            className={cn(
+              "rounded-full",
+              pips.includes(cell) && "bg-[hsl(var(--brand-navy))]",
+            )}
+          />
+        ))
+      ) : (
+        // A value no die has a face for is still the server's value: show it.
+        <span className="akwaan-numeral col-span-3 row-span-3 text-4xl font-bold text-[hsl(var(--brand-navy))]">
+          {value}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function MarhalaMovementRoll({
   values,
   result,
   rolling,
   reducedMotion,
   teamName,
+  dieSize = 96,
   className,
 }: {
   values: number[];
@@ -89,6 +158,7 @@ export function MarhalaMovementRoll({
   rolling: boolean;
   reducedMotion: boolean;
   teamName: string;
+  dieSize?: number;
   className?: string;
 }) {
   const { value, settled } = useMarhalaMovementRoll({
@@ -103,29 +173,22 @@ export function MarhalaMovementRoll({
       data-testid="marhala-movement-roll"
       data-roll-settled={settled ? "true" : "false"}
       data-roll-value={value}
-      className={cn("space-y-1", className)}
+      className={cn("flex flex-col items-center gap-3", className)}
       role="status"
       aria-live="polite"
-      aria-label={
-        settled ? `${teamName} — تقدّم ${result} مربّعات` : undefined
-      }
+      aria-label={settled ? `${teamName} — طلع لهم ${result}` : undefined}
     >
-      <p
-        dir="ltr"
-        className={cn(
-          "akwaan-numeral text-5xl font-black leading-none transition-all duration-fast ease-akwaan sm:text-7xl",
-          settled
-            ? // The settle: the server's number, held in navy with a restrained
-              // gold halo. No flashing, nothing that reads as a jackpot.
-              "scale-105 text-foreground [text-shadow:0_0_18px_hsl(var(--brand-gold)/0.55)]"
-            : "scale-95 text-muted-foreground",
+      <MarhalaDie value={value} size={dieSize} dimmed={!settled} />
+      <p className="font-display text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl">
+        {settled ? (
+          <>
+            طلع لهم <span className="akwaan-numeral">{value}</span>
+          </>
+        ) : (
+          "النرد يدور…"
         )}
-      >
-        +{value}
       </p>
-      <p className="text-xs font-black text-muted-foreground sm:text-sm">
-        {teamName}
-      </p>
+      <p className="text-xs font-bold text-brand-slate sm:text-sm">{teamName}</p>
     </div>
   );
 }

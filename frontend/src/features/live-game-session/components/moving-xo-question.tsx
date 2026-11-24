@@ -42,8 +42,10 @@ export function MovingXoQuestion({
       )}
       <h2
         className={cn(
-          "text-center font-black leading-snug text-foreground [text-wrap:pretty]",
-          compact ? "text-lg" : "text-2xl sm:text-3xl",
+          "font-display font-extrabold text-[hsl(var(--brand-navy))] [text-wrap:pretty]",
+          compact
+            ? "text-center text-xl leading-relaxed"
+            : "text-3xl leading-relaxed lg:text-[42px] lg:leading-[1.6]",
         )}
         data-testid="moving-xo-prompt"
       >
@@ -57,7 +59,7 @@ export function MovingXoQuestion({
           {question.options.map((option) => (
             <li
               key={option.id}
-              className="rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-center font-black text-foreground"
+              className="rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-white px-4 py-3 text-center text-xl font-bold text-[hsl(var(--brand-navy))]"
             >
               <BidiText>{authoredText(option.label)}</BidiText>
             </li>

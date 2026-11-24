@@ -5,11 +5,13 @@ import { MarhalaBoard } from "@/features/live-game-session/match/components/marh
 import {
   MARHALA_BOARD,
   MARHALA_BOOSTS,
+  MARHALA_CHECKPOINTS,
   MARHALA_FINISH_POSITION,
   MARHALA_SAFE_POSITIONS,
   MARHALA_TRAPS,
   marhalaBoardRows,
   marhalaFramePosition,
+  marhalaLastCheckpoint,
   marhalaPossibleLandings,
   marhalaTileDestination,
   marhalaTileKind,
@@ -22,7 +24,7 @@ import {
  *
  * Everything the room *sees* about a race is derived here, so this is where it can
  * be pinned down without waiting on a clock: one continuous path from 1 to 16, the
- * approved V4 tile identities, the landings a band could reach from a tile, and the
+ * approved tile identities, the landings a band could reach from a tile, and the
  * order a committed turn is replayed in. None of these functions can produce a roll
  * or resolve a tile — that is the server's, and the tests hold that line too.
  */
@@ -75,23 +77,16 @@ describe("the serpentine path", () => {
 });
 
 describe("tile identities", () => {
-  it("matches the approved V4 boosts", () => {
-    expect(MARHALA_BOOSTS).toEqual({
-      3: 7,
-      5: 7,
-      8: 13,
-      10: 13,
-      12: 16,
-      14: 16,
-    });
+  it("matches the approved ladders", () => {
+    expect(MARHALA_BOOSTS).toEqual({ 3: 7, 11: 15 });
     for (const [from, to] of Object.entries(MARHALA_BOOSTS)) {
       expect(marhalaTileKind(Number(from))).toBe("boost");
       expect(marhalaTileDestination(Number(from))).toBe(to);
     }
   });
 
-  it("matches the approved V4 traps", () => {
-    expect(MARHALA_TRAPS).toEqual({ 4: 1, 6: 2, 9: 7, 11: 7, 15: 13 });
+  it("matches the approved slides", () => {
+    expect(MARHALA_TRAPS).toEqual({ 10: 6, 14: 12 });
     for (const [from, to] of Object.entries(MARHALA_TRAPS)) {
       expect(marhalaTileKind(Number(from))).toBe("trap");
       expect(marhalaTileDestination(Number(from))).toBe(to);
@@ -100,7 +95,7 @@ describe("tile identities", () => {
 
   it("treats 16 as the finish and everything else as plain", () => {
     expect(marhalaTileKind(16)).toBe("finish");
-    for (const position of [1, 2, 7, 13]) {
+    for (const position of [1, 2, 6, 7, 9, 12, 15]) {
       expect(marhalaTileKind(position)).toBe("normal");
       expect(marhalaTileDestination(position)).toBe(position);
     }
@@ -115,6 +110,14 @@ describe("tile identities", () => {
       expect(MARHALA_SAFE_POSITIONS).toContain(destination);
       expect(marhalaTileDestination(destination)).toBe(destination);
     }
+  });
+
+  it("makes every slide's foot a checkpoint, and falls back to the start", () => {
+    expect(MARHALA_CHECKPOINTS).toEqual([6, 12]);
+    expect(marhalaLastCheckpoint(5)).toBe(1);
+    expect(marhalaLastCheckpoint(6)).toBe(6);
+    expect(marhalaLastCheckpoint(11)).toBe(6);
+    expect(marhalaLastCheckpoint(15)).toBe(12);
   });
 });
 
@@ -300,7 +303,7 @@ describe("the board on screen", () => {
       />,
     );
 
-  it("renders all sixteen tiles with readable numbers", () => {
+  it("renders all sixteen stations, each one named by its number", () => {
     renderBoard({ "team-alpha": 1, "team-beta": 1 });
     for (let position = 1; position <= 16; position += 1) {
       expect(screen.getByTestId(`marhala-tile-${position}`)).toHaveTextContent(
@@ -309,7 +312,7 @@ describe("the board on screen", () => {
     }
   });
 
-  it("renders exactly the authoritative number of tiles — no decorative extras", () => {
+  it("renders exactly the authoritative number of stations — no decorative extras", () => {
     renderBoard({ "team-alpha": 1, "team-beta": 1 });
     expect(screen.queryByTestId("marhala-tile-0")).toBeNull();
     expect(
@@ -317,105 +320,62 @@ describe("the board on screen", () => {
     ).toBeNull();
   });
 
-  it("marks each tile's kind, and the start and finish by name", () => {
+  it("marks each station's kind and says its role in a word", () => {
     renderBoard({ "team-alpha": 1, "team-beta": 1 });
-    expect(screen.getByTestId("marhala-tile-3")).toHaveAttribute(
-      "data-tile-kind",
-      "boost",
-    );
-    expect(screen.getByTestId("marhala-tile-15")).toHaveAttribute(
-      "data-tile-kind",
-      "trap",
-    );
-    expect(screen.getByTestId("marhala-tile-16")).toHaveAttribute(
-      "data-tile-kind",
-      "finish",
-    );
-    expect(screen.getByTestId("marhala-tile-1")).toHaveTextContent(
-      "نقطة البداية",
-    );
-    expect(screen.getByTestId("marhala-tile-16")).toHaveTextContent(
-      "نقطة النهاية",
-    );
+    const role = (position: number) =>
+      screen.getByTestId(`marhala-tile-${position}`);
+    expect(role(3)).toHaveAttribute("data-tile-kind", "boost");
+    expect(role(3)).toHaveTextContent("قفزة");
+    expect(role(10)).toHaveAttribute("data-tile-kind", "trap");
+    expect(role(10)).toHaveTextContent("فخ");
+    expect(role(16)).toHaveAttribute("data-tile-kind", "finish");
+    expect(role(16)).toHaveTextContent("النهاية");
+    expect(role(1)).toHaveTextContent("البداية");
+    // A slide's foot is a checkpoint, and is labelled as one.
+    expect(role(6)).toHaveAttribute("data-tile-role", "checkpoint");
+    expect(role(6)).toHaveTextContent("نقطة حفظ");
+    expect(role(12)).toHaveAttribute("data-tile-role", "checkpoint");
+    expect(role(2)).toHaveAttribute("data-tile-role", "plain");
   });
 
-  it("renders destination badges only on special source tiles", () => {
+  it("writes where every connection leads, beside the connection", () => {
     renderBoard({});
-    const badges = [
-      ...document.querySelectorAll("[data-destination-badge-text]"),
-    ];
-    expect(badges).toHaveLength(11);
-    for (const tile of MARHALA_BOARD) {
-      const source = screen.queryByTestId(
-        `marhala-source-mark-${tile.position}`,
-      );
-      if (tile.kind === "boost" || tile.kind === "trap") {
-        expect(source).not.toBeNull();
-        expect(source).toHaveTextContent(
-          `${tile.destination} ${tile.kind === "boost" ? "↑" : "↓"}`,
-        );
-      } else {
-        expect(source).toBeNull();
-      }
-    }
+    expect(screen.getByTestId("marhala-route-label-3")).toHaveTextContent(
+      "يطلّعك لـ 7",
+    );
+    expect(screen.getByTestId("marhala-route-label-11")).toHaveTextContent(
+      "يطلّعك لـ 15",
+    );
+    expect(screen.getByTestId("marhala-route-label-10")).toHaveTextContent(
+      "ينزّلك لـ 6",
+    );
+    expect(screen.getByTestId("marhala-route-label-14")).toHaveTextContent(
+      "ينزّلك لـ 12",
+    );
   });
 
-  it("keeps destination chips off the board so the objects carry the route", () => {
-    renderBoard({ "team-alpha": 1, "team-beta": 1 });
-    expect(document.querySelector("[data-destination-kind]")).toBeNull();
-    expect(screen.getByTestId("marhala-route-3-7")).toHaveAttribute(
-      "data-route-object",
-      "rocket",
-    );
-    expect(screen.getByTestId("marhala-route-15-13")).toHaveAttribute(
-      "data-route-object",
-      "trap",
-    );
-    for (const tile of MARHALA_BOARD) {
-      if (tile.kind !== "boost" && tile.kind !== "trap") continue;
-      expect(
-        screen.getByTestId(`marhala-source-mark-${tile.position}`),
-      ).toHaveAttribute(
-        "data-source-direction",
-        tile.kind === "boost" ? "forward" : "backward",
-      );
-    }
-  });
-
-  it("distinguishes boost and trap mechanics by silhouette and destination mark", () => {
+  it("tells a ladder from a slide by shape, not by colour", () => {
     renderBoard({});
-    for (const route of document.querySelectorAll(
-      '[data-route-kind="boost"][data-route-full="true"]',
-    )) {
-      expect(route).toHaveAttribute("data-route-silhouette", "smooth-launch");
-      expect(Number(route.getAttribute("data-route-scale"))).toBeGreaterThan(
-        1.6,
-      );
-      expect(
-        route.querySelector('[data-route-destination-marker="landing-star"]'),
-      ).not.toBeNull();
-      expect(route.querySelector("[data-trap-fragment]")).toBeNull();
-      expect(route.querySelectorAll("[data-boost-spark]")).toHaveLength(3);
-    }
-    for (const route of document.querySelectorAll(
-      '[data-route-kind="trap"][data-route-full="true"]',
-    )) {
-      expect(route).toHaveAttribute("data-route-silhouette", "broken-drop");
-      expect(Number(route.getAttribute("data-route-scale"))).toBeGreaterThan(1);
-      expect(route.querySelectorAll("[data-trap-fragment]")).toHaveLength(4);
-      expect(
-        route.querySelector('[data-route-destination-marker="impact-crack"]'),
-      ).not.toBeNull();
-      expect(
-        route.querySelector('[data-trap-rim="broken-floor"]'),
-      ).not.toBeNull();
-      expect(
-        route.querySelector('[data-trap-warning="setback-cross"]'),
-      ).not.toBeNull();
-    }
+    const ladder = screen.getByTestId("marhala-route-3-7");
+    expect(ladder).toHaveAttribute("data-route-object", "ladder");
+    expect(ladder.querySelectorAll("[data-ladder-rung]").length).toBeGreaterThan(
+      3,
+    );
+    expect(ladder.querySelector("[data-slide-arrow]")).toBeNull();
+    const slide = screen.getByTestId("marhala-route-10-6");
+    expect(slide).toHaveAttribute("data-route-object", "slide");
+    expect(slide.querySelector("[data-slide-arrow]")).not.toBeNull();
+    expect(slide.querySelector("[data-ladder-rung]")).toBeNull();
   });
 
-  it("puts both tokens on their own authoritative tiles", () => {
+  it("uses no red on the board: red means a wrong answer and nothing else", () => {
+    renderBoard({ "team-alpha": 10, "team-beta": 1 });
+    const html = screen.getByTestId("marhala-board").innerHTML;
+    expect(html).not.toContain("destructive");
+    expect(html).not.toMatch(/#E1474C|#B81E23/i);
+  });
+
+  it("puts both tokens on their own authoritative stations", () => {
     renderBoard({ "team-alpha": 5, "team-beta": 9 });
     expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
       "data-token-position",
@@ -427,7 +387,7 @@ describe("the board on screen", () => {
     );
   });
 
-  it("keeps both tokens visible when they share a tile", () => {
+  it("keeps both tokens visible when they share a station", () => {
     renderBoard({ "team-alpha": 7, "team-beta": 7 });
     const alpha = screen.getByTestId("marhala-token-team-alpha");
     const beta = screen.getByTestId("marhala-token-team-beta");
@@ -437,10 +397,10 @@ describe("the board on screen", () => {
     expect(alpha.style.left).not.toBe(beta.style.left);
   });
 
-  it("identifies a team by more than its colour", () => {
+  it("identifies a team by its name, not by its colour alone", () => {
     renderBoard({ "team-alpha": 5, "team-beta": 9 });
     const alpha = screen.getByTestId("marhala-token-team-alpha");
-    expect(alpha).toHaveTextContent("أ");
+    expect(alpha).toHaveTextContent("ألفا");
     expect(alpha.getAttribute("aria-label")).toContain("ألفا");
     expect(alpha.getAttribute("aria-label")).toContain("5");
   });
@@ -458,41 +418,49 @@ describe("the board on screen", () => {
     expect(screen.getByTestId("marhala-token-team-beta")).toBeVisible();
   });
 
-  it("never renders the tiles a band could reach", () => {
+  it("never renders the stations a band could reach", () => {
     // The disclosure the Product decision removed has no prop left to carry it.
     renderBoard({ "team-alpha": 5, "team-beta": 1 });
     expect(document.querySelector("[data-tile-highlighted]")).toBeNull();
   });
 
-  it("marks the tile that is reacting to a portal or trap", () => {
+  it("marks the station that is reacting, and the connection that fired", () => {
     renderBoard(
-      { "team-alpha": 9, "team-beta": 1 },
-      { effect: { position: 9, kind: "trap" } },
+      { "team-alpha": 10, "team-beta": 1 },
+      { effect: { position: 10, kind: "trap" } },
     );
-    expect(screen.getByTestId("marhala-tile-9")).toHaveAttribute(
+    expect(screen.getByTestId("marhala-tile-10")).toHaveAttribute(
       "data-tile-reacting",
       "trap",
     );
+    expect(screen.getByTestId("marhala-route-10-6")).toHaveAttribute(
+      "data-route-active",
+      "true",
+    );
+    expect(screen.getByTestId("marhala-route-3-7")).toHaveAttribute(
+      "data-route-active",
+      "false",
+    );
   });
 
-  it("names each tile's role for a screen reader", () => {
+  it("names each station's role for a screen reader", () => {
     renderBoard({ "team-alpha": 1, "team-beta": 1 });
     expect(screen.getByTestId("marhala-tile-3")).toHaveAttribute(
       "aria-label",
-      "المربّع 3 — انطلاقة إلى المربّع 7",
+      "المحطة 3 — قفزة تطلّعكم للمحطة 7",
     );
-    expect(screen.getByTestId("marhala-tile-15")).toHaveAttribute(
+    expect(screen.getByTestId("marhala-tile-14")).toHaveAttribute(
       "aria-label",
-      "المربّع 15 — فخ يرجعكم إلى المربّع 13",
+      "المحطة 14 — فخ ينزّلكم للمحطة 12",
     );
     expect(screen.getByTestId("marhala-tile-16")).toHaveAttribute(
       "aria-label",
-      "المربّع 16 — نقطة النهاية",
+      "المحطة 16 — النهاية",
     );
   });
 });
 
-describe("special-tile routes are drawn from the configuration", () => {
+describe("connections are drawn from the configuration", () => {
   const renderBoard = (
     extra: Partial<Parameters<typeof MarhalaBoard>[0]> = {},
   ) =>
@@ -505,14 +473,13 @@ describe("special-tile routes are drawn from the configuration", () => {
       />,
     );
 
-  it("draws one route per configured portal, to its real destination", () => {
+  it("draws one ladder per configured boost, to its real destination", () => {
     renderBoard();
     for (const [source, destination] of Object.entries(MARHALA_BOOSTS)) {
       const route = screen.getByTestId(
         `marhala-route-${source}-${destination}`,
       );
       expect(route).toHaveAttribute("data-route-kind", "boost");
-      expect(route).toHaveAttribute("data-route-object", "rocket");
       expect(route).toHaveAttribute("data-route-source", source);
       expect(route).toHaveAttribute(
         "data-route-destination",
@@ -521,14 +488,13 @@ describe("special-tile routes are drawn from the configuration", () => {
     }
   });
 
-  it("draws one route per configured trap, to its real destination", () => {
+  it("draws one slide per configured trap, to its real destination", () => {
     renderBoard();
     for (const [source, destination] of Object.entries(MARHALA_TRAPS)) {
       const route = screen.getByTestId(
         `marhala-route-${source}-${destination}`,
       );
       expect(route).toHaveAttribute("data-route-kind", "trap");
-      expect(route).toHaveAttribute("data-route-object", "trap");
       expect(route).toHaveAttribute("data-route-source", source);
       expect(route).toHaveAttribute(
         "data-route-destination",
@@ -537,7 +503,7 @@ describe("special-tile routes are drawn from the configuration", () => {
     }
   });
 
-  it("draws no route that the configuration does not contain", () => {
+  it("draws no connection that the configuration does not contain", () => {
     renderBoard();
     const drawn = [...document.querySelectorAll("[data-route-kind]")].map(
       (node) => node.getAttribute("data-testid"),
@@ -547,296 +513,68 @@ describe("special-tile routes are drawn from the configuration", () => {
       ...Object.entries(MARHALA_TRAPS),
     ].map(([source, destination]) => `marhala-route-${source}-${destination}`);
     expect(drawn.sort()).toEqual(configured.sort());
-  });
-
-  it("mounts zero full connectors in calm state while keeping source objects", () => {
-    renderBoard({});
-    expect(document.querySelectorAll('[data-route-full="true"]')).toHaveLength(
-      0,
-    );
-    expect(document.querySelectorAll('[data-route-kind="boost"]')).toHaveLength(
-      6,
-    );
-    expect(document.querySelectorAll('[data-route-kind="trap"]')).toHaveLength(
-      5,
-    );
-  });
-
-  it("mounts exactly one full connector for the active special replay", () => {
-    renderBoard({ effect: { position: 3, kind: "boost" } });
-    const full = document.querySelectorAll('[data-route-full="true"]');
-    expect(full).toHaveLength(1);
-    expect(full[0]).toHaveAttribute("data-route-source", "3");
-    expect(full[0]).toHaveAttribute("data-route-destination", "7");
-    expect(
-      document.querySelectorAll(
-        '[data-route-kind="trap"][data-route-full="true"]',
-      ),
-    ).toHaveLength(0);
-  });
-
-  it("keeps calm rockets contained and active rockets expanded", () => {
-    const calm = renderBoard({});
-    const calmRocket = calm.container.querySelector(
-      '[data-route-kind="boost"]',
-    );
-    expect(Number(calmRocket?.getAttribute("data-route-scale"))).toBeLessThan(
-      1.3,
-    );
-    calm.unmount();
-    renderBoard({ effect: { position: 3, kind: "boost" } });
-    const activeRocket = document.querySelector(
-      '[data-route-kind="boost"][data-route-full="true"]',
-    );
-    expect(
-      Number(activeRocket?.getAttribute("data-route-scale")),
-    ).toBeGreaterThan(1.6);
-  });
-
-  it("mounts exactly one full trap connector for an active trap replay", () => {
-    renderBoard({ effect: { position: 6, kind: "trap" } });
-    const full = document.querySelectorAll('[data-route-full="true"]');
-    expect(full).toHaveLength(1);
-    expect(full[0]).toHaveAttribute("data-route-source", "6");
-    expect(full[0]).toHaveAttribute("data-route-destination", "2");
   });
 
   it("follows a board it is handed, not the one it was written against", () => {
-    // Destinations deliberately unlike the configured V4 map, so a hardcoded
-    // route table would fail here rather than quietly agreeing by coincidence.
-    const invented = MARHALA_BOARD.map((tile) => {
-      if (tile.position === 2)
-        return { ...tile, kind: "boost" as const, destination: 11 };
-      if (tile.position === 13)
-        return { ...tile, kind: "trap" as const, destination: 4 };
-      if (tile.kind === "boost" || tile.kind === "trap")
-        return { ...tile, kind: "normal" as const, destination: tile.position };
-      return tile;
-    });
-    renderBoard({ tiles: invented });
-    expect(screen.getByTestId("marhala-route-2-11")).toHaveAttribute(
-      "data-route-kind",
-      "boost",
+    // Move a ladder and a slide: the drawing and the checkpoint label follow.
+    const tiles = MARHALA_BOARD.map((tile) =>
+      tile.position === 3
+        ? { ...tile, kind: "normal" as const, destination: 3 }
+        : tile.position === 2
+          ? { ...tile, kind: "boost" as const, destination: 6 }
+          : tile.position === 10
+            ? { ...tile, kind: "trap" as const, destination: 7 }
+            : tile,
     );
-    expect(screen.getByTestId("marhala-route-13-4")).toHaveAttribute(
-      "data-route-kind",
-      "trap",
-    );
-    // The real configuration's routes are absent, because they are not this board.
+    renderBoard({ tiles });
     expect(screen.queryByTestId("marhala-route-3-7")).toBeNull();
-    expect(screen.queryByTestId("marhala-route-15-13")).toBeNull();
-    expect(document.querySelectorAll("[data-route-kind]")).toHaveLength(2);
-  });
-
-  it("lifts the firing route above the resting ones, and lights its destination", () => {
-    renderBoard({ effect: { position: 15, kind: "trap" } });
-    expect(screen.getByTestId("marhala-route-15-13")).toHaveAttribute(
-      "data-route-prominent",
-      "true",
+    expect(screen.getByTestId("marhala-route-2-6")).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-route-10-7")).toBeInTheDocument();
+    expect(screen.getByTestId("marhala-tile-7")).toHaveAttribute(
+      "data-tile-role",
+      "checkpoint",
     );
-    expect(screen.getByTestId("marhala-route-3-7")).not.toHaveAttribute(
-      "data-route-prominent",
-    );
-    // 13 is where the trap actually sends them, per the configuration.
-    expect(screen.getByTestId("marhala-tile-13")).toHaveAttribute(
-      "data-tile-destination",
-      "trap",
+    expect(screen.getByTestId("marhala-tile-6")).toHaveAttribute(
+      "data-tile-role",
+      "plain",
     );
   });
 
-  it("keeps the routes out of the accessibility tree — the tiles carry the meaning", () => {
+  it("keeps the connections out of the accessibility tree — the stations carry the meaning", () => {
     renderBoard();
-    const svg = document.querySelector("svg");
-    expect(svg).toHaveAttribute("aria-hidden", "true");
+    for (const route of document.querySelectorAll("[data-route-kind]")) {
+      expect(route).toHaveAttribute("aria-hidden", "true");
+    }
   });
 });
 
-describe("the 4×4 board reads as a board game", () => {
-  const renderBoard = (
-    extra: Partial<Parameters<typeof MarhalaBoard>[0]> = {},
-  ) =>
+describe("the board keeps the approved layout", () => {
+  it("joins only stations in neighbouring rows, so nothing is passed over", () => {
+    // The rule the drawing was approved on: a connection runs diagonally
+    // between two rows and never over a third station.
+    const at = (position: number) =>
+      MARHALA_BOARD.find((tile) => tile.position === position)!;
+    for (const [source, destination] of [
+      ...Object.entries(MARHALA_BOOSTS),
+      ...Object.entries(MARHALA_TRAPS),
+    ]) {
+      const from = at(Number(source));
+      const to = at(destination);
+      expect(Math.abs(from.row - to.row)).toBe(1);
+      expect(Math.abs(from.column - to.column)).toBe(1);
+    }
+  });
+
+  it("starts the race on the right, where an Arabic line starts", () => {
     render(
       <MarhalaBoard
         teams={TEAMS}
-        positions={{ "team-alpha": 5, "team-beta": 1 }}
+        positions={{ "team-alpha": 1, "team-beta": 4 }}
         activeTeamId="team-alpha"
-        {...extra}
       />,
     );
-
-  it("lays sixteen stations out in four rows of four", () => {
-    renderBoard();
-    const discs = [
-      ...document.querySelectorAll("[data-tile-kind] circle"),
-    ].filter((node) => Number(node.getAttribute("r")) > 0);
-    // Every station is a disc, and there are sixteen of them. Discs rather
-    // than squares: the run is printed underneath and shows between them.
-    expect(discs.length).toBeGreaterThanOrEqual(MARHALA_FINISH_POSITION);
-    for (let position = 1; position <= MARHALA_FINISH_POSITION; position += 1) {
-      expect(screen.getByTestId(`marhala-tile-${position}`)).toHaveTextContent(
-        String(position),
-      );
-    }
-    expect(screen.queryByTestId("marhala-tile-17")).toBeNull();
-  });
-
-  it("runs the path as a serpentine, turning at each row end", () => {
-    // 1→4 rightwards along the foot, then 5→8 leftwards above it. That reversal
-    // is what keeps 1 → 16 a single unbroken run rather than a jump across.
-    const rows = marhalaBoardRows();
-    expect(rows.map((row) => row.map((tile) => tile.position))).toEqual([
-      [16, 15, 14, 13],
-      [9, 10, 11, 12],
-      [8, 7, 6, 5],
-      [1, 2, 3, 4],
-    ]);
-  });
-
-  it("anchors a physical rocket or trap object to every special square", () => {
-    renderBoard();
-    // Colour is never the only signal: each special square carries a mark, so a
-    // room reading it from a distance knows the kind before tracing any arc.
-    const boost = screen.getByTestId("marhala-tile-3");
-    const trap = screen.getByTestId("marhala-tile-15");
-    expect(boost).toHaveAttribute("data-tile-kind", "boost");
-    expect(trap).toHaveAttribute("data-tile-kind", "trap");
-    expect(screen.getByTestId("marhala-route-3-7")).toHaveAttribute(
-      "data-route-object",
-      "rocket",
-    );
-    expect(screen.getByTestId("marhala-route-15-13")).toHaveAttribute(
-      "data-route-object",
-      "trap",
-    );
-  });
-
-  it("draws every configured route, and only those, on top of the squares", () => {
-    renderBoard();
-    const drawn = [...document.querySelectorAll("[data-route-kind]")].map(
-      (node) => node.getAttribute("data-testid"),
-    );
-    const configured = [
-      ...Object.entries(MARHALA_BOOSTS),
-      ...Object.entries(MARHALA_TRAPS),
-    ].map(([source, destination]) => `marhala-route-${source}-${destination}`);
-    expect(drawn.sort()).toEqual(configured.sort());
-    // Three layers, in this order: the squares, then the objects lying across
-    // them the way a ladder does on a printed board, then the numerals — so a
-    // route can never bury the number of the square it crosses.
-    const svg = document.querySelector("svg")!;
-    const nodes = [
-      ...svg.querySelectorAll(
-        "[data-tile-face],[data-route-kind],[data-tile-kind]",
-      ),
-    ];
-    const layer = (node: Element) =>
-      node.hasAttribute("data-tile-face")
-        ? 0
-        : node.hasAttribute("data-route-kind")
-          ? 1
-          : 2;
-    const layers = nodes.map(layer);
-    expect(layers).toEqual([...layers].sort((a, b) => a - b));
-    expect(new Set(layers)).toEqual(new Set([0, 1, 2]));
-  });
-
-  it("gives each route a substantial cased body so crossings stay layered", () => {
-    renderBoard();
-    // Without a casing painted in the board's own surface colour, eleven routes
-    // crossing become a tangle. Every route body must be preceded by one.
-    for (const route of document.querySelectorAll(
-      '[data-route-kind][data-route-full="true"]',
-    )) {
-      const paths = [...route.querySelectorAll("path")];
-      const casing = paths.findIndex(
-        (path) =>
-          path.getAttribute("stroke") === "hsl(var(--brand-navy) / 0.88)",
-      );
-      const body = paths.findIndex((path) =>
-        (path.getAttribute("fill") ?? "").startsWith("url(#marhala-trail-"),
-      );
-      expect(casing).toBeGreaterThanOrEqual(0);
-      expect(body).toBeGreaterThan(casing);
-    }
-  });
-
-  it("still follows a board it is handed rather than a hardcoded map", () => {
-    const invented = MARHALA_BOARD.map((tile) => {
-      if (tile.position === 2)
-        return { ...tile, kind: "boost" as const, destination: 11 };
-      if (tile.position === 13)
-        return { ...tile, kind: "trap" as const, destination: 4 };
-      if (tile.kind === "boost" || tile.kind === "trap")
-        return { ...tile, kind: "normal" as const, destination: tile.position };
-      return tile;
-    });
-    renderBoard({ tiles: invented });
-    expect(screen.getByTestId("marhala-route-2-11")).toHaveAttribute(
-      "data-route-kind",
-      "boost",
-    );
-    expect(screen.getByTestId("marhala-route-13-4")).toHaveAttribute(
-      "data-route-kind",
-      "trap",
-    );
-    expect(screen.queryByTestId("marhala-route-3-7")).toBeNull();
-    expect(document.querySelectorAll("[data-route-kind]")).toHaveLength(2);
-  });
-
-  it("makes every route legible with its physical object and no destination chip", () => {
-    renderBoard();
-    for (const tile of MARHALA_BOARD) {
-      const chip = screen.queryByTestId(`marhala-destination-${tile.position}`);
-      expect(chip).toBeNull();
-      if (tile.kind === "boost" || tile.kind === "trap") {
-        const route = screen.getByTestId(
-          `marhala-route-${tile.position}-${tile.destination}`,
-        );
-        expect(route).toHaveAttribute(
-          "data-route-source",
-          String(tile.position),
-        );
-        expect(route).toHaveAttribute(
-          "data-route-destination",
-          String(tile.destination),
-        );
-      }
-    }
-  });
-
-  it("reads object endpoints off the board it is handed, not off a fixed map", () => {
-    const invented = MARHALA_BOARD.map((tile) =>
-      tile.position === 2
-        ? { ...tile, kind: "boost" as const, destination: 11 }
-        : tile.kind === "boost" || tile.kind === "trap"
-          ? { ...tile, kind: "normal" as const, destination: tile.position }
-          : tile,
-    );
-    renderBoard({ tiles: invented });
-    expect(screen.getByTestId("marhala-route-2-11")).toHaveAttribute(
-      "data-route-destination",
-      "11",
-    );
-    expect(screen.queryByTestId("marhala-route-3-7")).toBeNull();
-    expect(document.querySelectorAll("[data-route-kind]")).toHaveLength(1);
-  });
-
-  it("keeps a token off the numeral, and side by side when squares are shared", () => {
-    renderBoard({ positions: { "team-alpha": 7, "team-beta": 7 } });
-    const alpha = screen.getByTestId("marhala-token-team-alpha");
-    const beta = screen.getByTestId("marhala-token-team-beta");
-    expect(alpha.style.left).not.toBe(beta.style.left);
-    // Seated low in the square; the numeral sits at the top-left.
-    expect(parseFloat(alpha.style.top)).toBeGreaterThan(
-      parseFloat(alpha.style.left) - 100,
-    );
-  });
-
-  it("shows the movement overlay only when one is supplied", () => {
-    const { unmount } = renderBoard();
-    expect(screen.queryByTestId("marhala-board-centre")).toBeNull();
-    unmount();
-    renderBoard({ centre: <p>+3</p> });
-    expect(screen.getByTestId("marhala-board-centre")).toHaveTextContent("+3");
+    const left = (id: string) =>
+      Number.parseFloat(screen.getByTestId(`marhala-token-${id}`).style.left);
+    expect(left("team-alpha")).toBeGreaterThan(left("team-beta"));
   });
 });

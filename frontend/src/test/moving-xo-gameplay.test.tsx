@@ -103,7 +103,7 @@ describe("Moving XO shared screen", () => {
 
     expect(screen.getByTestId("moving-xo-board")).toBeInTheDocument();
     expect(screen.getByTestId("moving-xo-question-pending")).toHaveTextContent(
-      "نجهّز اللغز التالي",
+      "نجهّز اللغز الجاي",
     );
     expect(screen.queryByTestId("challenge-countdown")).toBeNull();
     expect(document.body).not.toHaveTextContent(PROMPT);
@@ -125,8 +125,8 @@ describe("Moving XO shared screen", () => {
       "team-beta",
     );
     expect(screen.getByTestId("challenge-countdown")).toHaveTextContent("12");
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
-      "2 حركة ناجحة",
+    expect(screen.getByTestId("moving-xo-status-line")).toHaveTextContent(
+      "أسود الشمال يجاوبون من جوالهم",
     );
     expect(document.body).not.toHaveTextContent("سر لا يجب عرضه");
     expect(document.body).not.toHaveTextContent("answer-secret");
@@ -180,7 +180,7 @@ describe("Moving XO shared screen", () => {
     const view = render(<MovingXoScreen runtime={runtime(placement)} />);
 
     expect(screen.getByTestId("moving-xo-placement-message")).toHaveTextContent(
-      "اختاروا مكان الحركة",
+      "يختار خانته",
     );
     expect(screen.getByTestId("moving-xo-cell-0")).toHaveAttribute(
       "data-owner",
@@ -282,7 +282,7 @@ describe("Moving XO shared screen", () => {
     });
     const view = render(<MovingXoScreen runtime={runtime(winState)} />);
     expect(screen.getByTestId("moving-xo-win")).toHaveTextContent(
-      "فاز أسود الشمال",
+      "فوز أسود الشمال",
     );
     expect(screen.getAllByTestId(/^moving-xo-cell-[0-2]$/)).toHaveLength(3);
     for (const cell of [0, 1, 2]) {

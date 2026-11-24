@@ -45,14 +45,19 @@ describe("Marhala mechanic tutorial", () => {
       await user.click(screen.getByTestId("explainer-next"));
     expect(screen.getByDisplayValue("غود أوف وور")).toBeInTheDocument();
     await user.click(screen.getByTestId("explainer-next"));
-    expect(screen.getByTestId("marhala-tutorial-roll")).toHaveTextContent("+4");
+    // The die reels through صعب's own faces and never shows one outside them.
+    expect(
+      screen
+        .getByTestId("marhala-tutorial-roll")
+        .querySelector("[data-roll-value]"),
+    ).toHaveAttribute("data-roll-value", "4");
     await user.click(screen.getByTestId("explainer-next"));
     expect(screen.getByTestId("marhala-tutorial-movement")).toHaveTextContent(
-      "4 → 8",
+      "5 → 11",
     );
     await user.click(screen.getByTestId("explainer-next"));
     expect(screen.getByTestId("marhala-tutorial-effect")).toHaveTextContent(
-      "8",
+      "قفزة → 15",
     );
     await user.click(screen.getByTestId("explainer-skip"));
     expect(screen.getByTestId("marhala-tutorial-takeaway")).toHaveTextContent(
@@ -116,13 +121,13 @@ describe("Marhala mechanic tutorial", () => {
     await user.click(screen.getByTestId("explainer-next"));
     expect(
       screen.getByTestId("marhala-tutorial-landing-possibilities"),
-    ).toHaveTextContent("8");
+    ).toHaveTextContent("11");
     expect(
       screen.getByTestId("marhala-tutorial-landing-possibilities"),
     ).toHaveTextContent("فخ");
     await user.click(screen.getByTestId("explainer-skip"));
     expect(screen.getByTestId("marhala-tutorial-outcome")).toHaveTextContent(
-      "4 → 8 → 13",
+      "5 → 11 → 15",
     );
     expect(screen.getByTestId("marhala-tutorial-outcome")).toHaveTextContent(
       "الفريق الثاني الآن 11",

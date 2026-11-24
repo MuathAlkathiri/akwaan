@@ -40,23 +40,34 @@ export type MarhalaTileKind = "normal" | "boost" | "trap" | "finish";
  */
 export const MARHALA_BOOSTS: Readonly<Record<number, number>> = {
   3: 7,
-  5: 7,
-  8: 13,
-  10: 13,
-  12: 16,
-  14: 16,
+  11: 15,
 };
 
 export const MARHALA_TRAPS: Readonly<Record<number, number>> = {
-  4: 1,
-  6: 2,
-  9: 7,
-  11: 7,
-  15: 13,
+  10: 6,
+  14: 12,
 };
 
 /** Tiles nothing sends a team away from — every boost and trap lands on one. */
-export const MARHALA_SAFE_POSITIONS: readonly number[] = [1, 2, 7, 13, 16];
+export const MARHALA_SAFE_POSITIONS: readonly number[] = [1, 6, 7, 12, 15, 16];
+
+/**
+ * Where a slide drops a team: the checkpoints.
+ *
+ * Read off the trap table rather than declared a second time, so a board that
+ * moves its slides moves its checkpoints with them.
+ */
+export const MARHALA_CHECKPOINTS: readonly number[] = [
+  ...new Set(Object.values(MARHALA_TRAPS)),
+].sort((left, right) => left - right);
+
+/** The last checkpoint a team has passed, or the start when it has passed none. */
+export function marhalaLastCheckpoint(position: number): number {
+  return MARHALA_CHECKPOINTS.reduce(
+    (last, checkpoint) => (checkpoint <= position ? checkpoint : last),
+    MARHALA_START_POSITION,
+  );
+}
 
 /** The three bands a team may elect, with the movement each can buy. */
 export const MARHALA_BANDS: ReadonlyArray<{

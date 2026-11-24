@@ -185,7 +185,7 @@ describe("the microphone appears only where it is allowed", () => {
 
   it("stays secondary to the submit button", () => {
     renderPhone();
-    expect(screen.getByTestId("marhala-voice").className).toContain("size-14");
+    expect(screen.getByTestId("marhala-voice").className).toContain("size-[62px]");
     expect(screen.getByTestId("marhala-answer-submit").className).toContain(
       "flex-1",
     );
@@ -260,7 +260,7 @@ describe("typing never stops working", () => {
     fireEvent.click(screen.getByTestId("marhala-voice"));
     act(() => FakeRecognition.latest().fail("not-allowed"));
     expect(screen.getByTestId("marhala-voice-state")).toHaveTextContent(
-      "الميكروفون مرفوض",
+      "المايك مقفل",
     );
     fireEvent.change(screen.getByLabelText("الإجابة"), {
       target: { value: "CJ" },

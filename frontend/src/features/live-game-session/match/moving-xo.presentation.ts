@@ -231,6 +231,24 @@ export function visibleExpiringCell(view: MovingXoView): number | undefined {
     : undefined;
 }
 
+/**
+ * The mark that will move on the active team's next move.
+ *
+ * Shown from the moment the team holds three marks — while it is still reading
+ * its question — so both teams can plan around it, and not only once it is
+ * choosing a cell. Nothing moves in the decisive phase, so nothing is marked.
+ */
+export function movingMarkCell(view: MovingXoView): number | undefined {
+  if (view.decisivePhase) return undefined;
+  if (view.phase !== "answering" && view.phase !== "placement") {
+    return undefined;
+  }
+  if (view.expiringCell !== undefined) return view.expiringCell;
+  const order = view.board.markOrder[view.activeTeamId];
+  const oldest = order?.[0];
+  return order && order.length >= 3 && finiteCell(oldest) ? oldest : undefined;
+}
+
 const WINNING_LINES = [
   [0, 1, 2],
   [3, 4, 5],

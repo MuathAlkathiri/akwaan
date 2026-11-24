@@ -113,12 +113,12 @@ const renderPhone = (
 };
 
 describe("the difficulty controller", () => {
-  it("offers the three bands with their movement ranges, one tap each", () => {
+  it("offers the three bands with their movement ranges, a tap and a confirm", () => {
     renderPhone();
     for (const [band, range] of [
-      ["easy", "1–2"],
-      ["medium", "2–4"],
-      ["hard", "4–6"],
+      ["easy", "1 – 2"],
+      ["medium", "2 – 4"],
+      ["hard", "4 – 6"],
     ]) {
       expect(screen.getByTestId(`marhala-choose-${band}`)).toHaveTextContent(
         range,
@@ -126,9 +126,10 @@ describe("the difficulty controller", () => {
     }
   });
 
-  it("chooses with the mechanic's exact command, in one tap", () => {
+  it("chooses with the mechanic's exact command, with a tap and a confirm", () => {
     const { cmd } = renderPhone();
     fireEvent.click(screen.getByTestId("marhala-choose-hard"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     expect(cmd).toHaveBeenCalledTimes(1);
     expect(cmd).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
@@ -140,7 +141,9 @@ describe("the difficulty controller", () => {
   it("cannot choose twice for one turn", () => {
     const { cmd } = renderPhone();
     fireEvent.click(screen.getByTestId("marhala-choose-hard"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     fireEvent.click(screen.getByTestId("marhala-choose-easy"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     expect(cmd).toHaveBeenCalledTimes(1);
   });
 
@@ -153,11 +156,11 @@ describe("the difficulty controller", () => {
     );
   });
 
-  it("uses the compact frame and names only this team's own tile", () => {
+  it("names only this team's own station, and how far it has left", () => {
     renderPhone();
-    const frame = screen.getByTestId("challenge-frame");
-    expect(frame.innerHTML).toContain("px-4");
-    expect(frame).toHaveTextContent("مربّعكم الحالي 5");
+    const own = screen.getByTestId("marhala-phone-position");
+    expect(own).toHaveTextContent("أنتم في المحطة 5");
+    expect(own).toHaveTextContent("باقي 11 للنهاية");
   });
 });
 
@@ -167,7 +170,7 @@ describe("nothing about the movement is decided or shown here", () => {
     renderPhone();
     const dom = screen.getByTestId("marhala-phone").textContent ?? "";
     for (const tile of ["7", "8", "9"]) {
-      expect(dom.includes(`المربّع ${tile}`)).toBe(false);
+      expect(dom.includes(`المحطة ${tile}`)).toBe(false);
     }
     expect(document.querySelector("[data-tile-highlighted]")).toBeNull();
   });
@@ -223,13 +226,14 @@ describe("nothing about the movement is decided or shown here", () => {
       shared({
         rollSeed: "runtime-1:3:team-alpha:hard",
         nextMovement: 6,
-        nextLanding: 11,
+        nextLanding: 12,
       }),
     );
     const dom = document.body.innerHTML;
     expect(dom).not.toContain("runtime-1:3:team-alpha:hard");
+    // 12 and not 11: from station 5 the phone rightly says «باقي 11 للنهاية».
     expect(screen.queryByTestId("marhala-phone")?.textContent).not.toContain(
-      "11",
+      "12",
     );
   });
 });
@@ -244,7 +248,7 @@ describe("the prepared question stays inert until the server activates it", () =
       }),
     );
     expect(screen.getByTestId("marhala-phone-pending")).toHaveTextContent(
-      "جارٍ تجهيز السؤال…",
+      "نجهّز السؤال…",
     );
     expect(screen.queryByTestId("marhala-answer-form")).toBeNull();
     expect(document.body.textContent).not.toContain(PROMPT);
@@ -305,8 +309,8 @@ describe("the answer controller", () => {
     fireEvent.submit(form);
     expect(cmd).toHaveBeenCalledTimes(1);
     const done = screen.getByTestId("marhala-phone-submitted");
-    expect(done).toHaveTextContent("تم إرسال إجابتكم");
-    expect(done).toHaveTextContent("تابعوا الحركة على الشاشة");
+    expect(done).toHaveTextContent("وصلت إجابتكم");
+    expect(done).toHaveTextContent("عيونكم على الشاشة");
     expect(screen.queryByTestId("marhala-answer-form")).toBeNull();
   });
 
@@ -395,8 +399,8 @@ describe("reconnect adopts server truth", () => {
         selectedDifficulty: "hard",
       }),
     );
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
-      "مربّعكم الحالي 11",
+    expect(screen.getByTestId("marhala-phone-position")).toHaveTextContent(
+      "أنتم في المحطة 11",
     );
     expect(screen.getByTestId("marhala-phone")).toHaveTextContent(PROMPT);
     expect(screen.getByTestId("challenge-countdown")).toHaveTextContent("17");

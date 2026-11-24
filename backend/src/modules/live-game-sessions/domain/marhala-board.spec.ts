@@ -25,24 +25,17 @@ import {
  * the rules the mechanic depends on.
  */
 describe('المرحلة board configuration', () => {
-  describe('the V4 playtest candidate', () => {
+  describe('the approved redesign board', () => {
     it('places the approved boosts', () => {
-      expect(MARHALA_BOOSTS).toEqual({
-        3: 7,
-        5: 7,
-        8: 13,
-        10: 13,
-        12: 16,
-        14: 16,
-      });
+      expect(MARHALA_BOOSTS).toEqual({ 3: 7, 11: 15 });
     });
 
     it('places the approved traps', () => {
-      expect(MARHALA_TRAPS).toEqual({ 4: 1, 6: 2, 9: 7, 11: 7, 15: 13 });
+      expect(MARHALA_TRAPS).toEqual({ 10: 6, 14: 12 });
     });
 
     it('declares the approved safe destinations', () => {
-      expect(MARHALA_SAFE_POSITIONS).toEqual([1, 2, 7, 13, 16]);
+      expect(MARHALA_SAFE_POSITIONS).toEqual([1, 6, 7, 12, 15, 16]);
     });
 
     it('finishes at 16 and starts at 1', () => {
@@ -143,12 +136,12 @@ describe('المرحلة board configuration', () => {
 
   describe('possible landings, which is what the team reasons about', () => {
     it('shows the base landings before any tile effect', () => {
-      // From 5, medium (2–4) can land on 7, 8 or 9 — one boost and one trap among
-      // them, which is exactly the risk the board is meant to expose.
-      expect(marhalaPossibleLandings(5, 'medium')).toEqual([7, 8, 9]);
-      expect(marhalaTileKind(7)).toBe('normal');
-      expect(marhalaTileKind(8)).toBe('boost');
-      expect(marhalaTileKind(9)).toBe('trap');
+      // From 7, medium (2–4) can land on 9, 10 or 11 — a slide and a ladder side
+      // by side, which is exactly the risk the board is meant to expose.
+      expect(marhalaPossibleLandings(7, 'medium')).toEqual([9, 10, 11]);
+      expect(marhalaTileKind(9)).toBe('normal');
+      expect(marhalaTileKind(10)).toBe('trap');
+      expect(marhalaTileKind(11)).toBe('boost');
     });
 
     it('clamps at the finish rather than running off the board', () => {

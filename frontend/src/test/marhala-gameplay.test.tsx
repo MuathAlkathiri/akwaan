@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeAll(() => {
@@ -175,9 +181,11 @@ describe("the shared screen during the decision", () => {
       "data-token-position",
       "1",
     );
-    expect(screen.getByTestId("marhala-standing-team-alpha")).toHaveTextContent(
-      "دورهم",
+    expect(screen.getByTestId("marhala-standing-team-alpha")).toHaveAttribute(
+      "data-standing-active",
+      "true",
     );
+    expect(screen.getByTestId("marhala-turn-chip")).toHaveTextContent("دور");
   });
 
   it("tells the three bands apart by risk, never by where they could land", () => {
@@ -203,7 +211,7 @@ describe("the shared screen during the decision", () => {
     for (const band of ["easy", "medium", "hard"]) {
       expect(screen.getByTestId(`marhala-band-${band}`)).toBeInTheDocument();
     }
-    expect(screen.getByTestId("marhala-band-hard")).toHaveTextContent("4–6");
+    expect(screen.getByTestId("marhala-band-hard")).toHaveTextContent("4 – 6");
   });
 
   it("ranks risk from the server's ranges, not from the band's name", () => {
@@ -283,7 +291,7 @@ describe("the shared screen with a question open", () => {
     render(<MarhalaScreen runtime={runtime(questionState())} />);
     const chip = screen.getByTestId("marhala-selected-band");
     expect(chip).toHaveTextContent("متوسط");
-    expect(chip).toHaveTextContent("2–4");
+    expect(chip).toHaveTextContent("2 – 4");
   });
 
   it("never paints the tiles that band could still reach", () => {
@@ -314,7 +322,7 @@ describe("the shared screen with a question open", () => {
       />,
     );
     expect(screen.getByTestId("marhala-pending")).toHaveTextContent(
-      "جارٍ تجهيز السؤال…",
+      "نجهّز السؤال…",
     );
     // The board and the committed choice stay; no question is fabricated.
     expect(screen.getByTestId("marhala-board")).toBeInTheDocument();
@@ -367,7 +375,7 @@ describe("a resolved turn on the shared screen", () => {
     );
     const line = screen.getByTestId("marhala-last-turn");
     expect(line).toHaveAttribute("data-turn-outcome", "wrong");
-    expect(line).toHaveTextContent("بقوا في مكانهم");
+    expect(line).toHaveTextContent("بقوا مكانهم");
     expect(screen.queryByTestId("marhala-movement-reveal")).toBeNull();
     // The token is exactly where the projection says, with no punishment move.
     expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
@@ -397,7 +405,7 @@ describe("a resolved turn on the shared screen", () => {
     );
     const line = screen.getByTestId("marhala-last-turn");
     expect(line).toHaveAttribute("data-turn-outcome", "timeout");
-    expect(line).toHaveTextContent("انتهى وقت");
+    expect(line).toHaveTextContent("خلص وقت");
   });
 
   it("reports a correct turn with the server's roll and final tile", () => {
@@ -706,8 +714,8 @@ describe("the race ending on the shared screen", () => {
       />,
     );
     const panel = screen.getByTestId("marhala-exhausted");
-    expect(panel).toHaveTextContent("خلصت الأسئلة الجديدة المتاحة لهذا التحدي");
-    expect(panel).toHaveTextContent("لم تُمنح نقاط");
+    expect(panel).toHaveTextContent("خلصت الأسئلة الجديدة لهالتحدي");
+    expect(panel).toHaveTextContent("ما انحسبت نقطة");
     expect(screen.queryByTestId("marhala-finished")).toBeNull();
   });
 
@@ -756,11 +764,11 @@ describe("the active team's phone", () => {
       />,
     );
     expect(screen.getByTestId("marhala-band-choices")).toBeInTheDocument();
-    expect(screen.getByTestId("marhala-choose-easy")).toHaveTextContent("1–2");
+    expect(screen.getByTestId("marhala-choose-easy")).toHaveTextContent("1 – 2");
     expect(screen.getByTestId("marhala-choose-medium")).toHaveTextContent(
-      "2–4",
+      "2 – 4",
     );
-    expect(screen.getByTestId("marhala-choose-hard")).toHaveTextContent("4–6");
+    expect(screen.getByTestId("marhala-choose-hard")).toHaveTextContent("4 – 6");
     // The phone is an input surface: no board on it.
     expect(screen.queryByTestId("marhala-board")).toBeNull();
   });
@@ -771,7 +779,8 @@ describe("the active team's phone", () => {
         runtime={runtime(activeState(), ["mode:choose-marhala-difficulty"])}
       />,
     );
-    screen.getByTestId("marhala-choose-hard").click();
+    fireEvent.click(screen.getByTestId("marhala-choose-hard"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "choose-marhala-difficulty",
@@ -1171,7 +1180,7 @@ describe("the movement beat over the board", () => {
       expect(roll()).toHaveAttribute("data-roll-settled", "true");
       expect(roll()).toHaveAttribute("data-roll-value", "3");
       const centre = screen.getByTestId("marhala-board-centre");
-      expect(centre).toHaveTextContent("+3");
+      expect(centre).toHaveTextContent("طلع لهم 3");
     } finally {
       vi.useRealTimers();
     }
