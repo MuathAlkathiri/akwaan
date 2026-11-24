@@ -139,6 +139,10 @@ services:
         sync: false
       - key: OPENROUTER_BASE_URL
         sync: false
+      # Comma-separated OpenRouter provider slugs never to route to (e.g.
+      # `azure`), for when one upstream is refusing every request.
+      - key: ENGINE_OPENROUTER_IGNORE_PROVIDERS
+        sync: false
       - key: ENGINE_PROVIDER_NAME
         sync: false
       - key: ENGINE_GENERATION_MODEL
@@ -299,6 +303,8 @@ services:
       # Left unset, so staging cannot spend a riyal of model budget. Set them
       # only when the Engine itself is what is being rehearsed.
       - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ENGINE_OPENROUTER_IGNORE_PROVIDERS
         sync: false
 
       - key: TRUST_PROXY
