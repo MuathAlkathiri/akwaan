@@ -50,7 +50,7 @@ export const generatorAnswerModeFor = (
  */
 export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
   multiple_choice: 'mc-v2',
-  closest: 'closest-v2',
+  closest: 'closest-v3',
   match: 'combo-v1',
 };
 

@@ -1385,6 +1385,55 @@ describe('DeterministicScreenService — closest', () => {
     ).toContain('CLOSEST_SLIDER_TARGET_STEP_INVALID');
   });
 
+  describe('between-anchors', () => {
+    const line = (correctValue: number, slider: Record<string, unknown> = {}) =>
+      closest({
+        answerPayload: { mode: 'closest', correctValue },
+        slider: {
+          mode: 'between-anchors',
+          min: 1,
+          max: 365,
+          step: 1,
+          leftAnchor: '1 يناير',
+          rightAnchor: '31 ديسمبر',
+          ...slider,
+        },
+        rest: { prompt: { ar: 'بين أول السنة وآخرها، وين يجي يوم التأسيس؟' } },
+      });
+
+    it('accepts a labelled line with the target off the centre', () => {
+      const found = codes(line(53));
+      expect(found).not.toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+      expect(found).not.toContain('CLOSEST_SLIDER_ANCHORS_INVALID');
+      expect(found).not.toContain('CLOSEST_SLIDER_MODE_REQUIRED');
+    });
+
+    it('rejects a target in the middle fifth of the line', () => {
+      // The line is 1–365: the band is 183 ± 36.4.
+      expect(codes(line(183))).toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+      expect(codes(line(150))).toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+      expect(codes(line(219))).toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+      expect(codes(line(146))).not.toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+      expect(codes(line(266))).not.toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+    });
+
+    it('does not apply the centre rule to a numeric slider', () => {
+      expect(codes(closest())).not.toContain('CLOSEST_ANCHOR_TARGET_CENTRED');
+    });
+
+    it('rejects missing or equal labels, and a unit nobody would see', () => {
+      expect(codes(line(53, { rightAnchor: ' ' }))).toContain(
+        'CLOSEST_SLIDER_ANCHORS_INVALID',
+      );
+      expect(codes(line(53, { rightAnchor: '1 يناير' }))).toContain(
+        'CLOSEST_SLIDER_ANCHORS_INVALID',
+      );
+      expect(codes(line(53, { unit: 'يوم' }))).toContain(
+        'CLOSEST_ANCHOR_SLIDER_SHOWS_NO_NUMBER',
+      );
+    });
+  });
+
   it('rejects a non-positive step', () => {
     expect(codes(closest({ slider: { step: 0 } }))).toContain(
       'CLOSEST_SLIDER_STEP_INVALID',

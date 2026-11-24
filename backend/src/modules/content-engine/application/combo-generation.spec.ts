@@ -387,7 +387,7 @@ describe('الكومبو generation (combo → match)', () => {
     it('leaves the established prompt versions untouched', () => {
       // Changing either would change every request hash and pinned plan.
       expect(DOMAIN_PROMPT_VERSIONS.multiple_choice).toBe('mc-v2');
-      expect(DOMAIN_PROMPT_VERSIONS.closest).toBe('closest-v2');
+      expect(DOMAIN_PROMPT_VERSIONS.closest).toBe('closest-v3');
     });
   });
 });

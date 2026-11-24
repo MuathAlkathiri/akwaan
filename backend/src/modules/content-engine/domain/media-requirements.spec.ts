@@ -58,7 +58,7 @@ describe('media requirements registry', () => {
     expect(promptVersionFor('combo')).toBe(PROMPT_VERSIONS.match);
     expect(promptVersionFor('combo')).toBe('combo-v1');
     expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');
-    expect(promptVersionFor('closest')).toBe('closest-v2');
+    expect(promptVersionFor('closest')).toBe('closest-v3');
     expect(promptVersionFor('top-5')).toBeUndefined();
   });
 
@@ -67,7 +67,7 @@ describe('media requirements registry', () => {
     // either of these two silently invalidates its provenance. Authoring a new
     // mechanic adds a key; it must never rewrite one of these.
     expect(PROMPT_VERSIONS.multiple_choice).toBe('mc-v2');
-    expect(PROMPT_VERSIONS.closest).toBe('closest-v2');
+    expect(PROMPT_VERSIONS.closest).toBe('closest-v3');
   });
 
   it('gives every authorable mechanic a prompt version', () => {

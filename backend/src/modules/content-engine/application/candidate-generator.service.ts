@@ -241,10 +241,13 @@ export const RYO_CANDIDATE_SCHEMA: Record<string, unknown> = {
  *
  * The slider is authored **before** the answer is looked at (the Skill's
  * domain-first rule), so the schema asks for the domain span and the target as
- * separate facts rather than letting one be derived from the other. Only
- * `numeric-range` is offered: `between-anchors` needs two authored anchor
- * labels whose quality is a judgement call, and the first pilot has no way to
- * assess them.
+ * separate facts rather than letting one be derived from the other.
+ *
+ * Two sliders are authored. `numeric-range` shows the player numbers.
+ * `between-anchors` shows a bare line between two labelled ends and no number
+ * at all — the player places a mark — so it is offered only for a quantity
+ * that is naturally a *position* (a date on the year, a letter in the
+ * alphabet). `colour-hue` needs a picture and is authored by hand.
  */
 export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
   type: 'object',
@@ -266,6 +269,9 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
           'playerReasoningStrategy',
           'prompt',
           'domainDescription',
+          'sliderMode',
+          'leftAnchor',
+          'rightAnchor',
           'min',
           'max',
           'step',
@@ -303,6 +309,22 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
             type: 'string',
             description:
               'The natural quantitative span this question lives in, decided before looking at the answer.',
+          },
+          sliderMode: {
+            type: 'string',
+            enum: ['numeric-range', 'between-anchors'],
+            description:
+              '"numeric-range": the player reads numbers on the slider. "between-anchors": the player sees only a line between two labelled ends and places a mark — use it ONLY when the slot asks for a position (its Task says position-estimation).',
+          },
+          leftAnchor: {
+            type: 'string',
+            description:
+              'between-anchors only: the Arabic label of the end where the scale starts (the thing at min). An empty string for numeric-range.',
+          },
+          rightAnchor: {
+            type: 'string',
+            description:
+              'between-anchors only: the Arabic label of the end where the scale finishes (the thing at max). An empty string for numeric-range.',
           },
           min: { type: 'number' },
           max: { type: 'number' },
@@ -798,6 +820,17 @@ export const CLOSEST_TASK_GUIDANCE = [
   'If the answer does not land on the grid, change the STEP to another the domain justifies — never move an endpoint, never round the answer.',
   'Prefer one shared span across comparable questions over a bespoke range per item.',
   'Numbers should be reasonable to reach on a phone slider: aim for a span the step divides into at least a few dozen positions, not three or four.',
+  '',
+  'TWO SLIDERS. Set sliderMode for every item:',
+  '  - numeric-range — the default. leftAnchor and rightAnchor are empty strings.',
+  '  - between-anchors — ONLY for a slot whose Task says position-estimation. Use numeric-range for every other slot.',
+  'A between-anchors item is a POSITION question. The player sees a bare line with a label at each end and NO numbers, and places a mark where the thing falls:',
+  '  - the line is a complete order everybody knows (the days of the year, the letters of the alphabet), and min..max counts its positions in order (1..365, 1..28);',
+  '  - leftAnchor is the thing at min and rightAnchor the thing at max, each a short Arabic label («1 يناير», «31 ديسمبر»). The prompt names both ends in the same words;',
+  '  - correctValue is the position of the asked thing in that order, step is 1, unit is empty;',
+  '  - the prompt never states a position, a count or a fraction — the player has no number to read, so a number in the prompt is either the answer or noise;',
+  '  - NEVER pick a thing that falls in the middle fifth of the line, and avoid the two ends: a mark left in the centre must not win. Good targets sit clearly off-centre and still take thought to place;',
+  '  - the asked thing must have ONE fixed position everyone would accept (a date that does not move from year to year, a letter in the standard order). A lunar-calendar date moves — never use one.',
 ].join('\n');
 
 import {
@@ -1613,6 +1646,9 @@ export class CandidateGeneratorService {
       playerReasoningStrategy?: unknown;
       prompt?: unknown;
       domainDescription?: unknown;
+      sliderMode?: unknown;
+      leftAnchor?: unknown;
+      rightAnchor?: unknown;
       min?: unknown;
       max?: unknown;
       step?: unknown;
@@ -1653,6 +1689,25 @@ export class CandidateGeneratorService {
         ? value.unit.trim()
         : undefined;
 
+    // Absent on replies shaped before the second slider existed: those are
+    // ordinary numeric sliders.
+    const betweenAnchors = value.sliderMode === 'between-anchors';
+    const leftAnchor = text(value.leftAnchor) ?? '';
+    const rightAnchor = text(value.rightAnchor) ?? '';
+    if (
+      betweenAnchors &&
+      (!leftAnchor ||
+        !rightAnchor ||
+        leftAnchor === rightAnchor ||
+        leftAnchor.length > 80 ||
+        rightAnchor.length > 80)
+    ) {
+      throw new CandidateParseError(
+        'CLOSEST_SLIDER_ANCHORS_INVALID',
+        'a between-anchors slider needs two distinct labels of at most 80 characters',
+      );
+    }
+
     const correctValue = num(value.correctValue, 'correctValue');
     const min = num(value.min, 'min');
     const max = num(value.max, 'max');
@@ -1665,8 +1720,12 @@ export class CandidateGeneratorService {
     // A derived answer is whatever the derivation says it is; only the step
     // is a choice. So for a reasoning item the grid is settled here instead
     // of being left to the model's arithmetic. See `settleClosestGrid`.
-    const settled =
-      value.answerBasis === 'reasoning'
+    // A position line shows the player no numbers at all and counts whole
+    // positions, so its step is never a product choice either: it is settled
+    // the same way, from the finest step.
+    const settled = betweenAnchors
+      ? settleClosestGrid({ min, max, step: 1, correctValue })
+      : value.answerBasis === 'reasoning'
         ? settleClosestGrid({ min, max, step: statedStep, correctValue })
         : undefined;
     const step = settled?.step ?? statedStep;
@@ -1700,16 +1759,28 @@ export class CandidateGeneratorService {
           // changes nothing and misleads a reviewer.
         },
         mechanicPayload: {
-          closestSlider: {
-            mode: 'numeric-range',
-            min,
-            max,
-            step,
-            // A calendar year is a value, not an amount: the policy forbids a
-            // unit on one, so it is dropped rather than passed through.
-            ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
-            ...(displayFormat === 'calendar-year' ? { displayFormat } : {}),
-          },
+          closestSlider: betweenAnchors
+            ? {
+                // No unit and no display format: nothing on this slider is
+                // ever shown as a number.
+                mode: 'between-anchors',
+                min,
+                max,
+                step,
+                leftAnchor,
+                rightAnchor,
+              }
+            : {
+                mode: 'numeric-range',
+                min,
+                max,
+                step,
+                // A calendar year is a value, not an amount: the policy
+                // forbids a unit on one, so it is dropped rather than passed
+                // through.
+                ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
+                ...(displayFormat === 'calendar-year' ? { displayFormat } : {}),
+              },
         },
         metadata: {
           notes: text(value.domainDescription)

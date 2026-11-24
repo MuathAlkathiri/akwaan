@@ -549,7 +549,7 @@ exists.
 | `dotless-disambiguation` | Read a familiar phrase written without its dots | «الصٮر مڡٮاح الڡرح» | الصبر مفتاح الفرج |
 | `wordle-single-guess` | One coloured guess, three options, one fits | ق⬜ م🟨 ر🟩 — مطر، نمر، قصر؟ | مطر |
 | `alphabet-counts` | A count over the alphabet nobody has memorised (slider) | كم نقطة في حروف الأبجدية العربية كلها؟ | 22 |
-| `alphabet-position` | Where a letter sits in an order everyone knows (between-anchors — **paused** until the engine generates that slider) | بين «أ» و«ي»، وين حرف السين؟ | letter 12 of 28 |
+| `alphabet-position` | Where a letter sits in an order everyone knows (between-anchors: a bare line, two labelled ends, no numbers; the target is never in the middle fifth) | بين «أ» و«ي»، وين حرف القاف؟ | letter 21 of 28 |
 
 Per-family rules added by this decision:
 
@@ -569,6 +569,12 @@ Per-family rules added by this decision:
 - `alphabet-counts` — the count must be checkable by listing the letters.
   Answered on the slider, so it follows the Closest rule of this World: exact
   and computable by us, not reachable exactly in the time.
+- `alphabet-position` — a **between-anchors** slider: the players see a bare
+  line from the first letter to the last and no numbers, and place a mark. Use
+  the standard 28-letter order (أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م
+  ن هـ و ي); the answer is the letter's number in it. The prompt names both ends
+  and the letter, and never a number. The target is never in the middle fifth
+  of the line (letters 12–17) and not the first or last three letters.
 
 ---
 
@@ -917,9 +923,7 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "closest"
-      ],
-      "status": "paused",
-      "pausedReason": "Approved 2026-11-24; waits for between-anchors generation in the engine."
+      ]
     }
   ]
 }
