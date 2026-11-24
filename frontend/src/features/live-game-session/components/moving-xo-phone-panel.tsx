@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Send } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 import { BidiText } from "@/components/akwaan/bidi-text";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { authoredText } from "../authored-text";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
@@ -17,10 +16,11 @@ import { countdownThresholdsForWindow } from "../match/components/countdown-urge
 /** The question window is fifteen seconds and the placement window ten. */
 const MOVING_XO_QUESTION_THRESHOLDS = countdownThresholdsForWindow(15);
 const MOVING_XO_PLACEMENT_THRESHOLDS = countdownThresholdsForWindow(10);
-import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import {
   MOVING_XO_CONTENT_EXHAUSTED_COPY,
+  movingMarkCell,
+  movingXoSymbol,
   readMovingXoView,
   winningLineOf,
 } from "../match/moving-xo.presentation";
@@ -39,6 +39,8 @@ export function MovingXoPhonePanel({
   const { snapshot, gameplayCommand, connection } = useLiveSession();
   const [answer, setAnswer] = useState("");
   const [sending, setSending] = useState<"answer" | "placement">();
+  // The cell a thumb has landed on. Nothing is sent until «ثبّت الحركة».
+  const [picked, setPicked] = useState<number>();
   const answerInput = useRef<HTMLInputElement>(null);
   const view = useMemo(
     () =>
@@ -78,6 +80,7 @@ export function MovingXoPhonePanel({
   useEffect(() => {
     setSending(undefined);
     setAnswer("");
+    setPicked(undefined);
   }, [
     runtime.runtimeId,
     runtime.revision,
@@ -126,190 +129,200 @@ export function MovingXoPhonePanel({
     send(PLACE_COMMAND, { cell });
   };
 
-  return (
-    <ChallengeFrame
-      compact
-      title={
-        coaching && (phase === "answering" || phase === "placement")
-          ? "دوركم — ساعدوا زميلكم"
-          : phoneTitle(phase, mayAnswer, mayPlace, activeTeam?.name)
-      }
-      aside={
-        remainingMs !== undefined ? (
-          <ChallengeCountdown
-            remainingMs={remainingMs}
-            thresholds={
-              phase === "placement"
-                ? MOVING_XO_PLACEMENT_THRESHOLDS
-                : MOVING_XO_QUESTION_THRESHOLDS
-            }
-          />
-        ) : null
-      }
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      <section
-        dir="rtl"
-        data-testid="moving-xo-phone"
-        data-moving-xo-phase={phase}
-        className="flex min-h-0 flex-1 flex-col gap-3"
-      >
-        {phase === "question-pending" && <PendingPhone />}
+  const movingCell = movingMarkCell({ ...view, phase });
+  const ownSymbol = movingXoSymbol(view.activeTeamId, teams);
+  // A pick the server no longer offers is not a pick.
+  const chosen =
+    picked !== undefined && view.legalCells.includes(picked)
+      ? picked
+      : undefined;
+  const timer =
+    remainingMs !== undefined ? (
+      <ChallengeCountdown
+        remainingMs={remainingMs}
+        thresholds={
+          phase === "placement"
+            ? MOVING_XO_PLACEMENT_THRESHOLDS
+            : MOVING_XO_QUESTION_THRESHOLDS
+        }
+      />
+    ) : null;
+  const otherTeam = activeTeam?.name ?? "الفريق الآخر";
 
-        {phase === "answering" && view.question && mayAnswer && (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
+  return (
+    <section
+      dir="rtl"
+      data-testid="moving-xo-phone"
+      data-moving-xo-phase={phase}
+      className="flex min-h-0 w-full flex-1 flex-col gap-3.5 rounded-[22px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+    >
+      {phase === "question-pending" && <PendingPhone />}
+
+      {phase === "answering" && view.question && mayAnswer && (
+        <div className="flex min-h-0 flex-1 flex-col gap-3.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="text-sm font-bold text-brand-plum">
+              جاوبوا صح عشان تلعبون حركتكم
+            </span>
+            {timer}
+          </div>
+          <MovingXoQuestion
+            compact
+            question={view.question}
+            showOptions={false}
+          />
+          {sending === "answer" ? (
+            <SentState label="وصلت إجابتكم" />
+          ) : view.question.answerMode === "match" ? (
+            <form
+              onSubmit={submitText}
+              className="flex min-h-0 flex-1 flex-col"
+              data-testid="moving-xo-answer-form"
+            >
+              <MobileActionArea className="gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="moving-xo-answer"
+                    className="text-[15px] font-bold text-[hsl(var(--brand-navy))]"
+                  >
+                    إجابتكم
+                  </label>
+                  <input
+                    id="moving-xo-answer"
+                    ref={answerInput}
+                    type="text"
+                    value={answer}
+                    onChange={(event) => setAnswer(event.target.value)}
+                    aria-label="الإجابة"
+                    autoComplete="off"
+                    enterKeyHint="send"
+                    className="min-h-[60px] rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-white px-4 text-center text-xl font-bold text-[hsl(var(--brand-navy))] outline-none focus-visible:border-[hsl(var(--brand-gold))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-navy))]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!answer.trim() || !live || Boolean(sending)}
+                  className={GOLD_ACTION}
+                  data-testid="moving-xo-answer-submit"
+                >
+                  إرسال الإجابة
+                </button>
+              </MobileActionArea>
+            </form>
+          ) : (
+            <MobileActionArea className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {view.question.options.map((option) => (
+                <AnswerOption
+                  key={option.id}
+                  disabled={!live || Boolean(sending)}
+                  onClick={() => submitOption(option.id)}
+                >
+                  <BidiText>{authoredText(option.label)}</BidiText>
+                </AnswerOption>
+              ))}
+            </MobileActionArea>
+          )}
+        </div>
+      )}
+
+      {phase === "answering" && !mayAnswer && (
+        <WaitingPhone
+          testId={coaching ? "moving-xo-phone-coaching" : undefined}
+          title={coaching ? "دوركم، ساعدوا زميلكم" : `دور ${otherTeam}`}
+          body={coaching ? undefined : "شوفوا اللغز على الشاشة."}
+          {...(coaching ? { decides: holderName } : {})}
+        >
+          {view.question && (
             <MovingXoQuestion
               compact
               question={view.question}
               showOptions={false}
             />
-            {sending === "answer" ? (
-              <SentState label="تم إرسال إجابتكم" />
-            ) : view.question.answerMode === "match" ? (
-              <form
-                onSubmit={submitText}
-                className="flex min-h-0 flex-1 flex-col"
-                data-testid="moving-xo-answer-form"
-              >
-                <div className="flex flex-1 items-center">
-                  <Input
-                    ref={answerInput}
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    aria-label="الإجابة"
-                    placeholder="اكتب الإجابة"
-                    autoComplete="off"
-                    enterKeyHint="send"
-                    className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
-                  />
-                </div>
-                <MobileActionArea>
-                  <Button
-                    type="submit"
-                    size="lg"
-                    disabled={!answer.trim() || !live || Boolean(sending)}
-                    className="h-14 w-full text-base font-black"
-                    data-testid="moving-xo-answer-submit"
-                  >
-                    <Send className="size-4" aria-hidden />
-                    أرسل الإجابة
-                  </Button>
-                </MobileActionArea>
-              </form>
-            ) : (
-              <MobileActionArea className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {view.question.options.map((option) => (
-                  <AnswerOption
-                    key={option.id}
-                    disabled={!live || Boolean(sending)}
-                    onClick={() => submitOption(option.id)}
-                  >
-                    <BidiText>{authoredText(option.label)}</BidiText>
-                  </AnswerOption>
-                ))}
-              </MobileActionArea>
-            )}
+          )}
+        </WaitingPhone>
+      )}
+
+      {phase === "placement" && mayPlace && (
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-3.5">
+          <div className="flex w-full items-center justify-between gap-2.5">
+            <span className="inline-flex min-h-8 -rotate-3 items-center rounded-[10px] border-[3px] border-success px-3 text-sm font-extrabold text-success">
+              جاوبتوا صح
+            </span>
+            {timer}
           </div>
-        )}
-
-        {phase === "answering" && !mayAnswer && (
-          <WaitingPhone
-            testId={coaching ? "moving-xo-phone-coaching" : undefined}
-            title={
-              coaching
-                ? `دوركم — الجوال مع ${holderName}`
-                : `دور ${activeTeam?.name ?? "الفريق الآخر"}`
-            }
-            body={
-              coaching
-                ? "تشاوروا في الإجابة والحركة — الإرسال من الجوال المحدد."
-                : "تابعوا اللغز على الشاشة"
-            }
-          >
-            {view.question && (
-              <MovingXoQuestion
-                compact
-                question={view.question}
-                showOptions={false}
-              />
-            )}
-          </WaitingPhone>
-        )}
-
-        {phase === "placement" && mayPlace && (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <p className="text-center text-sm font-black text-muted-foreground">
-              {view.expiringCell !== undefined
-                ? "جدّدوا العلامة الباهتة أو اختاروا خانة فارغة"
-                : "اختاروا خانة للحركة"}
-            </p>
-            <MovingXoBoard
-              compact
-              board={view.board}
-              teams={teams}
-              legalCells={view.legalCells}
-              {...(view.expiringCell !== undefined
-                ? { expiringCell: view.expiringCell }
-                : {})}
-              onPlace={place}
-              disabled={!live || Boolean(sending)}
-            />
-            {sending === "placement" && (
-              <div
-                role="status"
-                data-testid="moving-xo-placement-pending"
-                className="flex items-center justify-center gap-2 text-sm font-black text-muted-foreground"
-              >
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                جارٍ تثبيت الحركة…
-              </div>
-            )}
-          </div>
-        )}
-
-        {phase === "placement" && !mayPlace && (
-          <WaitingPhone
-            testId={coaching ? "moving-xo-phone-coaching" : undefined}
-            title={
-              coaching
-                ? `الحركة من جوال ${holderName}`
-                : `${activeTeam?.name ?? "الفريق الآخر"} يختار الحركة`
-            }
-            body={
-              coaching
-                ? "تشاوروا وين تنحط الحركة."
-                : "ستتحدث اللوحة فور تثبيت الحركة"
-            }
-          >
-            <MovingXoBoard compact board={view.board} teams={teams} />
-          </WaitingPhone>
-        )}
-
-        {terminal && (
-          <PhoneTerminal
+          <h1 className="text-center font-display text-2xl font-black text-[hsl(var(--brand-navy))]">
+            اختاروا خانتكم
+          </h1>
+          <MovingXoBoard
+            compact
             board={view.board}
             teams={teams}
-            outcome={view.outcome}
-            winnerTeamId={view.winningTeamId}
+            legalCells={view.legalCells}
+            {...(movingCell !== undefined ? { expiringCell: movingCell } : {})}
+            {...(chosen !== undefined ? { selectedCell: chosen } : {})}
+            {...(ownSymbol ? { selectedSymbol: ownSymbol } : {})}
+            onPlace={setPicked}
+            disabled={!live || Boolean(sending)}
           />
-        )}
-      </section>
-    </ChallengeFrame>
+          <p className="text-center text-sm leading-relaxed text-brand-plum">
+            {movingCell !== undefined
+              ? "معكم 3 علامات، فالباهتة بتنتقل للخانة اللي تختارونها."
+              : "اختاروا خانة من الخانات الذهبية."}
+          </p>
+          {sending === "placement" ? (
+            <p
+              role="status"
+              data-testid="moving-xo-placement-pending"
+              className="mt-auto flex min-h-[62px] items-center justify-center gap-2 text-sm font-bold text-brand-slate"
+            >
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              نثبّت الحركة…
+            </p>
+          ) : (
+            <button
+              type="button"
+              disabled={chosen === undefined || !live}
+              onClick={() => chosen !== undefined && place(chosen)}
+              data-testid="moving-xo-confirm-place"
+              className={cn(GOLD_ACTION, "mt-auto self-stretch")}
+            >
+              ثبّت الحركة
+            </button>
+          )}
+        </div>
+      )}
+
+      {phase === "placement" && !mayPlace && (
+        <WaitingPhone
+          testId={coaching ? "moving-xo-phone-coaching" : undefined}
+          title={coaching ? "اختاروا خانتكم" : `${otherTeam} يختار خانته`}
+          body={coaching ? undefined : "اللوحة تتحدث أول ما يثبّتون الحركة."}
+          {...(coaching ? { decides: holderName } : {})}
+        >
+          <MovingXoBoard
+            compact
+            board={view.board}
+            teams={teams}
+            {...(movingCell !== undefined ? { expiringCell: movingCell } : {})}
+          />
+        </WaitingPhone>
+      )}
+
+      {terminal && (
+        <PhoneTerminal
+          board={view.board}
+          teams={teams}
+          outcome={view.outcome}
+          winnerTeamId={view.winningTeamId}
+        />
+      )}
+    </section>
   );
 }
 
-function phoneTitle(
-  phase: string,
-  mayAnswer: boolean,
-  mayPlace: boolean,
-  activeTeamName?: string,
-): string {
-  if (phase === "completed") return "انتهت الجولة";
-  if (phase === "question-pending") return "اللغز التالي";
-  if (mayAnswer) return "جاوبوا واكسبوا الحركة";
-  if (mayPlace) return "الحركة لكم";
-  return `دور ${activeTeamName ?? "الفريق الآخر"}`;
-}
+/** The one gold action a phone screen ends on. */
+const GOLD_ACTION =
+  "min-h-[62px] rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform duration-fast active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_3px_0_hsl(var(--brand-navy))] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none";
 
 function PendingPhone() {
   return (
@@ -318,8 +331,13 @@ function PendingPhone() {
       data-testid="moving-xo-phone-pending"
       className="flex flex-1 flex-col items-center justify-center gap-3 text-center"
     >
-      <Loader2 className="size-6 animate-spin text-brand-gold" aria-hidden />
-      <p className="font-black text-foreground">جارٍ تجهيز اللغز…</p>
+      <Loader2
+        className="size-6 animate-spin text-[hsl(var(--brand-navy))]"
+        aria-hidden
+      />
+      <p className="font-display text-lg font-extrabold text-[hsl(var(--brand-navy))]">
+        نجهّز اللغز…
+      </p>
     </div>
   );
 }
@@ -331,11 +349,13 @@ function SentState({ label }: { label: string }) {
       data-testid="moving-xo-answer-pending"
       className="flex flex-1 flex-col items-center justify-center gap-2 text-center"
     >
-      <span className="grid size-14 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10">
-        <Check className="size-7 text-brand-gold" aria-hidden />
+      <span className="grid size-14 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))]">
+        <Check className="size-7 text-[hsl(var(--brand-navy))]" aria-hidden />
       </span>
-      <p className="font-black text-foreground">{label}</p>
-      <p className="text-sm font-bold text-muted-foreground">ننتظر النتيجة…</p>
+      <p className="font-display text-lg font-extrabold text-[hsl(var(--brand-navy))]">
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-brand-slate">ننتظر النتيجة…</p>
     </div>
   );
 }
@@ -343,11 +363,14 @@ function SentState({ label }: { label: string }) {
 function WaitingPhone({
   title,
   body,
+  decides,
   children,
   testId = "moving-xo-phone-waiting",
 }: {
   title: string;
-  body: string;
+  body?: string;
+  /** The teammate who decides this turn, on a teammate's read-only screen. */
+  decides?: string;
   children?: React.ReactNode;
   testId?: string;
 }) {
@@ -356,11 +379,23 @@ function WaitingPhone({
       data-testid={testId}
       className="flex min-h-0 flex-1 flex-col justify-center gap-4"
     >
+      <p className="text-center font-display text-xl font-extrabold text-[hsl(var(--brand-navy))]">
+        {title}
+      </p>
       {children}
-      <div className="surface-card p-5 text-center">
-        <p className="text-lg font-black text-foreground">{title}</p>
-        <p className="mt-1 text-sm font-bold text-muted-foreground">{body}</p>
-      </div>
+      {body && (
+        <p className="text-center text-sm font-semibold leading-relaxed text-brand-slate">
+          {body}
+        </p>
+      )}
+      {decides && (
+        <p
+          data-testid="moving-xo-phone-decides"
+          className="rounded-[14px] border-2 border-dashed border-brand-dash bg-brand-lavender px-3.5 py-3 text-center text-[15px] font-bold text-brand-plum"
+        >
+          القرار عند <BidiText>{decides}</BidiText>
+        </p>
+      )}
     </div>
   );
 }
@@ -385,10 +420,16 @@ function PhoneTerminal({
         teams={teams}
         winningLine={outcome === "win" ? winningLineOf(board) : []}
       />
-      <div className="surface-card p-4" data-testid="moving-xo-phone-terminal">
-        <p className="text-xl font-black text-foreground">
+      <div
+        className={cn(
+          "rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] p-4",
+          outcome === "win" ? "bg-[hsl(var(--brand-gold))]" : "bg-white",
+        )}
+        data-testid="moving-xo-phone-terminal"
+      >
+        <p className="font-display text-xl font-black text-[hsl(var(--brand-navy))]">
           {outcome === "win"
-            ? `فاز ${winner?.name ?? "الفريق"}`
+            ? `فوز ${winner?.name ?? "الفريق"}`
             : outcome === "draw"
               ? "تعادل"
               : MOVING_XO_CONTENT_EXHAUSTED_COPY}

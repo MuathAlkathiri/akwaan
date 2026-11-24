@@ -1,20 +1,70 @@
 "use client";
 
-import { Circle, X } from "lucide-react";
-
 import { cn } from "@/lib/utils";
-import { teamIdentityOf } from "@/lib/team-identity";
 import {
   movingXoSymbol,
   type MovingXoBoardView,
 } from "../match/moving-xo.presentation";
 
+/**
+ * The two marks. Told apart by shape first — a navy cross, a purple ring — so
+ * neither depends on its colour, and neither borrows a team's colour: a team is
+ * a dot beside its name and nothing else.
+ */
+export function MovingXoMark({
+  symbol,
+  className,
+  faded = false,
+}: {
+  symbol: "X" | "O";
+  className?: string;
+  faded?: boolean;
+}) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 40 40"
+      data-mark={symbol}
+      className={cn("size-[56%]", faded && "opacity-35", className)}
+    >
+      {symbol === "X" ? (
+        <path
+          d="M9 9 L31 31 M31 9 L9 31"
+          stroke="hsl(var(--brand-navy))"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+      ) : (
+        <circle
+          cx="20"
+          cy="20"
+          r="12"
+          fill="none"
+          stroke="hsl(var(--brand-purple))"
+          strokeWidth="7"
+        />
+      )}
+    </svg>
+  );
+}
+
+/**
+ * The 3×3 board, the same on the shared screen and in a hand.
+ *
+ * Gold marks game state and only game state: a cell that can be played, the
+ * cell a thumb has chosen, the winning line. The mark that will move on the
+ * team's next move sits faded in a dashed lavender cell labelled «بتنتقل», so
+ * both teams can plan around it.
+ */
 export function MovingXoBoard({
   board,
   teams,
   legalCells = [],
+  availableCells = [],
   expiringCell,
   winningLine = [],
+  selectedCell,
+  selectedSymbol,
   onPlace,
   disabled = false,
   compact = false,
@@ -22,8 +72,14 @@ export function MovingXoBoard({
   board: MovingXoBoardView;
   teams: ReadonlyArray<{ id: string; name: string }>;
   legalCells?: readonly number[];
+  /** Cells to outline as playable on a surface that cannot play them. */
+  availableCells?: readonly number[];
   expiringCell?: number;
   winningLine?: readonly number[];
+  /** The cell a player has chosen and not yet confirmed. */
+  selectedCell?: number;
+  /** The mark the choosing team would place there. */
+  selectedSymbol?: "X" | "O";
   onPlace?: (cell: number) => void;
   disabled?: boolean;
   compact?: boolean;
@@ -32,108 +88,145 @@ export function MovingXoBoard({
   return (
     <div
       role="grid"
-      aria-label="لوحة X و O"
+      dir="ltr"
+      aria-label="لوحة إكس أو"
       data-testid="moving-xo-board"
       className={cn(
-        "mx-auto grid aspect-square w-full grid-cols-3 gap-2 rounded-[calc(var(--radius)+0.35rem)] border border-border/70 bg-muted/35 p-2 shadow-sm",
-        compact ? "max-w-[22rem]" : "max-w-[min(34rem,58dvh)] gap-3 p-3",
+        "mx-auto grid w-full grid-cols-3",
+        compact
+          ? "max-w-[314px] gap-2.5"
+          : "max-w-[min(478px,52dvh)] gap-3.5",
       )}
     >
       {board.cells.map((owner, cell) => {
         const team = teams.find((candidate) => candidate.id === owner);
         const symbol = movingXoSymbol(owner, teams);
-        const identity = owner ? teamIdentityOf(owner, teams) : undefined;
         const legal = interactive && legalCells.includes(cell) && !disabled;
         const expiring = cell === expiringCell;
         const winning = winningLine.includes(cell);
-        const label = owner
-          ? `${team?.name ?? "فريق"}، ${symbol ?? "علامة"}${
-              expiring ? "، العلامة الأقدم ويمكن تجديدها" : ""
-            }`
-          : legal
-            ? `خانة فارغة ${cell + 1}، متاحة للاختيار`
-            : `خانة فارغة ${cell + 1}`;
+        const selected = cell === selectedCell;
+        const open =
+          !owner && !selected && (legal || availableCells.includes(cell));
+        const label = selected
+          ? `الخانة ${cell + 1}: اختياركم`
+          : owner
+            ? `الخانة ${cell + 1}: ${team?.name ?? "فريق"}، ${symbol === "X" ? "إكس" : "أو"}${
+                expiring ? "، بتنتقل في الحركة الجاية" : ""
+              }`
+            : legal
+              ? `الخانة ${cell + 1}: فاضية ومتاحة`
+              : `الخانة ${cell + 1}: فاضية`;
         const cellClass = cn(
-          "relative grid aspect-square min-h-[3.5rem] place-items-center overflow-hidden rounded-[var(--radius)] border-2 bg-card transition duration-fast ease-akwaan",
-          identity?.surface,
-          identity?.border,
-          legal &&
-            "cursor-pointer border-brand-gold/80 bg-brand-gold/10 shadow-[0_0_0_3px_hsl(var(--brand-gold)/0.12)] hover:-translate-y-0.5 hover:bg-brand-gold/15 active:translate-y-0",
+          "relative flex aspect-square items-center justify-center border-[3px] p-0 transition-colors duration-fast ease-akwaan",
+          compact ? "rounded-2xl" : "rounded-[25px]",
+          winning || selected
+            ? "border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+            : expiring
+              ? "border-dashed border-brand-plum bg-brand-lavender"
+              : open
+                ? "border-dashed border-[hsl(var(--brand-gold))] bg-[#FFFBF0]"
+                : "border-[hsl(var(--brand-navy))] bg-white",
+          legal && "cursor-pointer",
           !legal && interactive && "cursor-default",
-          expiring &&
-            "opacity-50 ring-2 ring-brand-gold ring-offset-2 ring-offset-background motion-safe:animate-pulse",
-          winning && "ring-4 ring-success ring-offset-2 ring-offset-background",
         );
         const contents = (
           <>
-            {symbol === "X" && (
-              <X
-                strokeWidth={3.3}
-                className={cn(
-                  compact ? "size-12" : "size-16 sm:size-20",
-                  identity?.text,
-                )}
-                aria-hidden
-              />
+            {selected && selectedSymbol ? (
+              <MovingXoMark symbol={selectedSymbol} />
+            ) : (
+              symbol && (
+                <MovingXoMark
+                  symbol={symbol}
+                  faded={expiring && !winning}
+                  className={cn(
+                    "transition-opacity duration-base",
+                    // The mark is leaving for the chosen cell: let it go.
+                    expiring && selectedCell !== undefined && "opacity-10",
+                  )}
+                />
+              )
             )}
-            {symbol === "O" && (
-              <Circle
-                strokeWidth={3.3}
-                className={cn(
-                  compact ? "size-11" : "size-14 sm:size-[4.5rem]",
-                  identity?.text,
-                )}
-                aria-hidden
-              />
-            )}
-            {expiring && (
-              <span className="absolute inset-x-1 bottom-1 rounded-full bg-background/90 px-1 py-0.5 text-[0.6rem] font-black text-foreground shadow-sm">
-                {legal ? "الأقدم · جدّدها" : "الأقدم"}
-              </span>
-            )}
-            {legal && !owner && (
+            {expiring && !winning && (
               <span
-                aria-hidden
-                className="size-2.5 rounded-full bg-brand-gold/70"
-              />
+                className={cn(
+                  "absolute inset-x-0 bottom-1.5 text-center font-bold text-brand-plum",
+                  compact ? "text-[11px]" : "text-[13px]",
+                )}
+              >
+                بتنتقل
+              </span>
             )}
           </>
         );
+        const shared = {
+          role: "gridcell",
+          "aria-label": label,
+          "data-testid": `moving-xo-cell-${cell}`,
+          "data-owner": owner ?? "empty",
+          "data-expiring": expiring ? "true" : "false",
+          "data-winning": winning ? "true" : "false",
+          "data-selected": selected ? "true" : "false",
+          className: cellClass,
+        } as const;
         if (interactive) {
           return (
             <button
               key={cell}
               type="button"
-              role="gridcell"
-              aria-label={label}
+              {...shared}
               disabled={!legal}
+              aria-pressed={selected}
               onClick={() => legal && onPlace?.(cell)}
-              data-testid={`moving-xo-cell-${cell}`}
-              data-owner={owner ?? "empty"}
               data-legal={legal ? "true" : "false"}
-              data-expiring={expiring ? "true" : "false"}
-              data-winning={winning ? "true" : "false"}
-              className={cellClass}
             >
               {contents}
             </button>
           );
         }
         return (
-          <div
-            key={cell}
-            role="gridcell"
-            aria-label={label}
-            data-testid={`moving-xo-cell-${cell}`}
-            data-owner={owner ?? "empty"}
-            data-expiring={expiring ? "true" : "false"}
-            data-winning={winning ? "true" : "false"}
-            className={cellClass}
-          >
+          <div key={cell} {...shared}>
             {contents}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/** Which team is which mark, each with its team dot. */
+export function MovingXoLegend({
+  teams,
+  dotOf,
+  className,
+}: {
+  teams: ReadonlyArray<{ id: string; name: string }>;
+  dotOf: (teamId: string) => string;
+  className?: string;
+}) {
+  return (
+    <ul
+      data-testid="moving-xo-legend"
+      className={cn(
+        "flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-1 text-base font-bold text-[hsl(var(--brand-navy))]",
+        className,
+      )}
+    >
+      {teams.slice(0, 2).map((team) => {
+        const symbol = movingXoSymbol(team.id, teams);
+        return (
+          <li key={team.id} className="inline-flex items-center gap-2">
+            {symbol && <MovingXoMark symbol={symbol} className="size-[26px]" />}
+            <span
+              aria-hidden
+              className={cn(
+                "size-3.5 flex-none rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                dotOf(team.id),
+              )}
+            />
+            {team.name}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

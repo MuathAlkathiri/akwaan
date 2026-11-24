@@ -486,24 +486,24 @@ describe('generalized mechanic tutorial policy', () => {
     prompt: 'أي لعبة ترتبط بشخصية كريتوس؟',
     correctAnswer: 'غود أوف وور',
     submittedAnswer: 'غود أوف وور',
-    teamAPosition: 4,
-    teamBPosition: 11,
+    teamAPosition: 5,
+    teamBPosition: 9,
     activeTeam: 'team-a',
     difficulty: 'hard',
-    movement: 4,
-    baseLanding: 8,
+    movement: 6,
+    baseLanding: 11,
     tile: 'boost',
-    finalLanding: 13,
+    finalLanding: 15,
   });
 
   it('accepts and derives the canonical Marhala movement and boost path', () => {
     expect(validateMarhalaTutorialScenario(marhala())).toEqual([]);
     expect(deriveMarhalaTutorialOutcome(marhala())).toMatchObject({
-      teamAPosition: 13,
-      teamBPosition: 11,
-      baseLanding: 8,
+      teamAPosition: 15,
+      teamBPosition: 9,
+      baseLanding: 11,
       tile: 'boost',
-      finalLanding: 13,
+      finalLanding: 15,
       matchPointDelta: 0,
       reason: 'marhala.tutorial-turn',
     });

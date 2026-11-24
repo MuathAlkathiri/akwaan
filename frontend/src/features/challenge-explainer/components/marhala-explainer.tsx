@@ -401,13 +401,15 @@ function MarhalaStagePanel({
             <p className="text-[0.68rem] font-bold text-muted-foreground">
               إجابة صحيحة · صعب
             </p>
-            <p className="text-sm font-black">4 → 8</p>
+            <p className="text-sm font-black">
+              {scenario.teamAPosition} → {scenario.baseLanding}
+            </p>
           </div>
           <span
             data-marhala-movement-emphasis
             className="rounded-full bg-primary px-3 py-1 text-xs font-black text-primary-foreground"
           >
-            +4 مربعات
+            +{scenario.movement} مربعات
           </span>
         </div>
       ) : stepId === "boost" ? (
@@ -419,10 +421,10 @@ function MarhalaStagePanel({
             <p className="text-[0.68rem] font-bold text-muted-foreground">
               هبوط أساسي
             </p>
-            <p className="text-sm font-black">المربع 8</p>
+            <p className="text-sm font-black">المحطة {scenario.baseLanding}</p>
           </div>
           <span className="rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-black">
-            دفعة → 13
+            قفزة → {scenario.finalLanding}
           </span>
         </div>
       ) : (
@@ -431,7 +433,9 @@ function MarhalaStagePanel({
             <p className="text-[0.68rem] font-bold text-muted-foreground">
               الفريق الأول
             </p>
-            <p className="text-sm font-black">الموضع النهائي 13</p>
+            <p className="text-sm font-black">
+              الموضع النهائي {scenario.finalLanding}
+            </p>
           </div>
           <p className="text-xs font-bold text-muted-foreground">
             الفريق الثاني 11
@@ -471,7 +475,7 @@ function MarhalaStagePanel({
             })}
           </div>
           <p className="text-center text-[0.68rem] font-bold text-muted-foreground">
-            صعب يفتح فرصة 8 → 13، لكنه يعرّضكم أيضًا لمربعات الفخ — النتيجة لا
+            صعب يفتح فرصة {scenario.baseLanding} → {scenario.finalLanding}، لكنه يعرّضكم أيضًا لمربعات الفخ — النتيجة لا
             تُحسم قبل الـ Roll.
           </p>
         </>

@@ -1,13 +1,14 @@
 "use client";
 
+import { useRef } from "react";
+
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { PlayerCharacterIcon } from "../../components/player-characters";
 import {
   MARHALA_BOARD,
-  MARHALA_ROW_LENGTH,
-  MARHALA_START_POSITION,
   MARHALA_FINISH_POSITION,
+  MARHALA_START_POSITION,
   marhalaRoutes,
   type MarhalaTile,
 } from "../marhala.presentation";
@@ -18,214 +19,85 @@ export interface MarhalaBoardTeam {
   name: string;
   /**
    * The character this team's player picked in the lobby, drawn as the pawn.
-   * Optional: a board handed no character falls back to the team's initial, so
-   * a session from before characters existed still draws.
+   * Optional: a board handed no character falls back to a plain face, so a
+   * session from before characters existed still draws.
    */
   avatarKey?: string;
 }
 
 /**
- * "المرحلة" — sixteen squares, one serpentine run, two teams racing it.
+ * "المرحلة" — sixteen stations on one winding road, two teams racing it.
  *
- * A board game read from across a room: four rows of four, numbered 1 → 16, the
- * path turning at each row end the way a printed board does. Everything
- * positional comes from the tiles this component is handed — their `row`,
- * `column` and `destination` — so a tile cannot be drawn in one place and walked
- * onto in another, and a route cannot point somewhere the configuration does not.
+ * The approved board (design canvas, `TVMarhala`): rounded-square stations on a
+ * lavender road with a navy outline, four rows that wind back and forth, and
+ * small chevrons on the road saying which way the race runs. A boost is a
+ * **ladder** (purple, white rungs) and a trap is a **slide** (dark tube, dotted
+ * centre line, an arrowhead at its foot): they differ by shape and by light and
+ * dark, never by hue alone, and red is not used — red means a wrong answer and
+ * nothing else in this product. Every connection carries a white pill saying
+ * where it leads.
  *
- * The mechanic is the *route*, not a badge on a square. A boost is a rocket
- * lying across the board with its trail running back to the square it launches
- * from; a trap is a collapsing rail sliding down to the square it drops you on.
- * Both are drawn **over** the tiles, the way a ladder or a snake sits on top of
- * a printed board, each in its own casing so crossings read as one object
- * passing over another rather than as a tangle of lines.
+ * Everything positional comes from the tiles this component is handed — their
+ * `row`, `column` and `destination` — so a station cannot be drawn in one place
+ * and walked onto in another, and a connection cannot point somewhere the
+ * configuration does not.
  *
  * Nothing here resolves gameplay: the board draws the positions it is given.
  */
 
-/** Station discs sit inside their cell: the gap is where the run shows. */
-const DISC = 77;
-const DISC_FINISH = 86;
+/** The artboard's own coordinates, so every number below can be read off it. */
+const W = 1010;
+const H = 590;
+/** Station 1 sits on the right: the race starts where an Arabic line starts. */
+const COLUMN_X = [880, 630, 380, 130] as const;
+const ROW_Y = [515, 372, 229, 86] as const;
+const TILE = 84;
+const TILE_FINISH = 96;
 
-/** Fixed dust, so a re-render never reshuffles the sky behind the board. */
-const DUST = Array.from({ length: 46 }, (_unused, i) => {
-  const noise = (salt: number) =>
-    Math.abs((Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453) % 1);
-  return {
-    x: Math.round(noise(1) * 978 + 11),
-    y: Math.round(noise(7) * 978 + 11),
-    r: Number((1.6 + noise(3) * 2.4).toFixed(1)),
-    o: Number((0.25 + noise(5) * 0.5).toFixed(2)),
-  };
-});
-
-/** One square viewBox, so the board scales to any screen without re-deriving. */
-const BOX = 1000;
-const MARGIN = 24;
-const GAP = 7;
-const TILE =
-  (BOX - MARGIN * 2 - GAP * (MARHALA_ROW_LENGTH - 1)) / MARHALA_ROW_LENGTH;
-const STEP = TILE + GAP;
-
-/** The board's own surface, which every route's casing is cut out of. */
-const SURFACE = "hsl(var(--brand-navy) / 0.88)";
-/**
- * A deeper cut of the brand gold. The UI gold is deliberately soft, which is
- * right on a chip and invisible on a cream tile from across a room; the launch
- * objects use this and keep the soft gold for their highlights.
- */
-const GOLD_DEEP = "hsl(38 60% 46%)";
-
-/** Top-left corner of a tile, from its serpentine row/column. */
-function corner(tile: MarhalaTile): { x: number; y: number } {
-  return {
-    x: MARGIN + (tile.column - 1) * STEP,
-    // Row 1 is the bottom row, so rows count upward from the board's foot.
-    y: MARGIN + (MARHALA_ROW_LENGTH - tile.row) * STEP,
-  };
-}
-const centreOf = (tile: MarhalaTile) => {
-  const { x, y } = corner(tile);
-  return { x: x + TILE / 2, y: y + TILE / 2 };
-};
+const NAVY = "hsl(var(--brand-navy))";
+const GOLD = "hsl(var(--brand-gold))";
+const PURPLE = "hsl(var(--brand-purple))";
+/** The slide's own dark, a step lighter than the outline so the outline reads. */
+const SLIDE = "#2E2860";
+const ROAD = "#E3DAF6";
 
 interface Point {
   x: number;
   y: number;
 }
 
-/** A route as it is actually drawn: its two ends and the control point it bows around. */
-interface DrawnRoute {
-  from: MarhalaTile;
-  to: MarhalaTile;
-  kind: "boost" | "trap";
-  a: Point;
-  b: Point;
-  c: Point;
-  prominent: boolean;
+function centreOf(tile: MarhalaTile): Point {
+  return {
+    x: COLUMN_X[(tile.column - 1) % COLUMN_X.length] ?? COLUMN_X[0],
+    y: ROW_Y[(tile.row - 1) % ROW_Y.length] ?? ROW_Y[0],
+  };
 }
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
-
-const quadPoint = (a: Point, c: Point, b: Point, t: number): Point => {
-  const m = 1 - t;
-  return {
-    x: m * m * a.x + 2 * m * t * c.x + t * t * b.x,
-    y: m * m * a.y + 2 * m * t * c.y + t * t * b.y,
-  };
+const unit = (a: Point, b: Point): Point => {
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  return { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
 };
-
-const quadTangent = (a: Point, c: Point, b: Point, t: number): Point => ({
-  x: 2 * (1 - t) * (c.x - a.x) + 2 * t * (b.x - c.x),
-  y: 2 * (1 - t) * (c.y - a.y) + 2 * t * (b.y - c.y),
+const along = (p: Point, u: Point, by: number): Point => ({
+  x: p.x + u.x * by,
+  y: p.y + u.y * by,
 });
+/** The perpendicular that points up the board, so a bow never dips into a row. */
+const upward = (u: Point): Point =>
+  u.x >= 0 ? { x: u.y, y: -u.x } : { x: -u.y, y: u.x };
+const round = (value: number) => Math.round(value * 10) / 10;
+const pt = (p: Point) => `${round(p.x)} ${round(p.y)}`;
 
-const angleAt = (a: Point, c: Point, b: Point, t: number) => {
-  const g = quadTangent(a, c, b, t);
-  return (Math.atan2(g.y, g.x) * 180) / Math.PI;
+/** What kind of station this is, as the room should read it. */
+type StationRole =
+  "start" | "finish" | "boost" | "trap" | "checkpoint" | "plain";
+
+const ROLE_LABEL: Partial<Record<StationRole, string>> = {
+  start: "البداية",
+  finish: "النهاية",
+  boost: "قفزة",
+  trap: "فخ",
+  checkpoint: "نقطة حفظ",
 };
-
-/**
- * The outline of a band that follows the curve and changes width along it.
- *
- * A stroked line of constant width reads as a diagram; a band that is broad
- * where a rocket's exhaust spreads and narrow where its nose arrives reads as
- * an object. Sampling the curve is what lets the two ends differ.
- */
-function taperedBand(
-  a: Point,
-  c: Point,
-  b: Point,
-  t0: number,
-  t1: number,
-  w0: number,
-  w1: number,
-): string {
-  const steps = 26;
-  const left: Point[] = [];
-  const right: Point[] = [];
-  for (let i = 0; i <= steps; i += 1) {
-    const p = i / steps;
-    const t = t0 + (t1 - t0) * p;
-    const point = quadPoint(a, c, b, t);
-    const g = quadTangent(a, c, b, t);
-    const len = Math.hypot(g.x, g.y) || 1;
-    const half = (w0 + (w1 - w0) * p) / 2;
-    const nx = (-g.y / len) * half;
-    const ny = (g.x / len) * half;
-    left.push({ x: point.x + nx, y: point.y + ny });
-    right.push({ x: point.x - nx, y: point.y - ny });
-  }
-  const path = [...left, ...right.reverse()]
-    .map(
-      (p, index) =>
-        `${index === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`,
-    )
-    .join(" ");
-  return `${path} Z`;
-}
-
-/**
- * The two points a route actually runs between.
- *
- * Four routes land on square 7. Aimed at its centre they arrive as one blob, so
- * each is stepped sideways by its rank — still unmistakably on its own square,
- * but far enough apart that four heads read as four.
- */
-function fannedEnds(a: Point, b: Point, rank: number): [Point, Point] {
-  if (rank === 0) return [a, b];
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const span = Math.hypot(dx, dy) || 1;
-  const step = rank * 28;
-  const nx = (-dy / span) * step;
-  const ny = (dx / span) * step;
-  return [
-    { x: a.x + nx, y: a.y + ny },
-    { x: b.x + nx, y: b.y + ny },
-  ];
-}
-
-/**
- * Where a route bows, so eleven of them stay eleven separable objects.
- *
- * Rockets arc above their straight line and traps below it, in board terms
- * rather than travel terms — otherwise two routes running opposite ways along
- * the same row would bow into each other. Routes that share a destination fan
- * apart by a fixed step, which is what keeps the four that all land on 7 from
- * arriving as one thick smear.
- */
-function controlPoint(
-  a: Point,
-  b: Point,
-  kind: "boost" | "trap",
-  rank: number,
-): Point {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const span = Math.hypot(dx, dy) || 1;
-  let nx = -dy / span;
-  let ny = dx / span;
-  if (ny > 0.001) {
-    // Point the normal up the board, not up the direction of travel.
-    nx = -nx;
-    ny = -ny;
-  } else if (Math.abs(ny) <= 0.001) {
-    // A vertical run has a horizontal normal: push it out towards the nearer edge.
-    const outward = (a.x + b.x) / 2 < BOX / 2 ? -1 : 1;
-    if (Math.sign(nx) !== outward) {
-      nx = -nx;
-      ny = -ny;
-    }
-  }
-  const lift = Math.min(span * 0.035, 18) + rank * Math.min(span * 0.06, 20);
-  const sign = kind === "boost" ? 1 : -1;
-  return {
-    x: clamp((a.x + b.x) / 2 + nx * lift * sign, 44, BOX - 44),
-    y: clamp((a.y + b.y) / 2 + ny * lift * sign, 44, BOX - 44),
-  };
-}
 
 export function MarhalaBoard({
   teams,
@@ -243,7 +115,7 @@ export function MarhalaBoard({
   activeTeamId: string;
   /** The board being played. Defaults to the configured one; injectable for tests. */
   tiles?: readonly MarhalaTile[];
-  /** The tile currently reacting, while a rocket or trap fires. */
+  /** The station currently reacting, while a ladder or slide fires. */
   effect?: { position: number; kind: "boost" | "trap" };
   /** The team whose token is mid-move, for a touch of extra emphasis. */
   travellingTeamId?: string;
@@ -253,270 +125,164 @@ export function MarhalaBoard({
 }) {
   const routes = marhalaRoutes(tiles);
   const byPosition = new Map(tiles.map((tile) => [tile.position, tile]));
-  const activeRoute = effect
-    ? routes.find((route) => route.from === effect.position)
-    : undefined;
+  // A slide drops a team on a checkpoint, so the checkpoints are whatever the
+  // slides of *this* board point at — never a second list to keep in step.
+  const checkpoints = new Set(
+    routes.filter((route) => route.kind === "trap").map((route) => route.to),
+  );
+  const roleOf = (tile: MarhalaTile): StationRole => {
+    if (tile.kind === "finish") return "finish";
+    if (tile.kind === "boost") return "boost";
+    if (tile.kind === "trap") return "trap";
+    if (checkpoints.has(tile.position)) return "checkpoint";
+    if (tile.position === MARHALA_START_POSITION) return "start";
+    return "plain";
+  };
 
-  // Rank among the routes that land on the same square, so they fan rather than stack.
-  const arrivals = new Map<number, number[]>();
-  for (const route of routes) {
-    arrivals.set(route.to, [...(arrivals.get(route.to) ?? []), route.from]);
-  }
+  const ordered = [...tiles].sort((a, b) => a.position - b.position);
+  const road = ordered
+    .map((tile, index) => `${index === 0 ? "M" : "L"}${pt(centreOf(tile))}`)
+    .join(" ");
+  const rows = [...new Set(tiles.map((tile) => tile.row))].sort();
 
-  const drawn: DrawnRoute[] = [];
-  for (const route of routes) {
+  const connections = routes.flatMap((route) => {
     const from = byPosition.get(route.from);
     const to = byPosition.get(route.to);
-    if (!from || !to) continue;
-    const siblings = arrivals.get(route.to) ?? [route.from];
-    const rank = siblings.indexOf(route.from) - (siblings.length - 1) / 2;
-    const [a, b] = fannedEnds(centreOf(from), centreOf(to), rank);
-    drawn.push({
-      from,
-      to,
-      kind: route.kind,
-      a,
-      b,
-      c: controlPoint(a, b, route.kind, rank),
-      prominent: activeRoute?.from === route.from,
-    });
-  }
-  // The printed run, in the order a team walks it.
-  const track = tiles
-    .map((tile) => centreOf(tile))
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
-    .join(" ");
-
-  // Squares a token is standing on: their route is the one the players need to
-  // see right now, so it is the one that gets drawn.
-  const occupied = new Set(Object.values(positions));
-
-  // Long routes lie down first so the short local ones stay on top and legible,
-  // and whichever route is firing is drawn last of all.
-  drawn.sort((left, right) => {
-    if (left.prominent !== right.prominent) return left.prominent ? 1 : -1;
-    return (
-      Math.hypot(right.b.x - right.a.x, right.b.y - right.a.y) -
-      Math.hypot(left.b.x - left.a.x, left.b.y - left.a.y)
+    if (!from || !to) return [];
+    const a = centreOf(from);
+    const b = centreOf(to);
+    const u = unit(a, b);
+    const n = upward(u);
+    const middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    // The pill sits beside the connection, a little toward the station it
+    // starts from: above a ladder, below a slide, so the two never read alike.
+    const pill = along(
+      along(middle, u, -44),
+      n,
+      route.kind === "boost" ? 49 : -52,
     );
+    return [{ ...route, a, b, u, n, pill }];
   });
 
   return (
     <div
       data-testid="marhala-board"
-      className={cn(
-        "relative mx-auto aspect-square w-full max-w-[min(78vh,920px)]",
-        className,
-      )}
+      dir="ltr"
+      className={cn("relative mx-auto w-full", className)}
+      style={{ aspectRatio: `${W} / ${H}` }}
     >
       <svg
-        viewBox={`0 0 ${BOX} ${BOX}`}
+        viewBox={`0 0 ${W} ${H}`}
         className="absolute inset-0 size-full"
-        role="presentation"
-        aria-hidden
+        role="group"
+        aria-label="لوحة المرحلة"
       >
-        <defs>
-          <linearGradient id="marhala-board-rim" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(43 60% 98%)" />
-            <stop offset="100%" stopColor="hsl(41 45% 93%)" />
-          </linearGradient>
-          <linearGradient id="marhala-tile-cream" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(43 66% 99%)" />
-            <stop offset="72%" stopColor="hsl(42 50% 96%)" />
-            <stop offset="100%" stopColor="hsl(40 42% 93%)" />
-          </linearGradient>
-          <linearGradient id="marhala-tile-finish" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(46 93% 76%)" />
-            <stop offset="70%" stopColor="hsl(40 85% 60%)" />
-            <stop offset="100%" stopColor="hsl(35 72% 48%)" />
-          </linearGradient>
-          {drawn.map((route) => (
-            <linearGradient
-              key={`grad-${route.from.position}`}
-              id={`marhala-trail-${route.from.position}`}
-              gradientUnits="userSpaceOnUse"
-              x1={route.a.x}
-              y1={route.a.y}
-              x2={route.b.x}
-              y2={route.b.y}
-            >
-              <stop
-                offset="0%"
-                stopColor={
-                  route.kind === "boost"
-                    ? "hsl(var(--brand-gold))"
-                    : "hsl(var(--destructive))"
-                }
-                stopOpacity={1}
-              />
-              <stop
-                offset="100%"
-                stopColor={
-                  route.kind === "boost" ? GOLD_DEEP : "hsl(var(--destructive))"
-                }
-                stopOpacity={1}
-              />
-            </linearGradient>
-          ))}
-        </defs>
-
-        {/* The board itself: one surface with a rim, so sixteen tiles read as
-            one object rather than sixteen cards that happen to be adjacent. */}
-        <rect
-          x={3}
-          y={9}
-          width={BOX - 6}
-          height={BOX - 8}
-          rx={46}
-          fill="hsl(var(--brand-navy))"
-        />
-        <rect
-          x={3}
-          y={3}
-          width={BOX - 6}
-          height={BOX - 12}
-          rx={46}
-          fill="url(#marhala-board-rim)"
-        />
-
-        {/* Orbital rings and dust: a place, quietly, under everything. */}
-        <circle
-          cx={BOX / 2}
-          cy={BOX / 2}
-          r={436}
-          fill="none"
-          stroke="hsl(43 32% 82%)"
-          strokeWidth={3}
-        />
-        <circle
-          cx={BOX / 2}
-          cy={BOX / 2}
-          r={293}
-          fill="none"
-          stroke="hsl(43 32% 82%)"
-          strokeWidth={3}
-          strokeDasharray="13 20"
-        />
-        {DUST.map((speck, index) => (
-          <circle
-            key={index}
-            cx={speck.x}
-            cy={speck.y}
-            r={speck.r}
-            fill="hsl(43 26% 78%)"
-            opacity={speck.o}
+        {/* A faint band under each row, so four rows read as four rows. */}
+        {rows.map((row) => (
+          <rect
+            key={row}
+            x={20}
+            y={(ROW_Y[row - 1] ?? 0) - 62}
+            width={W - 40}
+            height={124}
+            rx={30}
+            fill={row % 2 === 1 ? "#F6F3FC" : "#FBFAFE"}
+            stroke="#D9D2F0"
+            strokeWidth={2}
+            strokeDasharray="3 9"
+            aria-hidden
           />
         ))}
 
-        {/* Tactical grid. */}
-        <g
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={2}
-          opacity={0.055}
-          fill="none"
-        >
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <path
-              key={n}
-              d={`M 0 ${n * 125} H ${BOX} M ${n * 125} 0 V ${BOX}`}
-            />
-          ))}
-        </g>
-
-        {/* Corner brackets: the frame of a heads-up display. */}
-        <g
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={6}
-          fill="none"
-          opacity={0.3}
-          strokeLinecap="round"
-        >
-          <path d="M 31 89 V 44 a 13 13 0 0 1 13 -13 h 45" />
-          <path d={`M ${BOX - 89} 31 h 45 a 13 13 0 0 1 13 13 v 45`} />
+        {/* The road, 1 → 16, with the direction of travel printed on it. */}
+        <g aria-hidden>
           <path
-            d={`M ${BOX - 31} ${BOX - 89} v 45 a 13 13 0 0 1 -13 13 h -45`}
+            d={road}
+            fill="none"
+            stroke={NAVY}
+            strokeWidth={30}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <path d={`M 89 ${BOX - 31} H 44 a 13 13 0 0 1 -13 -13 v -45`} />
+          <path
+            d={road}
+            fill="none"
+            stroke={ROAD}
+            strokeWidth={22}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {ordered.slice(0, -1).map((tile, index) => {
+            const next = ordered[index + 1];
+            if (!next) return null;
+            const a = centreOf(tile);
+            const b = centreOf(next);
+            const u = unit(a, b);
+            const n = { x: -u.y, y: u.x };
+            const middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            const tip = along(middle, u, 9);
+            const base = along(middle, u, -6);
+            return (
+              <polygon
+                key={tile.position}
+                points={`${pt(tip)} ${pt(along(base, n, 8))} ${pt(along(base, n, -8))}`}
+                fill={NAVY}
+              />
+            );
+          })}
         </g>
 
-        {/* The run itself, 1 → 16, laid down before anything stands on it: the
-            printed track a board game turns at the end of every row. */}
-        <path
-          d={track}
-          fill="none"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={77}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={0.055}
-        />
-        <path
-          d={track}
-          fill="none"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={4.5}
-          strokeDasharray="7 23"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={0.3}
-        />
-
-        {/* Faces first — the squares the objects lie on. */}
-        {tiles.map((tile) => (
-          <TileFace
-            key={tile.position}
-            tile={tile}
-            emphasised={
-              effect?.position === tile.position ||
-              activeRoute?.to === tile.position
-            }
-          />
-        ))}
-
-        {/* Then the routes: every tube and band is on the board at rest, the
-            way a ladder is, so the shape of the race reads at a glance. Each
-            carries its own casing, so where two cross you see one object
-            passing over another instead of two lines meeting. */}
-        {drawn.map((route) =>
+        {connections.map((route) =>
           route.kind === "boost" ? (
-            <RocketRoute
-              key={`source-${route.from.position}`}
+            <Ladder
+              key={`${route.from}-${route.to}`}
               route={route}
-              sourceOnly={!route.prominent && !occupied.has(route.from.position)}
+              active={effect?.position === route.from}
             />
           ) : (
-            <TrapRoute
-              key={`source-${route.from.position}`}
+            <Slide
+              key={`${route.from}-${route.to}`}
               route={route}
-              sourceOnly={!route.prominent && !occupied.has(route.from.position)}
+              active={effect?.position === route.from}
             />
           ),
         )}
 
-        {/* Numerals last, so a square can always be read no matter what crosses
-            it. On a printed board the number survives the ladder over it; here
-            that means drawing it after, not hoping the routes miss it. */}
         {tiles.map((tile) => (
-          <TileSquare
+          <Station
             key={tile.position}
             tile={tile}
+            role={roleOf(tile)}
             reacting={
               effect?.position === tile.position ? effect.kind : undefined
-            }
-            destinationOf={
-              activeRoute?.to === tile.position ? activeRoute.kind : undefined
             }
           />
         ))}
       </svg>
 
-      {/* Tokens are HTML over the board so they reuse the Match's own team
-          identity classes rather than restating team colour in SVG. */}
+      {/* Where each connection leads, in words. HTML, so the pill sizes itself
+          to its sentence instead of to a guess at the sentence's width. */}
+      {connections.map((route) => (
+        <span
+          key={`pill-${route.from}`}
+          dir="rtl"
+          data-testid={`marhala-route-label-${route.from}`}
+          style={{
+            left: `${(route.pill.x / W) * 100}%`,
+            top: `${(route.pill.y / H) * 100}%`,
+          }}
+          className="pointer-events-none absolute inline-flex min-h-[26px] -translate-x-1/2 -translate-y-1/2 items-center whitespace-nowrap rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-2.5 text-[11px] font-extrabold text-[hsl(var(--brand-navy))] lg:text-[13px]"
+        >
+          {route.kind === "boost" ? "يطلّعك لـ " : "ينزّلك لـ "}
+          <span className="akwaan-numeral ms-1">{route.to}</span>
+        </span>
+      ))}
+
       {teams.map((team) => {
         const position = positions[team.id];
         const tile =
           position === undefined ? undefined : byPosition.get(position);
-        if (!tile) return null;
+        if (!tile || position === undefined) return null;
         const sharing = teams.filter(
           (other) => positions[other.id] === position,
         );
@@ -530,19 +296,19 @@ export function MarhalaBoard({
             active={team.id === activeTeamId}
             travelling={team.id === travellingTeamId}
             seat={sharing.findIndex((other) => other.id === team.id)}
-            crowded={sharing.length > 1}
           />
         );
       })}
 
-      {/* The movement beat, and only that: the board's calm state stays sixteen
-          readable squares, and the turn is already named in the screen header. */}
+      {/* The movement beat, and only that: the calm board stays sixteen
+          readable stations, and the turn is already named beside it. */}
       {centre && (
         <div
           data-testid="marhala-board-centre"
+          dir="rtl"
           className="pointer-events-none absolute inset-0 grid place-items-center"
         >
-          <div className="rounded-[var(--radius)] border border-brand-gold/40 bg-background/92 px-8 py-5 text-center shadow-xl backdrop-blur-sm">
+          <div className="rounded-[22px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-8 py-5 text-center shadow-[5px_6px_0_hsl(var(--brand-navy))]">
             {centre}
           </div>
         </div>
@@ -551,506 +317,240 @@ export function MarhalaBoard({
   );
 }
 
-/**
- * A boost, drawn as the tube it carries you through.
- *
- * One continuous gold pipe from the station you leave to the station you land
- * on, cased in brand navy like every other object on this board. The head at
- * the far end says which way it runs, so the pair of stations reads without a
- * number.
- */
-function RocketRoute({
-  route,
-  sourceOnly,
-}: {
-  route: DrawnRoute;
-  sourceOnly: boolean;
-}) {
-  const { a, b, c, prominent } = route;
-  const scale = prominent ? 1.72 : 1.2;
-  const band = taperedBand(a, c, b, 0.05, 0.9, 30 * scale, 23 * scale);
-  const spine = `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`;
-  const head = quadPoint(a, c, b, 0.9);
-  const heading = angleAt(a, c, b, 0.9);
-  const sparkles = [0.3, 0.5, 0.7].map((t, index) => ({
-    ...quadPoint(a, c, b, t),
-    size: [7, 5, 6][index],
-  }));
-  return (
-    <g
-      data-testid={`marhala-route-${route.from.position}-${route.to.position}`}
-      data-route-kind="boost"
-      data-route-object="rocket"
-      data-route-source={route.from.position}
-      data-route-destination={route.to.position}
-      data-route-prominent={prominent ? "true" : undefined}
-      data-route-silhouette="smooth-launch"
-      data-route-scale={scale}
-      data-route-full={!sourceOnly ? "true" : undefined}
-      className="transition-all duration-slow ease-akwaan"
-      opacity={sourceOnly ? 0 : 1}
-      aria-hidden={sourceOnly || undefined}
-    >
-      {(
-        <path
-          d={band}
-          fill="hsl(var(--brand-navy) / 0.22)"
-          stroke={SURFACE}
-          strokeWidth={13}
-          strokeLinejoin="round"
-          opacity={prominent ? 0.4 : 0.3}
-        />
-      )}
-      {(
-        <path
-          d={band}
-          fill={`url(#marhala-trail-${route.from.position})`}
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={6}
-          strokeLinejoin="round"
-          opacity={prominent ? 1 : 0.62}
-        />
-      )}
-      {(
-        <>
-          <path
-            d={spine}
-            fill="none"
-            stroke="hsl(var(--brand-navy))"
-            strokeWidth={49}
-            strokeLinecap="round"
-          />
-          <path
-            d={spine}
-            fill="none"
-            stroke="hsl(40 70% 72%)"
-            strokeWidth={29}
-            strokeLinecap="round"
-          />
-          <path
-            d={spine}
-            fill="none"
-            stroke="hsl(43 100% 93%)"
-            strokeWidth={8}
-            strokeLinecap="round"
-            opacity={0.8}
-          />
-        </>
-      )}
-      {sparkles.map((sparkle, index) => (
-          <path
-            key={index}
-            data-boost-spark={index + 1}
-            d={`M ${sparkle.x} ${sparkle.y - sparkle.size} L ${sparkle.x + sparkle.size * 0.34} ${sparkle.y - sparkle.size * 0.34} L ${sparkle.x + sparkle.size} ${sparkle.y} L ${sparkle.x + sparkle.size * 0.34} ${sparkle.y + sparkle.size * 0.34} L ${sparkle.x} ${sparkle.y + sparkle.size} L ${sparkle.x - sparkle.size * 0.34} ${sparkle.y + sparkle.size * 0.34} L ${sparkle.x - sparkle.size} ${sparkle.y} L ${sparkle.x - sparkle.size * 0.34} ${sparkle.y - sparkle.size * 0.34} Z`}
-            fill="hsl(45 86% 92%)"
-            stroke="hsl(var(--brand-navy))"
-            strokeWidth={2.5}
-            opacity={prominent ? 1 : 0.6}
-          />
-        ))}
-      <g
-        transform={`translate(${head.x} ${head.y}) rotate(${heading}) scale(${scale})`}
-        opacity={prominent ? 1 : 0.85}
-      >
-        <path
-          d="M -14 -20 L 20 0 L -14 20 L -7 0 Z"
-          fill="hsl(40 62% 66%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={4.5}
-          strokeLinejoin="round"
-        />
-      </g>
-      <g
-        data-route-destination-marker="landing-star"
-        transform={`translate(${b.x} ${b.y}) scale(${prominent ? 1.18 : 1})`}
-        opacity={prominent ? 1 : 0.7}
-      >
-        <path
-          d="M 0 -16 L 5 -6 L 16 -5 L 8 3 L 10 14 L 0 9 L -10 14 L -8 3 L -16 -5 L -5 -6 Z"
-          fill="hsl(40 62% 66%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={3.5}
-          strokeLinejoin="round"
-        />
-      </g>
-    </g>
-  );
+interface DrawnRoute {
+  from: number;
+  to: number;
+  kind: "boost" | "trap";
+  a: Point;
+  b: Point;
+  u: Point;
+  n: Point;
+}
+
+function routeProps(route: DrawnRoute, object: "ladder" | "slide", active: boolean) {
+  return {
+    "data-testid": `marhala-route-${route.from}-${route.to}`,
+    "data-route-kind": route.kind,
+    "data-route-object": object,
+    "data-route-source": route.from,
+    "data-route-destination": route.to,
+    "data-route-active": active ? "true" : "false",
+    "aria-hidden": true,
+  } as const;
 }
 
 /**
- * A trap, drawn as the arrow it drags you back along.
- *
- * The same cased band as a boost but in the red half of the team palette, cut
- * into separate slabs so it still reads as a fall rather than a ride when the
- * colour is gone, and pointed at the station it puts you back on.
+ * A boost, drawn as the ladder it is: a purple strip with white rungs, running
+ * straight between the two stations it joins.
  */
-function TrapRoute({
-  route,
-  sourceOnly,
-}: {
-  route: DrawnRoute;
-  sourceOnly: boolean;
-}) {
-  const { a, b, c, prominent } = route;
-  const scale = prominent ? 1.3 : 1.08;
-  const w0 = 30 * scale;
-  const w1 = 22 * scale;
-  const spine = `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`;
-  const head = quadPoint(a, c, b, 0.88);
-  const heading = angleAt(a, c, b, 0.88);
-  const fragments = [
-    [0.1, 0.27],
-    [0.32, 0.48],
-    [0.53, 0.68],
-    [0.73, 0.86],
-  ] as const;
+function Ladder({ route, active }: { route: DrawnRoute; active: boolean }) {
+  const start = along(route.a, route.u, 50);
+  const end = along(route.b, route.u, -50);
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const across = { x: -route.u.y, y: route.u.x };
+  const rungs: Point[] = [];
+  for (let at = 20; at <= length - 12; at += 18.8) {
+    rungs.push(along(start, route.u, at));
+  }
   return (
-    <g
-      data-testid={`marhala-route-${route.from.position}-${route.to.position}`}
-      data-route-kind="trap"
-      data-route-object="trap"
-      data-route-source={route.from.position}
-      data-route-destination={route.to.position}
-      data-route-prominent={prominent ? "true" : undefined}
-      data-route-silhouette="broken-drop"
-      data-route-scale={scale}
-      data-route-full={!sourceOnly ? "true" : undefined}
-      className="transition-all duration-slow ease-akwaan"
-      opacity={sourceOnly ? 0 : 1}
-      aria-hidden={sourceOnly || undefined}
-    >
-      {fragments.map(([t0, t1], index) => {
-          const widthAt = (t: number) => w0 + (w1 - w0) * t;
-          const fragment = taperedBand(a, c, b, t0, t1, widthAt(t0), widthAt(t1));
-          return (
-            <g key={t0} data-trap-fragment={index + 1}>
-              <path
-                d={fragment}
-                fill="hsl(var(--brand-navy) / 0.2)"
-                stroke={SURFACE}
-                strokeWidth={13}
-                strokeLinejoin="round"
-                opacity={prominent ? 1 : 0.5}
-              />
-              <path
-                d={fragment}
-                fill={`url(#marhala-trail-${route.from.position})`}
-                stroke="hsl(var(--brand-navy))"
-                strokeWidth={6}
-                strokeLinejoin="round"
-                opacity={prominent ? 1 : 0.62}
-              />
-            </g>
-          );
-        })}
-      <path
-        d={spine}
-        fill="none"
-        stroke="hsl(var(--brand-navy))"
+    <g {...routeProps(route, "ladder", active)}>
+      {active && (
+        <line
+          x1={start.x}
+          y1={start.y}
+          x2={end.x}
+          y2={end.y}
+          stroke={GOLD}
+          strokeWidth={54}
+          strokeLinecap="round"
+        />
+      )}
+      <line
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke={NAVY}
         strokeWidth={40}
         strokeLinecap="round"
       />
-      <path
-        d={spine}
-        fill="none"
-        stroke="hsl(358 71% 58%)"
-        strokeWidth={22}
+      <line
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke={PURPLE}
+        strokeWidth={32}
         strokeLinecap="round"
       />
-      <g
-        transform={`translate(${head.x} ${head.y}) rotate(${heading}) scale(${scale})`}
-        opacity={prominent ? 1 : 0.85}
-      >
-        <path
-          d="M -14 -20 L 20 0 L -14 20 L -7 0 Z"
-          fill="hsl(358 66% 60%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={4.5}
-          strokeLinejoin="round"
-        />
-      </g>
-      <g opacity={prominent ? 1 : 0.9}>
-        <circle
-          data-trap-rim="broken-floor"
-          cx={a.x}
-          cy={a.y}
-          r={30 * scale}
-          fill="hsl(356 60% 89%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={6}
-          strokeDasharray={`${17 * scale} ${8 * scale}`}
-        />
-        <path
-          data-trap-warning="setback-cross"
-          d={`M ${a.x - 11 * scale} ${a.y - 11 * scale} L ${a.x + 11 * scale} ${a.y + 11 * scale} M ${a.x + 11 * scale} ${a.y - 11 * scale} L ${a.x - 11 * scale} ${a.y + 11 * scale}`}
-          stroke="hsl(358 66% 52%)"
-          strokeWidth={7}
-          strokeLinecap="round"
-        />
-      </g>
-      {(
-        <g
-          data-route-destination-marker="impact-crack"
-          transform={`translate(${b.x} ${b.y}) scale(${scale})`}
-          opacity={prominent ? 1 : 0.78}
-        >
-          <path
-            d="M 0 -15 L -3 -4 L 7 0 L -4 5 L 1 16 M -3 -4 L -13 -9 M -4 5 L -14 10 M 7 0 L 15 -6"
-            fill="none"
-            stroke="hsl(358 66% 52%)"
+      {rungs.map((rung, index) => {
+        const p = along(rung, across, 10);
+        const q = along(rung, across, -10);
+        return (
+          <line
+            key={index}
+            data-ladder-rung
+            x1={round(p.x)}
+            y1={round(p.y)}
+            x2={round(q.x)}
+            y2={round(q.y)}
+            stroke="#FFFFFF"
             strokeWidth={5}
             strokeLinecap="round"
-            strokeLinejoin="round"
           />
-        </g>
-      )}
+        );
+      })}
     </g>
   );
 }
 
 /**
- * The face of one square: what the routes are drawn on top of.
- *
- * A board tile, not a card — cream face on the darker board surface, with a
- * seated shadow under it. Painted opaque so nothing beneath tints it, then
- * given the faintest wash if it is special: the object lying across the board
- * is what says what the square does, not its fill.
+ * A trap, drawn as the slide it is: a dark tube that bows between its two
+ * stations, a dotted line down its middle and an arrowhead at its foot.
  */
-function TileFace({
-  tile,
-  emphasised,
-}: {
-  tile: MarhalaTile;
-  emphasised: boolean;
-}) {
-  const { x, y } = corner(tile);
-  const finish = tile.kind === "finish";
-  const accent = accentOf(tile);
-  // One cream for every ordinary square. The alternating blue made a chequer
-  // of a board whose real signal is which squares are special; a square now
-  // carries colour only when it does something.
-  const fill = finish
-    ? "hsl(40 55% 63%)"
-    : tile.kind === "boost"
-      ? "hsl(43 76% 78%)"
-      : tile.kind === "trap"
-        ? "hsl(358 80% 84%)"
-        : tile.safe
-          ? "hsl(156 55% 83%)"
-        : "url(#marhala-tile-cream)";
+function Slide({ route, active }: { route: DrawnRoute; active: boolean }) {
+  const start = along(route.a, route.u, 54);
+  const end = along(route.b, route.u, -54);
+  const control = along(
+    { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
+    route.n,
+    15.6,
+  );
+  const d = `M${pt(start)} Q${pt(control)} ${pt(end)}`;
+  const across = { x: -route.u.y, y: route.u.x };
+  const tip = along(end, route.u, 26);
   return (
-    <g
-      data-tile-face={tile.position}
-      aria-hidden
-      className="transition-all duration-slow ease-akwaan"
-    >
-      {/* A hard, unblurred shadow: the «ملصق» treatment the team colours use,
-          which is what makes a square read as a piece set on the board rather
-          than a shape printed into it. */}
-      <circle
-        cx={x + TILE / 2}
-        cy={y + TILE / 2 + 11}
-        r={finish ? DISC_FINISH : DISC}
-        fill="hsl(var(--brand-navy))"
-      />
-      <circle
-        cx={x + TILE / 2}
-        cy={y + TILE / 2}
-        r={finish ? DISC_FINISH : DISC}
-        fill={fill}
-      />
-      {/* One navy outline for every square, special or not: the colour inside
-          it is what says what the square does. Same rule as the team colours. */}
-      <circle
-        cx={x + TILE / 2}
-        cy={y + TILE / 2}
-        r={finish ? DISC_FINISH : DISC}
-        fill="none"
-        stroke={emphasised ? accent : "hsl(var(--brand-navy))"}
-        strokeWidth={finish || emphasised ? 8 : 5}
-      />
-      {tile.safe && !finish && (
+    <g {...routeProps(route, "slide", active)}>
+      {active && (
         <path
-          data-tile-checkpoint="flag"
-          d={`M ${x + TILE / 2 - 13} ${y + TILE / 2 + DISC - 2} v -38 h 40 l -9 14 9 14 h -40`}
-          fill="hsl(156 62% 28%)"
-          stroke="hsl(var(--brand-navy))"
-          strokeWidth={4}
-          strokeLinejoin="round"
+          d={d}
+          fill="none"
+          stroke={GOLD}
+          strokeWidth={52}
+          strokeLinecap="round"
         />
       )}
+      <path d={d} fill="none" stroke={NAVY} strokeWidth={38} strokeLinecap="round" />
+      <path d={d} fill="none" stroke={SLIDE} strokeWidth={30} strokeLinecap="round" />
+      <path
+        d={d}
+        fill="none"
+        stroke="#B9B2D9"
+        strokeWidth={5}
+        strokeDasharray="2 16"
+        strokeLinecap="round"
+      />
+      <polygon
+        data-slide-arrow
+        points={`${pt(tip)} ${pt(along(end, across, 20))} ${pt(along(end, across, -20))}`}
+        fill={SLIDE}
+        stroke={NAVY}
+        strokeWidth={4}
+        strokeLinejoin="round"
+      />
     </g>
   );
 }
 
-/** A square's own colour: gold forward, rose back, quiet navy for the rest. */
-function accentOf(tile: MarhalaTile): string {
-  if (tile.kind === "finish") return "hsl(var(--brand-gold))";
-  if (tile.kind === "boost") return "hsl(38 70% 45%)";
-  if (tile.kind === "trap") return "hsl(354 60% 45%)";
-  return "hsl(var(--brand-navy) / 0.3)";
-}
+const STATION_FILL: Record<StationRole, { fill: string; ink: string }> = {
+  plain: { fill: "#FFFFFF", ink: NAVY },
+  start: { fill: "#FFFFFF", ink: NAVY },
+  checkpoint: { fill: GOLD, ink: NAVY },
+  finish: { fill: GOLD, ink: NAVY },
+  boost: { fill: PURPLE, ink: "#FFFFFF" },
+  trap: { fill: SLIDE, ink: "#FFFFFF" },
+};
 
-/**
- * Everything on a square that must stay readable: its numeral and role.
- *
- * Drawn after the routes, which is the whole point — the number in the corner
- * survives whatever crosses the square, exactly as it does on a printed board.
- */
-function TileSquare({
+/** One station: a rounded square with its number, and its role in a word. */
+function Station({
   tile,
+  role,
   reacting,
-  destinationOf,
 }: {
   tile: MarhalaTile;
+  role: StationRole;
   reacting?: "boost" | "trap";
-  destinationOf?: "boost" | "trap";
 }) {
-  const { x, y } = corner(tile);
-  const finish = tile.kind === "finish";
-  const start = tile.position === MARHALA_START_POSITION;
-  const accent = accentOf(tile);
-  const emphasised = Boolean(reacting || destinationOf);
+  const { x, y } = centreOf(tile);
+  const size = role === "finish" ? TILE_FINISH : TILE;
+  const half = size / 2;
+  const { fill, ink } = STATION_FILL[role];
+  const label = ROLE_LABEL[role];
+  // The stations that hold something stand off the board on a hard shadow.
+  const raised = role === "start" || role === "checkpoint" || role === "finish";
   return (
     <g
       data-testid={`marhala-tile-${tile.position}`}
       data-tile-kind={tile.kind}
+      data-tile-role={role}
       data-tile-reacting={reacting}
-      data-tile-destination={destinationOf}
-      role="img"
-      aria-label={marhalaTileAria(tile)}
-      className="transition-all duration-slow ease-akwaan"
+      aria-label={marhalaTileAria(tile, role)}
     >
-      {/* The square itself, already painted below; kept here without a fill so
-          the tile's bounds travel with its label and its accessible name. */}
-      <circle
-        cx={x + TILE / 2}
-        cy={y + TILE / 2}
-        r={DISC}
-        fill="none"
-      />
-      {emphasised && (
-        <circle
-          cx={x + TILE / 2}
-          cy={y + TILE / 2}
-          r={DISC + 12}
+      <title>{marhalaTileAria(tile, role)}</title>
+      {reacting && (
+        <rect
+          x={x - half - 9}
+          y={y - half - 9}
+          width={size + 18}
+          height={size + 18}
+          rx={31}
           fill="none"
-          stroke={accent}
-          strokeWidth={4}
-          opacity={0.6}
-        />
-      )}
-      {finish && (
-        <path
-          d={`M ${x + TILE / 2 - 42} ${y + TILE / 2 - 26} l 20 18 22 -36 22 36 20 -18 -8 56 h -88 Z`}
-          fill="hsl(45 95% 64%)"
-          stroke="hsl(var(--brand-navy) / 0.45)"
-          strokeWidth={4}
-          strokeLinejoin="round"
-        />
-      )}
-      {(tile.kind === "boost" || tile.kind === "trap") && (
-        <g
-          data-testid={`marhala-source-mark-${tile.position}`}
-          data-testid-destination-badge={`marhala-destination-badge-${tile.position}`}
-          data-source-direction={tile.kind === "boost" ? "forward" : "backward"}
-          transform={`translate(${x + TILE / 2 + 54} ${y + TILE / 2 - 54})`}
-        >
-          <circle
-            r={22}
-            fill={
-              tile.kind === "boost" ? "hsl(43 80% 66%)" : "hsl(356 68% 72%)"
-            }
-            stroke="hsl(var(--brand-navy))"
-            strokeWidth={4}
-          />
-          <path
-            d={
-              tile.kind === "boost"
-                ? "M 0 12 V -11 M -10 -2 L 0 -12 L 10 -2"
-                : "M 0 -12 V 11 M -10 2 L 0 12 L 10 2"
-            }
-            fill="none"
-            stroke="hsl(var(--brand-navy))"
-            strokeWidth={6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <rect
-            data-destination-badge="true"
-            x={-44}
-            y={-44}
-            width={88}
-            height={31}
-            rx={11}
-            fill={
-              tile.kind === "boost" ? "hsl(43 80% 80%)" : "hsl(356 68% 85%)"
-            }
-            stroke="hsl(var(--brand-navy))"
-            strokeWidth={3.5}
-          />
-          <text
-            data-destination-badge-text="true"
-            x={0}
-            y={-21}
-            textAnchor="middle"
-            fontSize={21}
-            fontWeight={900}
-            fill="hsl(var(--brand-navy))"
-            direction="ltr"
-          >
-            {`${tile.destination} ${tile.kind === "boost" ? "↑" : "↓"}`}
-          </text>
-        </g>
-      )}
-      {/* A cream halo behind the numeral, so it stays crisp even where a route
-          runs under it. */}
-      <text
-        x={x + TILE / 2}
-        y={y + TILE / 2 + 15}
-        textAnchor="middle"
-        className="akwaan-numeral"
-        fontSize={40}
-        fontWeight={900}
-        fill="hsl(var(--brand-navy) / 0.75)"
-        stroke="hsl(43 55% 96% / 0.8)"
-        strokeWidth={4}
-        strokeLinejoin="round"
-        paintOrder="stroke"
-        opacity={1}
-      >
-        {tile.position}
-      </text>
-      {finish && (
-        <text
-          x={x + TILE / 2}
-          y={y + TILE - 46}
-          textAnchor="middle"
-          fontSize={25}
-          fontWeight={900}
-          fill="hsl(var(--brand-navy))"
-          stroke="hsl(43 85% 70% / 0.75)"
+          stroke={GOLD}
           strokeWidth={6}
-          strokeLinejoin="round"
-          paintOrder="stroke"
+          className="animate-pulse motion-reduce:animate-none"
+        />
+      )}
+      {raised && (
+        <rect
+          x={x - half + 4}
+          y={y - half + 5}
+          width={size}
+          height={size}
+          rx={24}
+          fill={NAVY}
+        />
+      )}
+      <rect
+        x={x - half}
+        y={y - half}
+        width={size}
+        height={size}
+        rx={24}
+        fill={fill}
+        stroke={NAVY}
+        strokeWidth={3}
+      />
+      {role === "finish" ? (
+        <path
+          transform={`translate(${x} ${y - 9}) scale(1.67)`}
+          d="M0 -10 Q1.8 -1.8 10 0 Q1.8 1.8 0 10 Q-1.8 1.8 -10 0 Q-1.8 -1.8 0 -10Z"
+          fill={NAVY}
+        />
+      ) : (
+        <text
+          x={x}
+          y={label ? y - 7 : y + 1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={label ? 24 : 30}
+          fontWeight={700}
+          fill={ink}
+          className="akwaan-numeral"
         >
-          نقطة النهاية
+          {tile.position}
         </text>
       )}
-      {start && (
+      {label && (
         <text
-          x={x + TILE / 2}
-          y={y + TILE - 45}
+          x={x}
+          y={role === "finish" ? y + 30 : y + 18}
           textAnchor="middle"
-          fontSize={23}
-          fontWeight={900}
-          fill="hsl(var(--muted-foreground))"
-          stroke="hsl(var(--card))"
-          strokeWidth={5}
-          strokeLinejoin="round"
-          paintOrder="stroke"
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight={800}
+          fill={ink}
         >
-          نقطة البداية
+          {label}
         </text>
       )}
     </g>
@@ -1058,11 +558,11 @@ function TileSquare({
 }
 
 /**
- * A team's piece, standing on its square.
+ * A team's piece: its player's character, with a small tag naming the team.
  *
- * A polished playing piece rather than a dot: sized to be read across a room,
- * seated low so it never covers the numeral, and shifted sideways when both
- * teams share a square so neither hides the other.
+ * It stands at the station's shoulder rather than on its face, so the number
+ * under it is never covered, and the second team takes the other shoulder when
+ * both share a station. The team colour is the dot in the tag and nothing else.
  */
 function Token({
   team,
@@ -1072,7 +572,6 @@ function Token({
   active,
   travelling,
   seat,
-  crowded,
 }: {
   team: MarhalaBoardTeam;
   teams: MarhalaBoardTeam[];
@@ -1081,55 +580,141 @@ function Token({
   active: boolean;
   travelling: boolean;
   seat: number;
-  crowded: boolean;
 }) {
   const identity = teamIdentityOf(team.id, teams);
-  const { x, y } = corner(tile);
-  const offset = crowded ? (seat === 0 ? -TILE * 0.21 : TILE * 0.21) : 0;
+  const { x, y } = centreOf(tile);
+  // A walk moves one station at a time; a ladder or a slide covers several in
+  // one move, and gets the longer travel so the eye can follow it.
+  // Decided once per move and then held: a re-render halfway through a slide
+  // must not swap the long travel for the short one.
+  const move = useRef({ position, leap: false });
+  if (move.current.position !== position) {
+    move.current = {
+      position,
+      leap: Math.abs(position - move.current.position) > 1,
+    };
+  }
+  const leap = move.current.leap;
+  const shortName = team.name.replace(/^الفريق\s+/, "") || team.name;
   return (
-    <span
+    <div
       data-testid={`marhala-token-${team.id}`}
       data-token-active={active ? "true" : "false"}
       data-token-travelling={travelling ? "true" : undefined}
       data-token-position={position}
+      dir="rtl"
       title={team.name}
-      aria-label={`${team.name} — المربّع ${position}${active ? " — دورهم" : ""}`}
+      aria-label={`${team.name} في المحطة ${position}${active ? " — دورهم" : ""}`}
       style={{
-        left: `${((x + TILE / 2 + offset) / BOX) * 100}%`,
-        top: `${((y + TILE * 0.72) / BOX) * 100}%`,
+        left: `${((x + (seat === 0 ? 43 : -43)) / W) * 100}%`,
+        top: `${((y - 74) / H) * 100}%`,
+        transitionDuration: leap ? "650ms" : "220ms",
       }}
       className={cn(
-        "absolute -translate-x-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-[42%_42%_48%_48%] border-[3px] border-white/80 font-black leading-none shadow-[0_6px_9px_hsl(var(--brand-navy)/0.38),inset_0_3px_3px_hsl(0_0%_100%/0.5)] ring-1 ring-brand-navy/30 transition-all duration-slow ease-akwaan before:absolute before:-top-[36%] before:left-1/2 before:block before:size-[62%] before:-translate-x-1/2 before:rounded-full before:border-2 before:border-white/70 before:bg-inherit before:shadow-[inset_0_2px_2px_hsl(0_0%_100%/0.55)] after:absolute after:-bottom-[16%] after:left-1/2 after:block after:h-[30%] after:w-[128%] after:-translate-x-1/2 after:rounded-[50%] after:border-2 after:border-white/75 after:bg-inherit after:shadow-[0_4px_5px_hsl(var(--brand-navy)/0.28)]",
-        identity.solid,
-        crowded
-          ? "h-[5.2%] w-[4.9%] text-[0.62rem] sm:text-xs"
-          : "h-[6.2%] w-[5.7%] text-xs sm:text-sm",
-        active &&
-          "ring-[3px] ring-offset-2 ring-offset-background " + identity.ring,
-        travelling && "scale-110",
+        "absolute flex w-[5%] -translate-x-1/2 flex-col items-center gap-0.5 transition-[left,top] ease-out motion-reduce:transition-none",
+        travelling ? "z-20" : active ? "z-10" : "z-0",
       )}
     >
-      <span className="relative z-10 drop-shadow-sm">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-2 py-px text-[10px] font-extrabold text-[hsl(var(--brand-navy))] lg:text-[11px]">
+        <span
+          aria-hidden
+          className={cn(
+            "size-2.5 shrink-0 rounded-full border-2 border-[hsl(var(--brand-navy))]",
+            identity.dot,
+          )}
+        />
+        {shortName}
+      </span>
+      {/* Re-keyed per station so every step is its own small hop: the room
+          counts the stations out loud with it. */}
+      <span
+        key={position}
+        aria-hidden
+        className={cn(
+          "block aspect-square w-full [&>svg]:size-full",
+          travelling &&
+            !leap &&
+            "animate-[marhala-hop_220ms_ease-out] motion-reduce:animate-none",
+        )}
+      >
         {team.avatarKey ? (
-<PlayerCharacterIcon characterKey={team.avatarKey} size={30} />
+          <PlayerCharacterIcon characterKey={team.avatarKey} size={50} />
         ) : (
-          team.name.trim().slice(0, 1) || identity.slot
+          <svg viewBox="0 0 40 40" className="drop-shadow-[3px_4px_0_hsl(var(--brand-navy))]">
+            <circle cx="20" cy="20" r="16" fill="#F6F3FC" stroke={NAVY} strokeWidth="3.5" />
+            <ellipse cx="15" cy="18.5" rx="2.3" ry="3.4" fill={NAVY} />
+            <ellipse cx="25" cy="18.5" rx="2.3" ry="3.4" fill={NAVY} />
+            <path
+              d="M16 25.5 Q20 28.5 24 25.5"
+              fill="none"
+              stroke={NAVY}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
         )}
       </span>
-    </span>
+    </div>
   );
 }
 
-/** What a screen reader hears, so a square's role never depends on its colour. */
-function marhalaTileAria(tile: MarhalaTile): string {
-  if (tile.kind === "finish") return `المربّع ${tile.position} — نقطة النهاية`;
-  if (tile.kind === "boost")
-    return `المربّع ${tile.position} — انطلاقة إلى المربّع ${tile.destination}`;
-  if (tile.kind === "trap")
-    return `المربّع ${tile.position} — فخ يرجعكم إلى المربّع ${tile.destination}`;
-  if (tile.position === MARHALA_START_POSITION)
-    return `المربّع ${tile.position} — نقطة البداية`;
-  return `المربّع ${tile.position}`;
+/** The three things on the board that need a word, under the board. */
+export function MarhalaBoardLegend({ className }: { className?: string }) {
+  return (
+    <ul
+      data-testid="marhala-board-legend"
+      className={cn(
+        "flex list-none flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-[13px] font-semibold text-[hsl(var(--brand-navy))] lg:text-sm",
+        className,
+      )}
+    >
+      <li className="inline-flex items-center gap-2">
+        <svg aria-hidden viewBox="0 0 40 60" width="24" height="36">
+          <line x1="20" y1="8" x2="20" y2="52" stroke={NAVY} strokeWidth="30" strokeLinecap="round" />
+          <line x1="20" y1="8" x2="20" y2="52" stroke={PURPLE} strokeWidth="24" strokeLinecap="round" />
+          <line x1="12" y1="18" x2="28" y2="18" stroke="#fff" strokeWidth="4" />
+          <line x1="12" y1="30" x2="28" y2="30" stroke="#fff" strokeWidth="4" />
+          <line x1="12" y1="42" x2="28" y2="42" stroke="#fff" strokeWidth="4" />
+        </svg>
+        <span>
+          <strong className="font-extrabold">السلم</strong> يطلّعك قدام
+        </span>
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <svg aria-hidden viewBox="0 0 60 40" width="40" height="27">
+          <path d="M8 10 Q30 40 46 26" fill="none" stroke={NAVY} strokeWidth="16" strokeLinecap="round" />
+          <path d="M8 10 Q30 40 46 26" fill="none" stroke={SLIDE} strokeWidth="10" strokeLinecap="round" />
+          <polygon points="58,22 44,16 46,34" fill={SLIDE} stroke={NAVY} strokeWidth="2.5" strokeLinejoin="round" />
+        </svg>
+        <span>
+          <strong className="font-extrabold">الزحليقة</strong> تنزّلك لآخر نقطة
+          حفظ
+        </span>
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span
+          aria-hidden
+          className="size-6 rounded-[7px] border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))]"
+        />
+        <span>
+          <strong className="font-extrabold">نقطة حفظ</strong> ما تنزل تحتها
+        </span>
+      </li>
+    </ul>
+  );
+}
+
+/** What a screen reader hears, so a station's role never depends on its colour. */
+function marhalaTileAria(tile: MarhalaTile, role: StationRole): string {
+  const station = `المحطة ${tile.position}`;
+  if (role === "finish") return `${station} — النهاية`;
+  if (role === "boost")
+    return `${station} — قفزة تطلّعكم للمحطة ${tile.destination}`;
+  if (role === "trap")
+    return `${station} — فخ ينزّلكم للمحطة ${tile.destination}`;
+  if (role === "checkpoint") return `${station} — نقطة حفظ`;
+  if (role === "start") return `${station} — البداية`;
+  return station;
 }
 
 export { MARHALA_FINISH_POSITION };

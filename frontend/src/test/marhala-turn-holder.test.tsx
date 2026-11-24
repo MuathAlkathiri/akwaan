@@ -125,6 +125,7 @@ describe("the turn holder's phone", () => {
   it("elects the band and sends its assignment with it", () => {
     const cmd = renderPhone(shared());
     fireEvent.click(screen.getByTestId("marhala-choose-easy"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     expect(cmd).toHaveBeenCalledWith(
       "gameplay-command",
       expect.objectContaining({
@@ -154,9 +155,12 @@ describe("a teammate's phone", () => {
   it("shows whose phone it is and no band buttons", () => {
     renderPhone(shared({ ...teammate }), "p-2");
     const card = screen.getByTestId("marhala-phone-coaching");
-    expect(card.textContent).toContain("الجوال مع سارة");
-    expect(card.textContent).toContain("تشاوروا");
+    // The same three cards the holder sees, with nothing to press, and a line
+    // naming who decides.
+    expect(card.textContent).toContain("القرار عند سارة");
+    expect(screen.getByTestId("marhala-band-view-easy")).toBeInTheDocument();
     expect(screen.queryByTestId("marhala-choose-easy")).toBeNull();
+    expect(screen.queryByTestId("marhala-confirm-difficulty")).toBeNull();
   });
 
   it("shows the question to help with, but no answer box", () => {
@@ -201,6 +205,7 @@ describe("a race started before turns were assigned", () => {
       ownAssignmentSequence: undefined,
     });
     fireEvent.click(screen.getByTestId("marhala-choose-easy"));
+    fireEvent.click(screen.getByTestId("marhala-confirm-difficulty"));
     expect(cmd).toHaveBeenCalledWith(
       "gameplay-command",
       expect.objectContaining({ payload: { difficulty: "easy" } }),

@@ -2,22 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BidiText } from "@/components/akwaan/bidi-text";
-import {
-  AlertTriangle,
-  Loader2,
-  Pause,
-  Play,
-  Rocket,
-  RotateCcw,
-  Volume2,
-  Zap,
-} from "lucide-react";
+import { Loader2, Pause, Play, RotateCcw, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
-import { MarhalaBoard } from "../match/components/marhala-board";
+import {
+  ChallengeContextStrip,
+  TeamDot,
+  useChallengeContext,
+} from "../match/components/challenge-context-strip";
+import {
+  MarhalaBoard,
+  MarhalaBoardLegend,
+} from "../match/components/marhala-board";
 import { MarhalaAnswerReveal } from "../match/components/marhala-answer-reveal";
 import { MarhalaMovementRoll } from "../match/components/marhala-movement-roll";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
@@ -30,8 +29,10 @@ import {
 import {
   MARHALA_CHALLENGE_NAME,
   MARHALA_DIFFICULTY_LABEL,
+  MARHALA_FINISH_POSITION,
   marhalaBandPreviews,
   marhalaBandValues,
+  marhalaLastCheckpoint,
   marhalaPositionOf,
   marhalaPromptText,
   readMarhalaView,
@@ -40,18 +41,22 @@ import {
 } from "../match/marhala.presentation";
 import type { GameplayRuntimeSnapshot } from "../model";
 
+const NAVY_BORDER = "border-[hsl(var(--brand-navy))]";
+const STICKER =
+  "border-[3px] border-[hsl(var(--brand-navy))] shadow-[7px_8px_0_hsl(var(--brand-navy))]";
+
 /**
  * "المرحلة" on the shared screen — the board is the screen.
  *
- * The mechanic's whole decision is spatial: from tile 5, does سهل tuck you safely
- * onto 7, or does صعب risk the عطل on 9 for a shot at 11? A trivia card filling the
- * screen would make that decision invisible, so the board takes the room and the
- * question sits beside it, never on top of it.
+ * The approved layout (design canvas, `TVMarhala`): the navy context strip, the
+ * board in its own card with the legend under it, and a lavender side panel that
+ * holds the turn, whatever the turn is waiting on, and where both teams stand.
+ * The mechanic's whole decision is spatial, so the question sits beside the
+ * board and never on top of it.
  *
  * Everything here is read from the projection: positions, whose turn it is, which
  * bands the server still has content for, the prompt, the clock, and the committed
- * record of the last turn. Nothing is predicted — the landings shown for a band are
- * its whole range, never a guess at the roll.
+ * record of the last turn. Nothing is predicted.
  */
 export function MarhalaScreen({
   runtime,
@@ -59,6 +64,7 @@ export function MarhalaScreen({
   runtime: GameplayRuntimeSnapshot;
 }) {
   const { snapshot } = useLiveSession();
+  const context = useChallengeContext();
   const view = useMemo(
     () => readMarhalaView(runtime.modeState),
     [runtime.modeState],
@@ -93,84 +99,62 @@ export function MarhalaScreen({
     teams.find((team) => team.id === id)?.name ?? "الفريق";
   const activeIdentity = teamIdentityOf(view.activeTeamId, teams);
   // Whose phone carries the turn — the lobby captain or the rotation's pick —
-  // so the room knows who to talk to. Inline on the turn line: a second header
-  // line would cost the board its fit on a 720p screen.
+  // so the room knows who to talk to.
   const holderName = view.assignedParticipantId
     ? snapshot?.participants.find(
         (participant) => participant.id === view.assignedParticipantId,
       )?.displayName
     : undefined;
   // Between two questions the board, the pawns and the header are exactly what
-  // the room should keep looking at; only this panel is between states.
+  // the room should keep looking at; only the side panel is between states.
   const waitingForNext = useWaitingForNextQuestion();
+  const done = view.phase === "completed";
+  const activeName = teamName(view.activeTeamId);
+
+  const status = done
+    ? "انتهى التحدي"
+    : replay.replaying
+      ? "عيونكم على اللوحة…"
+      : waitingForNext || view.phase === "question-pending"
+        ? "نجهّز السؤال…"
+        : view.phase === "question"
+          ? `${activeName} يجاوبون من جوالهم…`
+          : `${activeName} يختارون مستوى السؤال…`;
 
   return (
     <section
       dir="rtl"
       data-testid="marhala-screen"
       data-marhala-phase={view.phase}
-      className="space-y-3"
+      className="flex flex-col gap-[18px]"
     >
-      <header className="surface-card flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
-        <div className="min-w-0">
-          <p className="text-[0.7rem] font-black text-muted-foreground">
-            {MARHALA_CHALLENGE_NAME}
+      <ChallengeContextStrip
+        {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
+        title={context.title ?? MARHALA_CHALLENGE_NAME}
+        aside={
+          <p className="text-base font-bold lg:text-lg">
+            أول فريق يوصل النهاية يفوز
           </p>
-          <p className="truncate text-lg font-black text-foreground">
-            {view.phase === "completed" ? (
-              "انتهى السباق"
-            ) : (
-              <>
-                الدور <span className="akwaan-numeral">{view.turnNumber}</span>{" "}
-                —{" "}
-                <span className={activeIdentity.text}>
-                  {teamName(view.activeTeamId)}
-                </span>
-                {holderName && (
-                  <span
-                    data-testid="marhala-turn-holder"
-                    className="text-base font-bold text-muted-foreground"
-                  >
-                    {" "}
-                    · الجوال مع <bdi>{holderName}</bdi>
-                  </span>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {view.selectedDifficulty && view.phase !== "completed" && (
-            <BandChip view={view} />
-          )}
-          {!waitingForNext &&
-            replay.phase !== "answer" &&
-            remainingMs !== undefined &&
-            view.phase === "question" && (
-              <ChallengeCountdown
-                remainingMs={remainingMs}
-                sound={view.media?.type !== "audio"}
-              />
-            )}
-        </div>
-      </header>
+        }
+      />
 
-      {/* The board is the hero; the side column supports it. It is sized to stay
-          whole on a 1280×720 shared screen without scrolling, which is the point
-          of it. */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <div className="grid place-items-center">
+      <div className="flex flex-col gap-7 lg:flex-row lg:items-stretch">
+        <main
+          className={cn(
+            "flex min-w-0 flex-1 flex-col items-center justify-center gap-2.5 rounded-[28px] bg-brand-paper px-[18px] py-3.5",
+            STICKER,
+          )}
+        >
           <MarhalaBoard
-            // The board is square, so on a short shared screen its *width* has
-            // to be governed by the height left over — otherwise a wide 1280×720
-            // TV pushes the finish square below the fold and the room scrolls.
-            className="max-w-[min(100%,calc(100dvh-11rem))]"
+            // The board is wide, so on a short shared screen its *width* has to
+            // be governed by the height left over — otherwise a 1280×720 TV
+            // pushes the start row below the fold and the room scrolls.
+            className="max-w-[min(100%,calc((100dvh-22rem)*1.71))]"
             teams={teams}
             positions={replay.positions}
             activeTeamId={view.activeTeamId}
             // Only during the movement beat. A calm board is sixteen readable
-            // squares; whose turn it is already sits in the header above, so an
-            // always-on overlay would cover four squares to repeat it.
+            // stations; whose turn it is already sits in the panel beside it.
             {...(replay.replaying && replay.phase !== "answer"
               ? {
                   centre: (
@@ -190,10 +174,54 @@ export function MarhalaScreen({
               ? { travellingTeamId: replay.travellingTeamId }
               : {})}
           />
-        </div>
+          <MarhalaBoardLegend />
+        </main>
 
-        <div className="space-y-3">
-          <StandingsStrip view={view} teams={teams} replay={replay.positions} />
+        <aside
+          className={cn(
+            "flex w-full flex-none flex-col gap-4 rounded-[28px] bg-brand-lavender p-[22px] lg:w-[400px]",
+            STICKER,
+          )}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p
+              data-testid="marhala-turn-chip"
+              className={cn(
+                "inline-flex min-h-[44px] -rotate-2 items-center gap-2.5 rounded-full border-[3px] bg-[hsl(var(--brand-gold))] px-[18px] text-lg font-extrabold text-[hsl(var(--brand-navy))]",
+                NAVY_BORDER,
+              )}
+            >
+              {done ? (
+                "انتهى السباق"
+              ) : (
+                <>
+                  <TeamDot className={activeIdentity.dot} />
+                  دور {activeName}
+                </>
+              )}
+            </p>
+            {!waitingForNext &&
+              replay.phase !== "answer" &&
+              remainingMs !== undefined &&
+              view.phase === "question" && (
+                <ChallengeCountdown
+                  remainingMs={remainingMs}
+                  sound={view.media?.type !== "audio"}
+                />
+              )}
+          </div>
+          {!done && (
+            <p className="-mt-2 text-sm font-semibold text-brand-slate">
+              الدور <span className="akwaan-numeral">{view.turnNumber}</span>
+              {holderName && (
+                <span data-testid="marhala-turn-holder">
+                  {" "}
+                  · الجوال مع <bdi>{holderName}</bdi>
+                </span>
+              )}
+            </p>
+          )}
+
           {waitingForNext ? (
             <NextQuestionPanel />
           ) : replay.phase === "answer" && view.lastTurn ? (
@@ -207,7 +235,7 @@ export function MarhalaScreen({
               effect={replay.effect}
             />
           ) : view.phase === "difficulty-choice" ? (
-            <DecisionPanel view={view} teamName={teamName(view.activeTeamId)} />
+            <DecisionPanel view={view} />
           ) : view.phase === "question-pending" ? (
             <PendingPanel view={view} />
           ) : view.phase === "question" ? (
@@ -215,11 +243,21 @@ export function MarhalaScreen({
           ) : (
             <TerminalPanel view={view} teamName={teamName} />
           )}
-          {!replay.replaying && view.lastTurn && view.phase !== "completed" && (
+          {!replay.replaying && view.lastTurn && !done && (
             <LastTurnLine view={view} teamName={teamName} />
           )}
-        </div>
+
+          <StandingsStrip view={view} teams={teams} replay={replay.positions} />
+        </aside>
       </div>
+
+      <p
+        data-testid="marhala-status-line"
+        role="status"
+        className="text-[17px] font-semibold text-brand-slate"
+      >
+        {status}
+      </p>
     </section>
   );
 }
@@ -232,33 +270,15 @@ export function MarhalaScreen({
  * probability is stated anywhere: the runtime publishes none, and inventing one
  * would be a claim the mechanic cannot keep.
  */
-const BAND_RISK: Record<
-  MarhalaBandRisk,
-  { label: string; blurb: string; tone: string }
-> = {
-  steady: {
-    label: "تقدّم مضمون",
-    blurb: "خطوات قصيرة، لكن أقل تعرّضًا للفخاخ.",
-    tone: "text-muted-foreground",
-  },
-  balanced: {
-    label: "متوازن",
-    blurb: "تقدّم معقول مقابل مخاطرة معقولة.",
-    tone: "text-foreground",
-  },
-  bold: {
-    label: "مخاطرة عالية",
-    blurb: "أبعد تقدّم ممكن — ومدى أوسع قد يوقعكم في فخ.",
-    tone: "text-brand-gold",
-  },
+const BAND_RISK: Record<MarhalaBandRisk, string> = {
+  steady: "مضمون، بس الخطوة قصيرة",
+  balanced: "بين وبين",
+  bold: "مخاطرة، والخطوة كبيرة",
 };
 
 /**
- * The middle of the ring.
- *
- * Calm by default — whose turn it is, and nothing else. While a committed turn is
- * being replayed it becomes the focal point and shows the movement the *server*
- * decided, then names the tile that reacted. It never computes a value and never
+ * Over the board, during the movement beat only: the die the *server* rolled,
+ * then a word for the station that reacted. It never computes a value and never
  * holds state the board does not already have.
  */
 function BoardCentre({
@@ -283,7 +303,7 @@ function BoardCentre({
     const band = view.lastTurn?.difficulty;
     const range = band ? view.movementRanges[band] : undefined;
     return (
-      <div data-testid="marhala-centre-movement" className="space-y-1">
+      <div data-testid="marhala-centre-movement" className="space-y-2">
         <MarhalaMovementRoll
           values={range ? marhalaBandValues(range) : []}
           result={movement}
@@ -294,14 +314,9 @@ function BoardCentre({
         {effect && (
           <p
             data-testid="marhala-centre-effect"
-            className={cn(
-              "text-xs font-black sm:text-sm",
-              // Gold for a launch, rose for a trap — the same two colours the
-              // board itself paints those squares in.
-              effect.kind === "boost" ? "text-brand-gold" : "text-destructive",
-            )}
+            className="font-display text-base font-black text-[hsl(var(--brand-navy))] sm:text-lg"
           >
-            {effect.kind === "boost" ? "انطلاق" : "فخ"}
+            {effect.kind === "boost" ? "وقفوا على قفزة!" : "وقفوا على فخ!"}
           </p>
         )}
       </div>
@@ -309,17 +324,17 @@ function BoardCentre({
   }
   if (view.phase === "completed") {
     return (
-      <p className="text-sm font-black text-muted-foreground sm:text-lg">
+      <p className="text-sm font-black text-brand-slate sm:text-lg">
         انتهى السباق
       </p>
     );
   }
   return (
     <div data-testid="marhala-centre-calm" className="space-y-0.5">
-      <p className="text-[0.7rem] font-black text-muted-foreground sm:text-xs">
+      <p className="text-xs font-bold text-brand-slate">
         الدور <span className="akwaan-numeral">{view.turnNumber}</span>
       </p>
-      <p className="text-sm font-black leading-tight text-foreground sm:text-xl">
+      <p className="text-sm font-black leading-tight text-[hsl(var(--brand-navy))] sm:text-xl">
         {teamName(view.activeTeamId)}
       </p>
     </div>
@@ -331,41 +346,27 @@ function BoardCentre({
  *
  * Deliberately small and deliberately empty of information: the board beside it
  * still holds every position, and the next question has not been revealed to
- * anyone yet. A result card belongs here eventually; it is not this task's.
+ * anyone yet.
  */
 function NextQuestionPanel() {
   return (
     <div
-      className="surface-card flex items-center justify-center gap-2 px-4 py-6"
+      className={cn(
+        "flex items-center justify-center gap-2 rounded-2xl border-2 bg-white px-4 py-6",
+        NAVY_BORDER,
+      )}
       data-testid="marhala-next-question"
       role="status"
       aria-live="polite"
     >
       <span
         aria-hidden
-        className="size-2 animate-pulse rounded-full bg-brand-gold motion-reduce:animate-none"
+        className="size-2 animate-pulse rounded-full bg-[hsl(var(--brand-gold))] motion-reduce:animate-none"
       />
-      <p className="text-sm font-black text-muted-foreground">
-        السؤال التالي بعد لحظة…
+      <p className="text-sm font-bold text-brand-slate">
+        السؤال الجاي بعد لحظة…
       </p>
     </div>
-  );
-}
-
-function BandChip({ view }: { view: MarhalaView }) {
-  const band = view.selectedDifficulty;
-  if (!band) return null;
-  const range = view.movementRanges[band];
-  return (
-    <span
-      data-testid="marhala-selected-band"
-      className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-sm font-black text-foreground"
-    >
-      {MARHALA_DIFFICULTY_LABEL[band]}
-      <span className="akwaan-numeral text-xs font-bold text-muted-foreground">
-        {range.min}–{range.max}
-      </span>
-    </span>
   );
 }
 
@@ -382,7 +383,7 @@ function StandingsStrip({
   return (
     <ul
       data-testid="marhala-standings"
-      className="grid grid-cols-2 gap-2 text-center"
+      className="mt-auto flex list-none flex-col gap-2"
     >
       {teams.map((team) => {
         const identity = teamIdentityOf(team.id, teams);
@@ -392,21 +393,23 @@ function StandingsStrip({
           <li
             key={team.id}
             data-testid={`marhala-standing-${team.id}`}
+            data-standing-active={active ? "true" : "false"}
             className={cn(
-              "rounded-[var(--radius)] border px-3 py-2",
-              identity.surface,
-              identity.border,
-              active &&
-                "ring-2 ring-offset-1 ring-offset-background " + identity.ring,
+              "flex items-center justify-between gap-2.5 rounded-[14px] border-2 bg-white px-3.5 py-3",
+              NAVY_BORDER,
             )}
           >
-            <p className={cn("truncate text-sm font-black", identity.text)}>
-              {team.name}
-            </p>
-            <p className="text-xs font-bold text-muted-foreground">
-              المربّع <span className="akwaan-numeral">{position}</span>
-              {active && " · دورهم"}
-            </p>
+            <span className="inline-flex min-w-0 items-center gap-2 text-base font-extrabold text-[hsl(var(--brand-navy))]">
+              <TeamDot className={identity.dot} size={14} />
+              <span className="truncate">{team.name}</span>
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-brand-slate">
+              المحطة <span className="akwaan-numeral">{position}</span> · آخر
+              حفظ{" "}
+              <span className="akwaan-numeral">
+                {marhalaLastCheckpoint(position)}
+              </span>
+            </span>
           </li>
         );
       })}
@@ -415,87 +418,84 @@ function StandingsStrip({
 }
 
 /**
- * The decision, laid out as a comparison rather than three buttons.
+ * The decision: three bands, each with the die it buys.
  *
- * Each band names the tiles it could actually land on from where the team stands,
- * and marks which of those are rewards, hazards or the finish — that comparison is
- * the mechanic. A band the server has no unseen content for is shown as spent
- * rather than hidden, so the room can see why it is not an option.
+ * A band the server has no unseen content for is shown as spent rather than
+ * hidden, so the room can see why it is not an option.
  */
-function DecisionPanel({
-  view,
-  teamName,
-}: {
-  view: MarhalaView;
-  teamName: string;
-}) {
+function DecisionPanel({ view }: { view: MarhalaView }) {
   const previews = marhalaBandPreviews(view);
   return (
-    <div
-      className="surface-card space-y-2.5 p-3 sm:p-4"
-      data-testid="marhala-decision"
-    >
+    <div className="flex flex-col gap-4" data-testid="marhala-decision">
       <div>
-        <p className="text-sm font-black text-foreground">
-          {teamName}: اختاروا مستوى الخطر
-        </p>
-        <p className="text-xs font-bold text-muted-foreground">
-          من المربّع{" "}
-          <span className="akwaan-numeral">
-            {marhalaPositionOf(view, view.activeTeamId)}
-          </span>{" "}
-          — الاختيار من جوالاتكم.
+        <h2 className="font-display text-2xl font-black text-[hsl(var(--brand-navy))] lg:text-[26px]">
+          اختاروا مستوى السؤال
+        </h2>
+        <p className="mt-1 text-[15px] leading-relaxed text-brand-slate">
+          كل ما صعب السؤال كبر النرد. جاوبوا صح وارموا.
         </p>
       </div>
-      <ul className="space-y-2">
+      <ul className="flex list-none gap-2">
         {previews.map((band) => (
           <li
             key={band.difficulty}
             data-testid={`marhala-band-${band.difficulty}`}
             data-band-available={band.available ? "true" : "false"}
             className={cn(
-              "rounded-[var(--radius)] border px-3 py-2",
+              "flex flex-1 flex-col items-center gap-0.5 rounded-2xl border-[3px] px-2 py-3 text-[hsl(var(--brand-navy))]",
               band.available
-                ? "border-border bg-card"
-                : "border-dashed border-border bg-muted/40 opacity-70",
+                ? cn("bg-white", NAVY_BORDER)
+                : "border-dashed border-brand-dash bg-brand-wash text-brand-slate",
             )}
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm font-black text-foreground">
-                {band.label}
-                <span className="akwaan-numeral ms-1.5 text-xs font-bold text-muted-foreground">
-                  {band.range.min}–{band.range.max}
-                </span>
-              </p>
-              {band.available ? (
-                <p
-                  className={cn(
-                    "text-[0.7rem] font-black",
-                    BAND_RISK[band.risk].tone,
-                  )}
-                  data-testid={`marhala-band-${band.difficulty}-risk`}
-                  data-band-risk={band.risk}
-                >
-                  {BAND_RISK[band.risk].label}
-                </p>
-              ) : (
-                <p
-                  className="text-[0.7rem] font-black text-muted-foreground"
-                  data-testid={`marhala-band-${band.difficulty}-spent`}
-                >
-                  لا أسئلة جديدة
-                </p>
-              )}
-            </div>
-            {band.available && (
-              <p className="mt-1 text-[0.7rem] font-bold leading-snug text-muted-foreground">
-                {BAND_RISK[band.risk].blurb}
-              </p>
+            <span className="font-display text-xl font-extrabold">
+              {band.label}
+            </span>
+            <span className="text-[13px] font-semibold">النرد</span>
+            <span dir="ltr" className="akwaan-numeral text-[22px] font-bold">
+              {band.range.min} – {band.range.max}
+            </span>
+            {band.available ? (
+              <span
+                className="text-center text-[11px] font-semibold leading-snug text-brand-slate"
+                data-testid={`marhala-band-${band.difficulty}-risk`}
+                data-band-risk={band.risk}
+              >
+                {BAND_RISK[band.risk]}
+              </span>
+            ) : (
+              <span
+                className="text-center text-[11px] font-bold"
+                data-testid={`marhala-band-${band.difficulty}-spent`}
+              >
+                لا أسئلة جديدة
+              </span>
             )}
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+/** The band a team elected, and the die it bought. */
+function BandChip({ view }: { view: MarhalaView }) {
+  const band = view.selectedDifficulty;
+  if (!band) return null;
+  const range = view.movementRanges[band];
+  return (
+    <span
+      data-testid="marhala-selected-band"
+      className={cn(
+        "inline-flex min-h-[30px] items-center gap-1.5 self-start rounded-full border-2 bg-[hsl(var(--brand-gold))] px-3 text-sm font-bold text-[hsl(var(--brand-navy))]",
+        NAVY_BORDER,
+      )}
+    >
+      سؤال {MARHALA_DIFFICULTY_LABEL[band]} · النرد
+      <span dir="ltr" className="akwaan-numeral">
+        {range.min} – {range.max}
+      </span>
+    </span>
   );
 }
 
@@ -509,21 +509,17 @@ function DecisionPanel({
 function PendingPanel({ view }: { view: MarhalaView }) {
   return (
     <div
-      className="surface-card flex items-center gap-2 p-4"
+      className={cn(
+        "flex flex-col gap-3 rounded-2xl border-2 bg-white p-4",
+        NAVY_BORDER,
+      )}
       data-testid="marhala-pending"
       role="status"
     >
-      <Loader2
-        className="size-4 animate-spin text-muted-foreground"
-        aria-hidden
-      />
-      <p className="text-sm font-black text-foreground">
-        جارٍ تجهيز السؤال…
-        {view.selectedDifficulty && (
-          <span className="ms-1.5 text-xs font-bold text-muted-foreground">
-            المستوى: {MARHALA_DIFFICULTY_LABEL[view.selectedDifficulty]}
-          </span>
-        )}
+      <BandChip view={view} />
+      <p className="flex items-center gap-2 text-base font-bold text-[hsl(var(--brand-navy))]">
+        <Loader2 className="size-4 animate-spin" aria-hidden />
+        نجهّز السؤال…
       </p>
     </div>
   );
@@ -836,12 +832,13 @@ function QuestionPanel({ view }: { view: MarhalaView }) {
 
   return (
     <div
-      className="surface-card space-y-3 p-3 sm:p-4"
+      className={cn(
+        "flex flex-col gap-3 rounded-2xl border-2 bg-white p-4",
+        NAVY_BORDER,
+      )}
       data-testid="marhala-question"
     >
-      <p className="text-xs font-black text-muted-foreground">
-        السؤال — الإجابة من جوالات الفريق
-      </p>
+      <BandChip view={view} />
 
       {media?.type === "image" && media.url && (
         <MarhalaQuestionImage url={media.url} altText={media.altText} />
@@ -851,14 +848,17 @@ function QuestionPanel({ view }: { view: MarhalaView }) {
         <MarhalaQuestionAudio url={media.url} />
       )}
 
-      <p className="text-xl font-black leading-snug text-foreground sm:text-2xl">
+      <p className="font-display text-xl font-extrabold leading-relaxed text-[hsl(var(--brand-navy))] sm:text-2xl">
         <BidiText>{marhalaPromptText(view)}</BidiText>
+      </p>
+      <p className="text-sm font-semibold text-brand-slate">
+        جاوبوا صح عشان ترمون النرد.
       </p>
     </div>
   );
 }
 
-/** The roll, then the tile that answered it. */
+/** The roll, then the station that answered it. */
 function MovementReveal({
   movement,
   teamName,
@@ -870,31 +870,32 @@ function MovementReveal({
 }) {
   return (
     <div
-      className="surface-card space-y-1.5 p-4 text-center"
+      className={cn(
+        "flex flex-col items-center gap-2 rounded-2xl border-2 bg-white p-4 text-center",
+        NAVY_BORDER,
+      )}
       data-testid="marhala-movement-reveal"
       data-movement={movement}
       role="status"
     >
-      <p className="text-xs font-black text-muted-foreground">{teamName}</p>
-      <p className="akwaan-numeral text-4xl font-black text-success">
-        +{movement}
+      <span className="inline-flex min-h-[32px] -rotate-3 items-center rounded-[10px] border-[3px] border-success px-3 text-sm font-extrabold text-success">
+        جاوبوا صح
+      </span>
+      <p className="font-display text-2xl font-black text-[hsl(var(--brand-navy))]">
+        {teamName} طلع لهم <span className="akwaan-numeral">{movement}</span>
       </p>
       {effect && (
         <p
           data-testid={`marhala-effect-${effect.kind}`}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-black",
+            "inline-flex min-h-[32px] items-center rounded-full border-2 px-3 text-sm font-extrabold",
+            NAVY_BORDER,
             effect.kind === "boost"
-              ? "bg-brand-gold/20 text-brand-gold"
-              : "bg-destructive/15 text-destructive",
+              ? "bg-[hsl(var(--brand-purple))] text-white"
+              : "bg-[#2E2860] text-white",
           )}
         >
-          {effect.kind === "boost" ? (
-            <Rocket className="size-4" aria-hidden />
-          ) : (
-            <Zap className="size-4" aria-hidden />
-          )}
-          {effect.kind === "boost" ? "قفزة!" : "عطل!"}
+          {effect.kind === "boost" ? "قفزة! السلم يطلّعهم" : "فخ! الزحليقة تنزّلهم"}
         </p>
       )}
     </div>
@@ -912,17 +913,18 @@ function LastTurnLine({
   const turn = view.lastTurn;
   if (!turn) return null;
   const name = teamName(turn.teamId);
+  const line =
+    "rounded-[14px] border-2 border-dashed border-brand-dash bg-white/70 px-3 py-2 text-center text-sm font-semibold text-brand-plum";
   if (!turn.correct) {
     return (
       <p
         data-testid="marhala-last-turn"
         data-turn-outcome={turn.resolvedBy === "timeout" ? "timeout" : "wrong"}
-        className="flex items-center justify-center gap-1.5 rounded-[var(--radius)] border border-border bg-muted/50 px-3 py-2 text-sm font-bold text-muted-foreground"
+        className={line}
       >
-        <AlertTriangle className="size-3.5" aria-hidden />
         {turn.resolvedBy === "timeout"
-          ? `انتهى وقت ${name} — بقوا في مكانهم`
-          : `إجابة ${name} غير صحيحة — بقوا في مكانهم`}
+          ? `خلص وقت ${name}، وبقوا مكانهم`
+          : `${name} جاوبوا غلط، وبقوا مكانهم`}
       </p>
     );
   }
@@ -930,12 +932,13 @@ function LastTurnLine({
     <p
       data-testid="marhala-last-turn"
       data-turn-outcome="correct"
-      className="rounded-[var(--radius)] border border-border bg-muted/50 px-3 py-2 text-center text-sm font-bold text-muted-foreground"
+      className={line}
     >
-      {name} تقدّموا <span className="akwaan-numeral">{turn.movement}</span>
+      {name} مشوا <span className="akwaan-numeral">{turn.movement}</span>
       {turn.tile === "boost" && " ثم قفزة"}
-      {turn.tile === "trap" && " ثم عطل"}
-      {" — "}المربّع <span className="akwaan-numeral">{turn.finalLanding}</span>
+      {turn.tile === "trap" && " ثم فخ"}
+      {" ووصلوا "}المحطة{" "}
+      <span className="akwaan-numeral">{turn.finalLanding}</span>
     </p>
   );
 }
@@ -958,28 +961,39 @@ function TerminalPanel({
   if (result?.endedBy === "content-exhausted") {
     return (
       <div
-        className="surface-card space-y-1.5 p-4 text-center"
+        className={cn(
+          "flex flex-col gap-1.5 rounded-2xl border-2 bg-white p-4 text-center",
+          NAVY_BORDER,
+        )}
         data-testid="marhala-exhausted"
         role="status"
       >
-        <p className="text-lg font-black text-foreground">
-          خلصت الأسئلة الجديدة المتاحة لهذا التحدي
+        <p className="font-display text-lg font-black text-[hsl(var(--brand-navy))]">
+          خلصت الأسئلة الجديدة لهالتحدي
         </p>
-        <p className="text-sm font-bold text-muted-foreground">
-          انتهى السباق دون فائز، ولم تُمنح نقاط لهذا التحدي.
+        <p className="text-sm font-semibold text-brand-slate">
+          انتهى السباق بدون فائز، وما انحسبت نقطة لهالتحدي.
         </p>
       </div>
     );
   }
   return (
     <div
-      className="surface-card space-y-1.5 p-4 text-center"
+      className={cn(
+        "flex flex-col gap-1.5 rounded-2xl border-[3px] bg-[hsl(var(--brand-gold))] p-5 text-center shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+        NAVY_BORDER,
+      )}
       data-testid="marhala-finished"
       role="status"
     >
-      <p className="text-xs font-black text-muted-foreground">وصلوا النهاية</p>
-      <p className="text-2xl font-black text-foreground">
-        {result?.winnerTeamId ? teamName(result.winnerTeamId) : "انتهى السباق"}
+      <p className="text-sm font-bold text-[hsl(var(--brand-navy))]">
+        وصلوا المحطة{" "}
+        <span className="akwaan-numeral">{MARHALA_FINISH_POSITION}</span>
+      </p>
+      <p className="font-display text-3xl font-black text-[hsl(var(--brand-navy))]">
+        {result?.winnerTeamId
+          ? `فوز ${teamName(result.winnerTeamId)}`
+          : "انتهى السباق"}
       </p>
     </div>
   );

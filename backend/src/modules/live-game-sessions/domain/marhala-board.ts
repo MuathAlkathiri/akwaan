@@ -65,7 +65,15 @@ export const MARHALA_MOVEMENT_RANGES: Readonly<
 export type MarhalaTileKind = 'normal' | 'boost' | 'trap' | 'finish';
 
 /**
- * The V4 playtest candidate (§17.5). **Not locked balance.**
+ * The board drawn in the approved redesign (2026-11-25). **Not locked balance.**
+ *
+ * The big ladder starts at 11, not 9: a simulated 9 → 15 decided 89% of games
+ * on its own, and beside the slide on 10 it makes 7 and 8 a real gamble.
+ *
+ * Two ladders and two slides, each joining two stations in neighbouring rows,
+ * so no connection passes over a third station or crosses another. A slide ends
+ * on a checkpoint (6, 12): the highest one at or below the station it starts
+ * from, which is what «ترجع لآخر نقطة حفظ» means on a fixed table.
  *
  * A boost or trap is a *source* whose destination is always a safe tile, so an
  * effect can never chain into another effect. `validateMarhalaBoard` proves that
@@ -73,23 +81,16 @@ export type MarhalaTileKind = 'normal' | 'boost' | 'trap' | 'finish';
  */
 export const MARHALA_BOOSTS: Readonly<Record<number, number>> = {
   3: 7,
-  5: 7,
-  8: 13,
-  10: 13,
-  12: 16,
-  14: 16,
+  11: 15,
 };
 
 export const MARHALA_TRAPS: Readonly<Record<number, number>> = {
-  4: 1,
-  6: 2,
-  9: 7,
-  11: 7,
-  15: 13,
+  10: 6,
+  14: 12,
 };
 
 /** Tiles nothing sends a team away from: safe landings and the finish. */
-export const MARHALA_SAFE_POSITIONS: readonly number[] = [1, 2, 7, 13, 16];
+export const MARHALA_SAFE_POSITIONS: readonly number[] = [1, 6, 7, 12, 15, 16];
 
 /** Every tile has exactly one identity. */
 export function marhalaTileKind(position: number): MarhalaTileKind {

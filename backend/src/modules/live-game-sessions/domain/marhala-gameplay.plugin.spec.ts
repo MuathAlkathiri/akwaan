@@ -442,7 +442,7 @@ describe('المرحلة gameplay', () => {
     });
 
     it('takes a boost to its destination', () => {
-      // From 2, easy lands on 3 or 4: 3 is a boost to 7, 4 is a trap to 1.
+      // From 2, easy lands on 3 or 4: 3 is a ladder to 7, 4 is a plain station.
       const open = opened('easy', at(2));
       const turn = turnsOf(
         send(MARHALA_COMMANDS.submitAnswer, open, { answer: 'روكستار' })
@@ -452,8 +452,8 @@ describe('المرحلة gameplay', () => {
         expect(turn.baseLanding).toBe(3);
         expect(turn.finalLanding).toBe(7);
       } else {
-        expect(turn.tile).toBe('trap');
-        expect(turn.finalLanding).toBe(1);
+        expect(turn.tile).toBe('normal');
+        expect(turn.finalLanding).toBe(4);
       }
     });
 

@@ -12,6 +12,11 @@ import { slotLabels, teamName } from "../presentation";
 import { localizeMatchError } from "../errors/match-errors";
 import type { MatchActor, MatchTeamStanding } from "../types";
 
+const SELF_FRAMED_MODES: ReadonlySet<string> = new Set([
+  "marhala",
+  "moving-xo",
+]);
+
 /**
  * A challenge in progress.
  *
@@ -74,6 +79,9 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
   // its own private controls in a shell of its own; wallpapering a handset would
   // spend bandwidth and attention on something nobody is looking at.
   const backdropUrl = phone ? undefined : current?.questionBackdropUrl;
+  // These challenges draw the approved context strip themselves, with their
+  // own turn chip in it; the score already sits in the Match header above.
+  const selfFramed = SELF_FRAMED_MODES.has(snapshot.gameplay?.mode.key ?? "");
 
   return (
     <div
@@ -86,7 +94,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       data-challenge-surface={phone ? "phone" : "screen"}
     >
       {backdropUrl && <QuestionBackdrop url={backdropUrl} />}
-      {!phone && (
+      {!phone && !selfFramed && (
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
         <div className="min-w-0">
           {current && (

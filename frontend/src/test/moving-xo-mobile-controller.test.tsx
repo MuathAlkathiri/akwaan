@@ -256,6 +256,8 @@ describe("Moving XO phone placement", () => {
     expect(screen.getByTestId("moving-xo-cell-5")).toBeEnabled();
 
     fireEvent.click(screen.getByTestId("moving-xo-cell-0"));
+
+    fireEvent.click(screen.getByTestId("moving-xo-confirm-place"));
     expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "place-moving-xo-mark",
@@ -276,6 +278,7 @@ describe("Moving XO phone placement", () => {
       tree(runtime(placementState(), ["mode:place-moving-xo-mark"]), command),
     );
     fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
+    fireEvent.click(screen.getByTestId("moving-xo-confirm-place"));
     expect(
       screen.getByTestId("moving-xo-placement-pending"),
     ).toBeInTheDocument();
@@ -344,7 +347,7 @@ describe("Moving XO phone placement", () => {
 
 describe("Moving XO phone completion", () => {
   it.each([
-    ["win", "فاز أسود الشمال"],
+    ["win", "فوز أسود الشمال"],
     ["draw", "تعادل"],
   ])("reconstructs a completed %s snapshot", (outcome, copy) => {
     renderPhone(
@@ -404,6 +407,7 @@ describe("the turn holder", () => {
       [PLACE],
     );
     fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
+    fireEvent.click(screen.getByTestId("moving-xo-confirm-place"));
     expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "place-moving-xo-mark",
@@ -417,7 +421,7 @@ describe("the turn holder", () => {
       [ANSWER],
     );
     const card = screen.getByTestId("moving-xo-phone-coaching");
-    expect(card).toHaveTextContent("دوركم — الجوال مع زميلكم");
+    expect(card).toHaveTextContent("القرار عند زميلكم");
     expect(card).toHaveTextContent("ما اسم البطل؟");
     expect(screen.queryByRole("textbox")).toBeNull();
   });
@@ -428,7 +432,7 @@ describe("the turn holder", () => {
       [PLACE],
     );
     expect(screen.getByTestId("moving-xo-phone-coaching")).toHaveTextContent(
-      "الحركة من جوال زميلكم",
+      "القرار عند زميلكم",
     );
     expect(screen.getByTestId("moving-xo-cell-5").tagName).toBe("DIV");
     expect(screen.queryByRole("button")).toBeNull();
@@ -437,6 +441,7 @@ describe("the turn holder", () => {
   it("keeps the whole-team rule when the server says nothing", () => {
     const { gameplayCommand } = renderPhone(placementState(), [PLACE]);
     fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
+    fireEvent.click(screen.getByTestId("moving-xo-confirm-place"));
     expect(gameplayCommand).toHaveBeenCalledWith(
       "gameplay-command",
       expect.objectContaining({ payload: { cell: 5 } }),

@@ -393,6 +393,13 @@
   }
 }
 
+/* «المرحلة»: one small hop per station, so the room can count the steps. */
+@keyframes marhala-hop {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(-34%); }
+  100% { transform: translateY(0); }
+}
+
 @keyframes akwaan-shake {
   0%,
   100% {
