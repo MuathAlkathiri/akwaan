@@ -947,9 +947,58 @@ export interface GenerateInput {
   difficulty?: RyoRequestedDifficulty | string | null;
   batchGuidance?: string | null;
   generationPlan?: GenerationPlan | null;
+  /** Prompts already in this Scope's library; see `formatExistingContent`. */
+  existingPrompts?: readonly string[];
+}
+
+export const EXISTING_CONTENT_MAX_ITEMS = 80;
+export const EXISTING_CONTENT_MAX_CHARS = 160;
+
+/**
+ * The questions this Scope already holds, as a list the generator must not
+ * repeat.
+ *
+ * The screen has always rejected a repeat — but only after it was paid for.
+ * A generator that is never shown the library walks straight back to the
+ * same handful of natural examples (the first Puzzles re-run re-authored
+ * «الرقم 7 من 1 إلى 300» and «30 واحد في قروب» number for number), and each
+ * one costs a candidate. Showing it the list is what makes the second batch
+ * different from the first.
+ *
+ * Newest last and capped: the most recent items are the ones a model is most
+ * likely to produce again.
+ */
+export function formatExistingContent(
+  prompts: readonly string[] | undefined,
+): string | undefined {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const raw of prompts ?? []) {
+    const line = String(raw ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!line || seen.has(line)) continue;
+    seen.add(line);
+    lines.push(
+      line.length > EXISTING_CONTENT_MAX_CHARS
+        ? `${line.slice(0, EXISTING_CONTENT_MAX_CHARS)}…`
+        : line,
+    );
+  }
+  if (!lines.length) return undefined;
+  return [
+    '## ALREADY IN THE LIBRARY — DO NOT REPEAT',
+    'These questions already exist in this Scope. A candidate that asks any of',
+    'them again is rejected automatically and wasted — and so is the same',
+    'question with the wording changed, and the same scenario with the same',
+    'numbers. Author NEW items: a different scenario, different numbers and a',
+    'different answer from every line below.',
+    ...lines.slice(-EXISTING_CONTENT_MAX_ITEMS).map((line) => `  - ${line}`),
+  ].join('\n');
 }
 
 export interface BuildPromptOptions {
+  existingPrompts?: readonly string[];
   difficulty?: RyoRequestedDifficulty | string | null;
   ryoDifficultyTargets?: Readonly<RyoDifficultyTargets> | null;
   batchGuidance?: string | null;
@@ -1079,6 +1128,9 @@ export function composeGenerationPrompt(
             `<batch_guidance>\n${normalizedGuidance}\n</batch_guidance>`,
           ].join('\n'),
         ]
+      : []),
+    ...(formatExistingContent(options?.existingPrompts)
+      ? [formatExistingContent(options?.existingPrompts) as string]
       : []),
     // Last, deliberately: the instruction a generator is most likely to act
     // on is the one it read most recently.
@@ -1323,6 +1375,7 @@ export class CandidateGeneratorService {
       ryoDifficultyTargets: spec?.ryoDifficultyTargets,
       batchGuidance: normalizedGuidance,
       generationPlan: input.generationPlan,
+      existingPrompts: input.existingPrompts,
     });
     // Reserved *and* sent, so actual output cost cannot exceed what the cap
     // approved. Sized with headroom: a bound tight enough to truncate the JSON
