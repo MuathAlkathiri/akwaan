@@ -447,8 +447,9 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           .sort();
       };
 
-      it('numbers-estimation: مين أقرب draws the five text families', () => {
+      it('numbers-estimation: مين أقرب draws five number families and the year line', () => {
         expect(drawable('numbers-estimation', 'closest')).toEqual([
+          'calendar-position',
           'everyday-quantities',
           'gathering-pairs',
           'occurrence-count',
@@ -471,7 +472,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         );
       });
 
-      it('wordplay-letters: choosing mechanics draw three families, the slider one', () => {
+      it('wordplay-letters: choosing mechanics draw three families, the slider two', () => {
         const expected = [
           'anagram-rearrange',
           'dotless-disambiguation',
@@ -483,6 +484,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         );
         expect(drawable('wordplay-letters', 'closest')).toEqual([
           'alphabet-counts',
+          'alphabet-position',
         ]);
       });
 

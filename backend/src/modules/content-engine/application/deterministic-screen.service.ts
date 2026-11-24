@@ -261,6 +261,12 @@ const mechanicRetiredPhrases = (profile?: string): string[][] => {
   return phrases;
 };
 
+/**
+ * Half-width of the centre band a between-anchors target may not fall in, as
+ * a share of the line: 0.1 either side of the midpoint is the middle fifth.
+ */
+export const CLOSEST_ANCHOR_CENTRE_BAND = 0.1;
+
 const blocking = (code: string, message: string): ScreenFinding => ({
   code,
   severity: 'blocking',
@@ -1506,6 +1512,54 @@ export class DeterministicScreenService {
           'unit must be at most 40 characters',
         ),
       );
+    }
+
+    // --- a position line: two labelled ends, and a target off the centre --
+    if (mode === 'between-anchors') {
+      const left =
+        typeof slider.leftAnchor === 'string' ? slider.leftAnchor.trim() : '';
+      const right =
+        typeof slider.rightAnchor === 'string' ? slider.rightAnchor.trim() : '';
+      if (
+        !left ||
+        !right ||
+        left === right ||
+        left.length > 80 ||
+        right.length > 80
+      ) {
+        findings.push(
+          blocking(
+            'CLOSEST_SLIDER_ANCHORS_INVALID',
+            'a between-anchors slider needs two distinct labels of at most 80 characters',
+          ),
+        );
+      }
+      if (unit !== undefined || displayFormat !== undefined) {
+        findings.push(
+          blocking(
+            'CLOSEST_ANCHOR_SLIDER_SHOWS_NO_NUMBER',
+            'a between-anchors slider shows no number, so it takes no unit or display format',
+          ),
+        );
+      }
+      // The players see a bare line. A target in the middle of it is the
+      // guess a team makes without thinking, so both teams land on it and the
+      // round ties. Product rule 2026-11-24.
+      if (
+        finite(min) &&
+        finite(max) &&
+        min < max &&
+        finite(target) &&
+        Math.abs(target - (min + max) / 2) <=
+          (max - min) * CLOSEST_ANCHOR_CENTRE_BAND
+      ) {
+        findings.push(
+          blocking(
+            'CLOSEST_ANCHOR_TARGET_CENTRED',
+            `target ${target} sits in the middle of the line [${min}, ${max}]; a mark left in the centre would win`,
+          ),
+        );
+      }
     }
 
     // --- leakage: the number itself must not sit in the question ----------

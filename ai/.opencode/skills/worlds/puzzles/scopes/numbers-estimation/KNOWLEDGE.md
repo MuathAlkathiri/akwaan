@@ -504,7 +504,7 @@ on the exact answer the question is a tie and nobody scores, so:
 | `quick-total` | The total of a series stated in one sentence | كم مجموع الأرقام من 1 إلى 40؟ | 820 |
 | `gathering-pairs` | Interactions in a familiar social scene | 45 واحد في الاستراحة وكل واحد صافح الباقين مرة. كم مصافحة؟ | 990 |
 | `tournament-matches` | Matches in a tournament whose format the prompt explains | مونديال فيه 48 منتخب: 12 مجموعة من 4، وكل فريق يلعب مع فرق مجموعته. كم مباراة في دور المجموعات؟ | 72 |
-| `calendar-position` | Where a fixed, well-known date falls on the line of the year (between-anchors — **paused** until the engine generates that slider) | بين 1 يناير و31 ديسمبر، وين يجي يوم التأسيس؟ | day 53 of 365 |
+| `calendar-position` | Where a fixed, well-known date falls on the line of the year (between-anchors: a bare line, two labelled ends, no numbers; the target is never in the middle fifth) | بين 1 يناير و31 ديسمبر، وين يجي يوم التأسيس؟ | day 53 of 365 |
 
 Per-family notes:
 
@@ -518,6 +518,13 @@ Per-family notes:
   and weeks, or say "سنة من 365 يوم" in the prompt.
 - `quick-total` — one series, described in one sentence. Never a famous total
   everyone has memorised (1 to 100).
+- `calendar-position` — a **between-anchors** slider: the players see a bare
+  line from «1 يناير» to «31 ديسمبر» and no numbers, and place a mark. The line
+  is days 1–365 and the answer is the day's number in a 365-day year. Only a
+  date fixed in the Gregorian calendar that everyone here knows without looking
+  it up (يوم التأسيس، اليوم الوطني، أول يوم في فصل). **Never a Hijri date** — it
+  moves through the year — and never a date only a specialist knows. The target
+  is never in the middle fifth of the line and not at either end.
 
 ### Families answered by choosing (إكس أو المتحرك · اقرأ خصمك)
 
@@ -892,9 +899,7 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
-      ],
-      "status": "paused",
-      "pausedReason": "Approved 2026-11-24; waits for between-anchors generation in the engine."
+      ]
     },
     {
       "familyKey": "must-be-true",

@@ -162,6 +162,65 @@ describe('settling the grid of a derived مين أقرب answer', () => {
     expect(item.authoring).not.toHaveProperty('gridRepair');
   });
 
+  describe('between-anchors', () => {
+    const yearLine = (over: Record<string, unknown> = {}) =>
+      parsed({
+        answerBasis: 'knowledge-anchored',
+        prompt: 'بين 1 يناير و31 ديسمبر، وين يجي يوم التأسيس؟',
+        sliderMode: 'between-anchors',
+        leftAnchor: '1 يناير',
+        rightAnchor: '31 ديسمبر',
+        min: 1,
+        max: 365,
+        step: 5,
+        correctValue: 53,
+        stepsFromMin: 10,
+        unit: 'يوم',
+        displayFormat: 'number',
+        ...over,
+      });
+
+    it('authors a labelled line with no unit, and settles its step', () => {
+      const item = yearLine();
+      expect(item.draft.mechanicPayload.closestSlider).toEqual({
+        mode: 'between-anchors',
+        min: 1,
+        max: 365,
+        // 5 cannot land on day 53; the players never see the step.
+        step: 1,
+        leftAnchor: '1 يناير',
+        rightAnchor: '31 ديسمبر',
+      });
+      expect(item.draft.answerPayload.correctValue).toBe(53);
+      expect(item.authoring.stepsFromMin).toBe(52);
+    });
+
+    it('rejects a line without two distinct labels', () => {
+      expect(() => yearLine({ rightAnchor: '' })).toThrow(
+        /two distinct labels/,
+      );
+      expect(() => yearLine({ rightAnchor: '1 يناير' })).toThrow(
+        /two distinct labels/,
+      );
+    });
+
+    it('keeps an ordinary item numeric when the field is absent or numeric-range', () => {
+      expect(parsed({}).draft.mechanicPayload.closestSlider.mode).toBe(
+        'numeric-range',
+      );
+      expect(
+        parsed({ sliderMode: 'numeric-range', leftAnchor: '', rightAnchor: '' })
+          .draft.mechanicPayload.closestSlider,
+      ).not.toHaveProperty('leftAnchor');
+    });
+
+    it('tells the model when to use it and to stay off the centre', () => {
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/TWO SLIDERS/);
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/position-estimation/);
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/middle fifth/);
+    });
+  });
+
   it('leaves what it cannot settle for the screen to judge', () => {
     expect(
       settleClosestGrid({ min: 0, max: 10, step: 1, correctValue: 2.5 }),
@@ -580,7 +639,7 @@ describe('buildPrompt', () => {
     // version, and an existing one cannot change contract without bumping.
     expect(PROMPT_VERSIONS).toEqual({
       multiple_choice: 'mc-v2',
-      closest: 'closest-v2',
+      closest: 'closest-v3',
       match: 'combo-v1',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
