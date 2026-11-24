@@ -105,11 +105,11 @@ export function OtpCodeInput({
           aria-label={`الرقم ${index + 1} من ${LENGTH}`}
           data-testid={`otp-digit-${index}`}
           className={[
-            "h-14 min-w-0 flex-1 rounded-xl border bg-white text-center text-xl font-bold text-[hsl(var(--brand-navy))] sm:w-12 sm:flex-none sm:text-2xl",
-            "focus:outline-none focus:ring-2 focus:ring-offset-0",
+            "h-[60px] min-w-0 flex-1 rounded-[14px] border-[3px] bg-white text-center text-2xl font-bold text-brand-navy sm:w-[52px] sm:flex-none",
+            "focus:outline-none focus:ring-4 focus:ring-offset-0",
             invalid
               ? "border-destructive focus:ring-destructive/25"
-              : "border-[hsl(var(--brand-navy)/.16)] focus:border-[hsl(var(--brand-navy)/.55)] focus:ring-[hsl(var(--brand-gold)/.28)]",
+              : "border-brand-navy focus:bg-brand-lavender focus:ring-[hsl(var(--brand-purple))]",
             disabled ? "opacity-50" : "",
           ].join(" ")}
         />

@@ -166,17 +166,26 @@ export class MatchUseCases {
       // not exist — and a token cannot be taken twice for the same Match, since
       // the spend is keyed on its id.
       const owner = session.controllerActorId;
-      await this.campaign.grantAllowanceIfDue(owner, now, transaction);
-      const charged = await this.tokens.spendForMatch({
-        accountId: owner,
-        matchId: match.id,
+      // A Match is free when the campaign's week still has one left, or when
+      // it is the account's first ever. Only otherwise is the balance touched.
+      const free = await this.campaign.claimFreeMatch(
+        owner,
+        match.id,
+        now,
         transaction,
-      });
-      if (!charged.charged) {
-        throw new MatchDomainError(
-          'MATCH_TOKEN_REQUIRED',
-          'This account has no token left to start a match',
-        );
+      );
+      if (!free) {
+        const charged = await this.tokens.spendForMatch({
+          accountId: owner,
+          matchId: match.id,
+          transaction,
+        });
+        if (!charged.charged) {
+          throw new MatchDomainError(
+            'MATCH_TOKEN_REQUIRED',
+            'This account has no token left to start a match',
+          );
+        }
       }
       await this.matches.create(match, transaction);
     };

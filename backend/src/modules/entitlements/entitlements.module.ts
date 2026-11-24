@@ -13,6 +13,19 @@ import { TokenCollectionsInitialiser } from './persistence/token-collections.ini
 import { TokenLedgerService } from './application/token-ledger.service';
 import { LaunchCampaignService } from './application/launch-campaign.service';
 import { TokensController } from './presentation/tokens.controller';
+import { GiftCodeService } from './application/gift-code.service';
+import { CampaignRepository } from './persistence/campaign.repository';
+import {
+  CampaignSettingsDocument,
+  CampaignSettingsSchema,
+  FreeMatchClaimDocument,
+  FreeMatchClaimSchema,
+  GiftCodeDocument,
+  GiftCodeRedemptionDocument,
+  GiftCodeRedemptionSchema,
+  GiftCodeSchema,
+} from './persistence/campaign.schema';
+import { UsersModule } from '../users/users.module';
 
 /**
  * Tokens: what an account may spend, and the record of why it changed.
@@ -25,13 +38,23 @@ import { TokensController } from './presentation/tokens.controller';
     MongooseModule.forFeature([
       { name: TokenLedgerEntryDocument.name, schema: TokenLedgerEntrySchema },
       { name: TokenBalanceDocument.name, schema: TokenBalanceSchema },
+      { name: FreeMatchClaimDocument.name, schema: FreeMatchClaimSchema },
+      { name: CampaignSettingsDocument.name, schema: CampaignSettingsSchema },
+      { name: GiftCodeDocument.name, schema: GiftCodeSchema },
+      {
+        name: GiftCodeRedemptionDocument.name,
+        schema: GiftCodeRedemptionSchema,
+      },
     ]),
+    UsersModule,
   ],
   controllers: [TokensController],
   providers: [
     TokenLedgerRepository,
     TokenLedgerService,
+    CampaignRepository,
     LaunchCampaignService,
+    GiftCodeService,
     TokenCollectionsInitialiser,
   ],
   exports: [TokenLedgerService, LaunchCampaignService],

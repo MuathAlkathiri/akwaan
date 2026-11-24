@@ -99,6 +99,11 @@ const ISSUES: Record<string, SetupIssue> = {
     message: "فيه مباراة قائمة لهذه الجلسة أصلاً.",
     scope: "match",
   },
+  MATCH_TOKEN_REQUIRED: {
+    message:
+      "خلصت مبارياتك. المجانية تتجدد يوم الخميس، وإذا تبي أكثر كلمنا من الرئيسية.",
+    scope: "match",
+  },
   MATCH_REQUIRES_TWO_TEAMS: {
     message: "المباراة تحتاج فريقين نشطين بالضبط.",
     scope: "match",

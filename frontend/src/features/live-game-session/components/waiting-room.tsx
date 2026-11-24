@@ -32,9 +32,9 @@ import { PlayerCharacterIcon } from "./player-characters";
  * arrives from the QR, lands on a side, and the host's only jobs are moving
  * somebody across and saying go.
  *
- * Starting waits for one thing only: somebody on each side. Past that it never
- * blocks — the QR stays up on the challenge screen, so a latecomer joins
- * mid-game.
+ * Starting is never blocked here, even with a side empty — the QR stays up on the
+ * challenge screen, so a latecomer joins mid-game. What a missing team blocks is
+ * the challenge's own start button, which is where the block belongs.
  */
 /**
  * What the room asks for when it issues its own join code.
@@ -202,10 +202,6 @@ export function WaitingRoom() {
   const startAction = ["begin", "start"].find((action) =>
     snapshot.availableActions.includes(action),
   );
-  // The design's rule: the Match opens once each side has somebody. Whoever
-  // is still on the way joins from the code on the challenge screen.
-  const bothSidesHaveSomeone =
-    sideOf(first.id).length > 0 && sideOf(second.id).length > 0;
   const occurrences = snapshot.match?.unified?.occurrences ?? [];
   const countLabel = (count: number) =>
     count === 1 ? "لاعب واحد" : count === 2 ? "لاعبين" : `${count} لاعبين`;
@@ -533,13 +529,11 @@ export function WaitingRoom() {
             </button>
             <GoldPill
               data-testid="waiting-room-start"
-              disabled={busy || !startAction || !bothSidesHaveSomeone}
+              disabled={busy || !startAction}
               onClick={() => startAction && command(startAction, {})}
               className="px-8 sm:min-h-[76px] sm:px-11 sm:text-[26px]"
             >
-              {bothSidesHaveSomeone
-                ? "نبدأ واللي يتأخر يلحقنا"
-                : "نبدأ أول ما ينضم لاعب من كل فريق"}
+              نبدأ واللي يتأخر يلحقنا
             </GoldPill>
           </footer>
         </div>

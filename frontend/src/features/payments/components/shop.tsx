@@ -57,11 +57,9 @@ export function Shop() {
             disabledLabel={
               selling
                 ? "سجّل دخولك عشان تشتري"
-                : // Naming the day is the approved copy, and a date a player
-                  // can plan around beats a vague "once the free month ends".
-                  freeUntil
-                  ? `يفتح بعد ${freeUntil}`
-                  : "يفتح بعد انتهاء المجانية"
+                : // No date: selling opens when payments are proven live,
+                  // not on a day anybody can promise.
+                  "الشراء يفتح قريب"
             }
             buyLabel={state === "empty" ? "اشترِ وكمّل مباراتك" : "اشترِ"}
             busy={checkout.isPending && checkout.variables?.packId === pack.id}

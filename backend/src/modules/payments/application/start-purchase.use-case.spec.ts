@@ -19,7 +19,7 @@ import { tokenPackById } from '../domain/token-pack';
  * request. A body that could influence the price is a body that can buy the
  * fifteen-pack for a riyal.
  */
-const FIFTEEN = tokenPackById('fifteen')!;
+const FIFTEEN = tokenPackById('twelve')!;
 
 const code = (over: Partial<DiscountCode> = {}): DiscountCode => ({
   code: 'AKWAAN20',

@@ -25,8 +25,7 @@ vi.mock("@/features/live-game-session/api/live-session-api", async (load) => ({
  *
  * Nobody builds a team here: the two sides exist, named by colour, and the host
  * only moves people across and says go. So what these hold is the part that
- * makes that replacement safe — that starting waits only for somebody on each
- * side, that a side with
+ * makes that replacement safe — that starting is never blocked, that a side with
  * nobody in it still reads as a side, and that «قسّمهم لي» sends its moves one
  * at a time, because each one invalidates the revision the next one needs.
  */
@@ -157,13 +156,15 @@ describe("the waiting room", () => {
     expect(screen.getAllByTestId("waiting-room-player")).toHaveLength(1);
   });
 
-  // The room opens once each side has somebody. A latecomer still joins from
-  // the code on the challenge screen, so nothing past that is asked for.
-  it("waits for somebody on each side, and says what it is waiting for", () => {
+  it("starts even with one side empty, and says so", async () => {
     mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }]);
     const start = screen.getByTestId("waiting-room-start");
-    expect(start).toBeDisabled();
-    expect(start.textContent).toContain("نبدأ أول ما ينضم لاعب من كل فريق");
+    // Never blocked here: the QR stays up on the challenge screen, so the
+    // block that matters is the challenge's own start button.
+    expect(start).not.toBeDisabled();
+    expect(start.textContent).toContain("نبدأ واللي يتأخر يلحقنا");
+    await userEvent.click(start);
+    expect(command).toHaveBeenCalledWith("begin", {});
   });
 
   const BOTH_SIDES = [

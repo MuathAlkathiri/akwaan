@@ -1,5 +1,6 @@
 "use client";
 
+import { LaunchAllowance } from "@/features/entitlements/components/launch-allowance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -163,6 +164,7 @@ export function WorldsHome() {
     <JourneyShell className="max-w-[1440px]">
       <div className="relative space-y-16 pb-6">
         <AkwaanHero />
+        <LaunchAllowance className="mx-auto max-w-3xl" />
         <ResumeMatchCard />
 
         <section
@@ -717,11 +719,16 @@ function WorldSelectionSidebar({
          play order, and a vertical list could not show an order a player is
          meant to read as a sequence.
 
-         Sticky, so the bar follows while the row is being browsed. A player
-         choosing their third World should not have to scroll back up to find
-         out that they have finished. */
+         Sticky only once a World has been chosen. Before that there is
+         nothing in it to follow the player with, and a bar pinned to the foot
+         of the screen from the first pixel sat on top of the hero and the
+         Worlds themselves. From the first pick on it follows, so a player
+         choosing their third World does not have to scroll back to find out
+         that they have finished. */
+      data-pinned={selectedCount > 0 ? "true" : "false"}
       className={cn(
-        "sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-x-6 gap-y-4",
+        selectedCount > 0 && "sticky bottom-4 z-20",
+        "flex flex-wrap items-center justify-between gap-x-6 gap-y-4",
         "rounded-[22px] bg-brand-lavender px-5 py-4",
         STICKER.base,
       )}

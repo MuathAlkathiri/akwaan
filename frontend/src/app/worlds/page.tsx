@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { SectionTag, Spark, STICKER } from "@/components/akwaan/sticker";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "العوالم",
@@ -43,132 +44,146 @@ const CONSTANTS = [
   "الحساب تلقائي بالكامل، ولا أحد يحكم على إجابة أحد.",
 ] as const;
 
+const TAG = "min-h-[60px] self-center px-[26px] text-[22px] sm:text-[30px]";
+const BODY = "text-base leading-[1.9] text-brand-slate sm:text-[17px]";
+
 export default function WorldsIndexPage() {
   return (
-    <div className="relative pb-16 pt-10 lg:pt-14">
-      <section className="relative z-10 mx-auto w-full max-w-3xl px-4 sm:px-6">
-        <h1 className="text-center text-3xl font-black leading-[1.25] text-[hsl(var(--brand-navy))] sm:text-4xl">
-          عوالم أكوان
+    <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col gap-14 px-4 pb-20 pt-8 sm:px-8 lg:gap-[72px] lg:pt-12">
+      <section className="flex max-w-[760px] flex-col items-start">
+        <h1 className="font-display text-[40px] font-black leading-[1.3] text-brand-navy sm:text-[62px]">
+          عوالم <span className="text-brand-purple">أكوان</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-loose text-[hsl(var(--brand-navy)/.72)] sm:text-lg">
+        <p className="mt-5 text-base leading-[1.9] text-brand-slate sm:text-lg">
           أكوان مو قائمة تصنيفات تختار منها سؤال. «العالم» هو الموضوع الكبير
           اللي تلعبون داخله — كرة قدم، أنمي، فيديو قيمز، ألغاز وغيرها — وكل
           عالم يجي معه أسلوب لعب يميّزه، لا مجرد أسئلة بلون ثاني. تختارون 3
           عوالم في كل مباراة، والترتيب اللي تختارونه هو ترتيب اللعب.
         </p>
+      </section>
 
-        <div className="mt-12 space-y-12">
-          <article aria-labelledby="worlds-what-title">
-            <h2
-              id="worlds-what-title"
-              className="text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl"
-            >
-              وش يعني «عالم» في أكوان؟
-            </h2>
-            <div className="mt-4 space-y-4 text-base leading-loose text-[hsl(var(--brand-navy)/.72)]">
-              <p>
-                العالم عند أكوان وحدة كاملة: موضوع، ومجالات فرعية تحته، ولوحة
-                تحديات خاصة به. لما تختارون عالم، أنتم ما تختارون «نوع أسئلة»
-                بس — تختارون شكل الجولة نفسها، والتحدي اللي ما يتكرر في غيره،
-                والطريقة اللي بيتنافس بها فريقكم.
-              </p>
-              <p>
-                عشان كذا اختيار العوالم هو القرار الوحيد المهم قبل بداية
-                المباراة. كل شيء بعده — ترتيب التحديات ولوحة كل عالم — يرتّبه
-                أكوان لكم، فما تحتاجون تعرفون أسماء التحديات قبل ما تلعبونها
-                أول مرة.
-              </p>
-            </div>
-          </article>
+      <section
+        aria-labelledby="worlds-what-title"
+        className="flex flex-col gap-[30px]"
+      >
+        <SectionTag tone="gold" tilt={-1.5} className={TAG}>
+          <h2 id="worlds-what-title">وش يعني «عالم» في أكوان؟</h2>
+        </SectionTag>
+        <div
+          className={cn(
+            "flex flex-col gap-4 rounded-3xl bg-brand-lavender p-6 sm:p-8",
+            STICKER.base,
+            BODY,
+          )}
+        >
+          <p className="text-brand-navy">
+            العالم عند أكوان وحدة كاملة: موضوع، ومجالات فرعية تحته، ولوحة
+            تحديات خاصة به. لما تختارون عالم، أنتم ما تختارون «نوع أسئلة»
+            بس — تختارون شكل الجولة نفسها، والتحدي اللي ما يتكرر في غيره،
+            والطريقة اللي بيتنافس بها فريقكم.
+          </p>
+          <p>
+            عشان كذا اختيار العوالم هو القرار الوحيد المهم قبل بداية
+            المباراة. كل شيء بعده — ترتيب التحديات ولوحة كل عالم — يرتّبه
+            أكوان لكم، فما تحتاجون تعرفون أسماء التحديات قبل ما تلعبونها
+            أول مرة.
+          </p>
+        </div>
+      </section>
 
-          <article aria-labelledby="worlds-changes-title">
-            <h2
-              id="worlds-changes-title"
-              className="text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl"
+      <section
+        aria-labelledby="worlds-changes-title"
+        className="flex flex-col gap-[30px]"
+      >
+        <SectionTag tone="purple" tilt={1} className={TAG}>
+          <h2 id="worlds-changes-title">وش يتغيّر لما يتغيّر العالم؟</h2>
+        </SectionTag>
+        <ul className="m-0 grid list-none gap-6 p-0 lg:grid-cols-3">
+          {CHANGES.map(({ title, copy }, index) => (
+            <li
+              key={title}
+              className={cn(
+                "flex flex-col gap-2.5 rounded-[20px] p-6",
+                STICKER.base,
+                index === 0 ? "bg-brand-gold" : "bg-brand-paper",
+              )}
             >
-              وش يتغيّر لما يتغيّر العالم؟
-            </h2>
-            <ul className="mt-5 list-none space-y-4">
-              {CHANGES.map(({ title, copy }) => (
-                <li
-                  key={title}
-                  className="rounded-3xl border border-[hsl(var(--brand-navy)/.1)] bg-white/80 p-5 shadow-[0_10px_30px_rgba(24,16,54,.05)]"
-                >
-                  <h3 className="text-base font-black text-[hsl(var(--brand-navy))]">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-7 text-[hsl(var(--brand-navy)/.66)] sm:text-base">
-                    {copy}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <article aria-labelledby="worlds-constant-title">
-            <h2
-              id="worlds-constant-title"
-              className="text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl"
-            >
-              ووش ما يتغيّر؟
-            </h2>
-            <p className="mt-4 text-base leading-loose text-[hsl(var(--brand-navy)/.72)]">
-              هيكل المباراة ثابت، عشان ما تحتاجون تتعلمون اللعبة من جديد كل
-              مرة:
-            </p>
-            <ul className="mt-4 list-none space-y-3">
-              {CONSTANTS.map((line) => (
-                <li
-                  key={line}
-                  className="flex items-start gap-3 text-sm leading-7 text-[hsl(var(--brand-navy)/.7)] sm:text-base"
-                >
-                  <span
-                    aria-hidden
-                    className="mt-2.5 size-1.5 shrink-0 rotate-45 bg-[hsl(var(--brand-gold))]"
-                  />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <article aria-labelledby="worlds-choose-title">
-            <h2
-              id="worlds-choose-title"
-              className="text-xl font-black text-[hsl(var(--brand-navy))] sm:text-2xl"
-            >
-              كيف تختارون عوالمكم؟
-            </h2>
-            <div className="mt-4 space-y-4 text-base leading-loose text-[hsl(var(--brand-navy)/.72)]">
-              <p>
-                من الصفحة الرئيسية تختارون 3 عوالم، وبعد كل عالم تختارون 4
-                مجالات منه. نصيحة من التجربة: نوّعوا بين عالم يعرفه فريقكم
-                زين وعالم محايد بينكم وبين خصومكم — المباراة اللي كل عوالمها
-                في اتجاه واحد تصير متوقعة.
-              </p>
-              <p>
-                قائمة العوالم المتاحة تكبر، وفيه عوالم تحت التجهيز تشوفونها في
-                الرئيسية تحت «عوالم جديدة في الطريق». المتاح الآن والجديد
-                يظهران هناك أول بأول، فالرئيسية هي المرجع لوش تقدرون تلعبونه
-                اليوم.
-              </p>
-            </div>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-              <Button
-                asChild
-                size="lg"
-                className="akwaan-primary-action rounded-full border border-[hsl(var(--brand-gold)/.32)] bg-[hsl(var(--brand-navy))] px-9 py-6 text-base font-black text-white shadow-[0_16px_34px_-18px_hsl(var(--brand-navy)/.8)] hover:border-[hsl(var(--brand-gold)/.72)] hover:bg-[hsl(var(--brand-navy)/.96)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold))] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              <h3 className="font-display text-[21px] font-extrabold text-brand-navy">
+                {title}
+              </h3>
+              <p
+                className={cn(
+                  "text-base leading-[1.85]",
+                  index === 0 ? "text-brand-navy" : "text-brand-slate",
+                )}
               >
-                <Link href="/#worlds">شوف العوالم واختر</Link>
-              </Button>
-              <Link
-                href="/how-to-play"
-                className="text-base font-black text-[hsl(var(--brand-navy))] underline decoration-[hsl(var(--brand-gold))] decoration-2 underline-offset-4"
-              >
-                كيف تلعب أكوان؟
-              </Link>
-            </div>
-          </article>
+                {copy}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section
+        aria-labelledby="worlds-constant-title"
+        className="flex flex-col gap-[30px]"
+      >
+        <SectionTag tone="white" tilt={-1} className={TAG}>
+          <h2 id="worlds-constant-title">ووش ما يتغيّر؟</h2>
+        </SectionTag>
+        <div className="flex flex-col gap-4 rounded-3xl border-[3px] border-brand-navy bg-brand-paper px-6 py-7 shadow-[6px_7px_0_hsl(var(--brand-gold))] sm:px-9 sm:py-8">
+          <p className={cn(BODY, "text-brand-navy")}>
+            هيكل المباراة ثابت، عشان ما تحتاجون تتعلمون اللعبة من جديد كل
+            مرة:
+          </p>
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            {CONSTANTS.map((line) => (
+              <li key={line} className={cn("flex items-start gap-3", BODY)}>
+                <Spark className="mt-2 size-3.5 shrink-0" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="worlds-choose-title"
+        className="flex flex-col gap-[30px]"
+      >
+        <SectionTag tone="gold" tilt={1.5} className={TAG}>
+          <h2 id="worlds-choose-title">كيف تختارون عوالمكم؟</h2>
+        </SectionTag>
+        <div className={cn("mx-auto flex max-w-[860px] flex-col gap-4", BODY)}>
+          <p className="text-brand-navy">
+            من الصفحة الرئيسية تختارون 3 عوالم، وبعد كل عالم تختارون 4
+            مجالات منه. نصيحة من التجربة: نوّعوا بين عالم يعرفه فريقكم
+            زين وعالم محايد بينكم وبين خصومكم — المباراة اللي كل عوالمها
+            في اتجاه واحد تصير متوقعة.
+          </p>
+          <p>
+            قائمة العوالم المتاحة تكبر، وفيه عوالم تحت التجهيز تشوفونها في
+            الرئيسية تحت «العوالم القادمة». المتاح الآن والجديد
+            يظهران هناك أول بأول، فالرئيسية هي المرجع لوش تقدرون تلعبونه
+            اليوم.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-5">
+          <Link
+            href="/#worlds"
+            className={cn(
+              "inline-flex min-h-[3.5rem] items-center justify-center rounded-full bg-brand-gold px-10 font-display text-[19px] font-extrabold text-brand-navy no-underline transition-transform duration-150 hover:-translate-y-0.5 sm:min-h-[4.25rem] sm:text-[22px]",
+              STICKER.base,
+            )}
+          >
+            شوف العوالم واختر
+          </Link>
+          <Link
+            href="/how-to-play"
+            className="text-base font-bold text-brand-navy underline decoration-2 underline-offset-4 hover:text-brand-bronze"
+          >
+            كيف تلعب أكوان؟
+          </Link>
         </div>
       </section>
     </div>

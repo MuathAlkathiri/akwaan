@@ -33,7 +33,20 @@ type Step = "identifier" | "code";
  * or ages a code. It sends an identifier, renders whatever the server says, and
  * exchanges six digits for the same session the rest of the app already uses.
  */
-export function PasswordlessLoginForm() {
+/**
+ * Whether a player may sign in with a phone number.
+ *
+ * Off until SMS delivery is live: the tab asked for a number and then sent
+ * nothing, so somebody sat waiting for a code that was never coming. The
+ * phone path itself is untouched — flip this and it is back.
+ */
+export const PHONE_LOGIN_ENABLED = false;
+
+export function PasswordlessLoginForm({
+  allowPhone = PHONE_LOGIN_ENABLED,
+}: {
+  allowPhone?: boolean;
+} = {}) {
   const router = useRouter();
   const { loginWithOtp } = useAuth();
 
@@ -106,14 +119,14 @@ export function PasswordlessLoginForm() {
 
   return (
     <Card
-      className="mx-auto w-full max-w-[510px] rounded-[28px] border-[hsl(var(--brand-navy)/.085)] bg-white shadow-[0_24px_70px_-38px_hsl(var(--brand-navy)/.35)] ring-1 ring-[hsl(var(--brand-gold)/.055)]"
+      className="mx-auto w-full max-w-[510px] rounded-[28px] border-[3px] border-brand-navy bg-brand-paper shadow-[6px_7px_0_hsl(var(--brand-navy))]"
       dir="rtl"
     >
       <CardHeader className="space-y-3 px-6 pb-5 pt-7 text-center sm:px-10 sm:pt-10">
-        <CardTitle className="font-display text-2xl font-bold leading-relaxed text-[hsl(var(--brand-navy))] sm:text-[28px]">
+        <CardTitle className="font-display text-[26px] font-black leading-relaxed text-brand-navy sm:text-[32px]">
           {step === "identifier" ? "ياهلا فيك، نورت أكوان" : "أرسلنا لك الرمز"}
         </CardTitle>
-        <CardDescription className="text-[15px] leading-7 text-[hsl(var(--brand-navy)/.58)]">
+        <CardDescription className="text-base leading-7 text-brand-slate">
           {step === "identifier"
             ? "سجّل دخولك وكمل لعبك من حيث وقفت."
             : channel === "email"
@@ -124,35 +137,37 @@ export function PasswordlessLoginForm() {
       <CardContent className="space-y-6 px-6 pb-7 sm:px-10 sm:pb-10">
         {step === "identifier" ? (
           <div className="akwaan-rise space-y-6">
-            <div
-              className="grid grid-cols-2 gap-1 rounded-2xl bg-[hsl(var(--brand-navy)/.045)] p-1.5"
-              role="tablist"
-              aria-label="طريقة تسجيل الدخول"
-            >
-              {(
-                [
-                  ["email", "البريد الإلكتروني"],
-                  ["phone", "رقم الجوال"],
-                ] as Array<[OtpChannel, string]>
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={channel === value}
-                  onClick={() => switchChannel(value)}
-                  data-testid={`otp-channel-${value}`}
-                  className={[
-                    "relative rounded-xl px-2 py-3 text-sm font-semibold transition-all",
-                    channel === value
-                      ? "bg-white text-[hsl(var(--brand-navy))] shadow-[0_5px_16px_-12px_hsl(var(--brand-navy)/.45)] after:absolute after:bottom-1 after:left-1/2 after:h-0.5 after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-[hsl(var(--brand-gold))]"
-                      : "text-[hsl(var(--brand-navy)/.48)] hover:text-[hsl(var(--brand-navy)/.72)]",
-                  ].join(" ")}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {allowPhone && (
+              <div
+                className="grid grid-cols-2 gap-1 rounded-full border-[3px] border-brand-navy bg-white p-1"
+                role="tablist"
+                aria-label="طريقة تسجيل الدخول"
+              >
+                {(
+                  [
+                    ["email", "البريد الإلكتروني"],
+                    ["phone", "رقم الجوال"],
+                  ] as Array<[OtpChannel, string]>
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={channel === value}
+                    onClick={() => switchChannel(value)}
+                    data-testid={`otp-channel-${value}`}
+                    className={[
+                      "min-h-11 rounded-full px-2 text-[15px] font-bold text-brand-navy transition-colors",
+                      channel === value
+                        ? "bg-brand-gold"
+                        : "text-brand-slate hover:bg-brand-lavender",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form
               className="space-y-5"
@@ -165,7 +180,7 @@ export function PasswordlessLoginForm() {
                 <div className="space-y-2">
                   <label
                     htmlFor="otp-email"
-                    className="block text-sm font-semibold text-[hsl(var(--brand-navy)/.82)]"
+                    className="block text-[15px] font-bold text-brand-navy"
                   >
                     البريد الإلكتروني
                   </label>
@@ -181,21 +196,21 @@ export function PasswordlessLoginForm() {
                     data-testid="otp-email-input"
                     value={identifier}
                     onChange={(event) => setIdentifier(event.target.value)}
-                    className="h-[52px] rounded-xl border-[hsl(var(--brand-navy)/.14)] bg-white px-4 text-base text-[hsl(var(--brand-navy))] shadow-none focus-visible:border-[hsl(var(--brand-navy)/.55)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold)/.28)] focus-visible:ring-offset-0"
+                    className="h-[56px] rounded-[14px] border-[3px] border-brand-navy bg-white px-4 text-base font-semibold text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
                   />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <label
                     htmlFor="otp-phone"
-                    className="block text-sm font-semibold text-[hsl(var(--brand-navy)/.82)]"
+                    className="block text-[15px] font-bold text-brand-navy"
                   >
                     رقم الجوال
                   </label>
                   <div className="flex items-center gap-2" dir="ltr">
                     {/* Saudi numbers are the only supported format, so the
                         country code is shown rather than asked for. */}
-                    <span className="grid h-[52px] place-items-center rounded-xl border border-[hsl(var(--brand-navy)/.12)] bg-[hsl(var(--brand-navy)/.035)] px-3 text-sm font-semibold text-[hsl(var(--brand-navy)/.7)]">
+                    <span className="grid h-[56px] place-items-center rounded-[14px] border-[3px] border-brand-navy bg-brand-lavender px-3.5 text-base font-bold text-brand-navy">
                       +966
                     </span>
                     <Input
@@ -212,7 +227,7 @@ export function PasswordlessLoginForm() {
                       onChange={(event) =>
                         setIdentifier(normalizeDigits(event.target.value))
                       }
-                      className="h-[52px] rounded-xl border-[hsl(var(--brand-navy)/.14)] bg-white px-4 text-base text-[hsl(var(--brand-navy))] shadow-none focus-visible:border-[hsl(var(--brand-navy)/.55)] focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold)/.28)] focus-visible:ring-offset-0"
+                      className="h-[56px] rounded-[14px] border-[3px] border-brand-navy bg-white px-4 text-base font-semibold text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
                     />
                   </div>
                 </div>
@@ -222,7 +237,7 @@ export function PasswordlessLoginForm() {
                 <p
                   role="alert"
                   data-testid="otp-error"
-                  className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  className="rounded-xl border-2 border-brand-navy bg-brand-lavender px-3 py-2 text-sm font-semibold text-brand-navy"
                 >
                   {error.message}
                 </p>
@@ -239,7 +254,7 @@ export function PasswordlessLoginForm() {
 
               <Button
                 type="submit"
-                className="h-[52px] w-full rounded-xl bg-[hsl(var(--brand-navy))] text-base font-bold text-white shadow-[0_14px_28px_-18px_hsl(var(--brand-navy)/.75)] hover:bg-[hsl(var(--brand-navy)/.93)] disabled:bg-[hsl(var(--brand-navy)/.2)] disabled:text-white/90"
+                className="h-auto min-h-[3.75rem] w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-xl font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:border-brand-dash disabled:bg-brand-wash disabled:text-brand-plum disabled:opacity-100 disabled:shadow-none"
                 disabled={busy || !identifier.trim()}
                 data-testid="otp-request-button"
               >
@@ -269,7 +284,7 @@ export function PasswordlessLoginForm() {
 
             <Button
               type="button"
-              className="h-[52px] w-full rounded-xl bg-[hsl(var(--brand-navy))] text-base font-bold text-white shadow-[0_14px_28px_-18px_hsl(var(--brand-navy)/.75)] hover:bg-[hsl(var(--brand-navy)/.93)] disabled:bg-[hsl(var(--brand-navy)/.2)]"
+              className="h-auto min-h-[3.75rem] w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-xl font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:border-brand-dash disabled:bg-brand-wash disabled:text-brand-plum disabled:opacity-100 disabled:shadow-none"
               disabled={busy || code.length < OTP_LENGTH}
               onClick={() => void verify(code)}
               data-testid="otp-verify-button"

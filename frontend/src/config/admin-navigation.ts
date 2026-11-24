@@ -4,6 +4,7 @@ import {
   Ticket,
   Users,
   Network,
+  Gift,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -42,6 +43,15 @@ export const adminNavigation: AdminNavigationItem[] = [
     showOnDashboard: true,
     dashboardTitle: "Users",
     dashboardDescription: "إدارة اشتراكات وصلاحيات المستخدمين.",
+  },
+  {
+    label: "المباريات والحملة",
+    href: "/admin/matches",
+    icon: Gift,
+    showOnDashboard: true,
+    dashboardTitle: "Matches & Campaign",
+    dashboardDescription:
+      "أضف مباريات لحساب، غيّر العدد المجاني الأسبوعي، وسوِّ أكواد هدايا.",
   },
   {
     label: "أكواد الخصم",

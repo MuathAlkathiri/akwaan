@@ -193,7 +193,7 @@ describe('MatchUseCases transitions', () => {
           ),
       } as unknown as import('../../entitlements/application/token-ledger.service').TokenLedgerService,
       {
-        grantAllowanceIfDue: () => Promise.resolve(),
+        claimFreeMatch: () => Promise.resolve(false),
       } as unknown as import('../../entitlements/application/launch-campaign.service').LaunchCampaignService,
     );
     return { useCases, published, current: load };

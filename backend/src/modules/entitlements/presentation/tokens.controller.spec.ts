@@ -21,7 +21,19 @@ function controllerWith(overrides: Partial<TokenLedgerService> = {}) {
     })),
     ...overrides,
   } as unknown as TokenLedgerService;
-  return { controller: new TokensController(tokens), tokens };
+  const campaign = {
+    allowanceFor: jest.fn(async () => undefined),
+    status: jest.fn(() => ({ open: false })),
+  };
+  return {
+    controller: new TokensController(
+      tokens,
+      campaign as never,
+      {} as never,
+      {} as never,
+    ),
+    tokens,
+  };
 }
 
 describe('who may reach a balance', () => {
@@ -29,14 +41,20 @@ describe('who may reach a balance', () => {
   const rolesOn = (method: keyof TokensController) =>
     reflector.get<UserRole[]>(ROLES_KEY, TokensController.prototype[method]);
 
-  it.each(['accountLedger', 'grant'] as const)(
-    'lets only an administrator call %s',
-    (method) => {
-      expect(rolesOn(method)).toEqual([UserRole.ADMIN]);
-    },
-  );
+  it.each([
+    'accountLedger',
+    'grant',
+    'lookup',
+    'campaignSettings',
+    'setCampaign',
+    'giftCodes',
+    'createGiftCode',
+    'setGiftCodeActive',
+  ] as const)('lets only an administrator call %s', (method) => {
+    expect(rolesOn(method)).toEqual([UserRole.ADMIN]);
+  });
 
-  it.each(['myBalance', 'myHistory'] as const)(
+  it.each(['myBalance', 'myHistory', 'redeem'] as const)(
     'lets any signed-in account call %s about itself',
     (method) => {
       expect(rolesOn(method)).toBeUndefined();

@@ -76,8 +76,10 @@ describe("the cosmic background covers the player-facing Akwaan surfaces", () =>
     expect(authShell).toContain("min-h-screen");
     expect(authShell).toContain("bg-white");
     expect(authShell).toContain("pointer-events-none");
-    expect(authShell).toContain("-translate-y-5");
-    expect(authShell).toContain("sm:-translate-y-7");
+    // The new login is a card beside a panel, side by side from `lg` up and
+    // stacked on a phone with the form first.
+    expect(authShell).toContain("lg:flex-row");
+    expect(authShell).toContain("/how-to-play");
   });
 
   it("stays off admin, paired phones, and live gameplay screens", () => {

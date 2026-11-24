@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -111,7 +112,9 @@ export class PaymentsController {
         priceHalalas: pack.priceHalalas,
         priceRiyals: riyalsOf(pack),
       })),
-      selling: !campaign.open,
+      // Selling is a switch an operator throws once payments are proven
+      // live, never the campaign's end arriving on its own.
+      selling: this.campaign.salesOpen(),
       freeUntil: campaign.endsAt,
     };
   }
@@ -134,6 +137,15 @@ export class PaymentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: StartPurchaseDto,
   ) {
+    // Not selling means not selling here too, not only in what the shop
+    // draws: a request made by hand must not open a payment page.
+    if (!this.campaign.salesOpen()) {
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        code: 'PAYMENT_SALES_CLOSED',
+        message: 'الشراء ما انفتح للحين.',
+      });
+    }
     // The account is the authenticated one. A body that named an account would
     // let anyone buy for — or as — anyone else.
     return this.startPurchase.execute({
