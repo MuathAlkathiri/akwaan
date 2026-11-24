@@ -12,6 +12,9 @@ import {
   RYO_CONFIDENCE_BANDS,
   RYO_TARGET_CONFIDENCE_BANDS,
   RYO_TASK_GUIDANCE,
+  EXISTING_CONTENT_MAX_CHARS,
+  EXISTING_CONTENT_MAX_ITEMS,
+  formatExistingContent,
   MOVING_XO_CANDIDATE_SCHEMA,
   MOVING_XO_TASK_GUIDANCE,
   CLOSEST_TASK_GUIDANCE,
@@ -677,6 +680,46 @@ describe('originality guidance reaches every mechanic', () => {
     it('has its own prompt contract', () => {
       expect(promptVersionFor('moving-xo')).toBe('moving-xo-v1');
       expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');
+    });
+  });
+
+  describe('the library the generator must not repeat', () => {
+    const withLibrary = (existingPrompts: string[]) =>
+      service().buildPrompt(context(), 3, 'closest', { existingPrompts });
+
+    it('lists what the Scope already holds, before the originality block', () => {
+      const prompt = withLibrary([
+        'كم مرة ينكتب الرقم 7 من 1 إلى 300؟',
+        '30 واحد في قروب، وكل واحد أرسل رسالة خاصة لكل واحد من الباقين. كم رسالة؟',
+      ]);
+      expect(prompt).toMatch(/ALREADY IN THE LIBRARY — DO NOT REPEAT/);
+      expect(prompt).toContain('  - كم مرة ينكتب الرقم 7 من 1 إلى 300؟');
+      expect(prompt.indexOf('ALREADY IN THE LIBRARY')).toBeLessThan(
+        prompt.indexOf('ORIGINALITY —'),
+      );
+      expect(prompt.endsWith(ORIGINALITY_GUIDANCE)).toBe(true);
+    });
+
+    it('says nothing when the Scope is empty', () => {
+      expect(withLibrary([])).not.toMatch(/ALREADY IN THE LIBRARY/);
+      expect(formatExistingContent(undefined)).toBeUndefined();
+      expect(formatExistingContent(['  ', ''])).toBeUndefined();
+    });
+
+    it('drops repeats, shortens long lines and keeps the newest', () => {
+      const many = Array.from({ length: 100 }, (_, i) => `سؤال رقم ${i}`);
+      const block = formatExistingContent([
+        ...many,
+        many[99],
+        'ط'.repeat(400),
+      ])!;
+      const lines = block.split('\n').filter((line) => line.startsWith('  - '));
+      expect(lines).toHaveLength(EXISTING_CONTENT_MAX_ITEMS);
+      expect(block).not.toContain('  - سؤال رقم 0\n');
+      expect(block).toContain('  - سؤال رقم 99');
+      expect(lines[lines.length - 1]).toBe(
+        `  - ${'ط'.repeat(EXISTING_CONTENT_MAX_CHARS)}…`,
+      );
     });
   });
 

@@ -238,6 +238,9 @@ export class ContentEngineOrchestratorService {
 
       // Inventory may have changed after the job was submitted. Recheck before
       // a queued or retried job can make its first paid generation call.
+      // What the Scope already holds, read from the same inventory load, so
+      // the generator is shown the library it must not repeat.
+      let existingPrompts: string[] = [];
       {
         let complete = false;
         try {
@@ -252,6 +255,19 @@ export class ContentEngineOrchestratorService {
                 session,
               )
             ).status === 'COMPLETE';
+          // Best effort: a library that cannot be read costs the generator
+          // a hint, never the batch.
+          try {
+            existingPrompts = (session?.historicalRecords ?? [])
+              .map((record) => {
+                const prompt = (record.draft as { prompt?: { ar?: unknown } })
+                  ?.prompt?.ar;
+                return typeof prompt === 'string' ? prompt : '';
+              })
+              .filter(Boolean);
+          } catch {
+            existingPrompts = [];
+          }
         } catch {
           complete = false;
         }
@@ -397,6 +413,7 @@ export class ContentEngineOrchestratorService {
           context,
           count: provenance.spec?.targetCount ?? job.targetCount,
           generationPlan: pinnedPlan ?? undefined,
+          existingPrompts,
           ...(provenance.spec
             ? {
                 generationSpec: provenance.spec,
