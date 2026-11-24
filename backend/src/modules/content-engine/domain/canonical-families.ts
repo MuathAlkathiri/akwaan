@@ -2,6 +2,8 @@ import { createHash } from 'crypto';
 import {
   CanonicalFamily,
   CanonicalFamilyCatalog,
+  FAMILY_GENERATION_STATUSES,
+  FamilyGenerationStatus,
   ExtractedTableFamily,
   FamilyParityDrift,
   FamilyParityReport,
@@ -222,6 +224,44 @@ export function parseFamilyBlock(
         answerModes = item.answerModes.map((m) => m.trim());
       }
 
+      let status: FamilyGenerationStatus | undefined;
+      if (item.status !== undefined) {
+        if (
+          typeof item.status !== 'string' ||
+          !FAMILY_GENERATION_STATUSES.includes(
+            item.status as FamilyGenerationStatus,
+          )
+        ) {
+          throw new FamilyResolutionError(
+            'INVALID_FAMILY_STATUS',
+            source,
+            `status "${String(item.status)}" on family "${familyKey}" must be one of: ${FAMILY_GENERATION_STATUSES.join(', ')}`,
+          );
+        }
+        status = item.status as FamilyGenerationStatus;
+      }
+
+      const pausedReason = (
+        typeof item.pausedReason === 'string' ? item.pausedReason : ''
+      ).trim();
+
+      let pausedFor: string[] | undefined;
+      if (item.pausedFor !== undefined) {
+        if (
+          !Array.isArray(item.pausedFor) ||
+          item.pausedFor.some(
+            (mechanic) => typeof mechanic !== 'string' || !mechanic.trim(),
+          )
+        ) {
+          throw new FamilyResolutionError(
+            'INVALID_PAUSED_FOR',
+            source,
+            `pausedFor on family "${familyKey}" must be an array of mechanic keys`,
+          );
+        }
+        pausedFor = (item.pausedFor as string[]).map((m) => m.trim()).sort();
+      }
+
       families.push({
         familyKey,
         name,
@@ -233,6 +273,9 @@ export function parseFamilyBlock(
         ...(scalability ? { scalability } : {}),
         ...(mechanicFit ? { mechanicFit } : {}),
         ...(answerModes ? { answerModes } : {}),
+        ...(status ? { status } : {}),
+        ...(pausedReason ? { pausedReason } : {}),
+        ...(pausedFor?.length ? { pausedFor } : {}),
         source,
       });
     }
@@ -259,6 +302,11 @@ export function computeFamilyCatalogDigest(
     mechanicFit: f.mechanicFit ?? null,
     answerModes: f.answerModes ?? null,
     source: f.source,
+    // Pausing a family changes what a plan may draw, so it changes the plan.
+    // Added only when set, so a catalog that pauses nothing keeps the digest
+    // it had before this field existed.
+    ...(f.status === 'paused' ? { status: f.status } : {}),
+    ...(f.pausedFor?.length ? { pausedFor: f.pausedFor } : {}),
   }));
 
   return createHash('sha256')

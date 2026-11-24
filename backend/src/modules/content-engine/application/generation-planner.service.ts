@@ -121,6 +121,8 @@ export function computeGenerationPlanDigest(
     .digest('hex');
 }
 
+const PUZZLES_WORLD_KEY = 'puzzles';
+
 @Injectable()
 export class GenerationPlannerService {
   constructor(
@@ -225,10 +227,22 @@ export class GenerationPlannerService {
     const rawDifficulty = (input.difficulty ?? '').trim().toLowerCase();
     const difficulty = rawDifficulty || 'mixed';
 
-    const difficultyQuotas = this.computeDifficultyQuotas(count, difficulty);
+    const difficultyQuotas = this.computeDifficultyQuotas(
+      count,
+      difficulty,
+      // Only an unstated difficulty takes the World's own default; an
+      // operator who asks for a mix by name still gets one.
+      rawDifficulty ? '' : worldKey,
+    );
     const archetypes = this.resolveArchetypes(mechanicKey, scopeKey);
-    const decisionLoopGuidelines = this.resolveDecisionLoop(mechanicKey);
-    const antiPatterns = this.resolveAntiPatterns(mechanicKey, scopeKey);
+    const decisionLoopGuidelines = [
+      ...this.resolveDecisionLoop(mechanicKey),
+      ...this.resolveWorldDecisionLoop(mechanicKey, worldKey),
+    ];
+    const antiPatterns = [
+      ...this.resolveAntiPatterns(mechanicKey, scopeKey),
+      ...this.resolveWorldAntiPatterns(worldKey),
+    ];
     const correctnessRequirements =
       this.resolveCorrectnessRequirements(mechanicKey);
     const mediaIntent = this.resolveMediaIntent(mechanicKey, worldKey);
@@ -386,10 +400,43 @@ export class GenerationPlannerService {
     return sections.join('\n');
   }
 
+  /**
+   * عالم الألغاز, owner decision 2026-11-24. Stated here rather than only in
+   * the World's profile because the plan is printed inside the TASK, which is
+   * the part of a prompt a generator reads last and acts on most; the same
+   * rules sit thousands of characters earlier in the Scope knowledge.
+   */
+  private resolveWorldAntiPatterns(worldKey: string): string[] {
+    if (worldKey !== PUZZLES_WORLD_KEY) return [];
+    return [
+      'PUZZLES — SOLVED, NOT RECALLED: Everything the player needs is in the prompt, or is something every player knows (the alphabet, the days of the week, minutes in an hour). Never a fact to look up. Local colour (cities, dishes, clubs) is decoration only.',
+      'PUZZLES — NOT A MATHS TEST: No visible worksheet, no formula to recall, no long multiplication on show. The player sizes something up; they do not sit an exam.',
+      'PUZZLES — NO PICTURE YET: No item has an image. Never write "shown", "drawn", "in the picture" or "الصورة". Emoji inside the prompt text are allowed.',
+    ];
+  }
+
+  private resolveWorldDecisionLoop(
+    mechanicKey: string,
+    worldKey: string,
+  ): string[] {
+    if (worldKey !== PUZZLES_WORLD_KEY || mechanicKey !== 'closest') return [];
+    return [
+      'PUZZLES — EXACT FOR US, OUT OF REACH FOR THEM: The answer is a number we can compute exactly and a player cannot reach exactly in the time. If a player who spots a trick can state it precisely in a few seconds, both teams will, the question ties and nobody scores — discard it.',
+      'PUZZLES — PITCHED A LITTLE HARD: Prefer larger sets and answers that are not round. A careless guess must land clearly further away than a thoughtful one.',
+    ];
+  }
+
   private computeDifficultyQuotas(
     count: number,
     difficulty: string,
+    defaultForWorld = '',
   ): Record<string, number> {
+    // عالم الألغاز has one level, by owner decision 2026-11-24: a batch that
+    // names no difficulty is all medium there, not a spread of easy, medium
+    // and hard. `defaultForWorld` is passed only when none was named.
+    if (defaultForWorld === PUZZLES_WORLD_KEY && difficulty === 'mixed') {
+      return { medium: count };
+    }
     if (difficulty === 'easy' || difficulty === 'medium') {
       return { [difficulty]: count };
     }

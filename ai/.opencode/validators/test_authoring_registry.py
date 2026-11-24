@@ -57,11 +57,37 @@ class CanonicalAuthoringRegistryTests(unittest.TestCase):
         self.assertIn("authoring-manifest.json` is the sole canonical", readme)
         self.assertIn("historical/compatibility material", readme)
 
-    def test_moving_xo_has_exactly_78_unique_scope_owned_families(self) -> None:
+    def test_moving_xo_has_exactly_84_unique_scope_owned_families(self) -> None:
         self.assertEqual(set(FAMILIES), set(self.manifest["worlds"]["puzzles"]["scopes"]))
         family_ids = [family for scope in FAMILIES.values() for family in scope]
-        self.assertEqual(len(family_ids), 78)
-        self.assertEqual(len(set(family_ids)), 78)
+        # 78 from Library V1, plus the six choosing families the owner approved
+        # on 2026-11-24: five in numbers-estimation and one in wordplay-letters.
+        self.assertEqual(len(family_ids), 84)
+        self.assertEqual(len(set(family_ids)), 84)
+        self.assertTrue(
+            {
+                "must-be-true",
+                "deceptive-ratio",
+                "age-trap",
+                "symbol-arithmetic",
+                "colour-pattern-position",
+                "wordle-single-guess",
+            }.issubset(family_ids)
+        )
+        # Families answered only on the مين أقرب slider share the Scope tables
+        # and are not Moving XO families.
+        self.assertTrue(
+            {
+                "occurrence-count",
+                "everyday-quantities",
+                "quick-total",
+                "gathering-pairs",
+                "tournament-matches",
+                "calendar-position",
+                "alphabet-counts",
+                "alphabet-position",
+            }.isdisjoint(family_ids)
+        )
         self.assertTrue(
             {"quantity-intuition", "numeric-pattern", "dot-count"}.isdisjoint(family_ids)
         )

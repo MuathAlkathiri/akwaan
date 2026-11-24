@@ -375,6 +375,17 @@
 | 10 | `structured-subitizing-count` | العد السريع للمجموعات | **EXCELLENT** | **EXCELLENT** | **EXCELLENT** | **LIMITED** | 2D Grouped Tokens | Multiple Choice (4 numbers) |
 | 11 | `ratio-intuition` | حدس النسب الرياضية | **EXCELLENT** | **EXCELLENT** | **GOOD** | **EXCELLENT** | 2D Dual-Color Tokens | 1D Slider / MC |
 | 12 | `ordering-values-span` | مدى الفروق وترتيب القيم | **EXCELLENT** | **EXCELLENT** | **GOOD** | **EXCELLENT** | 2D Data Badges | 1D Slider (Numeric span) |
+| 13 | `occurrence-count` | كم مرة يظهر؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 14 | `everyday-quantities` | أرقام من حياتك | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 15 | `quick-total` | المجموع السريع | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 16 | `gathering-pairs` | في الاستراحة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 17 | `tournament-matches` | في الدوري | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 18 | `calendar-position` | وين في السنة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Slider (Between Anchors) |
+| 19 | `must-be-true` | لازم يكون صح | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (3 statements) |
+| 20 | `deceptive-ratio` | النسبة الخادعة | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 numbers) |
+| 21 | `age-trap` | فخ العمر | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 numbers) |
+| 22 | `symbol-arithmetic` | حساب بالرموز | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (4 numbers) |
+| 23 | `colour-pattern-position` | النمط الملوّن | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (3 colours) |
 
 ---
 
@@ -445,3 +456,531 @@ When generating or reviewing an authored batch for `numbers-estimation`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## 11. Product Selection — 2026-11-24 (Human Product Decision)
+
+The owner reviewed this World's question types on 2026-11-24 and narrowed what
+the engine generates to the families he chose. Rows 13–23 of the matrix above
+were **approved by him that day** and are canonical. Rows 1–12 stay in the
+library with their ratings, and are **paused**: nothing is deleted, and a family
+returns to generation by changing its `status` in the catalog below.
+
+Two tests decide every item in this Scope, whatever the family:
+
+- **It is solved, not recalled.** Everything the player needs is in the prompt
+  or is something every player knows (the alphabet, the days of the week, how
+  many minutes are in an hour). Local colour — cities, dishes, clubs — is
+  decoration, never a fact the player must know.
+- **It must not feel like a maths test.** No visible worksheet, no formula to
+  recall, no long multiplication on show. The player should feel they are
+  sizing something up, not sitting an exam.
+
+One level of difficulty: **medium**. Not graded easy to hard.
+
+No item here has a picture yet. Until the image composer exists, never write a
+prompt that refers to something "shown", "drawn" or "in the picture".
+
+### Families answered with the slider (مين أقرب)
+
+The answer is an **exact number we can compute**, that a player **cannot reach
+exactly in the time**. They estimate, and the nearer team wins.
+
+Closest in this World is deliberately **harder than medium**. If both teams land
+on the exact answer the question is a tie and nobody scores, so:
+
+- No shortcut that yields the exact number in a few seconds. If a player who
+  spots the trick can state the answer precisely, the item belongs to Moving XO,
+  not here.
+- Prefer larger sets and answers that are not round.
+- The range must be wide enough that a careless guess is clearly worse than a
+  thoughtful one, and the answer must not sit in the middle of it.
+
+| Key | What it asks | Example | Answer |
+|---|---|---|---|
+| `occurrence-count` | How many times something appears in a stated span | كم مرة ينكتب الرقم 1 لو عدّيت من 1 إلى 200؟ | 140 |
+| `everyday-quantities` | A big number built from units everyone knows | كم ثانية في الأسبوع؟ | 604800 |
+| `quick-total` | The total of a series stated in one sentence | كم مجموع الأرقام من 1 إلى 40؟ | 820 |
+| `gathering-pairs` | Interactions in a familiar social scene | 45 واحد في الاستراحة وكل واحد صافح الباقين مرة. كم مصافحة؟ | 990 |
+| `tournament-matches` | Matches in a tournament whose format the prompt explains | مونديال فيه 48 منتخب: 12 مجموعة من 4، وكل فريق يلعب مع فرق مجموعته. كم مباراة في دور المجموعات؟ | 72 |
+| `calendar-position` | Where a fixed, well-known date falls on the line of the year (between-anchors — **paused** until the engine generates that slider) | بين 1 يناير و31 ديسمبر، وين يجي يوم التأسيس؟ | day 53 of 365 |
+
+Per-family notes:
+
+- `gathering-pairs` — state plainly whether the interaction runs one way or
+  both. A handshake between two people is one handshake; a private message from
+  each to each is two. An item that leaves this open has two defensible answers.
+- `tournament-matches` — the prompt explains the format in full. Never rely on a
+  real competition's rules or history; the number of teams is the only "fact".
+- `everyday-quantities` — only units with one universally agreed size. A month
+  and a year are not: 28–31 days, 365 or 366. Use seconds, minutes, hours, days
+  and weeks, or say "سنة من 365 يوم" in the prompt.
+- `quick-total` — one series, described in one sentence. Never a famous total
+  everyone has memorised (1 to 100).
+
+### Families answered by choosing (إكس أو المتحرك · اقرأ خصمك)
+
+The stimulus is on the shared screen and the phone shows text buttons only.
+Exactly one option is correct, and each wrong option is the answer a specific,
+natural mistake would produce.
+
+| Key | What it asks | Example | Answer |
+|---|---|---|---|
+| `must-be-true` | Which statement is certain, whatever happens | في الصحن 4 سمبوسة لحم و2 جبن. أخذ فهد 3 وهو ما يشوف. أي عبارة صحيحة أكيد؟ | أخذ واحدة لحم على الأقل |
+| `deceptive-ratio` | A ratio whose instinctive answer is wrong | 3 قطط تصيد 3 فيران في 3 دقايق. كم قط يصيد 100 فار في 100 دقيقة؟ | 3 |
+| `age-trap` | An age gap presented as if it were a ratio | عمر أحمد 4 وأخته نص عمره. لما يصير عمره 100، كم عمرها؟ | 98 |
+| `symbol-arithmetic` | The value of a symbol in two or three short equations | 🍎 + 🍎 = 10، و🍎 + 🍌 = 8. كم 🍌؟ | 3 |
+| `colour-pattern-position` | The colour at a far position in a repeating pattern | 🔴🔵🔵🔴🔵🔵… وش لون الدائرة العاشرة؟ | أحمر |
+
+Per-family notes:
+
+- `must-be-true` — exactly one statement is guaranteed. The others must be
+  *possible*, not impossible: a statement that can never happen is too easy to
+  discard. Keep the numbers small enough to reason about without paper.
+- `deceptive-ratio` and `age-trap` — the instinctive wrong answer must be one of
+  the options. That is the whole point of the family.
+- `symbol-arithmetic` — two or three equations, whole-number values, solvable in
+  the head. Not a system of equations to work through on paper.
+- `colour-pattern-position` — show at least two full cycles so the pattern is
+  discoverable, and ask for a position beyond what is shown.
+
+## 12. Machine-Readable Family Catalog
+
+The block below is the structured form of the 23 families in the matrix of §5.
+It exists so the engine can read family identities, mechanic fit and generation
+status deterministically. `status: "paused"` keeps a family in the library and
+out of generation; `pausedReason` says why.
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.numbers-estimation",
+  "families": [
+    {
+      "familyKey": "missing-number-pattern",
+      "name": "الرقم الناقص في المتتالية",
+      "description": "استنتاج النمط الحسابي المباشر لإكمال رقم مفقود في متتالية.",
+      "playerSolve": "استنتاج النمط الحسابي المباشر لإكمال رقم مفقود في متتالية.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "visual-quantity-estimate",
+      "name": "تقدير الكميات والمجموعات",
+      "description": "تقدير عدد عناصر غير منظمة في وعاء أو ساحة على شريط انزلاقي مستمر.",
+      "playerSolve": "تقدير عدد عناصر غير منظمة في وعاء أو ساحة على شريط انزلاقي مستمر.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "proportion-estimate",
+      "name": "تقدير النسبة والامتلاء",
+      "description": "تقدير نسبة الامتلاء أو الجزء المظلل (0% إلى 100%) دون علامات قياس مسبقة.",
+      "playerSolve": "تقدير نسبة الامتلاء أو الجزء المظلل (0% إلى 100%) دون علامات قياس مسبقة.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Approved 2026-11-24; waits for the image composer to draw its picture."
+    },
+    {
+      "familyKey": "balance-scale-weight",
+      "name": "أوزان كفة الميزان",
+      "description": "استنتاج وزن مكافئ بسيط من موازين ذات كفتين.",
+      "playerSolve": "استنتاج وزن مكافئ بسيط من موازين ذات كفتين.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "number-relationship-grid",
+      "name": "علاقات الأرقام في الشبكة",
+      "description": "استنباط علاقة الجمع/الضرب بين أرقام صفوف وأعمدة شبكة 3×3.",
+      "playerSolve": "استنباط علاقة الجمع/الضرب بين أرقام صفوف وأعمدة شبكة 3×3.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "time-angle-intuition",
+      "name": "حدس زوايا عقارب الساعة",
+      "description": "تقدير الزاوية الحادة أو المنفرجة بين عقربي الساعة (0° إلى 180°).",
+      "playerSolve": "تقدير الزاوية الحادة أو المنفرجة بين عقربي الساعة (0° إلى 180°).",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "between-two-anchors",
+      "name": "التقدير بين نقطتين مرجعيتين",
+      "description": "تقدير موضع علامة على خط مستقيم مدرج بين نقطتي بداية ونهاية معروفتين.",
+      "playerSolve": "تقدير موضع علامة على خط مستقيم مدرج بين نقطتي بداية ونهاية معروفتين.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Approved 2026-11-24; waits for the image composer to draw its picture."
+    },
+    {
+      "familyKey": "relative-magnitude-sort",
+      "name": "المقارنة النسبية بين المقادير",
+      "description": "مقارنة سريعة لتحديد التعبير أو الصندوق الأكبر/الأصغر.",
+      "playerSolve": "مقارنة سريعة لتحديد التعبير أو الصندوق الأكبر/الأصغر.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "geometric-area-estimate",
+      "name": "تقدير المساحات الهندسية",
+      "description": "تقدير نسبة مساحة جزء هندسي مظلل داخل مضلع.",
+      "playerSolve": "تقدير نسبة مساحة جزء هندسي مظلل داخل مضلع.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "structured-subitizing-count",
+      "name": "العد السريع للمجموعات",
+      "description": "عد فوري لمجموعات متناسقة (أزواج أو ثلاثيات).",
+      "playerSolve": "عد فوري لمجموعات متناسقة (أزواج أو ثلاثيات).",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "LIMITED"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "ratio-intuition",
+      "name": "حدس النسب الرياضية",
+      "description": "استنتاج النسبة المبسطة بين نوعين من العناصر الملونة.",
+      "playerSolve": "استنتاج النسبة المبسطة بين نوعين من العناصر الملونة.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "ordering-values-span",
+      "name": "مدى الفروق وترتيب القيم",
+      "description": "تقدير الفارق (المدى) بين أعلى وأدنى قيمة في قراءات معروضة.",
+      "playerSolve": "تقدير الفارق (المدى) بين أعلى وأدنى قيمة في قراءات معروضة.",
+      "modality": "numeric-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "occurrence-count",
+      "name": "كم مرة يظهر؟",
+      "description": "عدّ مرات ظهور رقم أو حدث داخل مدى يحدده السؤال كاملاً، حين يكون العدّ حالةً حالةً أطول من وقت السؤال فيضطر الفريق للتقدير.",
+      "playerSolve": "تقدير عدد مرات الظهور من نمط التكرار (الآحاد والعشرات والمئات مثلاً) دون المرور على كل حالة.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "everyday-quantities",
+      "name": "أرقام من حياتك",
+      "description": "كمية كبيرة تُشتق من وحدات يعرفها كل الناس (ثوانٍ، دقائق، ساعات، أيام، أسابيع) ولا يحفظها أحد كمعلومة.",
+      "playerSolve": "تحويل وحدات مألوفة في الذهن وتقدير ناتج كبير لا يُحسب بدقة في الوقت.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "quick-total",
+      "name": "المجموع السريع",
+      "description": "مجموع سلسلة أعداد يعرّفها السؤال بجملة واحدة، أطول من أن تُجمع عدداً عدداً في الوقت.",
+      "playerSolve": "تقدير المجموع من وسط السلسلة وعدد عناصرها بدل جمعها واحداً واحداً.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "gathering-pairs",
+      "name": "في الاستراحة",
+      "description": "موقف اجتماعي مألوف يتعامل فيه كل شخص مع كل الباقين (مصافحة، رسالة خاصة، صورة ثنائية) والمطلوب عدد هذه التعاملات.",
+      "playerSolve": "تقدير عدد التعاملات في مجموعة، والانتباه هل التعامل في اتجاه واحد أم اتجاهين.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "tournament-matches",
+      "name": "في الدوري",
+      "description": "عدد المباريات في بطولة يشرح السؤال نظامها كاملاً (دوري ذهاب وإياب، مجموعات) دون الحاجة لأي معلومة رياضية حقيقية.",
+      "playerSolve": "تقدير عدد المباريات من عدد الفرق ونظام البطولة المشروح في السؤال.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "calendar-position",
+      "name": "وين في السنة؟",
+      "description": "وضع تاريخ ثابت يعرفه الجميع (مناسبة وطنية، بداية فصل) في مكانه على خط السنة بين أول يوم وآخر يوم.",
+      "playerSolve": "تحويل تاريخ معروف إلى موضع نسبي على خط يمثل السنة كاملة.",
+      "modality": "position-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Approved 2026-11-24; waits for between-anchors generation in the engine."
+    },
+    {
+      "familyKey": "must-be-true",
+      "name": "لازم يكون صح",
+      "description": "سحب أو توزيع عشوائي بأعداد صغيرة، وثلاث عبارات: واحدة فقط صحيحة مهما حصل، والباقي ممكن وليس مضموناً.",
+      "playerSolve": "التفكير في أسوأ حالة لاستبعاد العبارات الممكنة فقط وإيجاد العبارة المضمونة.",
+      "modality": "logic-certainty",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "deceptive-ratio",
+      "name": "النسبة الخادعة",
+      "description": "مسألة نسبة وتناسب من جملة أو جملتين، جوابها البديهي السريع خطأ والصحيح يظهر بعد لحظة تفكير.",
+      "playerSolve": "مقاومة الجواب البديهي والانتباه لما يتغيّر فعلاً وما يبقى ثابتاً.",
+      "modality": "logic-trap",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "age-trap",
+      "name": "فخ العمر",
+      "description": "عمران بينهما فرق ثابت يُعرض كأنه نسبة (نصف، ضعف)، والسؤال عن أحد العمرين في زمن آخر.",
+      "playerSolve": "تثبيت الفرق بين العمرين بدل النسبة بينهما.",
+      "modality": "logic-trap",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "symbol-arithmetic",
+      "name": "حساب بالرموز",
+      "description": "معادلتان أو ثلاث قصيرة تستخدم رموزاً (إيموجي) بدل الأرقام، والمطلوب قيمة رمز واحد.",
+      "playerSolve": "استنتاج قيمة كل رمز خطوة خطوة من المعادلة الأبسط إلى الأعقد.",
+      "modality": "symbol-deduction",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "colour-pattern-position",
+      "name": "النمط الملوّن",
+      "description": "نمط ألوان يتكرر، تُعرض بدايته بدوائر إيموجي ملونة، والسؤال عن لون موضع بعيد لم يُعرض.",
+      "playerSolve": "اكتشاف طول الدورة ثم تحديد أين يقع الموضع المطلوب داخلها.",
+      "modality": "pattern-cycle",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    }
+  ]
+}
+```

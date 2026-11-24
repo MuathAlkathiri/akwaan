@@ -106,10 +106,10 @@ class ArchetypeOwnershipTests(unittest.TestCase):
         }
         self.assertEqual(validate_single_item(row), [])
 
-    def test_all_78_scope_owned_families_remain_valid(self) -> None:
+    def test_all_84_scope_owned_families_remain_valid(self) -> None:
         family_count = sum(len(families) for families in FAMILIES.values())
         self.assertEqual(len(FAMILIES), 6)
-        self.assertEqual(family_count, 78)
+        self.assertEqual(family_count, 84)
         self.assertEqual(family_count, len({family for families in FAMILIES.values() for family in families}))
         for scope, families in FAMILIES.items():
             for family, profile in families.items():

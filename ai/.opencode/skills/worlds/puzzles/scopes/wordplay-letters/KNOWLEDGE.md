@@ -455,6 +455,9 @@
 | 13 | `word-inside-word` | كلمة في بطن كلمة | **EXCELLENT** | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | Text Layout | Multiple Choice (4 words) |
 | 14 | `arabic-cipher-dhad` | شفرات الحروف والرموز | **EXCELLENT** | **GOOD** | **LIMITED** | DO_NOT_FORCE | Typographic Vector | Multiple Choice (4 words) |
 | 15 | `word-ladder-mini` | سلالم الكلمات المصغرة | **EXCELLENT** | **GOOD** | **LIMITED** | DO_NOT_FORCE | Text Layout | Multiple Choice (4 words) |
+| 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (3 words) |
+| 17 | `alphabet-counts` | من لغتنا | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
+| 18 | `alphabet-position` | وين في الترتيب؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Slider (Between Anchors) |
 
 ---
 
@@ -523,6 +526,52 @@ When generating or reviewing an authored batch for `wordplay-letters`:
 
 ---
 
+## 10b. Product Selection — 2026-11-24 (Human Product Decision)
+
+The owner reviewed this World's question types on 2026-11-24 and narrowed what
+the engine generates to the families he chose. Rows 16–18 of the matrix in §5
+were **approved by him that day** and are canonical. Of rows 1–15, two are
+active — `anagram-rearrange` and `dotless-disambiguation` — and the other
+thirteen stay in the library with their ratings, **paused**: nothing is deleted,
+and a family returns to generation by changing its `status` in the catalog.
+
+The same two tests as the rest of this World: the item is **solved, not
+recalled**, and local colour is decoration, never a fact the player must know.
+One level of difficulty: **medium**.
+
+القنبلة is paused for every family here (`pausedFor: ["bomb"]`): a Bomb item
+must carry a picture, and a word puzzle has none until the image composer
+exists.
+
+| Key | What it asks | Example | Answer |
+|---|---|---|---|
+| `anagram-rearrange` | Rearrange the letters, **with a hint that fixes the answer** | رتّبها وتطلع فاكهة: ز، م، و | موز |
+| `dotless-disambiguation` | Read a familiar phrase written without its dots | «الصٮر مڡٮاح الڡرح» | الصبر مفتاح الفرج |
+| `wordle-single-guess` | One coloured guess, three options, one fits | ق⬜ م🟨 ر🟩 — مطر، نمر، قصر؟ | مطر |
+| `alphabet-counts` | A count over the alphabet nobody has memorised (slider) | كم نقطة في حروف الأبجدية العربية كلها؟ | 22 |
+| `alphabet-position` | Where a letter sits in an order everyone knows (between-anchors — **paused** until the engine generates that slider) | بين «أ» و«ي»، وين حرف السين؟ | letter 12 of 28 |
+
+Per-family rules added by this decision:
+
+- `anagram-rearrange` — Arabic letters rearrange into several words (ب، ح، ر
+  gives بحر، حرب، ربح، حبر). The prompt **always** carries a hint that leaves
+  exactly one answer, and that hint must rule out every other word the letters
+  can make.
+- `dotless-disambiguation` — a dotless string reads more than one way, so use
+  only well-known proverbs and set phrases, where the meaning settles the
+  reading. Answer by choosing between readings, or ask for one word of the
+  phrase; never ask the player to type the whole sentence.
+- `wordle-single-guess` — 🟩 right letter in the right place, 🟨 in the word but
+  elsewhere, ⬜ not in the word. Bright yellow is the owner's choice. Always
+  options, never typed: several words can fit one set of colours. Each wrong
+  option must break **exactly one stated colour**, and the reviewer must be able
+  to say which. Three or four letters; common words only.
+- `alphabet-counts` — the count must be checkable by listing the letters.
+  Answered on the slider, so it follows the Closest rule of this World: exact
+  and computable by us, not reachable exactly in the time.
+
+---
+
 ## 11. Machine-Readable Family Catalog
 
 The block below is the structured form of the 15 canonical families approved for this Scope in §4 and §5 above. It exists so the engine can inspect family identities, modalities, and mechanic fit deterministically without parsing unstructured prose.
@@ -545,7 +594,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "anagram-rearrange",
@@ -560,7 +613,12 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "GOOD",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "pausedFor": [
+        "bomb"
+      ]
     },
     {
       "familyKey": "add-letter",
@@ -575,7 +633,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "remove-letter",
@@ -590,7 +652,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "substitute-letter",
@@ -605,7 +671,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "hidden-word",
@@ -620,7 +690,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "GOOD",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "shared-letter-completion",
@@ -635,7 +709,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "palindrome-symmetry",
@@ -650,7 +728,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "LIMITED",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "letter-subtraction-math",
@@ -665,7 +747,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "GOOD",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "dotless-disambiguation",
@@ -680,7 +766,12 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "LIMITED",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "pausedFor": [
+        "bomb"
+      ]
     },
     {
       "familyKey": "dot-shift",
@@ -695,7 +786,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "letter-pattern-progression",
@@ -710,7 +805,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "GOOD",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "word-inside-word",
@@ -725,7 +824,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "EXCELLENT",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "arabic-cipher-dhad",
@@ -740,7 +843,11 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "LIMITED",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
     },
     {
       "familyKey": "word-ladder-mini",
@@ -755,7 +862,64 @@ The block below is the structured form of the 15 canonical families approved for
         "bomb": "LIMITED",
         "closest": "DO_NOT_FORCE"
       },
-      "answerModes": ["multiple_choice"]
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not in the 2026-11-24 product selection for this World."
+    },
+    {
+      "familyKey": "wordle-single-guess",
+      "name": "ووردل بتخمينة واحدة",
+      "description": "كلمة مخمَّنة واحدة تُعرض وكل حرف فيها بلون (🟩 الحرف في مكانه، 🟨 موجود في مكان آخر، ⬜ غير موجود)، وثلاثة اختيارات واحد منها فقط يطابق الألوان.",
+      "playerSolve": "استبعاد كل اختيار يخالف لوناً واحداً على الأقل حتى تبقى كلمة واحدة.",
+      "modality": "letter-deduction",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "alphabet-counts",
+      "name": "من لغتنا",
+      "description": "عدّ خاصية في الأبجدية العربية أو في قائمة كلمات يعرفها الجميع (عدد النقاط، الحروف بلا نقاط) لا يحفظ أحد عددها.",
+      "playerSolve": "استحضار الحروف في الذهن وتقدير العدد دون كتابتها.",
+      "modality": "counting-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "alphabet-position",
+      "name": "وين في الترتيب؟",
+      "description": "وضع حرف في مكانه من ترتيب يعرفه الجميع (الأبجدية، صف من لوحة مفاتيح الجوال) على خط بين أول حرف وآخر حرف.",
+      "playerSolve": "تحويل ترتيب محفوظ إلى موضع نسبي على خط.",
+      "modality": "position-estimation",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Approved 2026-11-24; waits for between-anchors generation in the engine."
     }
   ]
 }

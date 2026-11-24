@@ -328,6 +328,79 @@ describe('CreativeSlotAllocator (Slice 3A)', () => {
     });
   });
 
+  describe('6b. Families paused by product decision', () => {
+    const request = (
+      catalog: ReturnType<typeof createMockCatalog>,
+      mechanicKey = 'read-your-opponent',
+    ): SlotAllocationInput => ({
+      worldKey: 'puzzles',
+      scopeKey: 'wordplay-letters',
+      mechanicKey,
+      count: 6,
+      difficultyQuotas: { medium: 6 },
+      catalog,
+      seed: 'paused-seed',
+    });
+
+    it('never draws a paused family, and says which it skipped', () => {
+      const catalog = createMockCatalog(3);
+      catalog.families[0].status = 'paused';
+      catalog.families[0].pausedReason = 'not in the current selection';
+
+      const result = allocateCreativeSlots(request(catalog));
+      const used = new Set(result.slots.map((s) => s.familyKey));
+      expect(used.has('family-1')).toBe(false);
+      expect(used.size).toBe(2);
+      expect(result.diagnostics.join('\n')).toContain(
+        'FAMILIES_PAUSED: 1 fitting family(ies)',
+      );
+      expect(result.diagnostics.join('\n')).toContain('family-1');
+    });
+
+    it('treats an explicit active status as no status at all', () => {
+      const catalog = createMockCatalog(2);
+      catalog.families[0].status = 'active';
+      const used = new Set(
+        allocateCreativeSlots(request(catalog)).slots.map((s) => s.familyKey),
+      );
+      expect(used).toEqual(new Set(['family-1', 'family-2']));
+    });
+
+    it('pauses a family for one mechanic and leaves it drawable for another', () => {
+      const catalog = createMockCatalog(2);
+      catalog.families[0].pausedFor = ['bomb'];
+      for (const family of catalog.families)
+        family.mechanicFit = { bomb: 'GOOD', 'read-your-opponent': 'GOOD' };
+
+      const forBomb = new Set(
+        allocateCreativeSlots(request(catalog, 'bomb')).slots.map(
+          (s) => s.familyKey,
+        ),
+      );
+      expect(forBomb).toEqual(new Set(['family-2']));
+
+      const forRyo = new Set(
+        allocateCreativeSlots(request(catalog)).slots.map((s) => s.familyKey),
+      );
+      expect(forRyo).toEqual(new Set(['family-1', 'family-2']));
+    });
+
+    it('fails closed, naming the paused families, when nothing else fits', () => {
+      const catalog = createMockCatalog(2);
+      for (const family of catalog.families) family.status = 'paused';
+      try {
+        allocateCreativeSlots(request(catalog));
+        throw new Error('expected the allocator to refuse');
+      } catch (err: unknown) {
+        expect((err as CreativePlannerError).code).toBe(
+          'NO_COMPATIBLE_FAMILIES_FOR_MECHANIC',
+        );
+        expect((err as Error).message).toContain('is paused');
+        expect((err as Error).message).toContain('family-1, family-2');
+      }
+    });
+  });
+
   describe('6. Mechanic Fit & DO_NOT_FORCE Filtering', () => {
     it('strictly excludes families marked DO_NOT_FORCE for the requested mechanic', () => {
       const catalog = createMockCatalog(3);
