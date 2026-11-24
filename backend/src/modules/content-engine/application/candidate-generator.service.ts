@@ -275,7 +275,8 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
           // strict structured-output mode requires every declared property to
           // appear in `required` — a schema with optional keys is rejected
           // with HTTP 400 before any inference runs. Optionality is expressed
-          // through a nullable type instead, which Gemini also accepts.
+          // through a value instead: an empty unit, and "number" for the
+          // ordinary display format.
           'unit',
           'displayFormat',
           'factualClaims',
@@ -316,16 +317,23 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
             description:
               'Whole number of steps from min to correctValue: correctValue must equal min + stepsFromMin * step exactly. Compute it; do not guess. If it is not a whole number, change the step to another the domain justifies — never move an endpoint and never round the answer.',
           },
+          // Plain strings, not `['string', 'null']`. A nullable type written
+          // as a type list is valid JSON Schema and OpenAI accepts it, but
+          // Anthropic and Google reject the request outright when such a
+          // field also carries an `enum` ("Enum value 'number' does not match
+          // declared type") — so the same model fails or works depending on
+          // which upstream OpenRouter happens to pick. "Nothing" is spelled as
+          // a value every provider can express instead.
           unit: {
-            type: ['string', 'null'],
+            type: 'string',
             description:
-              'Unit of the quantity, or null when the value takes none (a calendar year never takes one).',
+              'Unit of the quantity, or an empty string when the value takes none (a calendar year never takes one).',
           },
           displayFormat: {
-            type: ['string', 'null'],
-            enum: ['number', 'calendar-year', null],
+            type: 'string',
+            enum: ['number', 'calendar-year'],
             description:
-              'Omit by returning null; null means an ordinary number.',
+              '"number" for an ordinary quantity; "calendar-year" only when the value is a year.',
           },
           factualClaims: {
             type: 'array',
