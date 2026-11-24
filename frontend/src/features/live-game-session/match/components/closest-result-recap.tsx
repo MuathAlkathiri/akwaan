@@ -2,12 +2,15 @@
 
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
+import { hueColour } from "../../closest-colour";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 
 interface ClosestRecapItem {
   itemIndex: number;
   correctValue: number;
+  /** Present only for «تذكّر اللون»: the values are hues, drawn as colours. */
+  sliderMode?: "colour-hue";
   answers: Record<string, number | null>;
   distances: Record<string, number | null>;
   winnerTeamId: string | null;
@@ -54,10 +57,47 @@ export function ClosestResultRecap({
         {items.map((item) => (
           <li key={item.itemIndex} className="rounded-[var(--radius)] border border-border bg-muted/35 p-3 text-center">
             <p className="text-xs font-black text-muted-foreground">السؤال {item.itemIndex + 1}</p>
-            <p className="akwaan-numeral mt-1 text-xl font-black">الصحيح: {item.correctValue}</p>
-            <p className="mt-2 text-xs font-bold text-muted-foreground">
-              {teams.map((team) => `${team.name}: ${item.answers[team.id] ?? "—"}`).join(" · ")}
-            </p>
+            {item.sliderMode === "colour-hue" ? (
+              <>
+                <p className="mt-1 flex items-center justify-center gap-2 text-xl font-black">
+                  الصحيح:
+                  <span
+                    role="img"
+                    aria-label="اللون الصحيح"
+                    data-testid={`closest-recap-colour-${item.itemIndex}`}
+                    className="inline-block size-7 rounded-full border-2 border-white shadow"
+                    style={{ background: hueColour(item.correctValue) }}
+                  />
+                </p>
+                <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-bold text-muted-foreground">
+                  {teams.map((team) => {
+                    const answer = item.answers[team.id];
+                    return (
+                      <span key={team.id} className="inline-flex items-center gap-1">
+                        {team.name}:
+                        {answer === null || answer === undefined ? (
+                          "—"
+                        ) : (
+                          <span
+                            role="img"
+                            aria-label={`لون ${team.name}`}
+                            className="inline-block size-4 rounded-full border border-white shadow"
+                            style={{ background: hueColour(answer) }}
+                          />
+                        )}
+                      </span>
+                    );
+                  })}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="akwaan-numeral mt-1 text-xl font-black">الصحيح: {item.correctValue}</p>
+                <p className="mt-2 text-xs font-bold text-muted-foreground">
+                  {teams.map((team) => `${team.name}: ${item.answers[team.id] ?? "—"}`).join(" · ")}
+                </p>
+              </>
+            )}
             <p className="mt-2 font-black">
               {item.tie ? "تعادل" : teams.find((team) => team.id === item.winnerTeamId)?.name}
             </p>

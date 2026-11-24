@@ -70,6 +70,26 @@
     transform 160ms ease;
 }
 
+/* «تذكّر اللون»: the track is the colour wheel laid flat and the thumb wears
+   the colour it is standing on, so the control is its own legend. */
+.closest-slider--colour::-webkit-slider-runnable-track {
+  background: var(--closest-track);
+}
+.closest-slider--colour::-webkit-slider-thumb {
+  border-color: #ffffff;
+  background: var(--closest-thumb);
+}
+.closest-slider--colour::-moz-range-track {
+  background: var(--closest-track);
+}
+.closest-slider--colour::-moz-range-progress {
+  background: transparent;
+}
+.closest-slider--colour::-moz-range-thumb {
+  border-color: #ffffff;
+  background: var(--closest-thumb);
+}
+
 .closest-slider:focus-visible {
   outline: none;
 }

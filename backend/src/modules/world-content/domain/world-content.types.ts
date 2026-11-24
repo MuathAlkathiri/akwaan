@@ -152,7 +152,25 @@ export type ClosestSliderConfig =
       step?: number;
       leftAnchor: string;
       rightAnchor: string;
+    }
+  | {
+      /**
+       * «تذكّر اللون»: the answer is a hue on the colour wheel. The picture is
+       * shown in colour for `revealSeconds`, then in grey, and each team
+       * slides to the colour it remembers. `correctValue` is the hue in
+       * degrees, 0 ≤ hue < 360; 0 and 360 are the same red, so the bounds are
+       * fixed and distance is measured around the wheel.
+       */
+      mode: 'colour-hue';
+      min: 0;
+      max: 360;
+      step?: number;
+      revealSeconds?: number;
     };
+
+export const CLOSEST_COLOUR_HUE_MAX = 360;
+export const CLOSEST_COLOUR_REVEAL_DEFAULT_SECONDS = 4;
+export const CLOSEST_COLOUR_REVEAL_MAX_SECONDS = 10;
 
 export interface ClosestMechanicPayload extends Record<string, unknown> {
   closestSlider?: ClosestSliderConfig;
