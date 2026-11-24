@@ -59,10 +59,15 @@ export function CreativeSlotInspector({ candidate }: CreativeSlotInspectorProps)
   const hasMismatchFinding = findings.some(
     (f) => f.code === "FAMILY_COMPLIANCE_MISMATCH",
   );
+  // "No automatic rule for this family" also arrives as not-compliant with a
+  // reason attached. It is not a mismatch — it is the ordinary state of most
+  // families — and reading it as one put a red "approval blocked" box on
+  // candidates the reviewer was free to approve.
   const isStructuralMismatch =
     hasMismatchFinding ||
     (familyCompliance &&
       !familyCompliance.isCompliant &&
+      familyCompliance.verificationMethod !== "manual_review" &&
       familyCompliance.mismatchReason &&
       !familyCompliance.mismatchReason.includes("NO_ASSIGNED_FAMILY"));
 
@@ -266,10 +271,10 @@ export function CreativeSlotInspector({ candidate }: CreativeSlotInspectorProps)
             <HelpCircle className="size-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-bold text-xs text-amber-900">
-                عائلة تتطلب تقييمًا بشريًا (FAMILY_COMPLIANCE_UNVERIFIED):
+                ما فيه فحص آلي لهذا النوع (FAMILY_COMPLIANCE_UNVERIFIED):
               </p>
               <p className="text-[11px] text-amber-800 leading-relaxed">
-                لم يتم التحقق من امتثال هذا السؤال آليًا؛ يجب على المراجع التحقق يدويًا وتدوين سبب الاعتماد وتطابق المحتوى مع العائلة في خانة الشرح عند الاعتماد.
+                المحرك ما يقدر يتأكد لحاله إن السؤال من هذا النوع، فالحكم لك: لو شايفه يطابق النوع، اعتماده هو المراجعة.
               </p>
             </div>
           </div>
