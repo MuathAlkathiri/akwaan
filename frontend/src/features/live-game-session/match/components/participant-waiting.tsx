@@ -61,24 +61,27 @@ export function ParticipantWaiting({
               nothing loops or pulses. */}
           <span
             aria-hidden
-            className="grid size-16 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
+            className="grid size-[72px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold shadow-[4px_5px_0_hsl(var(--brand-navy))]"
           >
-            <PartyPopper className="size-8 text-brand-gold" />
+            <PartyPopper className="size-9 text-brand-navy" />
           </span>
-          <h1 className="text-xl font-black text-foreground">انتهى التحدي</h1>
+          <h1 className="font-display text-2xl font-black text-brand-navy">
+            انتهى التحدي
+          </h1>
           {winnerName && (
             <p
               data-testid="participant-challenge-winner"
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-base font-black",
-                winnerIdentity?.surface,
-                winnerIdentity?.border,
-                winnerIdentity?.text,
+                // Gold: a point moved. Whose it is, is the dot.
+                "inline-flex items-center gap-2 rounded-full border-[3px] border-brand-navy bg-brand-gold px-4 py-2 text-base font-bold text-brand-navy",
               )}
             >
               <span
                 aria-hidden
-                className={cn("size-2 rounded-full", winnerIdentity?.dot)}
+                className={cn(
+                  "size-3 rounded-full border-2 border-brand-navy",
+                  winnerIdentity?.dot,
+                )}
               />
               فاز {winnerName}
               {/* Only what the Match actually awarded. A challenge that granted
@@ -95,7 +98,7 @@ export function ParticipantWaiting({
           )}
           {/* The hand-off: the result settles above, and the wait for the next
               challenge sits quietly under it behind a hairline. */}
-          <p className="mt-2 w-full max-w-xs border-t border-border/70 pt-3 text-sm leading-6 text-muted-foreground">
+          <p className="mt-2 w-full max-w-xs border-t-2 border-brand-mist pt-3 text-sm leading-6 text-brand-slate">
             بانتظار التحدي القادم…
             <br />
             سنفتح التحدي القادم هنا. أبقِ جوالك معك.
@@ -109,29 +112,29 @@ export function ParticipantWaiting({
           <span
             aria-hidden
             className={cn(
-              "grid place-items-center rounded-full border",
+              "grid place-items-center rounded-full border-[3px] border-brand-navy",
               matchComplete
-                ? "size-20 border-brand-gold/50 bg-brand-gold/12"
-                : "size-14 border-border bg-muted/50",
+                ? "size-20 bg-brand-gold shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+                : "size-16 bg-brand-lavender",
             )}
           >
             {matchComplete ? (
-              <Trophy className="size-10 text-brand-gold" />
+              <Trophy className="size-10 text-brand-navy" />
             ) : (
-              <Smartphone className="size-7 text-muted-foreground" />
+              <Smartphone className="size-7 text-brand-navy" />
             )}
           </span>
           <h1
             className={cn(
-              "font-black text-foreground",
-              matchComplete ? "text-2xl" : "text-lg",
+              "font-display font-black text-brand-navy",
+              matchComplete ? "text-3xl" : "text-xl",
             )}
           >
             {matchComplete
               ? "انتهت المباراة"
               : "ما فيه تحدي يحتاج الجوال الحين"}
           </h1>
-          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+          <p className="max-w-xs text-sm leading-6 text-brand-slate">
             {matchComplete
               ? "تمام، ما تحتاجون تخلون الجوال مفتوح."
               : "بنفتح التحدي الجاي هنا. خلّ جوالك معك."}
@@ -139,7 +142,7 @@ export function ParticipantWaiting({
         </>
       )}
       {joinedTeamName && (
-        <p className="text-sm font-bold text-muted-foreground">
+        <p className="text-sm font-bold text-brand-slate">
           أنت مع فريق {joinedTeamName}
         </p>
       )}

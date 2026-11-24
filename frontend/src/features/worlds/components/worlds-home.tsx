@@ -178,7 +178,7 @@ export function WorldsHome() {
                     اختر عوالمك
                   </h2>
                 </SectionTag>
-                <p className="text-center text-lg text-[#4A5468]">
+                <p className="text-center text-lg text-brand-slate">
                   اختر 3 عوالم، والترتيب اللي تختاره هو ترتيب اللعب.
                 </p>
               </div>
@@ -305,7 +305,7 @@ function AkwaanHero() {
           </span>
         </h1>
 
-        <p className="mt-7 max-w-[35rem] text-lg leading-[1.8] text-[#4A5468] sm:text-[23px]">
+        <p className="mt-7 max-w-[35rem] text-lg leading-[1.8] text-brand-slate sm:text-[23px]">
           مو مجرد أسئلة، كل عالم له تحديه الخاص.{" "}
           <b className="font-bold text-[hsl(var(--brand-navy))]">
             شاشة وحدة للكل
@@ -496,7 +496,7 @@ function HowToPlaySection() {
           <li
             key={step.title}
             className={cn(
-              "flex flex-1 basis-[17.5rem] flex-col gap-2.5 rounded-[20px] bg-[#FEFDFB] p-6",
+              "flex flex-1 basis-[17.5rem] flex-col gap-2.5 rounded-[20px] bg-brand-paper p-6",
               STICKER.raised,
             )}
           >
@@ -505,7 +505,7 @@ function HowToPlaySection() {
                 "inline-grid size-13 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] text-2xl font-extrabold",
                 step.tone === "gold"
                   ? "bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
-                  : "bg-[hsl(var(--brand-purple))] text-[#FEFDFB]",
+                  : "bg-[hsl(var(--brand-purple))] text-brand-paper",
               )}
             >
               {index + 1}
@@ -661,19 +661,21 @@ function ComingSoonCard({
       /* Dashed where a live World is solid: the outline itself says "not yet",
          before the badge is read. No vote button — voting has no backend, and
          a button that does nothing is worse than no button. */
-      className="flex w-full items-center gap-4 rounded-[20px] border-2 border-dashed border-[#B9B2D9] bg-white px-5 py-[18px]"
+      className="flex w-full items-center gap-4 rounded-[20px] border-2 border-dashed border-brand-dash bg-white px-5 py-[18px]"
     >
-      <span className="relative grid size-[5.25rem] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-[#B9B2D9] bg-[#EFECF8]">
+      <span className="relative grid size-[5.25rem] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-brand-dash bg-brand-wash">
         {art ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={art} alt="" className="size-full object-cover" />
-        ) : null}
+        ) : (
+          <Spark className="size-6 opacity-35" />
+        )}
       </span>
       <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
         <span className="font-display text-xl font-extrabold text-[hsl(var(--brand-navy))]">
           {world.name}
         </span>
-        <span className="inline-flex min-h-6 items-center rounded-full bg-[#EFECF8] px-2.5 text-xs font-bold text-[#4B4380]">
+        <span className="inline-flex min-h-6 items-center rounded-full bg-brand-wash px-2.5 text-xs font-bold text-brand-plum">
           قريبًا
         </span>
       </span>
@@ -720,7 +722,7 @@ function WorldSelectionSidebar({
          out that they have finished. */
       className={cn(
         "sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-x-6 gap-y-4",
-        "rounded-[22px] bg-[#F6F3FC] px-5 py-4",
+        "rounded-[22px] bg-brand-lavender px-5 py-4",
         STICKER.base,
       )}
       data-testid="world-selection-sidebar"
@@ -736,7 +738,7 @@ function WorldSelectionSidebar({
               than two spaces. */}
           <span
             dir="ltr"
-            className="font-body text-base font-bold tabular-nums text-[#4A5468]"
+            className="font-body text-base font-bold tabular-nums text-brand-slate"
           >
             {selectedCount}/{OCCURRENCE_COUNT}
           </span>
@@ -767,8 +769,8 @@ function WorldSelectionSidebar({
                   /* The empty slot is dashed and carries its number, so three
                      slots read as three places rather than as one control
                      that has not been used yet. */
-                  <span className="inline-flex min-h-14 items-center gap-2.5 rounded-2xl border-[3px] border-dashed border-[#B9B2D9] px-4 text-[#4B4380]">
-                    <span className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-[#B9B2D9] text-[13px] font-extrabold text-[hsl(var(--brand-navy))]">
+                  <span className="inline-flex min-h-14 items-center gap-2.5 rounded-2xl border-[3px] border-dashed border-brand-dash px-4 text-brand-plum">
+                    <span className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-brand-dash text-[13px] font-extrabold text-[hsl(var(--brand-navy))]">
                       {index + 1}
                     </span>
                     <span className="whitespace-nowrap text-[15px] font-semibold">
@@ -885,7 +887,7 @@ function WorldScopeFocusMode({
                 {state.world.name}
               </span>
             </h1>
-            <p className="text-base leading-[1.8] text-[#4A5468] sm:text-[19px]">
+            <p className="text-base leading-[1.8] text-brand-slate sm:text-[19px]">
               حدد النطاقات اللي تبغون تدخل في المباراة.
             </p>
           </header>
@@ -940,7 +942,7 @@ function WorldScopeFocusMode({
                           {scope.name}
                         </span>
                         {scope.readyContentItemCount > 0 && (
-                          <span className="whitespace-nowrap text-sm font-semibold text-[#4A5468]">
+                          <span className="whitespace-nowrap text-sm font-semibold text-brand-slate">
                             <span className="font-extrabold text-[hsl(var(--brand-navy))]">
                               {scope.readyContentItemCount}
                             </span>{" "}
@@ -965,7 +967,7 @@ function WorldScopeFocusMode({
               })}
             </ul>
           ) : (
-            <p className="rounded-[22px] border-2 border-dashed border-[#B9B2D9] bg-white p-10 text-center text-sm leading-6 text-[#4A5468]">
+            <p className="rounded-[22px] border-2 border-dashed border-brand-dash bg-white p-10 text-center text-sm leading-6 text-brand-slate">
               ما فيه نطاقات جاهزة في هالعالم للحين.
             </p>
           )}
@@ -976,7 +978,7 @@ function WorldScopeFocusMode({
             scrolls. */}
         <aside
           className={cn(
-            "sticky bottom-3 z-10 flex flex-col items-center gap-3 rounded-[26px] bg-[#F6F3FC] px-5 py-4 text-center lg:top-28 lg:bottom-auto lg:w-[340px] lg:shrink-0 lg:gap-3.5 lg:px-6 lg:pb-7 lg:pt-6",
+            "sticky bottom-3 z-10 flex flex-col items-center gap-3 rounded-[26px] bg-brand-lavender px-5 py-4 text-center lg:top-28 lg:bottom-auto lg:w-[340px] lg:shrink-0 lg:gap-3.5 lg:px-6 lg:pb-7 lg:pt-6",
             STICKER.base,
           )}
         >
@@ -1032,7 +1034,7 @@ function WorldScopeFocusMode({
                     "h-3 w-[34px] rounded-full border-2 border-[hsl(var(--brand-navy))]",
                     i < selectedScopeIds.length
                       ? "bg-[hsl(var(--brand-gold))]"
-                      : "bg-[#E3DFF0]",
+                      : "bg-brand-mist",
                   )}
                 />
               ))}
@@ -1057,7 +1059,7 @@ function ScopeCardSkeletons({ count }: { count: number }) {
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className="h-[250px] animate-pulse rounded-[22px] border-2 border-dashed border-[#B9B2D9] bg-[#F6F3FC]"
+          className="h-[250px] animate-pulse rounded-[22px] border-2 border-dashed border-brand-dash bg-brand-lavender"
         />
       ))}
     </div>

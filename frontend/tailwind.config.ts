@@ -32,6 +32,16 @@ const config = {
           purple: "hsl(var(--brand-purple))",
           cyan: "hsl(var(--brand-cyan))",
           gold: "hsl(var(--brand-gold))",
+          // The new identity's neutrals. Named once here so no component
+          // carries a hex of its own.
+          paper: "#FEFDFB",
+          lavender: "#F6F3FC",
+          wash: "#EFECF8",
+          mist: "#E3DFF0",
+          dash: "#B9B2D9",
+          plum: "#4B4380",
+          slate: "#4A5468",
+          bronze: "#7A5C14",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -251,7 +251,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                         "h-2.5 w-[34px] rounded-full border-2 border-[hsl(var(--brand-navy))]",
                         position.status === "completed"
                           ? "bg-[hsl(var(--brand-gold))]"
-                          : "bg-[#E3DFF0]",
+                          : "bg-brand-mist",
                       )}
                     />
                   ))}
@@ -266,7 +266,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
         <p
           aria-hidden
           data-testid="board-progress-pill"
-          className="mt-auto inline-flex min-h-10 items-center self-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC] px-5 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
+          className="mt-auto inline-flex min-h-10 items-center self-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-5 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
         >
           <span className="me-1.5 text-xl font-extrabold">
             {board.completedPositionCount}

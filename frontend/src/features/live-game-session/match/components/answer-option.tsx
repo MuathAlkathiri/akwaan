@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  *   - hover, active and selected states
  *   - a ≥44px target, and text that wraps rather than truncating an answer
  *
- * Selected uses `--selected`, never a semantic colour: choosing an answer is not
+ * Selected is gold, never a semantic colour: choosing an answer is not
  * being right about it, and the reveal has not happened yet.
  */
 export function AnswerOption({
@@ -41,8 +41,10 @@ export function AnswerOption({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "h-auto min-h-[3.25rem] whitespace-normal border-2 bg-card py-3 text-base font-black transition-colors duration-fast ease-akwaan hover:bg-accent active:scale-[0.99]",
-        selected && "border-selected bg-selected-subtle text-selected",
+        "h-auto min-h-[3.25rem] whitespace-normal rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white py-3 text-base font-bold text-[hsl(var(--brand-navy))] shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform duration-fast ease-akwaan hover:bg-brand-lavender active:translate-y-0.5",
+        // Gold: this is the one you picked. Still not a verdict — the
+        // correctness colours stay out of here until the reveal.
+        selected && "bg-[hsl(var(--brand-gold))] hover:bg-[hsl(var(--brand-gold))]",
         className,
       )}
     >

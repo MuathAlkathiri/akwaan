@@ -57,8 +57,8 @@ function ToyPhone({
         tilt,
       )}
     >
-      <span className="h-2.5 rounded-full bg-[#E3DFF0]" />
-      <span className="h-2.5 w-[70%] rounded-full bg-[#E3DFF0]" />
+      <span className="h-2.5 rounded-full bg-brand-mist" />
+      <span className="h-2.5 w-[70%] rounded-full bg-brand-mist" />
       <span
         className={cn(
           "mt-auto h-[26px] rounded-[10px] border-2 border-[hsl(var(--brand-navy))]",
@@ -86,10 +86,10 @@ export function HowToPlayHero() {
           كيف تلعب{" "}
           <span className="text-[hsl(var(--brand-purple))]">أكوان؟</span>
         </h1>
-        <p className="mt-5 text-lg leading-[1.8] text-[#4A5468] sm:text-[23px]">
+        <p className="mt-5 text-lg leading-[1.8] text-brand-slate sm:text-[23px]">
           شاشة وحدة تجمعكم، وجوال كل لاعب يصير أداة اللعب
         </p>
-        <p className="mt-5 max-w-[560px] text-base leading-[1.9] text-[#4A5468] sm:text-[17px]">
+        <p className="mt-5 max-w-[560px] text-base leading-[1.9] text-brand-slate sm:text-[17px]">
           أكوان لعبة جماعية تلعبونها وأنتم في نفس الجلسة: شاشة وحدة قدامكم، وكل
           لاعب يمسك جواله. فكرة اللعبة إن المعرفة وحدها ما تكفي — تحتاج تقرأ
           خصمك، وتعرف العالم اللي اخترتوه.

@@ -4,11 +4,10 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Users } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -225,19 +224,14 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
             className="object-contain"
           />
         </div>
-        <Badge variant="secondary" className="gap-1.5 font-bold">
-          <Users className="size-3" aria-hidden />
-          كود الدخول
-          <span className="akwaan-numeral font-black tracking-[0.15em]">
-            {joinCode}
-          </span>
-        </Badge>
       </div>
 
-      <Card className="surface-card border-0 shadow-none">
+      <Card className="surface-card">
         <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-2xl font-black">اسمك طال عمرك</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardTitle className="font-display text-[26px] font-black text-brand-navy">
+            اسمك طال عمرك
+          </CardTitle>
+          <p className="text-sm text-brand-slate">
             اكتب اسمك واختر فريقك، وجوالك يتحدّث لحاله مع كل تحدي.
           </p>
         </CardHeader>
@@ -274,7 +268,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                           inputMode="text"
                           maxLength={40}
                           placeholder="مثال: مُعاذ"
-                          className="h-12 text-base"
+                          className="h-[52px] rounded-[14px] border-[3px] border-brand-navy bg-white text-base font-semibold"
                           {...field}
                         />
                       </FormControl>
@@ -324,10 +318,10 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                                 data-taken={isTaken ? "true" : "false"}
                                 onClick={() => field.onChange(key)}
                                 className={cn(
-                                  "grid min-h-16 place-items-center rounded-[var(--radius)] border-2 p-1.5 transition-colors duration-base ease-akwaan",
+                                  "grid min-h-16 place-items-center rounded-2xl border-[3px] p-1.5 transition-colors duration-base ease-akwaan",
                                   selected
-                                    ? "border-foreground bg-muted"
-                                    : "border-border bg-card",
+                                    ? "border-brand-navy bg-brand-gold shadow-[3px_4px_0_hsl(var(--brand-navy))]"
+                                    : "border-brand-mist bg-white",
                                   isTaken && "cursor-not-allowed opacity-35",
                                 )}
                               >
@@ -395,16 +389,11 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                                 data-team-option={team.id}
                                 data-selected={selected ? "true" : "false"}
                                 className={cn(
-                                  "flex min-h-16 cursor-pointer items-center gap-2 rounded-[var(--radius)] border-2 px-3 py-3 text-sm font-black transition-colors duration-base ease-akwaan",
-                                  identity.surface,
-                                  selected
-                                    ? cn(
-                                        identity.border,
-                                        "ring-2",
-                                        identity.ring,
-                                      )
-                                    : "border-transparent",
-                                  identity.text,
+                                  // Neutral cards: the team is its dot and its
+                                  // name. Picked is the gold outline.
+                                  "flex min-h-16 cursor-pointer items-center gap-2 rounded-2xl border-[3px] border-brand-navy bg-white px-3 py-3 text-sm font-bold text-brand-navy transition-colors duration-base ease-akwaan",
+                                  selected &&
+                                    "bg-brand-lavender shadow-[3px_4px_0_hsl(var(--brand-navy))] outline outline-[3px] outline-brand-gold",
                                 )}
                               >
                                 {/* The radio stays visible: it is the control,
@@ -412,9 +401,13 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                                     so selection never rests on colour alone. */}
                                 <RadioGroupItem
                                   value={team.id}
+                                  className="shrink-0 border-brand-navy"
+                                />
+                                <span
+                                  aria-hidden
                                   className={cn(
-                                    "shrink-0",
-                                    selected && identity.border,
+                                    "size-3.5 shrink-0 rounded-full border-2 border-brand-navy",
+                                    identity.dot,
                                   )}
                                 />
                                 <span className="min-w-0 flex-1 leading-tight">
@@ -469,7 +462,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
               <Button
                 type="submit"
                 size="lg"
-                className="h-12 w-full text-base font-black"
+                className="h-auto min-h-[3.75rem] w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-xl font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold"
                 disabled={join.isPending}
               >
                 <CheckCircle2 className="size-5" aria-hidden />

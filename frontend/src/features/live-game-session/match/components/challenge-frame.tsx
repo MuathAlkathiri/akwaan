@@ -53,13 +53,15 @@ export function ChallengeFrame({
     >
       <header
         className={cn(
-          "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-muted/50",
+          // The context strip: navy, the same on every challenge, so the room
+          // always finds "where are we" in the same place.
+          "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-[hsl(var(--brand-navy))] text-white",
           compact ? "px-4 py-2.5" : "px-5 py-3.5",
         )}
       >
         <div className="min-w-0">
           {eyebrow && (
-            <p className="truncate text-[0.7rem] font-black text-muted-foreground">
+            <p className="truncate text-[0.7rem] font-bold text-[hsl(var(--brand-gold))] sm:text-sm">
               {eyebrow}
             </p>
           )}
@@ -68,7 +70,7 @@ export function ChallengeFrame({
               // The full topic must stay readable: wrap naturally (RTL Arabic
               // wraps by word) up to a three-line safety cap for extreme content,
               // rather than ellipsizing a normal long Top-5 topic on one line.
-              "font-black leading-tight text-foreground [text-wrap:pretty] line-clamp-3",
+              "font-display font-extrabold leading-tight text-white [text-wrap:pretty] line-clamp-3",
               compact ? "text-base sm:text-lg" : "text-lg sm:text-xl md:text-2xl",
             )}
           >
@@ -77,7 +79,10 @@ export function ChallengeFrame({
         </div>
         <div className="flex items-center gap-3">
           {progressLabel && (
-            <Badge variant="outline" className="font-bold">
+            <Badge
+              variant="outline"
+              className="border-2 border-white/40 bg-transparent font-bold text-white"
+            >
               {progressLabel}
             </Badge>
           )}
@@ -89,7 +94,7 @@ export function ChallengeFrame({
         <Progress
           value={progressValue}
           aria-label={progressLabel}
-          className="h-1 rounded-none"
+          className="h-1.5 rounded-none bg-brand-mist [&>*]:bg-[hsl(var(--brand-gold))]"
         />
       )}
 

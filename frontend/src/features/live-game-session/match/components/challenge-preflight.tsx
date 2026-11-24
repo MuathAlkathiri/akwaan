@@ -118,7 +118,7 @@ export function ChallengePreflight({
               avatarByParticipantId={avatarByParticipantId}
             />
           ) : (
-            <div className="rounded-[22px] border-2 border-dashed border-[#B9B2D9] bg-white p-4 text-sm leading-6 text-[#4A5468]">
+            <div className="rounded-[22px] border-2 border-dashed border-brand-dash bg-white p-4 text-sm leading-6 text-brand-slate">
               يُلعب هذا التحدي من الشاشة المشتركة. لا حاجة لجوالات.
             </div>
           )}
@@ -143,7 +143,7 @@ export function ChallengePreflight({
             variant="ghost"
             disabled={launching || cancelling}
             onClick={onCancel}
-            className="min-h-[44px] font-bold text-brand-navy underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-[#7A5C14]"
+            className="min-h-[44px] font-bold text-brand-navy underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-brand-bronze"
           >
             {cancelling ? "جارٍ الإلغاء…" : "ارجع للوحة"}
           </Button>
@@ -330,7 +330,7 @@ function StartChallengeSection({
           "flex min-h-[62px] w-full flex-col items-center justify-center gap-0.5 rounded-[22px] px-4 py-2.5 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] lg:min-h-[84px]",
           preflight.readyToLaunch
             ? "border-[3px] border-brand-navy bg-brand-gold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:-translate-y-0.5 active:translate-y-0"
-            : "border-[3px] border-[#B9B2D9] bg-[#EFECF8] text-[#4B4380] shadow-none",
+            : "border-[3px] border-brand-dash bg-brand-wash text-brand-plum shadow-none",
           justReady && "motion-safe:animate-[akwaan-soft-pop_0.65s_ease]",
         )}
       >
@@ -350,7 +350,7 @@ function StartChallengeSection({
         <span
           className={cn(
             "text-xs font-semibold leading-snug sm:text-sm",
-            preflight.readyToLaunch ? "text-brand-navy" : "text-[#4B4380]",
+            preflight.readyToLaunch ? "text-brand-navy" : "text-brand-plum",
           )}
         >
           {reasonText}
@@ -413,12 +413,12 @@ function PairingPanel({
       {/* 1. Team Readiness Card */}
       <section
         data-testid="preflight-readiness"
-        className="rounded-[22px] border-[3px] border-brand-navy bg-[#FEFDFB] shadow-[5px_6px_0_hsl(var(--brand-navy))] px-5 py-4"
+        className="rounded-[22px] border-[3px] border-brand-navy bg-brand-paper shadow-[5px_6px_0_hsl(var(--brand-navy))] px-5 py-4"
       >
         <h2 className="mb-3 font-display text-lg font-extrabold text-brand-navy sm:text-xl">
           جاهزية اللاعبين
         </h2>
-        <ul className="m-0 list-none divide-y-2 divide-[#E3DFF0] p-0">
+        <ul className="m-0 list-none divide-y-2 divide-brand-mist p-0">
           {preflight.teams.map((team, index) => (
             <li key={team.teamId} className="py-3 first:pt-0.5 last:pb-0.5">
               <TeamRoster
@@ -432,7 +432,7 @@ function PairingPanel({
       </section>
 
       {/* 2. Collapsible Join QR / Code Card */}
-      <section className="overflow-hidden rounded-[22px] border-[3px] border-brand-navy bg-[#FEFDFB] shadow-[5px_6px_0_hsl(var(--brand-navy))]">
+      <section className="overflow-hidden rounded-[22px] border-[3px] border-brand-navy bg-brand-paper shadow-[5px_6px_0_hsl(var(--brand-navy))]">
         <button
           type="button"
           data-testid="preflight-join-toggle"
@@ -460,7 +460,7 @@ function PairingPanel({
         </button>
 
         {expanded && (
-          <div className="flex items-center gap-4 border-t-2 border-[#E3DFF0] px-5 pb-4 pt-3.5">
+          <div className="flex items-center gap-4 border-t-2 border-brand-mist px-5 pb-4 pt-3.5">
             {showQr && joinUrl && (
               // The code itself is never printed: joining is a scan, and a
               // row of letters invited people to type something nothing reads.
@@ -470,13 +470,13 @@ function PairingPanel({
                 className="flex shrink-0 flex-col items-center gap-1 rounded-[14px] border-[3px] border-brand-navy bg-white p-2"
               >
                 <ScannableQr value={joinUrl} size={92} />
-                <span className="text-[10px] font-bold text-[#4A5468]">
+                <span className="text-[10px] font-bold text-brand-slate">
                   اضغط على الكود عشان تكبّره
                 </span>
               </span>
             )}
             <div className="flex min-w-0 flex-col items-start gap-2.5">
-              <p className="text-sm leading-[1.7] text-[#4A5468]">
+              <p className="text-sm leading-[1.7] text-brand-slate">
                 امسحوا الرمز للانضمام. ما تحتاجون تعيدون المسح بين التحديات.
               </p>
               {showQr && joinUrl && (
@@ -533,7 +533,7 @@ function TeamRoster({
           />
           {team.teamName}
         </span>
-        <span className="akwaan-numeral text-[15px] font-bold text-[#4A5468]">
+        <span className="akwaan-numeral text-[15px] font-bold text-brand-slate">
           {team.connectedCount}/{target}
         </span>
       </div>
@@ -551,7 +551,7 @@ function TeamRoster({
                   aria-hidden
                   className="flex w-[48px] flex-col items-center gap-1 text-center"
                 >
-                  <span className="grid size-[38px] shrink-0 place-items-center rounded-full border-2 border-dashed border-[#B9B2D9] bg-white text-lg text-[#4B4380]">
+                  <span className="grid size-[38px] shrink-0 place-items-center rounded-full border-2 border-dashed border-brand-dash bg-white text-lg text-brand-plum">
                     ＋
                   </span>
                   <span className="max-w-full truncate text-[9px] text-muted-foreground/80">
@@ -580,7 +580,7 @@ function TeamRoster({
                     className={cn(
                       // A neutral disc: the team is already named, with its
                       // dot, on the line above.
-                      "grid size-[38px] place-items-center overflow-hidden rounded-full border-2 border-brand-navy bg-[#F6F3FC] text-xs font-black text-brand-navy",
+                      "grid size-[38px] place-items-center overflow-hidden rounded-full border-2 border-brand-navy bg-brand-lavender text-xs font-black text-brand-navy",
                     )}
                   >
                     {hasCharacter && avatarKey ? (
@@ -662,7 +662,7 @@ function TeamReadinessStatus({
       className={cn(
         "rounded-full border-2 border-brand-navy px-3 py-0.5 text-[13px] font-bold text-brand-navy",
         // Gold when one more phone does it, quiet while several are missing.
-        missing <= 1 ? "bg-brand-gold" : "bg-[#EFECF8]",
+        missing <= 1 ? "bg-brand-gold" : "bg-brand-wash",
       )}
     >
       {readinessPhrase(missing)}

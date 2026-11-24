@@ -128,10 +128,10 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
           className="rounded-none aspect-[16/2.4] sm:aspect-[16/2]"
         />
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 py-2.5">
-          <h1 className="text-lg font-black text-foreground sm:text-xl">
+          <h1 className="font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] sm:text-2xl">
             {result.challengeName ?? "نتيجة التحدي"}
           </h1>
-          <p className="text-xs font-bold text-muted-foreground">
+          <p className="inline-flex min-h-7 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3 text-xs font-bold text-[hsl(var(--brand-navy))] sm:text-sm">
             اكتمل التحدي
           </p>
         </div>
@@ -155,7 +155,7 @@ export function UnifiedChallengeResultStage({ actor }: { actor: MatchActor }) {
             disabled={pending}
             onClick={() => void advance()}
             data-testid="challenge-result-continue"
-            className="min-w-52 font-black"
+            className="h-auto min-h-[3.75rem] min-w-60 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-8 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:-translate-y-0.5 hover:bg-[hsl(var(--brand-gold))]"
           >
             <ArrowLeft className="size-4" aria-hidden />
             {isFinalPosition ? "إنهاء المباراة" : "العودة إلى الأكوان"}
@@ -243,7 +243,7 @@ function ChallengeResultBody({ result }: { result: MatchChallengeResult }) {
                     aria-hidden
                     className={cn(
                       "size-2.5 rounded-full border border-brand-navy",
-                      identity.solid,
+                      identity.dot,
                     )}
                   />
                   {teamName(snapshot, entry.teamId)}

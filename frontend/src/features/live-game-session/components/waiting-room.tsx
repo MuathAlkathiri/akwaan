@@ -218,7 +218,7 @@ export function WaitingRoom() {
         {occurrences.length > 0 ? (
           <ol
             aria-label="عوالم المباراة"
-            className="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-2 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC] px-5 py-2.5"
+            className="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-2 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-5 py-2.5"
           >
             {occurrences.map((occurrence, index) => (
               <li
@@ -258,7 +258,7 @@ export function WaitingRoom() {
             the room because every phone in it is pointed here. */}
         <section
           className={cn(
-            "flex flex-col gap-5 rounded-[28px] bg-[#F6F3FC] px-6 py-6 sm:px-[30px]",
+            "flex flex-col gap-5 rounded-[28px] bg-brand-lavender px-6 py-6 sm:px-[30px]",
             STICKER.base,
           )}
         >
@@ -274,7 +274,7 @@ export function WaitingRoom() {
               {joinUrl ? (
                 <ScannableQr value={joinUrl} size={300} />
               ) : (
-                <span className="text-[15px] font-semibold text-[#4B4380]">
+                <span className="text-[15px] font-semibold text-brand-plum">
                   نجهّز الرمز…
                 </span>
               )}
@@ -295,7 +295,7 @@ export function WaitingRoom() {
               )}
             </ol>
           </div>
-          <span className="mt-auto text-lg font-semibold text-[#4A5468]">
+          <span className="mt-auto text-lg font-semibold text-brand-slate">
             مسحة وحدة تكفي لكل المباراة.
           </span>
         </section>
@@ -309,7 +309,7 @@ export function WaitingRoom() {
                 key={team.id}
                 data-testid={`waiting-room-side-${team.id}`}
                 className={cn(
-                  "flex flex-1 flex-col gap-4 rounded-3xl bg-[#FEFDFB] px-5 py-5 sm:px-[26px]",
+                  "flex flex-1 flex-col gap-4 rounded-3xl bg-brand-paper px-5 py-5 sm:px-[26px]",
                   STICKER.base,
                 )}
               >
@@ -327,7 +327,7 @@ export function WaitingRoom() {
                     {team.name}
                   </h2>
                   {side.length > 0 && (
-                    <span className="text-lg font-bold text-[#4A5468]">
+                    <span className="text-lg font-bold text-brand-slate">
                       {countLabel(side.length)}
                     </span>
                   )}
@@ -336,7 +336,7 @@ export function WaitingRoom() {
                 {side.length === 0 ? (
                   <p
                     data-testid="waiting-room-empty-side"
-                    className="grid min-h-[60px] place-items-center rounded-2xl border-2 border-dashed border-[#B9B2D9] text-lg font-semibold text-[#4B4380]"
+                    className="grid min-h-[60px] place-items-center rounded-2xl border-2 border-dashed border-brand-dash text-lg font-semibold text-brand-plum"
                   >
                     ننتظر اللاعبين…
                   </p>
@@ -352,7 +352,7 @@ export function WaitingRoom() {
                           !person.connected && "opacity-60",
                         )}
                       >
-                        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC]">
+                        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender">
                           <PlayerCharacterIcon
                             characterKey={person.avatarKey}
                             size={34}
@@ -375,7 +375,7 @@ export function WaitingRoom() {
                           </span>
                         )}
                         {!person.connected && (
-                          <span className="rounded-full bg-[#EFECF8] px-2 py-0.5 text-xs font-bold text-[#4B4380]">
+                          <span className="rounded-full bg-brand-wash px-2 py-0.5 text-xs font-bold text-brand-plum">
                             خرج
                           </span>
                         )}
@@ -422,7 +422,7 @@ export function WaitingRoom() {
                     side has to take with one hand; without one the turns go
                     round the whole side. The host can change it during the
                     Match too. */}
-                <div className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t-2 border-[#E3DFF0] pt-3.5">
+                <div className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t-2 border-brand-mist pt-3.5">
                   <Crown
                     className="size-[22px] shrink-0 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
                     aria-hidden
@@ -457,7 +457,7 @@ export function WaitingRoom() {
                   </select>
                   <span
                     id={`captain-hint-${team.id}`}
-                    className="text-sm text-[#4A5468]"
+                    className="text-sm text-brand-slate"
                   >
                     بدون قائد = تناوب تلقائي
                   </span>
@@ -469,7 +469,7 @@ export function WaitingRoom() {
           {unplaced.length > 0 && (
             <div
               data-testid="waiting-room-unplaced"
-              className="rounded-3xl border-2 border-dashed border-[#B9B2D9] bg-white p-4"
+              className="rounded-3xl border-2 border-dashed border-brand-dash bg-white p-4"
             >
               <p className="mb-3 font-bold text-[hsl(var(--brand-navy))]">
                 لسا ما اختاروا فريق
@@ -478,7 +478,7 @@ export function WaitingRoom() {
                 {unplaced.map((person) => (
                   <li
                     key={person.id}
-                    className="flex items-center gap-2 rounded-full bg-[#F6F3FC] py-1 pe-1 ps-3"
+                    className="flex items-center gap-2 rounded-full bg-brand-lavender py-1 pe-1 ps-3"
                   >
                     <PlayerCharacterIcon
                       characterKey={person.avatarKey}
@@ -514,7 +514,7 @@ export function WaitingRoom() {
             <p
               role="alert"
               data-testid="waiting-room-failure"
-              className="rounded-2xl bg-[#F6F3FC] px-4 py-3 text-base font-bold text-[hsl(var(--brand-navy))]"
+              className="rounded-2xl bg-brand-lavender px-4 py-3 text-base font-bold text-[hsl(var(--brand-navy))]"
             >
               {failure}
             </p>

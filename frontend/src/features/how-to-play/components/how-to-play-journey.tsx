@@ -40,7 +40,7 @@ export function HowToPlayJourney() {
           <li
             key={key}
             className={cn(
-              "flex min-w-0 flex-col gap-[18px] rounded-[22px] bg-[#FEFDFB] p-4 sm:p-[22px]",
+              "flex min-w-0 flex-col gap-[18px] rounded-[22px] bg-brand-paper p-4 sm:p-[22px]",
               STICKER.base,
             )}
           >
@@ -60,7 +60,7 @@ export function HowToPlayJourney() {
                 {title}
               </h3>
             </div>
-            <div className="grid min-h-[280px] flex-1 place-items-center overflow-hidden rounded-2xl bg-[#F6F3FC] p-4">
+            <div className="grid min-h-[280px] flex-1 place-items-center overflow-hidden rounded-2xl bg-brand-lavender p-4">
               <div className="w-full min-w-0">
                 <Visual />
               </div>
