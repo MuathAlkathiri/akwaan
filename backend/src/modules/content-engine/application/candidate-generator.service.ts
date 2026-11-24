@@ -830,6 +830,52 @@ export const MOVING_XO_TASK_GUIDANCE = [
   'nothing is drawn yet. A pattern is written with words or emoji in the prompt itself.',
 ].join('\n');
 
+/**
+ * اقرأ خصمك inside عالم الألغاز — owner decision 2026-11-25.
+ *
+ * Everywhere else the item itself is pitched to be hard to call. Here the
+ * owner wants the opposite: the same plain "you know it or you don't"
+ * question the knowledge Worlds ask («ما اسم هذه اللعبة؟»), so that all the
+ * doubt sits between the two teams. This replaces the general guidance and
+ * its difficulty mix rather than adding to them — the two contradict.
+ */
+export const PUZZLES_RYO_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. One team answers on a phone; the other team does not',
+  'answer — it bets, blind, on whether they got it right: Steal or Trust. In this',
+  'World the bet is a read of PEOPLE, not of the question. The item is direct and',
+  'fair; what the other team must work out is whether this team really knew it',
+  'or is acting sure.',
+  '',
+  'So write the plain question, the kind asked across a table:',
+  '  - one direct question with one plain answer — a team either has it at once or is guessing, and knows which;',
+  '  - medium leaning EASY. An easy item is good here: it makes the other team hesitate ("surely they got that… did they?");',
+  '  - NEVER a trap. No trick wording, no catch, no "the obvious answer is wrong". A team fooled by the item has nothing to bluff;',
+  '  - NEVER a multi-step puzzle. One look, one recall, or one short sum in the head;',
+  '  - a short prompt — one sentence where possible.',
+  '',
+  'Riddles, proverbs and everyday word knowledge ARE allowed for this mechanic in',
+  'this World, although they are known rather than worked out. Use only the ones',
+  'people really say and really know; a rare one is a lottery, not a read.',
+  '',
+  'Author each item in this order, and fill the schema fields in this order:',
+  '  1. concept — the plain thing being asked, before any wording exists.',
+  '  2. prompt, then exactly four options and correctOptionId.',
+  '  3. distractorRationale — one entry per INCORRECT option: why a guessing team might pick it.',
+  '  4. estimatedConfidence — aim for "likely". "even" is fine. Never "unlikely" or "near-impossible".',
+  '  5. factualClaims — the fact, the sum or the accepted wording that proves the correct option.',
+  '',
+  'EXACTLY ONE OPTION IS RIGHT, and nobody could argue for another: no riddle',
+  'with two accepted answers, no proverb with two common endings, no word with',
+  'two fair opposites among the options.',
+  '',
+  'THE WRONG OPTIONS ARE WHAT A GUESSER PICKS. Same kind of thing as the answer,',
+  'same length, same register. A team that does not know must have a real one-',
+  'in-four hope — that hope is what lets it act confident. Never put the answer',
+  'inside the prompt, and vary which position holds it across the batch.',
+  '',
+  'Text only. Nothing is drawn yet.',
+].join('\n');
+
 export const RYO_TASK_GUIDANCE = [
   'GAMEPLAY-FIRST INTENT. Design the Steal/Trust decision before choosing the',
   'question. The subject must come from the resolved World and Scope, but the',
@@ -1110,14 +1156,16 @@ export function composeGenerationPrompt(
           : COMBO_TASK_GUIDANCE
         : context.mechanicKey === MOVING_XO_SLUG
           ? MOVING_XO_TASK_GUIDANCE
-          : [
-              RYO_TASK_GUIDANCE,
-              buildRyoDifficultyGuidance(
-                resolvedDifficulty ?? 'mixed',
-                options?.ryoDifficultyTargets,
-                fallbackTargetsResolver,
-              ),
-            ].join('\n\n'),
+          : context.worldKey === 'puzzles'
+            ? PUZZLES_RYO_TASK_GUIDANCE
+            : [
+                RYO_TASK_GUIDANCE,
+                buildRyoDifficultyGuidance(
+                  resolvedDifficulty ?? 'mixed',
+                  options?.ryoDifficultyTargets,
+                  fallbackTargetsResolver,
+                ),
+              ].join('\n\n'),
     ...(normalizedGuidance
       ? [
           [

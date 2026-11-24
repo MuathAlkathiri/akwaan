@@ -12,6 +12,7 @@ import {
   RYO_CONFIDENCE_BANDS,
   RYO_TARGET_CONFIDENCE_BANDS,
   RYO_TASK_GUIDANCE,
+  PUZZLES_RYO_TASK_GUIDANCE,
   EXISTING_CONTENT_MAX_CHARS,
   EXISTING_CONTENT_MAX_ITEMS,
   formatExistingContent,
@@ -524,7 +525,11 @@ describe('RYO gameplay and difficulty guidance', () => {
   });
 
   it('uses the approved experimental 25/50/25 defaults', () => {
-    const prompt = service().buildPrompt(context(), 10, 'multiple_choice');
+    const prompt = service().buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
     expect(DEFAULT_RYO_DIFFICULTY_TARGETS).toEqual({
       easy: 25,
       medium: 50,
@@ -543,8 +548,16 @@ describe('RYO gameplay and difficulty guidance', () => {
       [RYO_DIFFICULTY_CONFIG_KEYS.medium]: '60',
       [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '20',
     });
-    const first = configured.buildPrompt(context(), 10, 'multiple_choice');
-    const second = configured.buildPrompt(context(), 10, 'multiple_choice');
+    const first = configured.buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
+    const second = configured.buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
     expect(first).toBe(second);
     expect(first).toContain('easy: 20%');
     expect(first).toContain('medium: 60%');
@@ -558,7 +571,11 @@ describe('RYO gameplay and difficulty guidance', () => {
       [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '25',
     });
     expect(() =>
-      configured.buildPrompt(context(), 10, 'multiple_choice'),
+      configured.buildPrompt(
+        context({ worldKey: 'football' }),
+        10,
+        'multiple_choice',
+      ),
     ).toThrow(
       expect.objectContaining({ code: 'RYO_DIFFICULTY_TARGETS_INVALID' }),
     );
@@ -579,7 +596,11 @@ describe('originality guidance reaches every mechanic', () => {
   // resolved prompt, not a constant, because a constant nothing appends is
   // documentation rather than instruction.
   const tail = (mode: 'multiple_choice' | 'closest') =>
-    service().buildPrompt(context({ exemplars: 'EXEMPLAR-TEXT' }), 3, mode);
+    service().buildPrompt(
+      context({ exemplars: 'EXEMPLAR-TEXT', worldKey: 'football' }),
+      3,
+      mode,
+    );
 
   it.each(['multiple_choice', 'closest'] as const)(
     'ends the %s prompt with the originality block',
@@ -720,6 +741,50 @@ describe('originality guidance reaches every mechanic', () => {
       expect(lines[lines.length - 1]).toBe(
         `  - ${'ط'.repeat(EXISTING_CONTENT_MAX_CHARS)}…`,
       );
+    });
+  });
+
+  describe('اقرأ خصمك in عالم الألغاز', () => {
+    const puzzlesRyo = () =>
+      service().buildPrompt(
+        context({ mechanicKey: 'read-your-opponent', worldKey: 'puzzles' }),
+        5,
+        'multiple_choice',
+      );
+
+    it('asks for the plain know-it-or-not question, not a hard-to-call one', () => {
+      const prompt = puzzlesRyo();
+      expect(prompt).toContain(PUZZLES_RYO_TASK_GUIDANCE);
+      expect(prompt).toMatch(/a read of PEOPLE, not of the question/);
+      expect(prompt).toMatch(/medium leaning EASY/);
+      expect(prompt).toMatch(/NEVER a trap/);
+      expect(prompt).toMatch(
+        /Riddles, proverbs and everyday word knowledge ARE allowed/,
+      );
+    });
+
+    it('drops the general guidance it contradicts', () => {
+      const prompt = puzzlesRyo();
+      expect(prompt).not.toContain(RYO_TASK_GUIDANCE);
+      expect(prompt).not.toMatch(/EXPERIMENTAL DIFFICULTY MIX/);
+      expect(prompt).not.toMatch(/SOLVED, NOT RECALLED/);
+      expect(prompt).not.toMatch(/NO 100% ELEMENTARY TRIVIA/);
+      expect(prompt).not.toMatch(/40-80% CONFIDENCE SWEET SPOT/);
+    });
+
+    it('is one level even though the form sends "mixed"', () => {
+      expect(puzzlesRyo()).toMatch(/medium: exactly 5 item\(s\)/);
+      expect(puzzlesRyo()).not.toMatch(/easy: exactly/);
+    });
+
+    it('leaves every other World on the general contract', () => {
+      const prompt = service().buildPrompt(
+        context({ mechanicKey: 'read-your-opponent', worldKey: 'football' }),
+        5,
+        'multiple_choice',
+      );
+      expect(prompt).toContain(RYO_TASK_GUIDANCE);
+      expect(prompt).not.toContain(PUZZLES_RYO_TASK_GUIDANCE);
     });
   });
 
@@ -1032,7 +1097,10 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
 
   it('supports single-difficulty RYO modes (easy, medium, relatively_difficult) and rejects Quality Judge "hard"', () => {
     const gen = service();
-    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+    const ryoCtx = context({
+      mechanicKey: 'read-your-opponent',
+      worldKey: 'football',
+    });
 
     const easyPrompt = gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
       difficulty: 'easy',
@@ -1155,7 +1223,10 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       { generateText } as never,
     );
 
-    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+    const ryoCtx = context({
+      mechanicKey: 'read-your-opponent',
+      worldKey: 'football',
+    });
     const pinnedContextHash = 'a'.repeat(64);
     const pinnedSpec = {
       specVersion: 'generation-spec-v1' as const,

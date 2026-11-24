@@ -55,6 +55,11 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 21 | `age-trap` | فخ العمر | Text only | `multiple_choice` |
 | 22 | `symbol-arithmetic` | حساب بالرموز | Emoji in text | `multiple_choice` |
 | 23 | `colour-pattern-position` | النمط الملوّن | Emoji in text | `multiple_choice` |
+| 24 | `mental-arithmetic` | حساب ذهني | Text only | `multiple_choice` |
+| 25 | `sequence-next` | كمّل السلسلة | Text only | `multiple_choice` |
+| 26 | `everyday-conversions` | تحويلات يومية | Text only | `multiple_choice` |
+| 27 | `direct-fraction` | نسبة مباشرة | Text only | `multiple_choice` |
+| 28 | `number-riddle` | فزورة رقمية | Text only | `multiple_choice` |
 
 > Rows 13–23 were approved by the owner on 2026-11-24. Which families the engine generates today — and which are paused — is recorded in KNOWLEDGE.md §11–12. A row whose only answer mode is `closest` is answered on the مين أقرب slider and is not a Moving XO family.
 

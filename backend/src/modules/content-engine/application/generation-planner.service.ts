@@ -227,22 +227,49 @@ export class GenerationPlannerService {
     const rawDifficulty = (input.difficulty ?? '').trim().toLowerCase();
     const difficulty = rawDifficulty || 'mixed';
 
+    // اقرأ خصمك in عالم الألغاز is its own contract (owner decision
+    // 2026-11-25): direct know-it-or-not questions at one easy-leaning level,
+    // because the difficulty is in reading the other team, not in the item.
+    const puzzlesRyo =
+      worldKey === PUZZLES_WORLD_KEY && mechanicKey === 'read-your-opponent';
     const difficultyQuotas = this.computeDifficultyQuotas(
       count,
       difficulty,
       // Only an unstated difficulty takes the World's own default; an
-      // operator who asks for a mix by name still gets one.
-      rawDifficulty ? '' : worldKey,
+      // operator who asks for a mix by name still gets one — except for
+      // اقرأ خصمك here, whose "mixed" is the form's default, not a request.
+      rawDifficulty && !puzzlesRyo ? '' : worldKey,
     );
-    const archetypes = this.resolveArchetypes(mechanicKey, scopeKey);
-    const decisionLoopGuidelines = [
-      ...this.resolveDecisionLoop(mechanicKey),
-      ...this.resolveWorldDecisionLoop(mechanicKey, worldKey),
-    ];
-    const antiPatterns = [
-      ...this.resolveAntiPatterns(mechanicKey, scopeKey),
-      ...this.resolveWorldAntiPatterns(worldKey),
-    ];
+    const archetypes = puzzlesRyo
+      ? [
+          'Know It Or Not: one direct question with one plain answer; a team either has it at once or is guessing, and knows which.',
+          'Easy Enough To Doubt: so reachable that the other team must ask whether anyone could really miss it.',
+          'Just Out Of Reach: answerable by some people and not others, which is the room a team needs to act sure.',
+        ]
+      : this.resolveArchetypes(mechanicKey, scopeKey);
+    const decisionLoopGuidelines = puzzlesRyo
+      ? [
+          'THE DIFFICULTY IS THE READ, NOT THE ITEM: the question is direct and medium leaning easy. The doubt belongs to the other team — did they really know it, or are they acting?',
+          'THE TEAM KNOWS WHETHER IT KNEW: never a trap that makes a team confidently wrong. A team fooled by the item has nothing to hide and nothing to bluff.',
+          'ONE PLAIN ANSWER: four options, exactly one right, and nothing a reasonable player could argue about afterwards.',
+        ]
+      : [
+          ...this.resolveDecisionLoop(mechanicKey),
+          ...this.resolveWorldDecisionLoop(mechanicKey, worldKey),
+        ];
+    const antiPatterns = puzzlesRyo
+      ? [
+          'NO TRAPS: no trick wording, no counter-intuitive catch, no "obvious answer is wrong". That is the opposite of this mechanic here.',
+          'NO MULTI-STEP PUZZLES: nothing that needs working through. One look, one recall, or one short sum.',
+          'NO ANSWER LEAKAGE: the correct answer must never appear inside the prompt.',
+          'NO OBSCURE KNOWLEDGE: a riddle or proverb only the well-read know is a lottery. Use the ones people actually say.',
+          'NO DISPUTABLE ANSWERS: a riddle with two accepted answers, or a proverb with two common endings, is discarded.',
+          'NO PICTURE YET: never write "shown", "drawn", "in the picture" or "الصورة".',
+        ]
+      : [
+          ...this.resolveAntiPatterns(mechanicKey, scopeKey),
+          ...this.resolveWorldAntiPatterns(worldKey),
+        ];
     const correctnessRequirements =
       this.resolveCorrectnessRequirements(mechanicKey);
     const mediaIntent = this.resolveMediaIntent(mechanicKey, worldKey);

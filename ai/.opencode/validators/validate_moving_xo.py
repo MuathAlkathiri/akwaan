@@ -52,6 +52,22 @@ VISUAL_SCOPES = {"observation-illusions", "assembly-rotation", "paths-motion"}
 _FAMILY_MODES = {"multiple_choice", "match", "closest"}
 #: The answer modes a Moving XO phone can actually collect.
 _MOVING_XO_MODES = {"multiple_choice", "match"}
+#: Families answered by choosing that belong to اقرأ خصمك alone (owner decision
+#: 2026-11-25). The Scope table carries no per-mechanic column, so they are
+#: named here: they keep their rows and numbers and are not Moving XO families.
+_OTHER_MECHANIC_ONLY_FAMILIES = frozenset(
+    {
+        "mental-arithmetic",
+        "sequence-next",
+        "everyday-conversions",
+        "direct-fraction",
+        "number-riddle",
+        "classic-riddle",
+        "proverb-completion",
+        "word-completion",
+        "antonym",
+    }
+)
 
 
 def _table_cells(line: str) -> list[str]:
@@ -132,7 +148,7 @@ def _load_scope_families(scope: str) -> dict[str, dict]:
             raise RuntimeError(f"approved family modes are invalid: {scope_file}: {line}")
         if family in families or family in slider_only:
             raise RuntimeError(f"duplicate approved family '{family}' in {scope_file}")
-        if not modes & _MOVING_XO_MODES:
+        if not modes & _MOVING_XO_MODES or family in _OTHER_MECHANIC_ONLY_FAMILIES:
             # A family answered only on the مين أقرب slider shares the Scope's
             # table and is not a Moving XO family: the phone here offers text
             # choices or one text input, never a slider. It keeps its row and
