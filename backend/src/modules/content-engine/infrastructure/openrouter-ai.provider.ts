@@ -271,6 +271,30 @@ export class OpenRouterAiProvider implements AiProvider {
     return model.trim().toLowerCase().startsWith('openai/');
   }
 
+  /**
+   * OpenRouter provider slugs never to route to, from
+   * `ENGINE_OPENROUTER_IGNORE_PROVIDERS` (comma-separated, e.g. `azure`).
+   *
+   * One model is served by several upstreams, and OpenRouter picks. When one
+   * of them is refusing every request — as Azure did on 2026-11-24, answering
+   * 502 "resource temporarily blocked" for an account that is OpenRouter's and
+   * not ours — the only lever on our side is to name it here. Anything that is
+   * not a plain slug is dropped rather than sent: a malformed routing field
+   * fails the whole request.
+   */
+  private ignoredProviders(): string[] {
+    const raw = this.config.get<string>('ENGINE_OPENROUTER_IGNORE_PROVIDERS');
+    if (!raw) return [];
+    return [
+      ...new Set(
+        raw
+          .split(',')
+          .map((slug) => slug.trim().toLowerCase())
+          .filter((slug) => /^[a-z0-9]+(?:[-/][a-z0-9]+)*$/.test(slug)),
+      ),
+    ];
+  }
+
   /** `minimal` | `low` | `medium` | `high`, or undefined to leave the default. */
   private reasoningEffort(): string | undefined {
     const value = this.config
@@ -328,6 +352,7 @@ export class OpenRouterAiProvider implements AiProvider {
     // entering the network try/catch block so a pre-dispatch schema refusal
     // (UnclassifiedSchemaKeywordError) is never misclassified as an in-flight
     // network timeout and billed.
+    const ignoredProviders = this.ignoredProviders();
     const adaptedSchema = request.responseSchema
       ? this.requiresOpenAiStrictSchema(model)
         ? adaptSchemaForOpenAiStrict(request.responseSchema)
@@ -380,13 +405,21 @@ export class OpenRouterAiProvider implements AiProvider {
       ...(effort ? { reasoning: { effort } } : {}),
       // Structured output is required, not preferred: a prose reply is a
       // failed generation, and the schema is what makes that detectable.
+      // An upstream the operator has told us to route around. Sent with or
+      // without a schema: a blocked upstream fails a plain request too.
+      ...(!adaptedSchema && ignoredProviders.length
+        ? { provider: { ignore: ignoredProviders } }
+        : {}),
       ...(adaptedSchema
         ? {
             // Routing is per-endpoint, not per-model: without this,
             // OpenRouter may serve the request from an endpoint that
             // ignores `response_format`, and we pay for prose the strict
             // parser then rejects. Fail the request instead.
-            provider: { require_parameters: true },
+            provider: {
+              require_parameters: true,
+              ...(ignoredProviders.length ? { ignore: ignoredProviders } : {}),
+            },
             response_format: {
               type: 'json_schema',
               json_schema: {

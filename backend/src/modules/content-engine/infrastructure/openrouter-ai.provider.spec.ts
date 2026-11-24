@@ -104,6 +104,61 @@ describe('OpenRouterAiProvider request shape', () => {
     expect(seen.body).not.toHaveProperty('temperature');
   });
 
+  describe('routing around an upstream (ENGINE_OPENROUTER_IGNORE_PROVIDERS)', () => {
+    const bodyWith = async (
+      value: string | undefined,
+      overrides: Partial<typeof request> = {},
+    ) => {
+      const { seen, fetchImpl } = capture();
+      await new OpenRouterAiProvider(
+        config(
+          value === undefined
+            ? {}
+            : { ENGINE_OPENROUTER_IGNORE_PROVIDERS: value },
+        ),
+        fetchImpl,
+      ).generateText({ ...request, ...overrides });
+      return seen.body!;
+    };
+
+    it('names the upstream to skip, beside the parameter-aware routing', async () => {
+      expect((await bodyWith('azure')).provider).toEqual({
+        require_parameters: true,
+        ignore: ['azure'],
+      });
+    });
+
+    it('takes a list, tidied and without repeats', async () => {
+      expect(
+        (await bodyWith(' Azure, deepinfra/turbo ,azure,, ')).provider,
+      ).toEqual({
+        require_parameters: true,
+        ignore: ['azure', 'deepinfra/turbo'],
+      });
+    });
+
+    it('drops anything that is not a slug instead of sending it', async () => {
+      expect((await bodyWith('azure; drop, "openai"')).provider).toEqual({
+        require_parameters: true,
+      });
+    });
+
+    it('changes nothing when unset or empty', async () => {
+      expect((await bodyWith(undefined)).provider).toEqual({
+        require_parameters: true,
+      });
+      expect((await bodyWith('')).provider).toEqual({
+        require_parameters: true,
+      });
+    });
+
+    it('still skips the upstream for a request with no schema', async () => {
+      const body = await bodyWith('azure', { responseSchema: undefined });
+      expect(body.provider).toEqual({ ignore: ['azure'] });
+      expect(body).not.toHaveProperty('response_format');
+    });
+  });
+
   it('still demands a strict schema and parameter-aware routing', async () => {
     const { seen, fetchImpl } = capture();
     await new OpenRouterAiProvider(
