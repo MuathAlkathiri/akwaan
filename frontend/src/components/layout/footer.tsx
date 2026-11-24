@@ -54,7 +54,7 @@ export function Footer() {
           <div className="md:max-w-[17rem]">
             <div className="relative h-9 w-[6.4rem] sm:h-10 sm:w-28">
               <Image
-                src="/brand/akwaan-logo.png"
+                src="/brand/logo-header.svg"
                 alt="أكوان"
                 fill
                 sizes="(min-width: 640px) 112px, 102px"

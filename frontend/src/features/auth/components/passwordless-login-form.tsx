@@ -119,14 +119,14 @@ export function PasswordlessLoginForm({
 
   return (
     <Card
-      className="mx-auto w-full max-w-[510px] rounded-[28px] border-[3px] border-brand-navy bg-brand-paper shadow-[6px_7px_0_hsl(var(--brand-navy))]"
+      className="w-full max-w-[480px] rounded-[28px] border-[3px] border-brand-navy bg-brand-paper shadow-[7px_8px_0_hsl(var(--brand-navy))]"
       dir="rtl"
     >
-      <CardHeader className="space-y-3 px-6 pb-5 pt-7 text-center sm:px-10 sm:pt-10">
-        <CardTitle className="font-display text-[26px] font-black leading-relaxed text-brand-navy sm:text-[32px]">
+      <CardHeader className="space-y-2 px-6 pb-[22px] pt-7 text-start sm:px-9 sm:pt-9">
+        <CardTitle className="font-display text-[30px] font-black leading-[1.4] text-brand-navy sm:text-[40px]">
           {step === "identifier" ? "ياهلا فيك، نورت أكوان" : "أرسلنا لك الرمز"}
         </CardTitle>
-        <CardDescription className="text-base leading-7 text-brand-slate">
+        <CardDescription className="text-base leading-[1.8] text-brand-slate sm:text-lg">
           {step === "identifier"
             ? "سجّل دخولك وكمل لعبك من حيث وقفت."
             : channel === "email"
@@ -134,7 +134,7 @@ export function PasswordlessLoginForm({
               : "دخل رمز الدخول اللي وصلك على جوالك."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 px-6 pb-7 sm:px-10 sm:pb-10">
+      <CardContent className="space-y-[22px] px-6 pb-7 sm:px-9 sm:pb-9">
         {step === "identifier" ? (
           <div className="akwaan-rise space-y-6">
             {allowPhone && (
@@ -180,7 +180,7 @@ export function PasswordlessLoginForm({
                 <div className="space-y-2">
                   <label
                     htmlFor="otp-email"
-                    className="block text-[15px] font-bold text-brand-navy"
+                    className="block text-base font-bold text-brand-navy"
                   >
                     البريد الإلكتروني
                   </label>
@@ -196,14 +196,14 @@ export function PasswordlessLoginForm({
                     data-testid="otp-email-input"
                     value={identifier}
                     onChange={(event) => setIdentifier(event.target.value)}
-                    className="h-[56px] rounded-[14px] border-[3px] border-brand-navy bg-white px-4 text-base font-semibold text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
+                    className="h-[58px] rounded-2xl border-[3px] border-brand-navy bg-white px-[18px] text-lg text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
                   />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <label
                     htmlFor="otp-phone"
-                    className="block text-[15px] font-bold text-brand-navy"
+                    className="block text-base font-bold text-brand-navy"
                   >
                     رقم الجوال
                   </label>
@@ -227,7 +227,7 @@ export function PasswordlessLoginForm({
                       onChange={(event) =>
                         setIdentifier(normalizeDigits(event.target.value))
                       }
-                      className="h-[56px] rounded-[14px] border-[3px] border-brand-navy bg-white px-4 text-base font-semibold text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
+                      className="h-[58px] rounded-2xl border-[3px] border-brand-navy bg-white px-[18px] text-lg text-brand-navy shadow-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] focus-visible:ring-offset-0"
                     />
                   </div>
                 </div>
@@ -254,7 +254,7 @@ export function PasswordlessLoginForm({
 
               <Button
                 type="submit"
-                className="h-auto min-h-[3.75rem] w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-xl font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:border-brand-dash disabled:bg-brand-wash disabled:text-brand-plum disabled:opacity-100 disabled:shadow-none"
+                className="h-auto min-h-16 w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-[21px] font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:cursor-not-allowed disabled:opacity-100"
                 disabled={busy || !identifier.trim()}
                 data-testid="otp-request-button"
               >
@@ -284,7 +284,7 @@ export function PasswordlessLoginForm({
 
             <Button
               type="button"
-              className="h-auto min-h-[3.75rem] w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-xl font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:border-brand-dash disabled:bg-brand-wash disabled:text-brand-plum disabled:opacity-100 disabled:shadow-none"
+              className="h-auto min-h-16 w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-[21px] font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:cursor-not-allowed disabled:opacity-100"
               disabled={busy || code.length < OTP_LENGTH}
               onClick={() => void verify(code)}
               data-testid="otp-verify-button"
@@ -349,7 +349,7 @@ export function PasswordlessLoginForm({
           ) : (
             <Link
               href="/"
-              className="inline-block w-fit text-sm font-semibold text-[hsl(var(--brand-navy)/.56)] decoration-[hsl(var(--brand-gold)/.65)] underline-offset-4 transition-colors hover:text-[hsl(var(--brand-navy))] hover:underline focus-visible:rounded-sm focus-visible:text-[hsl(var(--brand-navy))] focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-gold)/.45)]"
+              className="inline-flex min-h-11 w-fit items-center text-[15px] font-bold text-brand-navy underline-offset-4 transition-colors hover:text-brand-bronze focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))]"
             >
               الرجوع للرئيسية
             </Link>

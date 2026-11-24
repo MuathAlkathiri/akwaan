@@ -158,7 +158,7 @@ function MatchHeaderBar({
           aria-label="أكوان - العودة للرئيسية"
         >
           <Image
-            src="/brand/akwaan-logo.png"
+            src="/brand/logo-header.svg"
             alt=""
             fill
             priority

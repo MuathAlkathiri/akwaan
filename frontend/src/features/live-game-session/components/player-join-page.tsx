@@ -216,7 +216,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
       <div className="mb-5 text-center">
         <div className="relative mx-auto mb-3 h-10 w-28">
           <Image
-            src="/brand/akwaan-logo.png"
+            src="/brand/logo-header.svg"
             alt="أكوان"
             fill
             priority

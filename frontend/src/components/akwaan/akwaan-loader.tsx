@@ -60,7 +60,7 @@ export function AkwaanLoader({
         </span>
         <span className="relative block h-11 w-[5.5rem]">
           <Image
-            src="/brand/akwaan-logo.png"
+            src="/brand/logo-header.svg"
             alt=""
             fill
             priority
