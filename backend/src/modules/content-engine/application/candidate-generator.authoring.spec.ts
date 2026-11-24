@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import {
+  BOMB_CANDIDATE_SCHEMA,
   CLOSEST_CANDIDATE_SCHEMA,
   COMBO_CANDIDATE_SCHEMA,
   DEFAULT_RYO_DIFFICULTY_TARGETS,
@@ -209,7 +210,7 @@ describe('OpenAI strict structured-output compliance', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('expresses optional content as a nullable type, not a missing key', () => {
+  it('expresses optional content as a value, not a missing key or a type list', () => {
     const item = (
       CLOSEST_CANDIDATE_SCHEMA.properties as {
         candidates: {
@@ -217,8 +218,47 @@ describe('OpenAI strict structured-output compliance', () => {
         };
       }
     ).candidates.items;
-    expect(item.properties.unit.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.type).toEqual(['string', 'null']);
+    // A type list beside an `enum` is rejected by Anthropic and Google, so a
+    // request that works on one upstream fails on the next. Plain strings.
+    expect(item.properties.unit.type).toBe('string');
+    expect(item.properties.displayFormat.type).toBe('string');
+    expect(
+      (item.properties.displayFormat as { enum?: unknown[] }).enum,
+    ).toEqual(['number', 'calendar-year']);
+  });
+
+  it('carries no type list anywhere in any generation schema', () => {
+    const typeLists: string[] = [];
+    const walk = (node: unknown, path: string) => {
+      if (Array.isArray(node)) {
+        node.forEach((entry, index) => walk(entry, `${path}[${index}]`));
+        return;
+      }
+      if (!node || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'type' && Array.isArray(value)) typeLists.push(path);
+        walk(value, `${path}.${key}`);
+      }
+    };
+    for (const [name, schema] of Object.entries({
+      closest: CLOSEST_CANDIDATE_SCHEMA,
+      multipleChoice: RYO_CANDIDATE_SCHEMA,
+      combo: COMBO_CANDIDATE_SCHEMA,
+      bomb: BOMB_CANDIDATE_SCHEMA,
+    }))
+      walk(schema, name);
+    expect(typeLists).toEqual([]);
+  });
+
+  it('parses a candidate that returns an empty unit and the ordinary format', () => {
+    const [parsed] = parse([
+      closestItem({ unit: '', displayFormat: 'number' }),
+    ]) as { draft: Record<string, unknown> }[];
+    const slider = (
+      parsed.draft.mechanicPayload as { closestSlider: Record<string, unknown> }
+    ).closestSlider;
+    expect(slider.unit).toBeUndefined();
+    expect(slider.displayFormat).toBeUndefined();
   });
 
   it('parses a candidate that returns null for the optional fields', () => {

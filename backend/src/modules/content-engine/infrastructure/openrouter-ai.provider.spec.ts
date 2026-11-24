@@ -419,7 +419,7 @@ describe('the serialized request body OpenAI will validate', () => {
     expect(validateStrict(RYO_CANDIDATE_SCHEMA).length).toBe(3);
   });
 
-  it('keeps unit and displayFormat required and nullable on the wire', async () => {
+  it('keeps unit and displayFormat required, as plain strings, on the wire', async () => {
     const wire = await serializedSchema(CLOSEST_CANDIDATE_SCHEMA);
     const item = (
       wire.properties as {
@@ -433,9 +433,12 @@ describe('the serialized request body OpenAI will validate', () => {
     ).candidates.items;
     expect(item.required).toContain('unit');
     expect(item.required).toContain('displayFormat');
-    expect(item.properties.unit.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.enum).toContain(null);
+    expect(item.properties.unit.type).toBe('string');
+    expect(item.properties.displayFormat.type).toBe('string');
+    expect(item.properties.displayFormat.enum).toEqual([
+      'number',
+      'calendar-year',
+    ]);
   });
 
   it('sends strict mode, parameter-aware routing, and no temperature', async () => {
