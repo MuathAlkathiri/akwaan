@@ -91,7 +91,7 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
 
   it('is a mechanic the engine can author, in the match answer mode', () => {
     expect(generatorAnswerModeFor(BOMB_SLUG)).toBe('match');
-    expect(promptVersionFor(BOMB_SLUG)).toBe('bomb-v2');
+    expect(promptVersionFor(BOMB_SLUG)).toBe('bomb-v3');
   });
 
   describe('prompt and schema', () => {
@@ -158,6 +158,8 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
 
     it('tells the model to spread the angles and to pin changeable answers to a date', () => {
       expect(BOMB_TASK_GUIDANCE).toContain('SPREAD THE ANGLES');
+      expect(BOMB_TASK_GUIDANCE).toContain('NO TROPHY QUIZZES');
+      expect(BOMB_TASK_GUIDANCE).not.toContain('ترمز');
       expect(BOMB_TASK_GUIDANCE).toContain(
         'at least min(N, 4) different angles',
       );
@@ -577,7 +579,7 @@ describe('القنبلة generation (bomb → match, one picture)', () => {
         targetCount: 10,
       });
       expect(spec.answerMode).toBe('match');
-      expect(spec.promptVersion).toBe('bomb-v2');
+      expect(spec.promptVersion).toBe('bomb-v3');
       expect(spec.difficulty).toBeNull();
       expect(isGenerationSpecificationComplete(spec)).toBe(true);
     });

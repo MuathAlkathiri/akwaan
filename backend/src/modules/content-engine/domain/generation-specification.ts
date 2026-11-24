@@ -61,7 +61,7 @@ export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
  */
 const MECHANIC_PROMPT_VERSIONS: Partial<Record<GeneratorMechanicKey, string>> =
   {
-    bomb: 'bomb-v2',
+    bomb: 'bomb-v3',
   };
 
 /** The prompt/schema revision a mechanic is generated with, if it can be. */
