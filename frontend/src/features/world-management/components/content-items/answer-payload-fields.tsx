@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +17,11 @@ import {
   VOTE_CONSENSUS_LABEL,
 } from "../../utils/world-content.labels";
 import {
+  CLOSEST_COLOUR_BOUNDS,
+  CLOSEST_COLOUR_REVEAL_MAX_SECONDS,
   hasClosestSliderMode,
+  hexToHue,
+  hueToHex,
   type AnswerFormState,
 } from "../../services/content-item-form.service";
 import type { ChallengeAnswerMode, VoteConsensusRule } from "../../types";
@@ -52,6 +57,17 @@ export function AnswerPayloadFields({
   const set = (patch: Partial<AnswerFormState>) =>
     onChange({ ...value, ...patch });
   const modes = availableModes.length ? availableModes : [value.mode];
+  /** «تذكّر اللون»: the answer is picked as a colour, not typed as a number. */
+  const colourQuestion =
+    value.mode === "closest" && value.closestInteraction === "colour-hue";
+  const colourHue =
+    colourQuestion &&
+    value.correctValue.trim() !== "" &&
+    Number.isFinite(Number(value.correctValue))
+      ? Number(value.correctValue)
+      : undefined;
+  // The picker can hand back a grey, which has no place on the wheel.
+  const [colourUnusable, setColourUnusable] = useState(false);
   const usesOptions =
     value.mode === "multiple_choice" ||
     value.mode === "vote" ||
@@ -153,14 +169,55 @@ export function AnswerPayloadFields({
       {usesNumeric && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              القيمة الصحيحة
+            <label
+              className="mb-1.5 block text-sm font-medium"
+              htmlFor="closest-correct-value"
+            >
+              {colourQuestion ? "اللون الصحيح" : "القيمة الصحيحة"}
             </label>
-            <Input
-              type="number"
-              value={value.correctValue}
-              onChange={(event) => set({ correctValue: event.target.value })}
-            />
+            {colourQuestion ? (
+              <div className="space-y-1.5" data-testid="closest-colour-fields">
+                <div className="flex items-center gap-3">
+                  <input
+                    id="closest-correct-value"
+                    type="color"
+                    aria-label="اللون الصحيح"
+                    data-testid="closest-colour-picker"
+                    className="h-10 w-16 cursor-pointer rounded border bg-transparent p-1"
+                    value={
+                      colourHue === undefined ? "#888888" : hueToHex(colourHue)
+                    }
+                    onChange={(event) => {
+                      const hue = hexToHue(event.target.value);
+                      setColourUnusable(hue === undefined);
+                      if (hue !== undefined)
+                        set({ correctValue: String(hue) });
+                    }}
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {colourHue === undefined
+                      ? "اختر لون القطعة المطلوبة من الصورة"
+                      : `درجة اللون ${colourHue} من 360 — هذا اللون اللي بيشوفه اللاعبون`}
+                  </span>
+                </div>
+                {colourUnusable && (
+                  <p
+                    className="text-xs font-medium text-destructive"
+                    data-testid="closest-colour-unusable"
+                  >
+                    الأبيض والأسود والرمادي ما لهم مكان على دائرة الألوان.
+                    اختر لونًا واضحًا.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Input
+                id="closest-correct-value"
+                type="number"
+                value={value.correctValue}
+                onChange={(event) => set({ correctValue: event.target.value })}
+              />
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium">
@@ -189,12 +246,35 @@ export function AnswerPayloadFields({
             </label>
             <Select
               value={value.closestInteraction}
-              onValueChange={(next: string) =>
+              onValueChange={(next: string) => {
+                const leavingColour =
+                  value.closestInteraction === "colour-hue" &&
+                  next !== "colour-hue";
                 set({
                   closestInteraction:
                     next as AnswerFormState["closestInteraction"],
-                })
-              }
+                  // The wheel is the range, so it is set for the author — and
+                  // taken back when they leave, or a number question would
+                  // inherit 0→360 and a hue as its answer.
+                  ...(next === "colour-hue"
+                    ? {
+                        closestMin: CLOSEST_COLOUR_BOUNDS.min,
+                        closestMax: CLOSEST_COLOUR_BOUNDS.max,
+                        closestStep: CLOSEST_COLOUR_BOUNDS.step,
+                        correctValue: "",
+                      }
+                    : leavingColour
+                      ? {
+                          closestMin: "",
+                          closestMax: "",
+                          closestStep: "",
+                          correctValue: "",
+                          closestRevealSeconds: "",
+                        }
+                      : {}),
+                });
+                setColourUnusable(false);
+              }}
             >
               <SelectTrigger aria-label="طريقة تفاعل مين أقرب">
                 {/* An unselected mode has to read as a question, not as a
@@ -215,6 +295,7 @@ export function AnswerPayloadFields({
                 <SelectItem value="between-anchors">
                   بين نقطتي ارتكاز
                 </SelectItem>
+                <SelectItem value="colour-hue">تذكّر اللون</SelectItem>
               </SelectContent>
             </Select>
             {isNewItem && !hasClosestSliderMode(value.closestInteraction) && (
@@ -235,7 +316,32 @@ export function AnswerPayloadFields({
               </p>
             )}
           </div>
-          {hasClosestSliderMode(value.closestInteraction) && (
+          {colourQuestion && (
+            <div className="space-y-1.5">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="closest-reveal-seconds"
+              >
+                كم ثانية تظهر الصورة ملوّنة؟
+              </label>
+              <Input
+                id="closest-reveal-seconds"
+                type="number"
+                min={1}
+                max={CLOSEST_COLOUR_REVEAL_MAX_SECONDS}
+                step={1}
+                placeholder="4"
+                value={value.closestRevealSeconds}
+                onChange={(e) => set({ closestRevealSeconds: e.target.value })}
+              />
+              <p className="text-xs font-medium text-muted-foreground">
+                بعدها تصير رمادي واللاعبون يختارون اللون من الذاكرة. ارفع
+                الصورة الملوّنة في خانة الصورة، واكتب في السؤال أي قطعة
+                تقصد («وش لون القميص؟»).
+              </p>
+            </div>
+          )}
+          {hasClosestSliderMode(value.closestInteraction) && !colourQuestion && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input

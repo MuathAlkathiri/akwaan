@@ -19,7 +19,10 @@ import {
   teamActionClock,
 } from './team-action-assignment';
 import { toSafeQuestionMedia } from './safe-question-media';
-import { ContentItemMedia } from '../../world-content/domain/world-content.types';
+import {
+  CLOSEST_COLOUR_REVEAL_DEFAULT_SECONDS,
+  ContentItemMedia,
+} from '../../world-content/domain/world-content.types';
 
 export const CLOSEST_MODE_KEY = 'closest';
 export const CLOSEST_TIMER_SECONDS = 45;
@@ -33,10 +36,12 @@ export interface ClosestRuntimeItem {
   media?: unknown;
   correctValue: number;
   slider?: {
-    mode: 'numeric-range' | 'between-anchors';
+    mode: 'numeric-range' | 'between-anchors' | 'colour-hue';
     min: number;
     max: number;
     step?: number;
+    /** `colour-hue` only: seconds the picture stays in colour. */
+    revealSeconds?: number;
     unit?: string;
     /** Authored reading of the number; absent means an ordinary quantity. */
     displayFormat?: 'number' | 'calendar-year';
@@ -45,11 +50,35 @@ export interface ClosestRuntimeItem {
   };
 }
 
+/**
+ * How far an answer is from the target.
+ *
+ * A number line for every mode but one: a hue sits on a wheel, where 350° and
+ * 10° are twenty degrees apart, not three hundred and forty. Measured in a
+ * straight line, two teams who both remembered "red" from either end of the
+ * slider would be scored as far apart as two colours can be.
+ */
+export function closestDistance(
+  answer: number,
+  item: Pick<ClosestRuntimeItem, 'correctValue' | 'slider'>,
+): number {
+  const straight = Math.abs(answer - item.correctValue);
+  if (item.slider?.mode !== 'colour-hue') return straight;
+  const wheel = item.slider.max - item.slider.min;
+  const around = straight % wheel;
+  return Math.min(around, wheel - around);
+}
+
 export interface ClosestItemResult {
   itemIndex: number;
   contentItemId: string;
   prompt: unknown;
   correctValue: number;
+  /**
+   * Set only for a colour question, so a recap that has the result and not the
+   * item can still draw colours instead of printing hue degrees.
+   */
+  sliderMode?: 'colour-hue';
   answers: Record<string, number | null>;
   distances: Record<string, number | null>;
   assignedParticipantIds: Record<string, string>;
@@ -106,7 +135,9 @@ function validateRuntime(state: GameplayModeState): GameplayModeState {
       (item) =>
         !Number.isFinite(item.correctValue) ||
         (item.slider !== undefined &&
-          (!['numeric-range', 'between-anchors'].includes(item.slider.mode) ||
+          (!['numeric-range', 'between-anchors', 'colour-hue'].includes(
+            item.slider.mode,
+          ) ||
             !Number.isFinite(item.slider.min) ||
             !Number.isFinite(item.slider.max) ||
             item.slider.min >= item.slider.max ||
@@ -193,7 +224,7 @@ export function gradeClosestItem(input: {
       teamId,
       input.answers[teamId] === undefined
         ? null
-        : Math.abs(input.answers[teamId] - input.item.correctValue),
+        : closestDistance(input.answers[teamId], input.item),
     ]),
   ) as Record<string, number | null>;
   const [teamA, teamB] = input.teamIds;
@@ -209,6 +240,9 @@ export function gradeClosestItem(input: {
     contentItemId: input.item.id,
     prompt: input.item.prompt,
     correctValue: input.item.correctValue,
+    ...(input.item.slider?.mode === 'colour-hue'
+      ? { sliderMode: 'colour-hue' as const }
+      : {}),
     answers: Object.fromEntries(
       input.teamIds.map((teamId) => [teamId, input.answers[teamId] ?? null]),
     ),
@@ -488,6 +522,24 @@ function publicState(
       ...(item.slider ? { slider: item.slider } : {}),
     }),
     deadlineAt: valid.deadlineAt ?? null,
+    // «تذكّر اللون»: the moment the picture loses its colour, derived from the
+    // same server deadline as the timer so a screen that reloads mid-question
+    // cannot buy a second look. Null until the deadline is armed — the screen
+    // shows grey then, never colour.
+    ...(item.slider?.mode === 'colour-hue'
+      ? {
+          mediaGreyAt:
+            typeof valid.deadlineAt === 'string'
+              ? new Date(
+                  new Date(valid.deadlineAt).getTime() -
+                    (CLOSEST_TIMER_SECONDS -
+                      (item.slider.revealSeconds ??
+                        CLOSEST_COLOUR_REVEAL_DEFAULT_SECONDS)) *
+                      1000,
+                ).toISOString()
+              : null,
+        }
+      : {}),
     teamIdsJson: JSON.stringify(teams),
     submissionStatusJson: JSON.stringify(
       Object.fromEntries(
