@@ -33,17 +33,30 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | # | Family | Arabic | Media | Answer Modes |
 |---|---|---|---|---|
 | 1 | `missing-number-pattern` | الرقم الناقص في المتتالية | Typographic Track | `multiple_choice` |
-| 2 | `visual-quantity-estimate` | تقدير الكميات والمجموعات | 2D Scatter Vector | `multiple_choice \| closest` |
-| 3 | `proportion-estimate` | تقدير النسبة والامتلاء | 2D Gauge Vector | `multiple_choice \| closest` |
+| 2 | `visual-quantity-estimate` | تقدير الكميات والمجموعات | 2D Scatter Vector | `multiple_choice, closest` |
+| 3 | `proportion-estimate` | تقدير النسبة والامتلاء | 2D Gauge Vector | `multiple_choice, closest` |
 | 4 | `balance-scale-weight` | أوزان كفة الميزان | 2D/3D Pan Scale | `multiple_choice` |
 | 5 | `number-relationship-grid` | علاقات الأرقام في الشبكة | 2D Grid Vector | `multiple_choice` |
-| 6 | `time-angle-intuition` | حدس زوايا عقارب الساعة | 2D Clock Dial | `multiple_choice \| closest` |
-| 7 | `between-two-anchors` | التقدير بين نقطتين مرجعيتين | 1D Vector Track | `multiple_choice \| closest` |
+| 6 | `time-angle-intuition` | حدس زوايا عقارب الساعة | 2D Clock Dial | `multiple_choice, closest` |
+| 7 | `between-two-anchors` | التقدير بين نقطتين مرجعيتين | 1D Vector Track | `multiple_choice, closest` |
 | 8 | `relative-magnitude-sort` | المقارنة النسبية بين المقادير | 2D Vector Cards | `multiple_choice` |
-| 9 | `geometric-area-estimate` | تقدير المساحات الهندسية | 2D Geometry Vector | `multiple_choice \| closest` |
+| 9 | `geometric-area-estimate` | تقدير المساحات الهندسية | 2D Geometry Vector | `multiple_choice, closest` |
 | 10 | `structured-subitizing-count` | العد السريع للمجموعات | 2D Grouped Tokens | `multiple_choice` |
-| 11 | `ratio-intuition` | حدس النسب الرياضية | 2D Dual-Color Tokens | `multiple_choice \| closest` |
-| 12 | `ordering-values-span` | مدى الفروق وترتيب القيم | 2D Data Badges | `multiple_choice \| closest` |
+| 11 | `ratio-intuition` | حدس النسب الرياضية | 2D Dual-Color Tokens | `multiple_choice, closest` |
+| 12 | `ordering-values-span` | مدى الفروق وترتيب القيم | 2D Data Badges | `multiple_choice, closest` |
+| 13 | `occurrence-count` | كم مرة يظهر؟ | Text only | `closest` |
+| 14 | `everyday-quantities` | أرقام من حياتك | Text only | `closest` |
+| 15 | `quick-total` | المجموع السريع | Text only | `closest` |
+| 16 | `gathering-pairs` | في الاستراحة | Text only | `closest` |
+| 17 | `tournament-matches` | في الدوري | Text only | `closest` |
+| 18 | `calendar-position` | وين في السنة؟ | Text only | `closest` |
+| 19 | `must-be-true` | لازم يكون صح | Text only | `multiple_choice` |
+| 20 | `deceptive-ratio` | النسبة الخادعة | Text only | `multiple_choice` |
+| 21 | `age-trap` | فخ العمر | Text only | `multiple_choice` |
+| 22 | `symbol-arithmetic` | حساب بالرموز | Emoji in text | `multiple_choice` |
+| 23 | `colour-pattern-position` | النمط الملوّن | Emoji in text | `multiple_choice` |
+
+> Rows 13–23 were approved by the owner on 2026-11-24. Which families the engine generates today — and which are paused — is recorded in KNOWLEDGE.md §11–12. A row whose only answer mode is `closest` is answered on the مين أقرب slider and is not a Moving XO family.
 
 ---
 

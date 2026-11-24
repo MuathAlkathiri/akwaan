@@ -6,6 +6,7 @@ import {
   extractFamilyTables,
   FamilyResolutionError,
   MechanicFitRating,
+  isFamilyPausedFor,
 } from './canonical-families';
 import { AuthoringContextService } from '../application/authoring-context.service';
 import { ConfigService } from '@nestjs/config';
@@ -60,6 +61,81 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         worldKey: 'puzzles',
         source: 'skills/wordplay/KNOWLEDGE.md',
       });
+    });
+
+    it('reads a paused family, its reason, and the mechanics it is paused for', () => {
+      const parsed = parseFamilyBlock(
+        block({
+          version: 1,
+          scope: 'puzzles.wordplay-letters',
+          families: [
+            {
+              ...VALID_FAMILY,
+              status: 'paused',
+              pausedReason: ' not in the current selection ',
+            },
+            {
+              ...VALID_FAMILY,
+              familyKey: 'anagram-rearrange',
+              pausedFor: ['closest', ' bomb '],
+            },
+          ],
+        }),
+        'skills/wordplay/KNOWLEDGE.md',
+        context,
+      );
+      expect(parsed[0]).toMatchObject({
+        status: 'paused',
+        pausedReason: 'not in the current selection',
+      });
+      expect(parsed[0]).not.toHaveProperty('pausedFor');
+      expect(parsed[1].pausedFor).toEqual(['bomb', 'closest']);
+      expect(parsed[1]).not.toHaveProperty('status');
+    });
+
+    it.each([
+      [{ status: 'retired' }, 'INVALID_FAMILY_STATUS'],
+      [{ status: true }, 'INVALID_FAMILY_STATUS'],
+      [{ pausedFor: 'bomb' }, 'INVALID_PAUSED_FOR'],
+      [{ pausedFor: ['bomb', ''] }, 'INVALID_PAUSED_FOR'],
+    ])('fails closed on %j', (extra, code) => {
+      try {
+        parseFamilyBlock(
+          block({
+            version: 1,
+            scope: 'puzzles.wordplay-letters',
+            families: [{ ...VALID_FAMILY, ...extra }],
+          }),
+          'skills/wordplay/KNOWLEDGE.md',
+          context,
+        );
+        throw new Error('expected the parser to refuse');
+      } catch (err: unknown) {
+        expect((err as FamilyResolutionError).code).toBe(code);
+      }
+    });
+
+    it('changes the catalog digest when a family is paused, and only then', () => {
+      const resolveWith = (extra: Record<string, unknown>) =>
+        resolveCanonicalFamilies(
+          [
+            {
+              slot: 'knowledge',
+              source: 'skills/wordplay/KNOWLEDGE.md',
+              text: block({
+                version: 1,
+                scope: 'puzzles.wordplay-letters',
+                families: [{ ...VALID_FAMILY, ...extra }],
+              }),
+            },
+          ],
+          context,
+          { skipParityCheck: true },
+        ).digest;
+      const plain = resolveWith({});
+      expect(resolveWith({ status: 'active' })).toBe(plain);
+      expect(resolveWith({ status: 'paused' })).not.toBe(plain);
+      expect(resolveWith({ pausedFor: ['bomb'] })).not.toBe(plain);
     });
 
     it('accepts valid alternative scope formatting (e.g. worldKey/scopeKey or scopeKey only)', () => {
@@ -303,7 +379,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         key === 'ENGINE_AUTHORING_ROOT' ? ROOT : undefined,
     } as unknown as ConfigService);
 
-    it('resolves the real canonical wordplay-letters profile and parses all 15 families', () => {
+    it('resolves the real canonical wordplay-letters profile and parses all 18 families', () => {
       const resolved = service.resolve({
         mechanicKey: 'read-your-opponent',
         worldKey: 'puzzles',
@@ -314,11 +390,13 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(resolved.canonicalFamilies.version).toBe(1);
       expect(resolved.canonicalFamilies.scopeKey).toBe('wordplay-letters');
       expect(resolved.canonicalFamilies.worldKey).toBe('puzzles');
-      expect(resolved.canonicalFamilies.families).toHaveLength(15);
+      expect(resolved.canonicalFamilies.families).toHaveLength(18);
 
       const keys = resolved.canonicalFamilies.families.map((f) => f.familyKey);
       expect(keys).toEqual([
         'add-letter',
+        'alphabet-counts',
+        'alphabet-position',
         'anagram-rearrange',
         'arabic-cipher-dhad',
         'dot-shift',
@@ -333,6 +411,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'substitute-letter',
         'word-inside-word',
         'word-ladder-mini',
+        'wordle-single-guess',
       ]);
 
       // Every family has its canonical ratings and properties populated
@@ -344,6 +423,86 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(anagram?.mechanicFit?.['read-your-opponent']).toBe('EXCELLENT');
       expect(anagram?.mechanicFit?.['bomb']).toBe('GOOD');
       expect(anagram?.mechanicFit?.['closest']).toBe('DO_NOT_FORCE');
+    });
+
+    /**
+     * The owner's 2026-11-24 selection, read off the real profiles: what the
+     * allocator may actually draw for each mechanic. If a family is switched
+     * on or off in a catalog, this is the test that says so.
+     */
+    describe('the 2026-11-24 product selection, from the real profiles', () => {
+      const drawable = (scopeKey: string, mechanicKey: string) => {
+        const { canonicalFamilies } = service.resolve({
+          mechanicKey: 'closest',
+          worldKey: 'puzzles',
+          scopeKey,
+        });
+        return canonicalFamilies.families
+          .filter(
+            (family) =>
+              family.mechanicFit?.[mechanicKey] !== 'DO_NOT_FORCE' &&
+              !isFamilyPausedFor(family, mechanicKey),
+          )
+          .map((family) => family.familyKey)
+          .sort();
+      };
+
+      it('numbers-estimation: مين أقرب draws the five text families', () => {
+        expect(drawable('numbers-estimation', 'closest')).toEqual([
+          'everyday-quantities',
+          'gathering-pairs',
+          'occurrence-count',
+          'quick-total',
+          'tournament-matches',
+        ]);
+      });
+
+      it('numbers-estimation: choosing mechanics draw the five logic families', () => {
+        const expected = [
+          'age-trap',
+          'colour-pattern-position',
+          'deceptive-ratio',
+          'must-be-true',
+          'symbol-arithmetic',
+        ];
+        expect(drawable('numbers-estimation', 'moving-xo')).toEqual(expected);
+        expect(drawable('numbers-estimation', 'read-your-opponent')).toEqual(
+          expected,
+        );
+      });
+
+      it('wordplay-letters: choosing mechanics draw three families, the slider one', () => {
+        const expected = [
+          'anagram-rearrange',
+          'dotless-disambiguation',
+          'wordle-single-guess',
+        ];
+        expect(drawable('wordplay-letters', 'moving-xo')).toEqual(expected);
+        expect(drawable('wordplay-letters', 'read-your-opponent')).toEqual(
+          expected,
+        );
+        expect(drawable('wordplay-letters', 'closest')).toEqual([
+          'alphabet-counts',
+        ]);
+      });
+
+      it('القنبلة draws nothing in either Scope until pictures exist', () => {
+        expect(drawable('numbers-estimation', 'bomb')).toEqual([]);
+        expect(drawable('wordplay-letters', 'bomb')).toEqual([]);
+      });
+
+      it('keeps every earlier family in the library, paused with a reason', () => {
+        for (const scopeKey of ['numbers-estimation', 'wordplay-letters']) {
+          const { families } = service.resolve({
+            mechanicKey: 'closest',
+            worldKey: 'puzzles',
+            scopeKey,
+          }).canonicalFamilies;
+          const paused = families.filter((f) => f.status === 'paused');
+          expect(paused.length).toBeGreaterThan(10);
+          for (const family of paused) expect(family.pausedReason).toBeTruthy();
+        }
+      });
     });
 
     it('leaves scopes without family catalogs with empty family catalogs', () => {
@@ -425,8 +584,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(report.valid).toBe(true);
       expect(report.driftCount).toBe(0);
       expect(report.tablesFound).toBe(2);
-      expect(report.authoritativeFamilyCount).toBe(15);
-      expect(report.catalogFamilyCount).toBe(15);
+      expect(report.authoritativeFamilyCount).toBe(18);
+      expect(report.catalogFamilyCount).toBe(18);
       expect(report.verifiedFields).toEqual([
         'familyKey',
         'membership',
@@ -443,8 +602,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'KNOWLEDGE.md',
       );
 
-      expect(scopeExtracted).toHaveLength(15);
-      expect(knowledgeExtracted).toHaveLength(15);
+      expect(scopeExtracted).toHaveLength(18);
+      expect(knowledgeExtracted).toHaveLength(18);
       expect(scopeExtracted[0].familyKey).toBe('plural-form');
       expect(knowledgeExtracted[0].mechanicFit).toEqual({
         'moving-xo': 'EXCELLENT',

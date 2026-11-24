@@ -1,5 +1,9 @@
 import { createHash } from 'crypto';
-import { CanonicalFamily, MechanicFitRating } from './canonical-family.types';
+import {
+  CanonicalFamily,
+  MechanicFitRating,
+  isFamilyPausedFor,
+} from './canonical-family.types';
 import {
   CreativePlannerError,
   CreativeSlotAllocationResult,
@@ -345,12 +349,19 @@ export function allocateCreativeSlots(
 
   const eligibleFamilies: CanonicalFamily[] = [];
   const diagnostics: string[] = [];
+  const pausedFamilyKeys: string[] = [];
 
   for (const fam of allFamilies) {
     const fit = fam.mechanicFit?.[input.mechanicKey];
 
     // Exclude DO_NOT_FORCE
     if (fit === 'DO_NOT_FORCE') {
+      continue;
+    }
+
+    // Paused by product decision: still in the library, not drawn from.
+    if (isFamilyPausedFor(fam, input.mechanicKey)) {
+      pausedFamilyKeys.push(fam.familyKey);
       continue;
     }
 
@@ -372,8 +383,11 @@ export function allocateCreativeSlots(
   if (eligibleFamilies.length === 0) {
     throw new CreativePlannerError(
       'NO_COMPATIBLE_FAMILIES_FOR_MECHANIC',
-      `No compatible canonical families found for mechanic "${input.mechanicKey}" in scope "${input.scopeKey}"`,
+      pausedFamilyKeys.length
+        ? `Every canonical family that fits mechanic "${input.mechanicKey}" in scope "${input.scopeKey}" is paused (${pausedFamilyKeys.join(', ')})`
+        : `No compatible canonical families found for mechanic "${input.mechanicKey}" in scope "${input.scopeKey}"`,
       {
+        pausedFamilyKeys,
         totalCatalogFamilies: input.catalog.families.length,
         mechanicKey: input.mechanicKey,
         scopeKey: input.scopeKey,
@@ -605,6 +619,12 @@ export function allocateCreativeSlots(
   const distinctFamiliesCount = Object.values(familyUsageCount).filter(
     (c) => c > 0,
   ).length;
+
+  if (pausedFamilyKeys.length > 0) {
+    diagnostics.push(
+      `FAMILIES_PAUSED: ${pausedFamilyKeys.length} fitting family(ies) not drawn from by product decision: ${pausedFamilyKeys.join(', ')}`,
+    );
+  }
 
   if (eligibleFamilies.length === 1) {
     diagnostics.push(

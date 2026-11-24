@@ -35,8 +35,41 @@ export interface CanonicalFamily {
   mechanicFit?: Record<string, MechanicFitRating>;
   /** Supported runtime answer modes (e.g. ['multiple_choice']). */
   answerModes?: string[];
+  /**
+   * Whether the engine may draw this family for a new batch. Absent means
+   * `active`.
+   *
+   * `paused` is a product decision, not a judgement of fit: the family stays in
+   * the library with its ratings intact and is simply not generated until
+   * somebody switches it back. That is what makes narrowing a Scope to the
+   * families the owner currently wants reversible — rewriting a rating to
+   * `DO_NOT_FORCE` would say something untrue about the family and lose the
+   * rating that was approved.
+   */
+  status?: FamilyGenerationStatus;
+  /** Why a family is paused, in a sentence. Shown in planner diagnostics. */
+  pausedReason?: string;
+  /**
+   * Mechanics this family is not generated for although its fit rating would
+   * allow it — the same reversible switch as `status`, for one mechanic.
+   */
+  pausedFor?: string[];
   /** Canonical repo-relative path of the profile where this family was declared. */
   source: string;
+}
+
+export const FAMILY_GENERATION_STATUSES = ['active', 'paused'] as const;
+export type FamilyGenerationStatus =
+  (typeof FAMILY_GENERATION_STATUSES)[number];
+
+/** Whether the engine may draw `family` for `mechanicKey` right now. */
+export function isFamilyPausedFor(
+  family: Pick<CanonicalFamily, 'status' | 'pausedFor'>,
+  mechanicKey: string,
+): boolean {
+  return (
+    family.status === 'paused' || (family.pausedFor ?? []).includes(mechanicKey)
+  );
 }
 
 export interface CanonicalFamilyCatalog {
