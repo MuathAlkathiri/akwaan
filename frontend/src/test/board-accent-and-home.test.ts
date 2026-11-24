@@ -31,8 +31,10 @@ describe("the active-team accent lives on the turn heading only", () => {
     const orbit = read(
       "src/features/live-game-session/match/components/world-orbit.tsx",
     );
-    // The only identity a circle may wear is the winner's.
-    expect(orbit).toContain("completed && owner && owner.solid");
+    // The only identity a circle may carry is the winner's, and only as a
+    // dot on its corner — never as the circle's own fill.
+    expect(orbit).toContain("completed && owner && owner.dot");
+    expect(orbit).not.toContain("owner.solid");
     expect(orbit).not.toContain("activeIdentity");
     expect(orbit).not.toContain("selectingTeamId");
   });

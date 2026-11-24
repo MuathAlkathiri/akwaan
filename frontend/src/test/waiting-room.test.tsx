@@ -25,7 +25,8 @@ vi.mock("@/features/live-game-session/api/live-session-api", async (load) => ({
  *
  * Nobody builds a team here: the two sides exist, named by colour, and the host
  * only moves people across and says go. So what these hold is the part that
- * makes that replacement safe — that starting is never blocked, that a side with
+ * makes that replacement safe — that starting waits only for somebody on each
+ * side, that a side with
  * nobody in it still reads as a side, and that «قسّمهم لي» sends its moves one
  * at a time, because each one invalidates the revision the next one needs.
  */
@@ -102,7 +103,8 @@ describe("the waiting room", () => {
   it("shows the code so the room can join", async () => {
     mount([]);
     await waitFor(() =>
-      expect(screen.getByTestId("waiting-room-code").textContent).toBe(
+      expect(screen.getByTestId("waiting-room-qr")).toHaveAttribute(
+        "data-join-code",
         "YQ6WBTN",
       ),
     );
@@ -116,7 +118,8 @@ describe("the waiting room", () => {
     api.getJoinAccess.mockResolvedValue(null);
     mount([]);
     await waitFor(() =>
-      expect(screen.getByTestId("waiting-room-code").textContent).toBe(
+      expect(screen.getByTestId("waiting-room-qr")).toHaveAttribute(
+        "data-join-code",
         "NEWCODE",
       ),
     );
@@ -126,7 +129,8 @@ describe("the waiting room", () => {
   it("never issues a second code for a session that already has one", async () => {
     mount([]);
     await waitFor(() =>
-      expect(screen.getByTestId("waiting-room-code").textContent).toBe(
+      expect(screen.getByTestId("waiting-room-qr")).toHaveAttribute(
+        "data-join-code",
         "YQ6WBTN",
       ),
     );
@@ -153,11 +157,23 @@ describe("the waiting room", () => {
     expect(screen.getAllByTestId("waiting-room-player")).toHaveLength(1);
   });
 
-  it("starts even with one side empty, and says so", async () => {
+  // The room opens once each side has somebody. A latecomer still joins from
+  // the code on the challenge screen, so nothing past that is asked for.
+  it("waits for somebody on each side, and says what it is waiting for", () => {
     mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }]);
     const start = screen.getByTestId("waiting-room-start");
-    // Never blocked here: the QR stays up on the challenge screen, so the
-    // block that matters is the challenge's own start button.
+    expect(start).toBeDisabled();
+    expect(start.textContent).toContain("نبدأ أول ما ينضم لاعب من كل فريق");
+  });
+
+  const BOTH_SIDES = [
+    { id: "p1", displayName: "ريم", teamId: "team-blue" },
+    { id: "p2", displayName: "سعد", teamId: "team-red" },
+  ];
+
+  it("begins once both sides have somebody", async () => {
+    mount(BOTH_SIDES);
+    const start = screen.getByTestId("waiting-room-start");
     expect(start).not.toBeDisabled();
     expect(start.textContent).toContain("نبدأ واللي يتأخر يلحقنا");
     await userEvent.click(start);
@@ -165,33 +181,20 @@ describe("the waiting room", () => {
   });
 
   it("falls back to start for a session the older flow already made ready", async () => {
-    mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }], [
-      "start",
-      "cancel",
-    ]);
+    mount(BOTH_SIDES, ["start", "cancel"]);
     await userEvent.click(screen.getByTestId("waiting-room-start"));
     expect(command).toHaveBeenCalledWith("start", {});
   });
 
   it("has nothing to press when the session offers no way to start", () => {
-    mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }], ["cancel"]);
+    mount(BOTH_SIDES, ["cancel"]);
     expect(screen.getByTestId("waiting-room-start")).toBeDisabled();
-  });
-
-  it("reads as a plain go once both sides have somebody", () => {
-    mount([
-      { id: "p1", displayName: "ريم", teamId: "team-blue" },
-      { id: "p2", displayName: "سعد", teamId: "team-red" },
-    ]);
-    expect(screen.getByTestId("waiting-room-start").textContent).toContain(
-      "يلا نبدأ",
-    );
   });
 
   it("names an empty side instead of hiding it", () => {
     mount([{ id: "p1", displayName: "ريم", teamId: "team-blue" }]);
     expect(screen.getByText("الأحمر")).toBeInTheDocument();
-    expect(screen.getByText("ما فيه أحد")).toBeInTheDocument();
+    expect(screen.getByText("ننتظر اللاعبين…")).toBeInTheDocument();
   });
 
   it("leaves the host out of the teams", () => {

@@ -295,12 +295,11 @@ describe("unified board", () => {
   it("marks a phone-required tile without deciding anything itself", () => {
     renderBoard(unifiedMatch());
 
-    // The badge is driven by the server capability, per position. It is a
-    // badge rather than a line of text: the words under all twelve circles
-    // were the same four syllables twelve times over.
+    // Every challenge is played on phones now, so a badge saying so on all
+    // twelve circles said nothing. The circle carries no such mark.
     expect(
-      within(tile("0#slot_2")).getByLabelText("يحتاج جوالات"),
-    ).toBeTruthy();
+      within(tile("0#slot_2")).queryByLabelText("يحتاج جوالات"),
+    ).toBeNull();
     const positions = OCCURRENCE_WORLDS.flatMap((worldId, occurrenceIndex) =>
       SLOTS.map((slotKey, index) =>
         position(occurrenceIndex, worldId, slotKey, index, {
@@ -539,8 +538,16 @@ describe("unified board", () => {
     );
     // The draw: no team's colour, and the tally says so out loud.
     const disc = (key: string) => tile(key).firstElementChild as HTMLElement;
+    // A circle never wears a team's colour: a finished one is gold, and the
+    // winner rides its corner as a dot. A draw has no dot at all.
     expect(disc("0#slot_1").className).not.toMatch(/bg-team-\d/);
-    expect(disc("0#slot_2").className).toContain("bg-team-2-fill");
+    expect(disc("0#slot_2").className).not.toMatch(/bg-team-\d/);
+    expect(
+      within(tile("0#slot_1")).queryByTestId("position-winner-dot"),
+    ).toBeNull();
+    expect(
+      within(tile("0#slot_2")).getByTestId("position-winner-dot").className,
+    ).toContain("bg-team-2-base");
     expect(tile("0#slot_1").getAttribute("aria-label")).toContain("تعادل");
     expect(dashes[0].className).not.toMatch(/bg-team-\d/);
     // The win: the winner's colour in both places, and the same winner.
@@ -548,7 +555,9 @@ describe("unified board", () => {
     expect(tile("0#slot_2").getAttribute("aria-label")).toContain(
       "صقور الرياض",
     );
-    expect(dashes[1].className).toContain("bg-team-2-base");
+    // The dashes count what has been played; who won is the dot above.
+    expect(dashes[1].className).not.toMatch(/bg-team-\d/);
+    expect(dashes[1].className).toContain("brand-gold");
   });
 
   it("says so in the heading when the server is not taking a choice", () => {

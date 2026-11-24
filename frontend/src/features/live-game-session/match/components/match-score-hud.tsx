@@ -70,19 +70,21 @@ export function MatchScoreHud({
               data-team-id={team.id}
               data-active={isActive || undefined}
               className={cn(
-                "flex min-w-0 items-center gap-1.5 rounded-full px-2 py-1 sm:gap-2 sm:px-2.5",
-                isActive && cn("ring-1", identity.ring),
+                "flex min-h-11 min-w-0 items-center gap-1.5 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-2.5 sm:min-h-[3.25rem] sm:gap-3 sm:px-4",
+                // The side on turn is lifted off the page; the other lies flat.
+                isActive &&
+                  "bg-[#F6F3FC] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
               )}
             >
               <span
                 aria-hidden
-                className={cn("size-2 shrink-0 rounded-full", identity.dot)}
+                className={cn(
+                  "size-3 shrink-0 rounded-full border-2 border-[hsl(var(--brand-navy))] sm:size-[18px]",
+                  identity.dot,
+                )}
               />
               <span
-                className={cn(
-                  "max-w-[4.5rem] truncate font-display text-xs font-bold sm:max-w-[8rem] sm:text-sm",
-                  isActive ? identity.text : "text-foreground",
-                )}
+                className="max-w-[4.5rem] truncate font-display text-xs font-extrabold text-[hsl(var(--brand-navy))] sm:max-w-[10rem] sm:text-lg xl:text-[22px]"
                 title={team.name}
               >
                 {team.name}
@@ -103,13 +105,13 @@ export function MatchScoreHud({
                     type="button"
                     aria-label={`إنقاص نقطة من ${team.name}`}
                     disabled={isPending}
-                    className="grid size-7 place-items-center rounded-full text-muted-foreground opacity-70 transition hover:bg-black/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                    className="grid size-7 place-items-center rounded-full border-2 border-[#B9B2D9] bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
                     onClick={() => onScore(team.id, -1)}
                   >
                     <Minus className="size-3.5" aria-hidden />
                   </button>
                 )}
-                <strong className="akwaan-numeral min-w-5 text-center text-lg font-black tabular-nums sm:text-2xl">
+                <strong className="akwaan-numeral min-w-6 text-center text-xl font-bold leading-none tabular-nums sm:min-w-9 sm:text-[34px]">
                   {team.score}
                 </strong>
                 {canScore && (
@@ -117,7 +119,7 @@ export function MatchScoreHud({
                     type="button"
                     aria-label={`إضافة نقطة إلى ${team.name}`}
                     disabled={isPending}
-                    className="grid size-7 place-items-center rounded-full text-muted-foreground opacity-70 transition hover:bg-black/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                    className="grid size-7 place-items-center rounded-full border-2 border-[#B9B2D9] bg-white text-[hsl(var(--brand-navy))] transition hover:border-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:size-9"
                     onClick={() => onScore(team.id, 1)}
                   >
                     <Plus className="size-3.5" aria-hidden />
@@ -132,7 +134,7 @@ export function MatchScoreHud({
         data-testid="hud-vs"
         aria-hidden
         dir="ltr"
-        className="col-start-2 row-start-1 shrink-0 px-0.5 font-display text-xs font-black text-[hsl(var(--brand-gold))] sm:text-sm"
+        className="col-start-2 row-start-1 shrink-0 px-0.5 font-display text-xs font-extrabold text-[#7A5C14] sm:text-lg"
       >
         VS
       </span>
@@ -170,7 +172,7 @@ function DoubleAffordance({
       <span
         data-testid="hud-double-armed"
         aria-label={`الدبل مفعّل لفريق ${teamName}`}
-        className="shrink-0 rounded-full bg-[hsl(var(--brand-navy))] px-1.5 py-0.5 text-[0.7rem] font-black leading-none text-white"
+        className="shrink-0 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-2 py-0.5 text-xs font-extrabold leading-none text-[hsl(var(--brand-navy))] sm:text-sm"
         dir="ltr"
       >
         2×
@@ -200,7 +202,7 @@ function DoubleAffordance({
         title="استخدام الدبل"
         disabled={pending}
         onClick={onArm}
-        className="rounded-full border border-[hsl(var(--brand-gold)/.6)] px-1.5 py-0.5 text-[0.7rem] font-black leading-none text-[hsl(var(--brand-navy))] transition hover:bg-[hsl(var(--brand-gold)/.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+        className="rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-2 py-0.5 text-xs font-extrabold leading-none text-[hsl(var(--brand-navy))] transition hover:bg-[hsl(var(--brand-gold))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40 sm:text-sm"
         dir="ltr"
       >
         2×

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TurnSlotContext } from "./turn-slot";
 import { ArrowLeftRight, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,8 @@ export function MatchShell({
 }) {
   const { snapshot, resync } = useLiveSession();
   const [pendingControl, setPendingControl] = useState<string>();
+  // A place in the turn row the board fills with its own sticker.
+  const [turnSlot, setTurnSlot] = useState<HTMLElement | null>(null);
   const match = snapshot?.match;
   const teams: HudTeam[] = (
     match?.standings ??
@@ -137,9 +140,12 @@ export function MatchShell({
               <button
                 type="button"
                 aria-label="تغيير قائد الفريق"
-                className="grid size-9 place-items-center rounded-full border border-border bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="grid size-12 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))]"
               >
-                <Crown className="size-4" aria-hidden />
+                <Crown
+                  className="size-6 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
+                  aria-hidden
+                />
               </button>
             </DialogTrigger>
             <DialogContent dir="rtl">
@@ -213,18 +219,25 @@ export function MatchShell({
       )}
 
       {activeTeam && activeIdentity && showTurnBand && (
-        <div className="mx-auto flex w-full max-w-[92rem] items-center justify-center gap-3 px-3 pt-3 sm:px-5">
-          <span className="hidden h-px flex-1 bg-gradient-to-l from-[hsl(var(--brand-gold)/.4)] to-transparent sm:block" />
+        <div className="mx-auto flex w-full max-w-[92rem] flex-wrap items-center justify-center gap-4 px-3 pt-4 sm:px-5">
+          {/* On the board the sticker is the board's own sentence, lent this
+              place; the band below is then only spoken, not shown twice. */}
+          <div ref={setTurnSlot} className="contents" />
           <div
             data-testid="active-team-band"
             data-team-id={activeTeam.id}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-black",
-              activeIdentity.surface,
-              activeIdentity.border,
-              activeIdentity.text,
+              "font-display inline-flex min-h-12 -rotate-1 items-center gap-3 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:text-2xl",
+              match?.stage.key === "board" && "sr-only",
             )}
           >
+            <span
+              aria-hidden
+              className={cn(
+                "size-5 shrink-0 rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+                activeIdentity.dot,
+              )}
+            />
             دور {activeTeam.name}
           </div>
           {canSwitchTurn && (
@@ -232,7 +245,7 @@ export function MatchShell({
               type="button"
               aria-label="تبديل دور اختيار التحدي"
               disabled={Boolean(pendingControl)}
-              className="grid size-9 place-items-center rounded-full border border-border bg-white/80 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              className="grid size-14 shrink-0 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40"
               onClick={() =>
                 void runControl("turn", () =>
                   switchUnifiedMatchTurn({
@@ -242,10 +255,9 @@ export function MatchShell({
                 )
               }
             >
-              <ArrowLeftRight className="size-4" aria-hidden />
+              <ArrowLeftRight className="size-6" aria-hidden />
             </button>
           )}
-          <span className="hidden h-px flex-1 bg-gradient-to-r from-[hsl(var(--brand-gold)/.4)] to-transparent sm:block" />
         </div>
       )}
 
@@ -254,7 +266,9 @@ export function MatchShell({
           transient state (hydrating, or failed) can centre itself inside it
           instead of being stranded at the top of an empty canvas. */}
       <div className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 pb-10 pt-3 sm:px-5">
-        {children}
+        <TurnSlotContext.Provider value={turnSlot}>
+          {children}
+        </TurnSlotContext.Provider>
       </div>
     </div>
   );

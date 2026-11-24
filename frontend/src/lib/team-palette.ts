@@ -119,10 +119,17 @@ export function defaultTeamColorId(teamIndex: number): string {
   return teamColorAt(teamIndex).id;
 }
 
-/** The two team names, in position order, as a Match is created with them. */
+/**
+ * The two team names, in position order, as a Match is created with them.
+ *
+ * A team is named by its position, not its colour. The colour is still the
+ * team's and still travels with the session, but in the new identity it only
+ * ever appears as a dot beside this name — so a name that *was* the colour
+ * would be describing something the screen no longer shows.
+ */
 export const TEAM_NAMES: readonly [string, string] = [
-  TEAM_COLORS[0].label,
-  TEAM_COLORS[1].label,
+  "الفريق الأول",
+  "الفريق الثاني",
 ];
 
 /**

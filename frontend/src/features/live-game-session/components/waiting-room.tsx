@@ -2,19 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeftRight,
-  Check,
-  Crown,
-  Play,
-  Shuffle,
-  UserMinus,
-} from "lucide-react";
+import { ArrowLeftRight, Crown, Shuffle, UserMinus } from "lucide-react";
 import { ConfirmationDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
 import { teamIdentities } from "@/lib/team-identity";
-import { getApiErrorMessage } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
+import { GoldPill, STICKER } from "@/components/akwaan/sticker";
 import { planSplit } from "../plan-split";
 import { playersInRoom } from "../participants";
 import {
@@ -38,9 +32,9 @@ import { PlayerCharacterIcon } from "./player-characters";
  * arrives from the QR, lands on a side, and the host's only jobs are moving
  * somebody across and saying go.
  *
- * Starting is never blocked here, even with a side empty — the QR stays up on the
- * challenge screen, so a latecomer joins mid-game. What a missing team blocks is
- * the challenge's own start button, which is where the block belongs.
+ * Starting waits for one thing only: somebody on each side. Past that it never
+ * blocks — the QR stays up on the challenge screen, so a latecomer joins
+ * mid-game.
  */
 /**
  * What the room asks for when it issues its own join code.
@@ -49,16 +43,6 @@ import { PlayerCharacterIcon } from "./player-characters";
  * exactly like one made there: players pick their own side, and the code
  * outlives a long match.
  */
-/**
- * How many places a side shows while it waits.
- *
- * Not a cap — more people are welcome and the list simply grows past it. It is
- * there so an empty side reads as a side with room in it rather than as a
- * blank rectangle, and so the first arrival lands somewhere already shaped to
- * receive them.
- */
-const PLACES_PER_SIDE = 4;
-
 const JOIN_ACCESS_DEFAULTS = {
   assignmentPolicy: "explicit" as const,
   maximumParticipantCount: 24,
@@ -218,306 +202,348 @@ export function WaitingRoom() {
   const startAction = ["begin", "start"].find((action) =>
     snapshot.availableActions.includes(action),
   );
-  const everyoneIsHere =
-    unplaced.length === 0 &&
-    sideOf(first.id).length > 0 &&
-    sideOf(second.id).length > 0;
+  // The design's rule: the Match opens once each side has somebody. Whoever
+  // is still on the way joins from the code on the challenge screen.
+  const bothSidesHaveSomeone =
+    sideOf(first.id).length > 0 && sideOf(second.id).length > 0;
+  const occurrences = snapshot.match?.unified?.occurrences ?? [];
+  const countLabel = (count: number) =>
+    count === 1 ? "لاعب واحد" : count === 2 ? "لاعبين" : `${count} لاعبين`;
 
   return (
-    <section dir="rtl" data-testid="waiting-room" className="space-y-5">
-      {/* Three columns, the way the room itself is arranged: a side, the way
-          in, the other side. The code sits between the two teams because it
-          belongs to neither, and because that is where every phone in the
-          room looks. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px_1fr]">
-        {teams.map((team, teamIndex) => {
-          const side = sideOf(team.id);
-          const captainId = captainOf(team.id);
-          const openPlaces = Math.max(PLACES_PER_SIDE - side.length, 0);
-          const panel = (
-            <section
-              key={team.id}
-              data-testid={`waiting-room-side-${team.id}`}
-              className={`bg-card flex flex-col overflow-hidden rounded-[20px] border shadow-[0_8px_24px_-16px_hsl(var(--brand-navy)/.35)] ${teamIndex === 0 ? "lg:order-3" : "lg:order-1"}`}
-            >
-              {/* The side's colour is a band across the top rather than a wash
-                  behind the names: the people are what the panel is for, and a
-                  tinted field makes every one of them harder to read. */}
-              <div
-                className={`h-3.5 border-b-[3px] border-[hsl(var(--brand-navy))] ${team.identity.dot}`}
-              />
-              <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-                <h2 className="flex-1 text-3xl font-black">{team.name}</h2>
-                <span
-                  className={`rounded-full border-2 border-[hsl(var(--brand-navy))] px-3 py-1 text-sm font-black ${team.identity.solid}`}
-                >
-                  {side.length === 0
-                    ? "ما فيه أحد"
-                    : `${side.length} ${side.length === 1 ? "لاعب" : "لاعبين"}`}
+    <section dir="rtl" data-testid="waiting-room" className="flex flex-col gap-6">
+      {/* What this room is for, before anybody reads a team: which Worlds, in
+          which order, and how many people have made it in. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {occurrences.length > 0 ? (
+          <ol
+            aria-label="عوالم المباراة"
+            className="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-2 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC] px-5 py-2.5"
+          >
+            {occurrences.map((occurrence, index) => (
+              <li
+                key={occurrence.occurrenceIndex}
+                className="inline-flex items-center gap-2 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
+              >
+                <span className="grid size-6 place-items-center rounded-full bg-[hsl(var(--brand-navy))] text-[13px] font-extrabold text-white">
+                  {index + 1}
                 </span>
-              </div>
-              <ul className="flex flex-col gap-2.5 px-5 pb-5">
-                {side.map((person) => (
+                {occurrence.worldName ?? "عالم"}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <span />
+        )}
+        <span
+          data-testid="waiting-room-count"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-lg font-bold text-[hsl(var(--brand-navy))]"
+        >
+          {players.length === 0 ? (
+            "ننتظر أول لاعب"
+          ) : (
+            <>
+              انضم{" "}
+              <span className="text-[22px] font-extrabold">
+                {players.length}
+              </span>{" "}
+              {players.length === 1 ? "لاعب" : "لاعبين"}
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        {/* The way in. One panel, one job: the code is the largest thing in
+            the room because every phone in it is pointed here. */}
+        <section
+          className={cn(
+            "flex flex-col gap-5 rounded-[28px] bg-[#F6F3FC] px-6 py-6 sm:px-[30px]",
+            STICKER.base,
+          )}
+        >
+          <h1 className="font-display text-[28px] font-black leading-[1.35] text-[hsl(var(--brand-navy))] sm:text-[38px]">
+            امسحوا الرمز واختاروا فريقكم
+          </h1>
+          <div className="flex flex-col items-center gap-[22px]">
+            <div
+              data-testid="waiting-room-qr"
+              data-join-code={access.data?.enabled ? access.data.joinCode : ""}
+              className="grid aspect-square w-full max-w-[380px] place-items-center rounded-3xl border-4 border-[hsl(var(--brand-navy))] bg-white p-5 shadow-[7px_8px_0_hsl(var(--brand-navy))]"
+            >
+              {joinUrl ? (
+                <ScannableQr value={joinUrl} size={300} />
+              ) : (
+                <span className="text-[15px] font-semibold text-[#4B4380]">
+                  نجهّز الرمز…
+                </span>
+              )}
+            </div>
+            <ol className="m-0 flex w-full list-none flex-wrap items-center justify-between gap-3 p-0">
+              {["امسح الرمز", "اختر شخصيتك", "اختر فريقك"].map(
+                (step, index) => (
                   <li
-                    key={person.id}
-                    data-testid="waiting-room-player"
-                    className="bg-background flex min-h-16 items-center gap-3 rounded-[14px] border px-3"
+                    key={step}
+                    className="inline-flex items-center gap-2.5 whitespace-nowrap text-lg font-bold text-[hsl(var(--brand-navy))]"
                   >
+                    <span className="grid size-[34px] shrink-0 place-items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] text-base font-extrabold">
+                      {index + 1}
+                    </span>
+                    {step}
+                  </li>
+                ),
+              )}
+            </ol>
+          </div>
+          <span className="mt-auto text-lg font-semibold text-[#4A5468]">
+            مسحة وحدة تكفي لكل المباراة.
+          </span>
+        </section>
+
+        <div className="flex min-w-0 flex-col gap-6">
+          {teams.map((team) => {
+            const side = sideOf(team.id);
+            const captainId = captainOf(team.id);
+            return (
+              <section
+                key={team.id}
+                data-testid={`waiting-room-side-${team.id}`}
+                className={cn(
+                  "flex flex-1 flex-col gap-4 rounded-3xl bg-[#FEFDFB] px-5 py-5 sm:px-[26px]",
+                  STICKER.base,
+                )}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  {/* The side's colour is a dot beside its name and nothing
+                      else: never a band, a wash or a border. */}
+                  <h2 className="inline-flex items-center gap-3 font-display text-[26px] font-extrabold text-[hsl(var(--brand-navy))] sm:text-[30px]">
                     <span
-                      className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[hsl(var(--brand-navy))] ${team.identity.surface}`}
-                    >
-                      <PlayerCharacterIcon
-                        characterKey={person.avatarKey}
-                        size={34}
-                      />
-                    </span>
-                    {/* The captain mark sits under the name, never beside it: a
-                        chip in the row squeezed the captain's own name away. */}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xl font-bold">
-                        {person.displayName}
-                      </span>
-                      {person.id === captainId && (
-                        <span
-                          data-testid="waiting-room-captain-badge"
-                          className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs font-black"
-                        >
-                          <Crown className="size-3.5" aria-hidden />
-                          القائد
-                        </span>
+                      aria-hidden
+                      className={cn(
+                        "size-[18px] rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                        team.identity.dot,
                       )}
+                    />
+                    {team.name}
+                  </h2>
+                  {side.length > 0 && (
+                    <span className="text-lg font-bold text-[#4A5468]">
+                      {countLabel(side.length)}
                     </span>
-                    {person.connected ? (
-                      <span className="text-success hidden items-center gap-1.5 text-sm font-bold sm:inline-flex">
-                        <span className="bg-success size-2 rounded-full" />
-                        متصل
-                      </span>
-                    ) : (
-                      <span className="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs font-bold">
-                        خرج
-                      </span>
-                    )}
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      disabled={busy}
-                      aria-label={`انقل ${person.displayName} للفريق الثاني`}
-                      onClick={() =>
-                        move.mutate({
-                          participantId: person.id,
-                          teamId: otherSide(team.id),
-                        })
-                      }
-                    >
-                      <ArrowLeftRight className="size-4" aria-hidden />
-                    </Button>
-                    <ConfirmationDialog
-                      trigger={
+                  )}
+                </div>
+
+                {side.length === 0 ? (
+                  <p
+                    data-testid="waiting-room-empty-side"
+                    className="grid min-h-[60px] place-items-center rounded-2xl border-2 border-dashed border-[#B9B2D9] text-lg font-semibold text-[#4B4380]"
+                  >
+                    ننتظر اللاعبين…
+                  </p>
+                ) : (
+                  <ul className="m-0 flex list-none flex-wrap gap-3.5 p-0">
+                    {side.map((person) => (
+                      <li
+                        key={person.id}
+                        data-testid="waiting-room-player"
+                        className={cn(
+                          "inline-flex min-h-[60px] items-center gap-2 rounded-full bg-white py-1 pe-2 ps-2 text-xl font-bold text-[hsl(var(--brand-navy))]",
+                          STICKER.small,
+                          !person.connected && "opacity-60",
+                        )}
+                      >
+                        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC]">
+                          <PlayerCharacterIcon
+                            characterKey={person.avatarKey}
+                            size={34}
+                          />
+                        </span>
+                        <span className="max-w-[10rem] truncate">
+                          {person.displayName}
+                        </span>
+                        {person.id === captainId && (
+                          <span
+                            role="img"
+                            aria-label="القائد"
+                            data-testid="waiting-room-captain-badge"
+                            className="inline-flex"
+                          >
+                            <Crown
+                              className="size-5 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
+                              aria-hidden
+                            />
+                          </span>
+                        )}
+                        {!person.connected && (
+                          <span className="rounded-full bg-[#EFECF8] px-2 py-0.5 text-xs font-bold text-[#4B4380]">
+                            خرج
+                          </span>
+                        )}
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
-                          aria-label={`اطرد ${person.displayName}`}
+                          disabled={busy}
+                          className="size-9 rounded-full"
+                          aria-label={`انقل ${person.displayName} للفريق الثاني`}
+                          onClick={() =>
+                            move.mutate({
+                              participantId: person.id,
+                              teamId: otherSide(team.id),
+                            })
+                          }
                         >
-                          <UserMinus className="size-4" aria-hidden />
+                          <ArrowLeftRight className="size-4" aria-hidden />
                         </Button>
-                      }
-                      title={`تطرد ${person.displayName}؟`}
-                      description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
-                      confirmLabel="اطرده"
-                      destructive
-                      onConfirm={() => remove.mutate(person.id)}
-                    />
-                  </li>
-                ))}
-                {/* An empty place is drawn, not left blank: a side waiting for
-                    people should look like it is waiting. */}
-                {Array.from({ length: openPlaces }).map((_, index) => (
-                  <li
-                    key={`open-${index}`}
+                        <ConfirmationDialog
+                          trigger={
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="size-9 rounded-full"
+                              aria-label={`اطرد ${person.displayName}`}
+                            >
+                              <UserMinus className="size-4" aria-hidden />
+                            </Button>
+                          }
+                          title={`تطرد ${person.displayName}؟`}
+                          description="جواله يطلع من الجلسة على طول، ويقدر يرجع يصوّر الكود من جديد."
+                          confirmLabel="اطرده"
+                          destructive
+                          onConfirm={() => remove.mutate(person.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Optional. With a captain, that phone carries every turn the
+                    side has to take with one hand; without one the turns go
+                    round the whole side. The host can change it during the
+                    Match too. */}
+                <div className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t-2 border-[#E3DFF0] pt-3.5">
+                  <Crown
+                    className="size-[22px] shrink-0 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
                     aria-hidden
-                    data-testid="waiting-room-open-place"
-                    className="text-muted-foreground flex min-h-16 items-center justify-center rounded-[14px] border-[1.5px] border-dashed"
+                  />
+                  <label
+                    htmlFor={`captain-${team.id}`}
+                    className="whitespace-nowrap text-lg font-bold text-[hsl(var(--brand-navy))]"
                   >
-                    مكان فاضي
+                    قائد الفريق
+                  </label>
+                  <select
+                    id={`captain-${team.id}`}
+                    data-testid={`waiting-room-captain-${team.id}`}
+                    value={captainId ?? ""}
+                    disabled={busy || side.length === 0}
+                    aria-describedby={`captain-hint-${team.id}`}
+                    onChange={(event) => {
+                      setFailure(undefined);
+                      captain.mutate({
+                        teamId: team.id,
+                        participantId: event.target.value || null,
+                      });
+                    }}
+                    className="min-h-[52px] min-w-[9rem] flex-1 rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-4 text-lg font-semibold text-[hsl(var(--brand-navy))] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-50"
+                  >
+                    <option value="">بدون قائد</option>
+                    {side.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    id={`captain-hint-${team.id}`}
+                    className="text-sm text-[#4A5468]"
+                  >
+                    بدون قائد = تناوب تلقائي
+                  </span>
+                </div>
+              </section>
+            );
+          })}
+
+          {unplaced.length > 0 && (
+            <div
+              data-testid="waiting-room-unplaced"
+              className="rounded-3xl border-2 border-dashed border-[#B9B2D9] bg-white p-4"
+            >
+              <p className="mb-3 font-bold text-[hsl(var(--brand-navy))]">
+                لسا ما اختاروا فريق
+              </p>
+              <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                {unplaced.map((person) => (
+                  <li
+                    key={person.id}
+                    className="flex items-center gap-2 rounded-full bg-[#F6F3FC] py-1 pe-1 ps-3"
+                  >
+                    <PlayerCharacterIcon
+                      characterKey={person.avatarKey}
+                      size={28}
+                    />
+                    <span className="font-bold">{person.displayName}</span>
+                    {teams.map((team) => (
+                      <Button
+                        key={team.id}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        className="font-black"
+                        aria-label={`حط ${person.displayName} في ${team.name}`}
+                        onClick={() =>
+                          move.mutate({
+                            participantId: person.id,
+                            teamId: team.id,
+                          })
+                        }
+                      >
+                        {team.name}
+                      </Button>
+                    ))}
                   </li>
                 ))}
               </ul>
-              {/* Optional. With a captain, that phone carries every turn the
-                  side has to take with one hand; without one the turns go round
-                  the whole side. The host can change it during the Match too. */}
-              <div className="mt-auto border-t px-5 py-4">
-                <label
-                  htmlFor={`captain-${team.id}`}
-                  className="mb-1.5 flex items-center gap-1.5 text-sm font-black"
-                >
-                  <Crown className="size-4" aria-hidden />
-                  قائد الفريق
-                </label>
-                <select
-                  id={`captain-${team.id}`}
-                  data-testid={`waiting-room-captain-${team.id}`}
-                  value={captainId ?? ""}
-                  disabled={busy || side.length === 0}
-                  aria-describedby={`captain-hint-${team.id}`}
-                  onChange={(event) => {
-                    setFailure(undefined);
-                    captain.mutate({
-                      teamId: team.id,
-                      participantId: event.target.value || null,
-                    });
-                  }}
-                  className="bg-background focus-visible:ring-ring h-11 w-full rounded-[12px] border px-3 text-base font-bold focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
-                >
-                  <option value="">بدون قائد</option>
-                  {side.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.displayName}
-                    </option>
-                  ))}
-                </select>
-                <p
-                  id={`captain-hint-${team.id}`}
-                  className="text-muted-foreground mt-1.5 text-xs font-bold"
-                >
-                  بدون قائد = تناوب تلقائي بين لاعبي الفريق. تقدر تغيّره من شاشة المباراة بعد ما تبدأ.
-                </p>
-              </div>
-            </section>
-          );
-          return panel;
-        })}
-
-        {joinUrl && (
-          <section className="bg-card flex flex-col items-center gap-4 rounded-[20px] border p-6 text-center shadow-[0_8px_24px_-16px_hsl(var(--brand-navy)/.35)] lg:order-2">
-            <h1 className="text-2xl leading-relaxed font-black md:text-3xl">
-              امسحوا الرمز واختاروا فريقكم
-            </h1>
-            <div className="rounded-[20px] border bg-white p-4">
-              <ScannableQr value={joinUrl} size={210} />
             </div>
-            <div className="flex w-full items-center gap-3">
-              <span className="bg-border h-px flex-1" />
-              <span className="text-muted-foreground text-sm">
-                أو اكتبوا الكود
-              </span>
-              <span className="bg-border h-px flex-1" />
-            </div>
-            {/* One tile per character: a code read off a television and typed
-                into a phone is copied letter by letter, and a single run of
-                text is where the eye loses its place. */}
-            <div
-              dir="ltr"
-              role="img"
-              aria-label={`كود الانضمام ${access.data!.joinCode}`}
-              data-testid="waiting-room-code"
-              className="flex gap-1.5"
-            >
-              {access.data!.joinCode.split("").map((character, index) => (
-                <span
-                  key={`${character}-${index}`}
-                  className="bg-background flex h-[3.25rem] w-11 items-center justify-center rounded-xl border border-b-[3px] text-2xl font-black"
-                >
-                  {character}
-                </span>
-              ))}
-            </div>
-            <span className="text-muted-foreground text-sm">
-              مسحة وحدة تكفي لكل المباراة
-            </span>
-          </section>
-        )}
-      </div>
-
-      {unplaced.length > 0 && (
-        <div
-          data-testid="waiting-room-unplaced"
-          className="rounded-[20px] border p-4"
-        >
-          <p className="mb-3 font-bold">لسا ما اختاروا فريق</p>
-          <ul className="flex flex-wrap gap-2">
-            {unplaced.map((person) => (
-              <li
-                key={person.id}
-                className="bg-muted flex items-center gap-2 rounded-full py-1 ps-3 pe-1"
-              >
-                <PlayerCharacterIcon
-                  characterKey={person.avatarKey}
-                  size={28}
-                />
-                <span className="font-bold">{person.displayName}</span>
-                {teams.map((team) => (
-                  <Button
-                    key={team.id}
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy}
-                    className="font-black"
-                    aria-label={`حط ${person.displayName} في ${team.name}`}
-                    onClick={() =>
-                      move.mutate({
-                        participantId: person.id,
-                        teamId: team.id,
-                      })
-                    }
-                  >
-                    {team.name}
-                  </Button>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {failure && (
-        <p
-          role="alert"
-          data-testid="waiting-room-failure"
-          className="text-destructive text-sm font-bold"
-        >
-          {failure}
-        </p>
-      )}
-
-      <footer className="flex flex-wrap items-center justify-between gap-4">
-        <button
-          type="button"
-          data-testid="waiting-room-split"
-          disabled={busy || players.length < 2}
-          onClick={() => void splitThem()}
-          className="inline-flex min-h-[3.25rem] items-center justify-center gap-2.5 rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-6 text-lg font-black text-[hsl(var(--brand-navy))] shadow-[0_5px_0_hsl(var(--brand-navy))] disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Shuffle className="size-5" aria-hidden />
-          قسّمنا عشوائي
-        </button>
-        <div className="flex flex-wrap items-center gap-4">
-          {everyoneIsHere && (
-            <span className="text-success inline-flex items-center gap-2 text-base font-bold">
-              <Check className="size-4" aria-hidden />
-              {players.length} {players.length === 1 ? "لاعب" : "لاعبين"}، وكل
-              فريق جاهز
-            </span>
           )}
-          {/* The primary action of the whole screen, so it carries the gold:
-              the one hard shadow on this page that is not navy. */}
-          <button
-            type="button"
-            data-testid="waiting-room-start"
-            disabled={busy || !startAction}
-            onClick={() => startAction && command(startAction, {})}
-            className="inline-flex min-h-16 items-center justify-center gap-2.5 rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-navy))] px-9 text-xl font-black text-white shadow-[0_5px_0_hsl(var(--brand-gold))] disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Play className="size-5" aria-hidden />
-            {/* One button, two readings: the second is the host's permission to
-                leave somebody behind, which only means anything while somebody
-                is still missing. */}
-            {everyoneIsHere ? "يلا نبدأ" : "نبدأ واللي يتأخر يلحقنا"}
-          </button>
+
+          {failure && (
+            <p
+              role="alert"
+              data-testid="waiting-room-failure"
+              className="rounded-2xl bg-[#F6F3FC] px-4 py-3 text-base font-bold text-[hsl(var(--brand-navy))]"
+            >
+              {failure}
+            </p>
+          )}
+
+          <footer className="flex flex-wrap items-center justify-between gap-5">
+            <button
+              type="button"
+              data-testid="waiting-room-split"
+              disabled={busy || players.length < 2}
+              onClick={() => void splitThem()}
+              className="inline-flex min-h-16 items-center justify-center gap-2.5 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-7 text-xl font-bold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Shuffle className="size-5" aria-hidden />
+              قسّمنا عشوائي
+            </button>
+            <GoldPill
+              data-testid="waiting-room-start"
+              disabled={busy || !startAction || !bothSidesHaveSomeone}
+              onClick={() => startAction && command(startAction, {})}
+              className="px-8 sm:min-h-[76px] sm:px-11 sm:text-[26px]"
+            >
+              {bothSidesHaveSomeone
+                ? "نبدأ واللي يتأخر يلحقنا"
+                : "نبدأ أول ما ينضم لاعب من كل فريق"}
+            </GoldPill>
+          </footer>
         </div>
-      </footer>
+      </div>
     </section>
   );
 }

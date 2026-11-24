@@ -27,10 +27,14 @@ import {
  * assertions that make such an edit fail loudly instead.
  */
 describe("the two team colours", () => {
-  it("is exactly two, and a team's colour is its name", () => {
+  it("is exactly two, and a team is named by its position", () => {
     expect(TEAM_COLORS).toHaveLength(2);
-    expect(TEAM_NAMES).toEqual(["الأزرق", "الأحمر"]);
-    expect(TEAM_COLORS.map((color) => color.label)).toEqual([...TEAM_NAMES]);
+    // Named by position; the colour keeps its own label for the palette.
+    expect(TEAM_NAMES).toEqual(["الفريق الأول", "الفريق الثاني"]);
+    expect(TEAM_COLORS.map((color) => color.label)).toEqual([
+      "الأزرق",
+      "الأحمر",
+    ]);
     expect(TEAM_COLORS.map((color) => color.id)).toEqual(["blue", "red"]);
   });
 
