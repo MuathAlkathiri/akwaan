@@ -278,12 +278,25 @@ describe('ContentEngineReviewService enforcement characterization', () => {
 
   it.each([
     { findings: [{ code: 'DUPLICATE_IN_BATCH', severity: 'blocking', message: 'duplicate' }] },
-    { findings: [{ code: 'FAMILY_COMPLIANCE_UNVERIFIED', severity: 'warning', message: 'family' }] },
+    { findings: [{ code: 'FAMILY_COMPLIANCE_MISMATCH', severity: 'warning', message: 'family' }] },
     { factVerification: { state: 'UNSUPPORTED', claims: [{ state: 'UNSUPPORTED', evidence: [{ relation: 'contradicts' }] }] } },
   ])('blocks direct review for unresolved hard or exceptional findings %#', async (overrides) => {
     const { service } = build({ current: candidate(overrides) });
     expect((await service.detail('candidate-1')).reviewEligibility.quickReview.eligible).toBe(false);
     await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow();
+  });
+
+  it('keeps direct review open when a family simply has no automatic rule', async () => {
+    // Most families have none, so "unverified" is the ordinary state of a
+    // candidate, not an exception: the reviewer approving it is the manual
+    // check. A detected mismatch (above) still takes the full form.
+    const { service } = build({
+      current: candidate({
+        findings: [{ code: 'FAMILY_COMPLIANCE_UNVERIFIED', severity: 'warning', message: 'family' }],
+      }),
+    });
+    const { quickReview } = (await service.detail('candidate-1')).reviewEligibility;
+    expect(quickReview.reasons).not.toContain('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
   });
 
   it('blocks direct review when live canonical compatibility fails', async () => {

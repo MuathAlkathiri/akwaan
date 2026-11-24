@@ -423,6 +423,7 @@ export class GenerationPlannerService {
     return [
       'PUZZLES — EXACT FOR US, OUT OF REACH FOR THEM: The answer is a number we can compute exactly and a player cannot reach exactly in the time. If a player who spots a trick can state it precisely in a few seconds, both teams will, the question ties and nobody scores — discard it.',
       'PUZZLES — PITCHED A LITTLE HARD: Prefer larger sets and answers that are not round. A careless guess must land clearly further away than a thoughtful one.',
+      'PUZZLES — THE ANSWER IS A COUNT, SO THE STEP FOLLOWS IT: answerBasis is "reasoning". Use step 1 unless the answer and both ends of the range are all multiples of a rounder step. stepsFromMin is simply (correctValue − min) ÷ step.',
     ];
   }
 
