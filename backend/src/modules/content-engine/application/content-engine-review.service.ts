@@ -3735,7 +3735,11 @@ export class ContentEngineReviewService {
     }
     if (!REVIEWABLE_PIPELINE_STATUSES.includes((candidate.status ?? '') as never) || candidate.findings?.some((f) => f.severity === 'blocking')) reasons.push('توجد ملاحظات مانعة.');
     if (hasIncompleteHistoricalVerification(candidate.findings)) reasons.push('التحقق التاريخي غير مكتمل.');
-    if (candidate.findings?.some((f) => ['FAMILY_COMPLIANCE_MISMATCH', 'FAMILY_COMPLIANCE_UNVERIFIED'].includes(f.code))) reasons.push('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
+    // A mismatch is the engine saying the item looks like a different family,
+    // and that takes the full form. "Unverified" only means no automatic rule
+    // exists for this family — most families have none — and the reviewer
+    // pressing approve is the manual check it asks for.
+    if (candidate.findings?.some((f) => f.code === 'FAMILY_COMPLIANCE_MISMATCH')) reasons.push('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
     const compatibility = candidate.compatibilityEvaluation as { preDraft?: { blockers?: unknown[] } } | null;
     if (!compatibility?.preDraft || !Array.isArray(compatibility.preDraft.blockers)) reasons.push('فحص التوافق ما اكتمل لهذا المرشح.');
     else if (compatibility.preDraft.blockers.length) reasons.push(`التوافق فيه موانع: ${(compatibility.preDraft.blockers as Array<{ code?: string; message?: string }>).map((blocker) => `${blocker.code ?? 'UNKNOWN'} (${blocker.message ?? ''})`).join('؛ ')}`);

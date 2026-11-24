@@ -3,6 +3,7 @@ import {
   BOMB_CANDIDATE_SCHEMA,
   CLOSEST_CANDIDATE_SCHEMA,
   COMBO_CANDIDATE_SCHEMA,
+  settleClosestGrid,
   DEFAULT_RYO_DIFFICULTY_TARGETS,
   ORIGINALITY_GUIDANCE,
   PROMPT_VERSIONS,
@@ -72,6 +73,110 @@ const parse = (items: unknown[]) =>
       parse: (raw: string, count: number, mode: string) => unknown[];
     }
   ).parse(JSON.stringify({ candidates: items }), items.length, 'closest');
+
+describe('settling the grid of a derived مين أقرب answer', () => {
+  type Parsed = {
+    draft: {
+      answerPayload: { correctValue: number };
+      mechanicPayload: { closestSlider: Record<string, number> };
+    };
+    authoring: Record<string, unknown>;
+  };
+  const parsed = (over: Record<string, unknown>) =>
+    parse([closestItem(over)])[0] as Parsed;
+
+  it('leaves a grid that already reaches the answer exactly as stated', () => {
+    const item = parsed({});
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(2);
+    expect(item.authoring.stepsFromMin).toBe(39);
+    expect(item.authoring).not.toHaveProperty('gridRepair');
+  });
+
+  it('takes a finer step when a tidy one cannot land on the answer', () => {
+    // The first real batch: 22 teams home and away is 462 matches, authored
+    // on 50→1000 in tens, with a stepsFromMin of 0.
+    const item = parsed({
+      min: 50,
+      max: 1000,
+      step: 10,
+      correctValue: 462,
+      stepsFromMin: 0,
+    });
+    expect(item.draft.answerPayload.correctValue).toBe(462);
+    expect(item.draft.mechanicPayload.closestSlider).toMatchObject({
+      min: 50,
+      max: 1000,
+      step: 2,
+    });
+    expect(item.authoring.stepsFromMin).toBe(206);
+    expect(item.authoring.gridRepair).toEqual({
+      statedStep: 10,
+      statedStepsFromMin: 0,
+    });
+  });
+
+  it('takes the roundest step that still reaches the answer and the far end', () => {
+    expect(
+      settleClosestGrid({ min: 0, max: 1000, step: 100, correctValue: 750 }),
+    ).toEqual({ step: 50, stepsFromMin: 15 });
+    expect(
+      settleClosestGrid({ min: 100, max: 1000, step: 100, correctValue: 756 }),
+    ).toEqual({ step: 2, stepsFromMin: 328 });
+    // Never coarser than the step the author chose.
+    expect(
+      settleClosestGrid({ min: 0, max: 1000, step: 10, correctValue: 500 }),
+    ).toEqual({ step: 10, stepsFromMin: 50 });
+  });
+
+  it('corrects a wrong stepsFromMin on a grid that was already right', () => {
+    const item = parsed({ stepsFromMin: 0 });
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(2);
+    expect(item.authoring.stepsFromMin).toBe(39);
+    expect(item.authoring.gridRepair).toEqual({
+      statedStep: 2,
+      statedStepsFromMin: 0,
+    });
+  });
+
+  it('never moves an endpoint and never rounds the answer', () => {
+    const item = parsed({ min: 3, max: 997, step: 50, correctValue: 461 });
+    expect(item.draft.answerPayload.correctValue).toBe(461);
+    expect(item.draft.mechanicPayload.closestSlider).toMatchObject({
+      min: 3,
+      max: 997,
+      step: 2,
+    });
+  });
+
+  it("does not touch a knowledge-anchored item: its grid is the author's claim to check", () => {
+    const item = parsed({
+      answerBasis: 'knowledge-anchored',
+      min: 50,
+      max: 1000,
+      step: 10,
+      correctValue: 462,
+      stepsFromMin: 0,
+    });
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(10);
+    expect(item.authoring.stepsFromMin).toBe(0);
+    expect(item.authoring).not.toHaveProperty('gridRepair');
+  });
+
+  it('leaves what it cannot settle for the screen to judge', () => {
+    expect(
+      settleClosestGrid({ min: 0, max: 10, step: 1, correctValue: 2.5 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 10, max: 10, step: 1, correctValue: 10 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 0, max: 100, step: 1, correctValue: 140 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 0, max: 100, step: 0, correctValue: 40 }),
+    ).toBeUndefined();
+  });
+});
 
 describe('Closest generation schema', () => {
   const item = (

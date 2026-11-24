@@ -40,6 +40,30 @@ function letterFrequencyMap(letters: string[]): Record<string, number> {
 }
 
 /**
+ * The families `detectStructuralFamily` can recognise or be confused between:
+ * the letter-and-word families of `puzzles/wordplay-letters`. An item assigned
+ * to any other family is outside what the detector can say anything about.
+ */
+const STRUCTURALLY_DETECTABLE_FAMILIES: ReadonlySet<string> = new Set([
+  'plural-form',
+  'anagram-rearrange',
+  'add-letter',
+  'remove-letter',
+  'substitute-letter',
+  'hidden-word',
+  'shared-letter-completion',
+  'palindrome-symmetry',
+  'letter-subtraction-math',
+  'dotless-disambiguation',
+  'dot-shift',
+  'letter-pattern-progression',
+  'word-inside-word',
+  'arabic-cipher-dhad',
+  'word-ladder-mini',
+  'wordle-single-guess',
+]);
+
+/**
  * Deterministically validates candidate content against its assigned canonical family.
  *
  * Distinguishes:
@@ -122,11 +146,20 @@ export function evaluateFamilyCompliance(
 
   // 2. Structural family detection based on candidate prompt, answer, and concept
   // A declared family label alone is never trusted as proof of compliance.
-  const detectedFamily = detectStructuralFamily({
-    prompt: promptText,
-    correctLabel,
-    concept,
-  });
+  //
+  // The detector knows the letter-and-word families and nothing else. Run on
+  // an item from another Scope it still finds them: «كم مجموع الأرقام» matched
+  // the plural pattern on "جموع", and a concept that wrote "22 × (22 − 1)"
+  // matched letter arithmetic — so a correct numbers item was reported as
+  // conflicting with its own family and lost one-click approval. It is only
+  // asked about families it can tell apart.
+  const detectedFamily = STRUCTURALLY_DETECTABLE_FAMILIES.has(assignedFamilyKey)
+    ? detectStructuralFamily({
+        prompt: promptText,
+        correctLabel,
+        concept,
+      })
+    : undefined;
 
   // If structural pattern was detected:
   if (detectedFamily) {

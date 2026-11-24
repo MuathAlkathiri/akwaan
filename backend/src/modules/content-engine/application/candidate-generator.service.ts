@@ -561,6 +561,56 @@ export const BOMB_TASK_GUIDANCE = [
   'An answer is still ONE short name whatever the angle: a club, a country, a city, a person. If the honest answer is a number, a date or a sentence, pick another angle.',
 ].join('\n');
 
+/** Steps a slider may fall back to, roundest first. */
+const CLOSEST_ROUND_STEPS = [
+  1000, 500, 250, 200, 100, 50, 25, 20, 10, 5, 2, 1,
+] as const;
+
+/**
+ * The step a derived مين أقرب answer can actually be reached on.
+ *
+ * When the answer is computed from the prompt — 22 teams home and away is 462
+ * matches — the answer is fixed and only the step is a choice. A model that
+ * picks a tidy step of 10 for a range starting at 50 has authored a slider
+ * that cannot land on its own answer, and the screen rightly blocks it; the
+ * first real عالم الألغاز batch lost four of five candidates that way. The
+ * Skill's rule for this case is "change the step, never move an endpoint,
+ * never round the answer", and that rule is arithmetic, so it is applied here
+ * rather than asked of the model: the roundest step, no coarser than the one
+ * stated, that reaches both the answer and the far end of the range.
+ *
+ * Returns nothing for values that are not whole numbers or a range that is
+ * not a range — those are left exactly as stated for the screen to judge.
+ */
+export function settleClosestGrid(input: {
+  min: number;
+  max: number;
+  step: number;
+  correctValue: number;
+}): { step: number; stepsFromMin: number } | undefined {
+  const { min, max, step, correctValue } = input;
+  if (
+    ![min, max, correctValue].every(Number.isInteger) ||
+    !(step > 0) ||
+    max <= min ||
+    correctValue < min ||
+    correctValue > max
+  )
+    return undefined;
+  const reaches = (candidate: number) =>
+    (correctValue - min) % candidate === 0 && (max - min) % candidate === 0;
+  const settled =
+    Number.isInteger(step) && reaches(step)
+      ? step
+      : CLOSEST_ROUND_STEPS.find(
+          (candidate) => candidate <= step && reaches(candidate),
+        );
+  // A stated step below 1 (0.5) has no rounder step under it; whole numbers
+  // are always reachable in ones.
+  const resolved = settled ?? 1;
+  return { step: resolved, stepsFromMin: (correctValue - min) / resolved };
+}
+
 /**
  * Extends a candidate generation schema with an explicit `slotIndex` property
  * for jobs with pinned creative slots. Preserves strict-mode requirements by
@@ -1603,13 +1653,48 @@ export class CandidateGeneratorService {
         ? value.unit.trim()
         : undefined;
 
+    const correctValue = num(value.correctValue, 'correctValue');
+    const min = num(value.min, 'min');
+    const max = num(value.max, 'max');
+    const statedStep = num(value.step, 'step');
+    const statedStepsFromMin =
+      typeof value.stepsFromMin === 'number' &&
+      Number.isFinite(value.stepsFromMin)
+        ? value.stepsFromMin
+        : undefined;
+    // A derived answer is whatever the derivation says it is; only the step
+    // is a choice. So for a reasoning item the grid is settled here instead
+    // of being left to the model's arithmetic. See `settleClosestGrid`.
+    const settled =
+      value.answerBasis === 'reasoning'
+        ? settleClosestGrid({ min, max, step: statedStep, correctValue })
+        : undefined;
+    const step = settled?.step ?? statedStep;
+    // A reply that stated no stepsFromMin on a grid that was already right
+    // keeps none: there is nothing to correct, and nothing was claimed.
+    const stepsFromMin =
+      settled &&
+      (settled.step !== statedStep || statedStepsFromMin !== undefined)
+        ? settled.stepsFromMin
+        : statedStepsFromMin;
+    const gridRepair =
+      settled &&
+      (settled.step !== statedStep ||
+        (statedStepsFromMin !== undefined &&
+          settled.stepsFromMin !== statedStepsFromMin))
+        ? {
+            statedStep,
+            ...(statedStepsFromMin !== undefined ? { statedStepsFromMin } : {}),
+          }
+        : undefined;
+
     return {
       factualClaims,
       draft: {
         prompt: { ar: typeof value.prompt === 'string' ? value.prompt : '' },
         answerPayload: {
           mode: 'closest',
-          correctValue: num(value.correctValue, 'correctValue'),
+          correctValue,
           // No tolerance is authored. The Closest runtime never reads it —
           // grading is nearest-wins — so inventing one would add a field that
           // changes nothing and misleads a reviewer.
@@ -1617,9 +1702,9 @@ export class CandidateGeneratorService {
         mechanicPayload: {
           closestSlider: {
             mode: 'numeric-range',
-            min: num(value.min, 'min'),
-            max: num(value.max, 'max'),
-            step: num(value.step, 'step'),
+            min,
+            max,
+            step,
             // A calendar year is a value, not an amount: the policy forbids a
             // unit on one, so it is dropped rather than passed through.
             ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
@@ -1648,10 +1733,10 @@ export class CandidateGeneratorService {
           : {}),
         playerReasoningStrategy: text(value.playerReasoningStrategy),
         domainDescription: text(value.domainDescription),
-        ...(typeof value.stepsFromMin === 'number' &&
-        Number.isFinite(value.stepsFromMin)
-          ? { stepsFromMin: value.stepsFromMin }
-          : {}),
+        ...(stepsFromMin !== undefined ? { stepsFromMin } : {}),
+        // What the model stated before the grid was settled, kept so a
+        // reviewer can see the slider's step is ours and not the model's.
+        ...(gridRepair ? { gridRepair } : {}),
       },
     };
   }
