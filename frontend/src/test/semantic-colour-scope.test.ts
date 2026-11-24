@@ -75,9 +75,10 @@ describe("semantic colour never becomes a team's identity", () => {
     const band = shell.slice(shell.indexOf('data-testid="active-team-band"'));
     // Its colours come from the identity resolver — the only thing that emits team
     // tokens — and no class is written here by hand.
-    expect(band).toContain("activeIdentity.surface");
-    expect(band).toContain("activeIdentity.border");
-    expect(band).toContain("activeIdentity.text");
+    // In the new identity that is one token: the side's dot. The band itself
+    // is gold, because having the turn is game state.
+    expect(band).toContain("activeIdentity.dot");
+    expect(band).not.toContain("activeIdentity.surface");
     expect(band).not.toMatch(SEMANTIC_UTILITY);
   });
 

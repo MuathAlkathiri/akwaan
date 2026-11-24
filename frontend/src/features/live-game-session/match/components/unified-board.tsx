@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+import { useTurnSlot } from "./turn-slot";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -10,7 +12,7 @@ import {
 } from "@/features/match-setup";
 import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
 import { useLiveSession } from "../../hooks/live-session-context";
-import { WorldOrbit, winnerOf } from "./world-orbit";
+import { WorldOrbit } from "./world-orbit";
 import { localizeMatchError } from "../errors/match-errors";
 import { teamName } from "../presentation";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -57,6 +59,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
 
   const match = snapshot?.match;
   const unified = match?.unified;
+  const turnSlot = useTurnSlot();
 
   /**
    * Choosing a tile *prepares* it; it does not start it.
@@ -118,38 +121,40 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
         standings.map((team) => ({ id: team.teamId })),
       )
     : undefined;
+  // Whose turn it is, said once and out loud: one gold sticker, with the
+  // side's dot. Gold because it is game state; the dot because a team's
+  // colour is never more than that.
+  const turnSticker = selectingTeamName ? (
+    <h1
+      data-testid="selecting-team-board"
+      className="font-display inline-flex min-h-12 -rotate-1 items-center gap-3 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-center text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:min-h-16 sm:px-7 sm:text-2xl xl:text-[30px]"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "size-5 shrink-0 rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+          activeIdentity?.dot ?? "bg-[hsl(var(--brand-navy))]",
+        )}
+      />
+      {selectionOpen
+        ? `دور ${selectingTeamName}، اختاروا تحديكم`
+        : `دور ${selectingTeamName} — ما تقدرون تختارون تحدي الحين`}
+    </h1>
+  ) : null;
+
   return (
-    <div className="space-y-4" data-testid="unified-board">
-      {/* Whose turn it is, said once and out loud, in that side's own
-          colour. The board used to whisper it with a thin underline under
-          three pictures — a lot of screen for a fact the room has to act on. */}
-      {selectingTeamName && (
-        <h1
-          data-testid="selecting-team-board"
-          className="font-display flex items-center justify-center gap-3 text-center text-2xl font-black"
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "size-3 rounded-full",
-              activeIdentity?.dot ?? "bg-[hsl(var(--brand-navy))]",
-            )}
-          />
-          {selectionOpen
-            ? `دور ${selectingTeamName}، اختاروا تحديكم`
-            : `دور ${selectingTeamName} — ما تقدرون تختارون تحدي الحين`}
-        </h1>
-      )}
-      <div className="flex justify-end lg:hidden">
-        {/* The shell's own progress bar takes over at `lg`, where this became the
-            same fraction printed twice on one screen. */}
-        <p
-          data-testid="board-progress"
-          className="akwaan-numeral rounded-[var(--radius)] border border-border bg-card px-3 py-2.5 text-sm font-black text-muted-foreground lg:hidden"
-        >
-          {board.completedPositionCount}/{board.totalPositionCount}
-        </p>
-      </div>
+    <div className="flex flex-1 flex-col gap-4" data-testid="unified-board">
+      {turnSticker &&
+        (turnSlot ? (
+          createPortal(turnSticker, turnSlot)
+        ) : (
+          <div className="flex justify-center">{turnSticker}</div>
+        ))}
+      {/* Read by a screen reader as a fraction; the room reads the pill at the
+          foot of the board. */}
+      <p data-testid="board-progress" className="sr-only">
+        {board.completedPositionCount}/{board.totalPositionCount}
+      </p>
 
       {error && (
         <Alert variant="destructive" role="alert">
@@ -222,43 +227,52 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                   onResume={() => resync?.()}
                 />
 
-                {/* Four dashes, one per challenge, each taking the colour of
-                    the side that won it. A fraction told the host how many
-                    were done; this also tells them who has been winning.
+                {/* The World's name, then four dashes, one per challenge:
+                    gold once it has been played. Who won each one is the dot
+                    on its circle above.
                     No `dir` of its own: the page is right-to-left and so is
                     the slot order, so the first dash sits under the first
                     slot's circle instead of mirroring it. */}
+                <h2
+                  aria-hidden
+                  className="font-display mt-1 text-center text-xl font-extrabold text-[hsl(var(--brand-navy))] sm:text-2xl"
+                >
+                  {occurrence.worldName ?? "عالم"}
+                </h2>
                 <ol
                   aria-hidden
                   data-testid={`world-tally-${occurrence.occurrenceIndex}`}
-                  className="mt-3 flex justify-center gap-1.5"
+                  className="mt-2.5 flex justify-center gap-1.5"
                 >
-                  {positions.map((position) => {
-                    const winnerTeamId =
-                      position.status === "completed"
-                        ? winnerOf(position)
-                        : undefined;
-                    const identity = winnerTeamId
-                      ? teamIdentityOf(
-                          winnerTeamId,
-                          standings.map((team) => ({ id: team.teamId })),
-                        )
-                      : undefined;
-                    return (
-                      <li
-                        key={position.positionKey}
-                        className={cn(
-                          "h-1.5 w-6 rounded-full",
-                          identity ? identity.dot : "bg-[hsl(var(--brand-navy)/.12)]",
-                        )}
-                      />
-                    );
-                  })}
+                  {positions.map((position) => (
+                    <li
+                      key={position.positionKey}
+                      className={cn(
+                        "h-2.5 w-[34px] rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                        position.status === "completed"
+                          ? "bg-[hsl(var(--brand-gold))]"
+                          : "bg-[#E3DFF0]",
+                      )}
+                    />
+                  ))}
                 </ol>
               </section>
             );
           })}
         </div>
+      )}
+
+      {board.positions.length > 0 && (
+        <p
+          aria-hidden
+          data-testid="board-progress-pill"
+          className="mt-auto inline-flex min-h-10 items-center self-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[#F6F3FC] px-5 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
+        >
+          <span className="me-1.5 text-xl font-extrabold">
+            {board.completedPositionCount}
+          </span>
+          من {board.totalPositionCount} مكتملة
+        </p>
       )}
 
       {!isController && board.positions.length > 0 && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Check, Loader2, Smartphone } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/lib/api/media-url";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -44,99 +44,26 @@ function onOrbit(angleDeg: number) {
 const SLOT_PLACES = SLOT_ANGLES.map(onOrbit);
 
 /**
- * The dust in the galaxy's band.
+ * The World's ring: a pale band with one purple line through it.
  *
- * Deterministic from the station number: random points would be redrawn on
- * every render and make the whole board twitch. Each grain is an ellipse
- * turned along the band, which is what makes a ring of dots read as a sweep
- * of dust rather than as a dotted line.
+ * Flat on purpose. The identity has no gradients and no glow, and purple is
+ * its decoration colour — gold is kept for what the game is saying. Two of
+ * these are stacked and clipped to halves, which is what puts the planet
+ * inside the ring instead of in front of a picture of one.
  */
-const DUST_COLOURS = ["#12153F", "#2A2F9A", "#7C6CF0"] as const;
-const dustCache = new Map<number, ReturnType<typeof buildDust>>();
-
-function buildDust(seed: number) {
-  const noise = (index: number, salt: number) =>
-    Math.abs((Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453) % 1);
-  return Array.from({ length: 64 }, (_, index) => {
-    const angle = noise(index, seed) * Math.PI * 2;
-    const radius = 150 + noise(index, seed + 4) * 52;
-    const x = 178 + Math.cos(angle) * radius;
-    const y = 178 + Math.sin(angle) * radius;
-    const shade = noise(index, seed + 1);
-    return {
-      x,
-      y,
-      rx: 0.7 + noise(index, seed + 7) * 1.3,
-      ry: 2 + noise(index, seed + 7) * 3.6,
-      turn: (angle * 180) / Math.PI + 90,
-      fill: DUST_COLOURS[shade > 0.66 ? 2 : shade > 0.33 ? 1 : 0],
-      opacity: 0.45 + noise(index, seed + 2) * 0.5,
-    };
-  });
-}
-
-function dustFor(seed: number) {
-  const held = dustCache.get(seed);
-  if (held) return held;
-  const made = buildDust(seed);
-  dustCache.set(seed, made);
-  return made;
-}
-
-/** One sweep of the galaxy band. Two of these are stacked, clipped to halves. */
-function GalaxyBand({ seed, gradientId }: { seed: number; gradientId: string }) {
-  const dust = dustFor(seed);
+function OrbitRing() {
   return (
-    <div className="akwaan-galaxy absolute inset-0">
-      <svg viewBox="0 0 356 356" className="size-full overflow-visible">
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#141A52" />
-            <stop offset=".45" stopColor="#5A3FD0" />
-            <stop offset=".75" stopColor="#1E2A8A" />
-            <stop offset="1" stopColor="#0D1038" />
-          </linearGradient>
-        </defs>
-        <circle
-          cx="178"
-          cy="178"
-          r="174"
-          fill="none"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="24"
-          opacity=".34"
-        />
-        <circle
-          cx="178"
-          cy="178"
-          r="176"
-          fill="none"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="4"
-        />
-        <circle
-          cx="178"
-          cy="178"
-          r="160"
-          fill="none"
-          stroke="#8E9BFF"
-          strokeWidth="2.5"
-          opacity=".55"
-        />
-        {dust.map((grain, index) => (
-          <ellipse
-            key={index}
-            cx={grain.x.toFixed(1)}
-            cy={grain.y.toFixed(1)}
-            rx={grain.rx.toFixed(1)}
-            ry={grain.ry.toFixed(1)}
-            transform={`rotate(${grain.turn.toFixed(0)} ${grain.x.toFixed(1)} ${grain.y.toFixed(1)})`}
-            fill={grain.fill}
-            opacity={grain.opacity.toFixed(2)}
-          />
-        ))}
-      </svg>
-    </div>
+    <svg viewBox="0 0 356 356" className="absolute inset-0 size-full overflow-visible">
+      <circle cx="178" cy="178" r="172" fill="none" stroke="#E3DCF6" strokeWidth="14" />
+      <circle
+        cx="178"
+        cy="178"
+        r="172"
+        fill="none"
+        stroke="hsl(var(--brand-purple))"
+        strokeWidth="4"
+      />
+    </svg>
   );
 }
 
@@ -232,13 +159,14 @@ function OrbitNode({
     <>
       <span
         className={cn(
-          "relative grid aspect-square w-[45%] place-items-center rounded-full border-[2.5px] border-[hsl(var(--brand-navy))] bg-white shadow-[0_4px_0_hsl(var(--brand-navy))]",
+          "relative grid aspect-square w-[45%] place-items-center rounded-full border-4 border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
           // The shell is a transparent box, so the ring goes on the disc: a
           // keyboard user needs to see which circle they are on.
-          "group-focus-visible:ring-4 group-focus-visible:ring-[hsl(var(--brand-gold))] group-focus-visible:ring-offset-2",
-          completed && owner && owner.solid,
-          completed && !owner && "bg-[hsl(var(--brand-navy))] text-white",
-          inProgress && "bg-[hsl(var(--brand-gold))]",
+          "group-focus-visible:ring-4 group-focus-visible:ring-[hsl(var(--brand-purple))] group-focus-visible:ring-offset-2",
+          // Gold is game state: this one is done. Whose it is rides on the
+          // corner as a dot, never as the circle's own colour.
+          completed && "bg-[hsl(var(--brand-gold))]",
+          inProgress && "bg-[#E3DAF6]",
           unplayable &&
             "border-[hsl(var(--brand-navy)/.22)] bg-muted shadow-none",
           interactive && "transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
@@ -246,29 +174,33 @@ function OrbitNode({
       >
         {pending ? (
           // Only a tap in flight spins. An in-progress challenge keeps its own
-          // icon on gold: the circles are what the host aims at and the room
-          // reads, so they hold still, and a spinner here also hid which of the
-          // twelve was actually running.
+          // icon: the circles are what the host aims at and the room reads, so
+          // they hold still, and a spinner here also hid which of the twelve
+          // was actually running.
           <Loader2 className="size-[44%] animate-spin motion-reduce:animate-none" aria-hidden />
+        ) : completed ? (
+          <Check className="size-[46%]" strokeWidth={3} aria-label="مكتمل" />
         ) : (
           <Icon
             className={cn("size-[44%]", unplayable && "text-disabled-foreground")}
             aria-hidden
           />
         )}
-        {completed ? (
-          <span className="absolute -top-1.5 end-[-6px] grid size-[38%] place-items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))]">
-            <Check className="size-[55%]" aria-label="مكتمل" />
-          </span>
-        ) : position.requiresPhones ? (
-          <span className="absolute -top-1.5 end-[-6px] grid size-[38%] place-items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))]">
-            <Smartphone className="size-[50%]" aria-label="يحتاج جوالات" />
-          </span>
-        ) : null}
+        {completed && owner && (
+          <span
+            aria-hidden
+            data-testid="position-winner-dot"
+            className={cn(
+              "absolute -top-1 end-[-4px] size-[26%] rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+              completed && owner && owner.dot,
+            )}
+          />
+        )}
       </span>
       <span
         className={cn(
-          "text-xs font-black whitespace-nowrap sm:text-[0.8rem]",
+          "text-sm font-bold whitespace-nowrap sm:text-base xl:text-[19px]",
+          completed && "text-[#4A5468]",
           unplayable && "text-disabled-foreground",
         )}
       >
@@ -364,9 +296,10 @@ export function WorldOrbit({
           ry="150"
           transform="rotate(-14 200 196)"
           fill="none"
-          stroke="hsl(var(--brand-navy)/.16)"
-          strokeWidth="1"
-          strokeDasharray="2 7"
+          stroke="#DDD6F3"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray="2 9"
         />
       </svg>
 
@@ -377,7 +310,7 @@ export function WorldOrbit({
         aria-hidden
         className="absolute top-[49%] left-1/2 z-0 aspect-square w-[89%] [clip-path:inset(-20%_-20%_50%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
       >
-        <GalaxyBand seed={seed} gradientId={`galaxy-back-${seed}`} />
+        <OrbitRing />
       </div>
 
       {/* Two spans, not one: the centring translate and the drift are both
@@ -385,7 +318,7 @@ export function WorldOrbit({
           planet off centre the moment it ran. */}
       <span className="absolute top-[49%] left-1/2 z-10 aspect-square w-[37.5%] -translate-x-1/2 -translate-y-1/2">
         <span
-          className="akwaan-planet-drift relative block size-full overflow-hidden rounded-full shadow-[0_0_0_3px_#fff,0_0_0_4px_hsl(var(--brand-navy)/.12),0_18px_34px_-16px_hsl(var(--brand-navy)/.55)]"
+          className="akwaan-planet-drift relative block size-full overflow-hidden rounded-full bg-[#F1DCEC]"
           style={{ animationDelay: `${-seed * 2.3}s` }}
         >
           {artwork ? (
@@ -402,22 +335,10 @@ export function WorldOrbit({
               className="size-full object-cover [transform:scale(1.35)_translateY(2%)]"
             />
           ) : (
-            <span className="font-display grid size-full place-items-center bg-[hsl(var(--brand-gold)/.14)] p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
+            <span className="font-display grid size-full place-items-center p-3 text-center text-sm font-black text-[hsl(var(--brand-navy)/.65)]">
               {worldName}
             </span>
           )}
-          {/* Light from the top left and a darkened limb: what turns a flat
-              illustration into something spherical. */}
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: [
-                "radial-gradient(circle at 30% 24%, rgba(255,255,255,.22), transparent 45%)",
-                "radial-gradient(circle, transparent 66%, rgba(10,12,40,.28) 100%)",
-              ].join(","),
-            }}
-          />
         </span>
       </span>
 
@@ -425,7 +346,7 @@ export function WorldOrbit({
         aria-hidden
         className="absolute top-[49%] left-1/2 z-[15] aspect-square w-[89%] [clip-path:inset(50%_-20%_-20%_-20%)] [transform:translate(-50%,-50%)_rotate(-14deg)_scaleY(.326)]"
       >
-        <GalaxyBand seed={seed} gradientId={`galaxy-front-${seed}`} />
+        <OrbitRing />
       </div>
 
       {positions.map((position, index) => (
