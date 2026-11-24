@@ -316,7 +316,49 @@ describe("Content Engine Slice 3D: Review Studio Creative Slot & Visibility UX",
         screen.getByTestId("creative-slot-unverified-alert"),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/يجب على المراجع التحقق يدويًا وتدوين سبب الاعتماد/i),
+        screen.getByText(/اعتماده هو المراجعة/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not call a family with no automatic rule a mismatch", () => {
+      // The backend reports "no rule for this family" as not-compliant with a
+      // reason. That reason used to light the red "approval blocked" box on a
+      // candidate the reviewer was free to approve.
+      const candidate = mockCandidate({
+        findings: [
+          {
+            code: "FAMILY_COMPLIANCE_UNVERIFIED",
+            severity: "warning",
+            message: "unverified",
+          },
+        ],
+        authoring: {
+          concept: "عدّ",
+          assignedSlot: {
+            slotIndex: 0,
+            familyKey: "occurrence-count",
+            familyNameAr: "كم مرة يظهر؟",
+            mode: "exploitation",
+          },
+          familyCompliance: {
+            assignedFamilyKey: "occurrence-count",
+            isCompliant: false,
+            verificationMethod: "manual_review",
+            mismatchReason:
+              'Automated compliance verification unavailable for family "occurrence-count"; manual review required',
+          },
+        },
+      });
+
+      render(<CreativeSlotInspector candidate={candidate} />);
+      expect(
+        screen.queryByTestId("creative-slot-mismatch-alert"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("creative-slot-compliance-badge"),
+      ).not.toHaveTextContent("Approval Blocked");
+      expect(
+        screen.getByTestId("creative-slot-unverified-alert"),
       ).toBeInTheDocument();
     });
 
