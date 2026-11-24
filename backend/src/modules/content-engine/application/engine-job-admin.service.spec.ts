@@ -147,7 +147,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
       blockedCode: 'HISTORICAL_INVENTORY_INCOMPLETE',
     });
   });
-  it.each(['read-your-opponent', 'closest', 'bomb'])(
+  it.each(['read-your-opponent', 'closest', 'bomb', 'moving-xo'])(
     'marks %s as generator-supported with a deterministic planDigest and generationSpec',
     async (mechanicKey) => {
       const { service } = build(mechanicKey);
@@ -177,7 +177,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
     },
   );
 
-  it.each(['moving-xo', 'top-5'])(
+  it.each(['top-5'])(
     'keeps %s authoring-resolvable but blocks generation capability',
     async (mechanicKey) => {
       const { service, budget } = build(mechanicKey);
@@ -239,7 +239,7 @@ describe('Content Engine generator capability preflight & Generation Contract Fo
     expect(result.diagnostic).toBeUndefined();
   });
 
-  it.each(['moving-xo', 'top-5'])(
+  it.each(['top-5'])(
     'rejects unsupported %s before job persistence when preflight is skipped',
     async (mechanicKey) => {
       const jobs = {

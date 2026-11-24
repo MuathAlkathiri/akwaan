@@ -73,6 +73,14 @@ export const CANONICAL_CHALLENGE_TYPE_ALIASES: Record<
   combo: ['combo', 'الكومبو'],
   'read-your-opponent': ['read-your-opponent', 'اقرأ خصمك', 'اقرا خصمك'],
   closest: ['closest', 'مين اقرب', 'مين أقرب'],
+  'moving-xo': [
+    'moving-xo',
+    'moving xo',
+    'إكس أو',
+    'اكس او',
+    'إكس أو المتحرك',
+    'اكس او المتحرك',
+  ],
   'top-5': ['top-5', 'أفضل 5', 'افضل 5'],
   first_note: ['first_note', 'first-note', 'من أول نغمة', 'من اول نغمة'],
 };

@@ -3722,13 +3722,13 @@ export class ContentEngineReviewService {
     if (!job || targetResolutionError) reasons.push('تعذر التحقق من هدف المرشح.');
     const draft = candidate.draft as { prompt?: { ar?: unknown }; answerPayload?: unknown } | null;
     if (!draft || typeof draft.prompt?.ar !== 'string' || !draft.prompt.ar.trim() || !draft.answerPayload || typeof draft.answerPayload !== 'object') reasons.push('بيانات السؤال أو الإجابة غير مكتملة.');
-    if (job && !['read-your-opponent', 'closest', 'bomb'].includes(job.mechanicKey)) reasons.push('تتطلب الميكانيكية مراجعة تفصيلية.');
+    if (job && !['read-your-opponent', 'closest', 'bomb', 'moving-xo'].includes(job.mechanicKey)) reasons.push('تتطلب الميكانيكية مراجعة تفصيلية.');
     if (job?.mechanicKey === 'bomb') {
       const accepted = (draft?.answerPayload as { mode?: string; acceptedAnswers?: unknown } | undefined);
       if (accepted?.mode !== 'match' || !Array.isArray(accepted.acceptedAnswers) || accepted.acceptedAnswers.length === 0 || accepted.acceptedAnswers.some((entry) => typeof entry !== 'string' || !entry.trim())) reasons.push('الإجابات المقبولة غير مكتملة.');
     }
     const answer = draft?.answerPayload as { mode?: string; options?: Array<{ id?: string; label?: { ar?: string } }>; correctOptionId?: string; correctValue?: number } | undefined;
-    if (job?.mechanicKey === 'read-your-opponent' && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
+    if ((job?.mechanicKey === 'read-your-opponent' || job?.mechanicKey === 'moving-xo') && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
     if (job?.mechanicKey === 'closest') {
       const slider = (candidate.draft?.mechanicPayload as { closestSlider?: { min?: number; max?: number; step?: number } } | undefined)?.closestSlider;
       if (answer?.mode !== 'closest' || !Number.isFinite(answer.correctValue) || !slider || !Number.isFinite(slider.min) || !Number.isFinite(slider.max) || !Number.isFinite(slider.step)) reasons.push('الإجابة أو نطاق التقدير غير مكتمل.');

@@ -19,17 +19,24 @@ describe('media requirements registry', () => {
     'any-scope',
   ];
 
-  it('governs exactly one mechanic the engine can generate — القنبلة — so no other candidate is retroactively gated', () => {
-    // The other generatable mechanics are text-only. One of them drifting into
-    // this registry would gate approval on an asset nobody is required to
-    // supply; this list changing is therefore a decision, not a side effect.
+  it('governs the two generatable mechanics that need a picture, so no other candidate is retroactively gated', () => {
+    // القنبلة needs one everywhere; إكس أو المتحرك only in the three Scopes
+    // that are visual by definition. The rest are text-only. One of them
+    // drifting into this registry would gate approval on an asset nobody is
+    // required to supply; this list changing is a decision, not a side effect.
     const governed = Object.keys(MECHANIC_ANSWER_MODES).filter((mechanicKey) =>
       scopes.some(
         (scopeKey) =>
           resolveMediaRequirements({ mechanicKey, scopeKey }).length > 0,
       ),
     );
-    expect(governed).toEqual(['bomb']);
+    expect(governed).toEqual(['bomb', 'moving-xo']);
+    expect(
+      resolveMediaRequirements({
+        mechanicKey: 'moving-xo',
+        scopeKey: 'numbers-estimation',
+      }),
+    ).toEqual([]);
   });
 
   it('requires one real picture on every Bomb item, in every Scope', () => {

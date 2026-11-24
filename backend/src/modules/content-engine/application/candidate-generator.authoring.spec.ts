@@ -12,12 +12,15 @@ import {
   RYO_CONFIDENCE_BANDS,
   RYO_TARGET_CONFIDENCE_BANDS,
   RYO_TASK_GUIDANCE,
+  MOVING_XO_CANDIDATE_SCHEMA,
+  MOVING_XO_TASK_GUIDANCE,
   CLOSEST_TASK_GUIDANCE,
   CandidateGeneratorService,
   OUTPUT_TOKENS_PER_CANDIDATE,
   estimateGenerationPromptTokens,
 } from './candidate-generator.service';
 import { ResolvedAuthoringContext } from './authoring-context.service';
+import { promptVersionFor } from '../domain/generation-specification';
 
 /**
  * Prompt construction and Closest parsing.
@@ -621,6 +624,62 @@ describe('originality guidance reaches every mechanic', () => {
     );
   });
 
+  describe('إكس أو المتحرك', () => {
+    const xo = () =>
+      service().buildPrompt(
+        context({ mechanicKey: 'moving-xo' }),
+        3,
+        'multiple_choice',
+      );
+
+    it('is authored as a timed puzzle, not as a bet', () => {
+      const prompt = xo();
+      expect(prompt).toContain(MOVING_XO_TASK_GUIDANCE);
+      expect(prompt).toMatch(/fifteen seconds/);
+      expect(prompt).toMatch(/EXACTLY ONE OPTION IS RIGHT/);
+      expect(prompt).not.toMatch(/This mechanic is a bet/);
+      expect(prompt).not.toMatch(/EXPERIMENTAL DIFFICULTY MIX/);
+      expect(prompt.endsWith(ORIGINALITY_GUIDANCE)).toBe(true);
+    });
+
+    it('asks for three options and no Steal/Trust estimate', () => {
+      const item = (
+        (MOVING_XO_CANDIDATE_SCHEMA.properties as Record<string, unknown>)
+          .candidates as {
+          items: {
+            required: string[];
+            properties: Record<
+              string,
+              { minItems?: number; maxItems?: number }
+            >;
+          };
+        }
+      ).items;
+      expect(item.required).toEqual([
+        'concept',
+        'prompt',
+        'options',
+        'correctOptionId',
+        'distractorRationale',
+        'factualClaims',
+      ]);
+      expect(item.properties).not.toHaveProperty('estimatedConfidence');
+      expect(item.properties.options).toMatchObject({
+        minItems: 3,
+        maxItems: 3,
+      });
+      // The اقرأ خصمك schema it is built from is left as it was.
+      expect(JSON.stringify(RYO_CANDIDATE_SCHEMA)).toContain(
+        'estimatedConfidence',
+      );
+    });
+
+    it('has its own prompt contract', () => {
+      expect(promptVersionFor('moving-xo')).toBe('moving-xo-v1');
+      expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');
+    });
+  });
+
   it('appends RYO task guidance where there was none', () => {
     const prompt = tail('multiple_choice');
     expect(prompt).toMatch(/This mechanic is a bet, not a quiz/);
@@ -722,7 +781,7 @@ describe('generator capability guard', () => {
         jobId: 'job-unsupported',
         leaseEpoch: 1,
         attempt: 1,
-        context: context({ mechanicKey: 'moving-xo' }),
+        context: context({ mechanicKey: 'top-5' }),
         count: 1,
       }),
     ).rejects.toMatchObject({ code: 'MECHANIC_NOT_GENERATABLE' });
