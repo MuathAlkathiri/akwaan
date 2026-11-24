@@ -31,6 +31,11 @@ export const MECHANIC_ANSWER_MODES = {
   // answer mode as الكومبو and a different authoring contract — the mechanic
   // key, not the answer mode, is what selects its prompt, schema and screen.
   bomb: 'match',
+  // إكس أو المتحرك: a puzzle answered by tapping one of a few options. A
+  // correct answer earns a move on the board, so it needs a binary verdict
+  // and nothing else. Same answer mode as اقرأ خصمك, a different contract:
+  // there is no bet here, so none of the Steal/Trust authoring applies.
+  'moving-xo': 'multiple_choice',
 } as const;
 
 export type GeneratorMechanicKey = keyof typeof MECHANIC_ANSWER_MODES;
@@ -62,6 +67,7 @@ export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
 const MECHANIC_PROMPT_VERSIONS: Partial<Record<GeneratorMechanicKey, string>> =
   {
     bomb: 'bomb-v3',
+    'moving-xo': 'moving-xo-v1',
   };
 
 /** The prompt/schema revision a mechanic is generated with, if it can be. */

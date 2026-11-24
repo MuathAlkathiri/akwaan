@@ -476,6 +476,13 @@ export class GenerationPlannerService {
       }
       return archetypes;
     }
+    if (mechanicKey === 'moving-xo') {
+      return [
+        'Quick Insight: one idea unlocks it; a team that sees it answers at once.',
+        'Set Trap: the obvious reading gives a wrong option, a second look gives the right one.',
+        'Short Deduction: two small steps from what the prompt states, done in the head.',
+      ];
+    }
     if (mechanicKey === 'closest') {
       return [
         'Knowledge-Anchored Estimation: Exact quantity known by specialists; broad population can reason to the correct order of magnitude.',
@@ -494,6 +501,13 @@ export class GenerationPlannerService {
         'THE 40-80% CONFIDENCE SWEET SPOT: The answering team must feel neither 100% certainty (which triggers automatic opponent Steal) nor 0% clue (which triggers automatic opponent Trust).',
         'EVERY DISTRACTOR MUST HAVE A RATIONALE: Each incorrect option must lure real players for an articulate, defensible psychological reason.',
         'UNAMBIGUOUS ARABIC PHRASING: Questions must be sharp and precise, avoiding linguistic ambiguity or debatable definitions.',
+      ];
+    }
+    if (mechanicKey === 'moving-xo') {
+      return [
+        'FIFTEEN SECONDS, NO PEN: read once, solved in the head by a team talking it over.',
+        'EXACTLY ONE CORRECT OPTION: the other two are each the product of a specific, natural mistake.',
+        'RIGHT EARNS A MOVE, WRONG PASSES THE TURN: there is no bet — the only question is whether the team works it out.',
       ];
     }
     if (mechanicKey === 'closest') {

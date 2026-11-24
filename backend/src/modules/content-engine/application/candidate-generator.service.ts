@@ -34,7 +34,10 @@ import {
   promptVersionFor,
   validateTargetCount,
 } from '../domain/generation-specification';
-import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
+import {
+  BOMB_SLUG,
+  MOVING_XO_SLUG,
+} from '../../world-content/domain/world-content.constants';
 import {
   BOMB_IMAGE_KINDS,
   BombImageKind,
@@ -731,6 +734,102 @@ export const ORIGINALITY_GUIDANCE = [
  * The multiple-choice path previously appended nothing, so its prompt ended on
  * generic formatting instructions while Closest ended on mechanic rules.
  */
+/**
+ * إكس أو المتحرك candidates: the اقرأ خصمك shape without its bet.
+ *
+ * `estimatedConfidence` is the Steal/Trust hypothesis, and the screen reads it
+ * as one. A Moving XO item carries no such bet, so the field is not asked for
+ * rather than asked for and ignored.
+ */
+export const MOVING_XO_CANDIDATE_SCHEMA: Record<string, unknown> = (() => {
+  const ryoItem = (
+    (RYO_CANDIDATE_SCHEMA.properties as Record<string, unknown>).candidates as {
+      items: Record<string, unknown>;
+    }
+  ).items;
+  const { estimatedConfidence: _bet, ...properties } =
+    ryoItem.properties as Record<string, unknown>;
+  void _bet;
+  return {
+    ...RYO_CANDIDATE_SCHEMA,
+    properties: {
+      candidates: {
+        type: 'array',
+        items: {
+          ...ryoItem,
+          required: (ryoItem.required as string[]).filter(
+            (field) => field !== 'estimatedConfidence',
+          ),
+          properties: {
+            ...properties,
+            concept: {
+              type: 'string',
+              description:
+                'The puzzle in one line, before any wording exists: what the team works out, and the natural mistake a rushed team makes.',
+            },
+            options: {
+              type: 'array',
+              minItems: 3,
+              maxItems: 3,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['id', 'label'],
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+})();
+
+export const MOVING_XO_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. This is a turn of X-O. One team is on turn, sees the',
+  'puzzle on the shared screen and taps one of three text buttons on a phone.',
+  'Right: they play a move on the board. Wrong: the turn passes and they play',
+  'nothing. There is no bet and no opponent prediction — only: can this team',
+  'work it out, together, before the clock runs out?',
+  '',
+  'THE CLOCK. A team has about fifteen seconds. Everything is read aloud once',
+  'and solved in the head:',
+  '  - the prompt is at most two short sentences, in plain Arabic;',
+  '  - at most three numbers or three named things to hold in mind;',
+  '  - one step of insight, or two short steps — never a chain;',
+  '  - each option is a few words at most, readable at a glance on a phone.',
+  'If the fair way to solve it needs a pen, it is the wrong puzzle for this mechanic.',
+  '',
+  'Author each item in this order, and fill the schema fields in this order:',
+  '  1. concept — the puzzle and the natural mistake, before any wording exists.',
+  '  2. prompt, then exactly three options and correctOptionId.',
+  '  3. distractorRationale — one entry per INCORRECT option: the specific mistake that produces it.',
+  '  4. factualClaims — the derivation that proves the correct option, step by step, and why each other option fails.',
+  '',
+  'SOLVED, NOT RECALLED. Everything needed is in the prompt or is something',
+  'every player knows. A team that has never heard of the subject must still be',
+  'able to answer. No trivia, no dates, no records.',
+  '',
+  'EXACTLY ONE OPTION IS RIGHT. Solve the puzzle yourself from the prompt alone',
+  'and check all three options against it. If a second option can be defended',
+  'by any reasonable reading, rewrite the prompt until it cannot.',
+  '',
+  'EACH WRONG OPTION IS A REAL MISTAKE. It is the answer a specific, natural',
+  'slip produces — the rushed reading, the off-by-one, the trap the puzzle',
+  'sets. An option nobody would pick turns three choices into two.',
+  '',
+  'FAIR TO GUESS, WORTH SOLVING. One in three is luck; the puzzle must reward',
+  'the team that thinks. Never make the correct option stand out by length,',
+  'by being the middle value, or by being the only "careful" wording, and vary',
+  'which position holds it across the batch.',
+  '',
+  'Text only. The prompt must not refer to a picture, a shape or a diagram:',
+  'nothing is drawn yet. A pattern is written with words or emoji in the prompt itself.',
+].join('\n');
+
 export const RYO_TASK_GUIDANCE = [
   'GAMEPLAY-FIRST INTENT. Design the Steal/Trust decision before choosing the',
   'question. The subject must come from the resolved World and Scope, but the',
@@ -913,7 +1012,14 @@ export function composeGenerationPrompt(
             context.mechanicKey === BOMB_SLUG ? BOMB_SLUG : 'combo',
             options?.difficulty,
           )
-        : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
+        : // Two mechanics author in options. Only اقرأ خصمك takes a
+          // difficulty mix; إكس أو المتحرك has one level.
+          resolveRequestedDifficulty(
+            context.mechanicKey === MOVING_XO_SLUG
+              ? MOVING_XO_SLUG
+              : 'read-your-opponent',
+            options?.difficulty,
+          );
   const normalizedGuidance = normalizeBatchGuidance(options?.batchGuidance);
 
   const planner = new GenerationPlannerService();
@@ -953,14 +1059,16 @@ export function composeGenerationPrompt(
         ? context.mechanicKey === BOMB_SLUG
           ? BOMB_TASK_GUIDANCE
           : COMBO_TASK_GUIDANCE
-        : [
-            RYO_TASK_GUIDANCE,
-            buildRyoDifficultyGuidance(
-              resolvedDifficulty ?? 'mixed',
-              options?.ryoDifficultyTargets,
-              fallbackTargetsResolver,
-            ),
-          ].join('\n\n'),
+        : context.mechanicKey === MOVING_XO_SLUG
+          ? MOVING_XO_TASK_GUIDANCE
+          : [
+              RYO_TASK_GUIDANCE,
+              buildRyoDifficultyGuidance(
+                resolvedDifficulty ?? 'mixed',
+                options?.ryoDifficultyTargets,
+                fallbackTargetsResolver,
+              ),
+            ].join('\n\n'),
     ...(normalizedGuidance
       ? [
           [
@@ -1268,7 +1376,9 @@ export class CandidateGeneratorService {
           ? input.context.mechanicKey === BOMB_SLUG
             ? BOMB_CANDIDATE_SCHEMA
             : COMBO_CANDIDATE_SCHEMA
-          : RYO_CANDIDATE_SCHEMA;
+          : input.context.mechanicKey === MOVING_XO_SLUG
+            ? MOVING_XO_CANDIDATE_SCHEMA
+            : RYO_CANDIDATE_SCHEMA;
     const responseSchema = hasCreativeSlots
       ? schemaWithCreativeSlots(baseSchema)
       : baseSchema;
