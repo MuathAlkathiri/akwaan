@@ -53,8 +53,18 @@ const SLOT_PLACES = SLOT_ANGLES.map(onOrbit);
  */
 function OrbitRing() {
   return (
-    <svg viewBox="0 0 356 356" className="absolute inset-0 size-full overflow-visible">
-      <circle cx="178" cy="178" r="172" fill="none" stroke="#E3DCF6" strokeWidth="14" />
+    <svg
+      viewBox="0 0 356 356"
+      className="absolute inset-0 size-full overflow-visible"
+    >
+      <circle
+        cx="178"
+        cy="178"
+        r="172"
+        fill="none"
+        stroke="#E3DCF6"
+        strokeWidth="14"
+      />
       <circle
         cx="178"
         cy="178"
@@ -169,7 +179,8 @@ function OrbitNode({
           inProgress && "bg-[#E3DAF6]",
           unplayable &&
             "border-[hsl(var(--brand-navy)/.22)] bg-muted shadow-none",
-          interactive && "transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
+          interactive &&
+            "transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
         )}
       >
         {pending ? (
@@ -177,12 +188,18 @@ function OrbitNode({
           // icon: the circles are what the host aims at and the room reads, so
           // they hold still, and a spinner here also hid which of the twelve
           // was actually running.
-          <Loader2 className="size-[44%] animate-spin motion-reduce:animate-none" aria-hidden />
+          <Loader2
+            className="size-[44%] animate-spin motion-reduce:animate-none"
+            aria-hidden
+          />
         ) : completed ? (
           <Check className="size-[46%]" strokeWidth={3} aria-label="مكتمل" />
         ) : (
           <Icon
-            className={cn("size-[44%]", unplayable && "text-disabled-foreground")}
+            className={cn(
+              "size-[44%]",
+              unplayable && "text-disabled-foreground",
+            )}
             aria-hidden
           />
         )}
@@ -280,7 +297,7 @@ export function WorldOrbit({
     [artworkUrl],
   );
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[25rem]">
+    <div className="relative mx-auto aspect-square w-full max-w-[25rem] md:w-[min(100cqw_-_2rem,100cqh,30rem)] md:max-w-none">
       {/* The path the four challenges stand on, drawn once and still, so the
           eye has something to read the arrangement against while the galaxy
           turns behind it. */}

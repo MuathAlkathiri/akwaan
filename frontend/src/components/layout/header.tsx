@@ -122,25 +122,34 @@ export function Header({
   merged = false,
   variant = "default",
   hud,
+  end,
 }: {
   merged?: boolean;
   variant?: "default" | "match";
+  /** Match bar only: a control at the far end, opposite the logo. */
+  end?: React.ReactNode;
   /** The Match HUD (scoreboard) placed opposite the logo in Match mode. */
   hud?: React.ReactNode;
 }) {
   if (variant === "match") {
-    return <MatchHeaderBar merged={merged} hud={hud} />;
+    return <MatchHeaderBar merged={merged} hud={hud} end={end} />;
   }
   return <SiteHeader merged={merged} />;
 }
 
-/** Full-width Match bar: logo + Team 1 right, VS centred, Team 2 left. */
+/**
+ * Full-width Match bar: logo at one end, the two teams around `VS` in the
+ * middle, one control at the other end. The two ends are the same width, so
+ * the scoreboard sits in the true centre of the screen.
+ */
 function MatchHeaderBar({
   merged,
   hud,
+  end,
 }: {
   merged: boolean;
   hud?: React.ReactNode;
+  end?: React.ReactNode;
 }) {
   return (
     <header
@@ -151,7 +160,7 @@ function MatchHeaderBar({
           : "border-b border-border/60",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-[92rem] items-center gap-8 px-3 sm:h-[4.5rem] sm:px-5 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[92rem] items-center gap-3 px-3 sm:h-[4.5rem] sm:px-5 lg:px-8">
         <Link
           href="/"
           className="relative block h-10 w-20 shrink-0 overflow-hidden sm:h-12 sm:w-28"
@@ -167,8 +176,13 @@ function MatchHeaderBar({
           />
         </Link>
         {hud ? (
-           <div className="min-w-0 flex-1" data-testid="match-hud-safe-area">{hud}</div>
-        ) : null}
+          <div className="min-w-0 flex-1" data-testid="match-hud-safe-area">
+            {hud}
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+        <div className="flex w-20 shrink-0 justify-end sm:w-28">{end}</div>
       </div>
     </header>
   );

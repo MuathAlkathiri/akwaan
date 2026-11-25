@@ -2,19 +2,12 @@
 
 import { useState } from "react";
 import { TurnSlotContext } from "./turn-slot";
-import { ArrowLeftRight, Crown } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { Header } from "@/components/layout/header";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { setTeamCaptain } from "../../api/live-session-api";
+import { CaptainControl, CaptainControlContext } from "./captain-control";
 import {
   adjustUnifiedMatchScore,
   armUnifiedMatchDouble,
@@ -78,6 +71,15 @@ export function MatchShell({
   const canSwitchTurn =
     boardControlsAvailable && availableActions.includes("match:switch-turn");
   const canChangeCaptain = actor === "controller" && started && Boolean(match);
+  // Before a phone challenge the crown sits beside «جاهزية اللاعبين», where the
+  // host is already looking at who is on each side; everywhere else it is in
+  // the header, as drawn.
+  const captainInPreflight =
+    match?.stage.key === "preflight" &&
+    match.unified.preflight?.requiresPhones === true;
+  // The board is one fixed screen on a display wide enough to lay the three
+  // Worlds side by side: it fits the viewport and never scrolls.
+  const fixedScreen = match?.stage.key === "board";
 
   // The visible score/turn change is the confirmation of a control; only a
   // failure needs a message. So this reports errors and stays silent on success.
@@ -128,148 +130,80 @@ export function MatchShell({
   return (
     <div
       dir="rtl"
-      className="relative flex min-h-[100dvh] flex-col"
+      className={cn(
+        "relative flex min-h-[100dvh] flex-col",
+        fixedScreen && "md:h-[100dvh] md:overflow-hidden",
+      )}
       data-testid="match-shell"
     >
-      <Header variant="match" merged hud={hud} />
+      <CaptainControlContext.Provider value={canChangeCaptain}>
+        <Header
+          variant="match"
+          merged
+          hud={hud}
+          {...(canChangeCaptain && !captainInPreflight
+            ? { end: <CaptainControl /> }
+            : {})}
+        />
 
-      {canChangeCaptain && (
-        <div className="mx-auto flex w-full max-w-[92rem] justify-end px-3 pt-2 sm:px-5">
-          <Dialog>
-            <DialogTrigger asChild>
+        {activeTeam && activeIdentity && showTurnBand && (
+          <div className="mx-auto flex w-full max-w-[92rem] flex-wrap items-center justify-center gap-4 px-3 pt-3 sm:px-5">
+            {/* On the board the sticker is the board's own sentence, lent this
+              place; the band below is then only spoken, not shown twice. */}
+            <div ref={setTurnSlot} className="contents" />
+            <div
+              data-testid="active-team-band"
+              data-team-id={activeTeam.id}
+              className={cn(
+                "font-display inline-flex min-h-12 -rotate-1 items-center gap-3 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:text-2xl",
+                match?.stage.key === "board" && "sr-only",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "size-5 shrink-0 rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
+                  activeIdentity.dot,
+                )}
+              />
+              دور {activeTeam.name}
+            </div>
+            {canSwitchTurn && (
               <button
                 type="button"
-                aria-label="تغيير قائد الفريق"
-                className="grid size-12 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))]"
-              >
-                <Crown
-                  className="size-6 fill-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))]"
-                  aria-hidden
-                />
-              </button>
-            </DialogTrigger>
-            <DialogContent dir="rtl">
-              <DialogHeader>
-                <DialogTitle>قائد الفريق</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-5">
-                {snapshot?.teams.map((team) => {
-                  const side = snapshot.participants.filter(
-                    (person) =>
-                      person.teamId === team.id &&
-                      person.role === "team-player" &&
-                      person.presence !== "removed",
-                  );
-                  const captainId = side.some(
-                    (person) => person.id === team.captainParticipantId,
+                aria-label="تبديل دور اختيار التحدي"
+                disabled={Boolean(pendingControl)}
+                className="grid size-14 shrink-0 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40"
+                onClick={() =>
+                  void runControl("turn", () =>
+                    switchUnifiedMatchTurn({
+                      sessionId: snapshot!.sessionId,
+                      expectedMatchRevision: match!.revision,
+                    }),
                   )
-                    ? team.captainParticipantId
-                    : undefined;
-                  return (
-                    <div key={team.id}>
-                      <label
-                        htmlFor={`match-captain-${team.id}`}
-                        className="mb-1.5 flex items-center gap-2 text-sm font-black"
-                      >
-                        <span
-                          className={`size-3 rounded-full ${teamIdentityOf(team.id, snapshot.teams).dot}`}
-                          aria-hidden
-                        />
-                        {team.name} — قائد الفريق
-                      </label>
-                      <select
-                        id={`match-captain-${team.id}`}
-                        data-testid={`match-captain-${team.id}`}
-                        value={captainId ?? ""}
-                        disabled={Boolean(pendingControl) || side.length === 0}
-                        onChange={(event) =>
-                          void runControl(`captain-${team.id}`, () =>
-                            setTeamCaptain(
-                              snapshot.sessionId,
-                              team.id,
-                              event.target.value || null,
-                              snapshot.revision,
-                            ),
-                          )
-                        }
-                        className="bg-background focus-visible:ring-ring h-11 w-full rounded-[12px] border px-3 text-base font-bold focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
-                      >
-                        <option value="">بدون قائد</option>
-                        {side.map((person) => (
-                          <option key={person.id} value={person.id}>
-                            {person.displayName}
-                            {person.id === captainId ? " — القائد الحالي" : ""}
-                            {person.presence === "connected"
-                              ? ""
-                              : " — غير متصل"}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-muted-foreground mt-1.5 text-xs font-bold">
-                        بدون قائد = تناوب تلقائي بين لاعبي الفريق. تقدر تختار
-                        لاعبًا غير متصل، وبيستلم أول ما يرجع جهازه.
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
-
-      {activeTeam && activeIdentity && showTurnBand && (
-        <div className="mx-auto flex w-full max-w-[92rem] flex-wrap items-center justify-center gap-4 px-3 pt-4 sm:px-5">
-          {/* On the board the sticker is the board's own sentence, lent this
-              place; the band below is then only spoken, not shown twice. */}
-          <div ref={setTurnSlot} className="contents" />
-          <div
-            data-testid="active-team-band"
-            data-team-id={activeTeam.id}
-            className={cn(
-              "font-display inline-flex min-h-12 -rotate-1 items-center gap-3 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:text-2xl",
-              match?.stage.key === "board" && "sr-only",
+                }
+              >
+                <ArrowLeftRight className="size-6" aria-hidden />
+              </button>
             )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "size-5 shrink-0 rounded-full border-[3px] border-[hsl(var(--brand-navy))]",
-                activeIdentity.dot,
-              )}
-            />
-            دور {activeTeam.name}
           </div>
-          {canSwitchTurn && (
-            <button
-              type="button"
-              aria-label="تبديل دور اختيار التحدي"
-              disabled={Boolean(pendingControl)}
-              className="grid size-14 shrink-0 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[hsl(var(--brand-purple))] disabled:opacity-40"
-              onClick={() =>
-                void runControl("turn", () =>
-                  switchUnifiedMatchTurn({
-                    sessionId: snapshot!.sessionId,
-                    expectedMatchRevision: match!.revision,
-                  }),
-                )
-              }
-            >
-              <ArrowLeftRight className="size-6" aria-hidden />
-            </button>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* The Match owns the viewport, so this region takes whatever height the
+        {/* The Match owns the viewport, so this region takes whatever height the
           HUD and turn band leave behind. A full board simply grows past it; a
           transient state (hydrating, or failed) can centre itself inside it
           instead of being stranded at the top of an empty canvas. */}
-      <div className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 pb-10 pt-3 sm:px-5">
-        <TurnSlotContext.Provider value={turnSlot}>
-          {children}
-        </TurnSlotContext.Provider>
-      </div>
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 pb-10 pt-3 sm:px-5",
+            fixedScreen && "md:min-h-0 md:pb-4",
+          )}
+        >
+          <TurnSlotContext.Provider value={turnSlot}>
+            {children}
+          </TurnSlotContext.Provider>
+        </div>
+      </CaptainControlContext.Provider>
     </div>
   );
 }

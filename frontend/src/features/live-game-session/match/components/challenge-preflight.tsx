@@ -1,6 +1,13 @@
 "use client";
 
-import { Check, ChevronDown, Copy, Play, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Copy,
+  Play,
+  Users,
+} from "lucide-react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
@@ -20,6 +27,7 @@ import {
   PlayerCharacterIcon,
 } from "../../components/player-characters";
 import { LiveSessionContext } from "../../hooks/live-session-context";
+import { CaptainControl } from "./captain-control";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 
 const TUTORIAL_RENDERER_MECHANICS = new Set<string>(
@@ -143,8 +151,10 @@ export function ChallengePreflight({
             variant="ghost"
             disabled={launching || cancelling}
             onClick={onCancel}
-            className="min-h-[44px] font-bold text-brand-navy underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-brand-bronze"
+            data-testid="preflight-back-to-board"
+            className="min-h-12 w-full gap-2 rounded-full border-[3px] border-brand-navy bg-white px-6 font-display text-base font-extrabold text-brand-navy shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-brand-navy sm:w-auto"
           >
+            <ArrowRight className="size-5" aria-hidden />
             {cancelling ? "جارٍ الإلغاء…" : "ارجع للوحة"}
           </Button>
         </div>
@@ -199,11 +209,11 @@ function ChallengeIdentityBanner({
       </div>
 
       {/* Left copy slot */}
-      <div className="z-[1] flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-3.5 py-3 sm:gap-2 sm:px-8 sm:py-5">
-        <span className="text-xs font-bold text-brand-gold sm:text-base">
+      <div className="z-[1] flex min-w-0 flex-1 flex-col justify-center gap-2.5 px-3.5 py-4 sm:gap-4 sm:px-8 sm:py-7">
+        <span className="text-xs font-bold leading-normal text-brand-gold sm:text-base">
           التحدي القادم
         </span>
-        <h1 className="font-display text-[28px] font-black leading-tight text-white sm:text-4xl lg:text-[52px]">
+        <h1 className="font-display text-[28px] font-black leading-[1.35] text-white sm:text-4xl sm:leading-[1.35] lg:text-[52px] lg:leading-[1.3]">
           {preflight.challengeName}
         </h1>
         {summary && (
@@ -211,11 +221,11 @@ function ChallengeIdentityBanner({
             {summary}
           </p>
         )}
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {selectingTeamName && (
             <span
               data-testid="preflight-turn-chip"
-              className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white px-3.5 text-xs font-bold text-brand-navy sm:text-sm"
+              className="inline-flex min-h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-bold text-brand-navy sm:text-sm"
             >
               <span
                 aria-hidden
@@ -415,9 +425,12 @@ function PairingPanel({
         data-testid="preflight-readiness"
         className="rounded-[22px] border-[3px] border-brand-navy bg-brand-paper shadow-[5px_6px_0_hsl(var(--brand-navy))] px-5 py-4"
       >
-        <h2 className="mb-3 font-display text-lg font-extrabold text-brand-navy sm:text-xl">
-          جاهزية اللاعبين
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-extrabold text-brand-navy sm:text-xl">
+            جاهزية اللاعبين
+          </h2>
+          <CaptainControl compact />
+        </div>
         <ul className="m-0 list-none divide-y-2 divide-brand-mist p-0">
           {preflight.teams.map((team, index) => (
             <li key={team.teamId} className="py-3 first:pt-0.5 last:pb-0.5">

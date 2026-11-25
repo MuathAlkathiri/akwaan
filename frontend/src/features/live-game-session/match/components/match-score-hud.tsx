@@ -13,7 +13,7 @@ export interface HudTeam {
 export type DoubleStatus = "available" | "armed" | "consumed";
 
 /**
- * The compact Match HUD that spans the header around the centred `VS`.
+ * The compact Match HUD: both teams grouped around `VS` in the middle of the header.
  *
  * It is the *only* scoreboard on the Match screen: two team blocks with the live
  * score between subtle ±1 controls, a `VS` divider, and the current team's Double
@@ -45,7 +45,7 @@ export function MatchScoreHud({
   return (
     <div
       data-testid="match-score-hud"
-      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-3"
+      className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-5"
     >
       {teams.map((team, index) => {
         const identity = teamIdentityOf(
@@ -59,10 +59,9 @@ export function MatchScoreHud({
             key={team.id}
             data-testid={`hud-team-slot-${index === 0 ? "right" : "left"}`}
             className={cn(
-              "row-start-1 flex min-w-0 items-center",
-              index === 0
-                 ? "col-start-3 justify-end"
-                : "col-start-1 justify-start",
+              // Team 1, VS, Team 2: one group in the middle of the bar.
+              "flex min-w-0 items-center",
+              index === 0 ? "order-1" : "order-3",
             )}
           >
             <div
@@ -134,7 +133,7 @@ export function MatchScoreHud({
         data-testid="hud-vs"
         aria-hidden
         dir="ltr"
-        className="col-start-2 row-start-1 shrink-0 px-0.5 font-display text-xs font-extrabold text-brand-bronze sm:text-lg"
+        className="order-2 shrink-0 px-0.5 font-display text-xs font-extrabold text-brand-bronze sm:text-lg"
       >
         VS
       </span>
