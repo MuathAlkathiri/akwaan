@@ -28,6 +28,7 @@ import type { ContentItem } from "@/features/world-management/types";
 import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { CandidateMediaPanel } from "./candidate-media-panel";
 import { MediaLibraryPanel } from "./media-library-panel";
 
@@ -2958,7 +2959,7 @@ function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
             {/* Backend-hosted upload; next/image cannot optimize arbitrary origins. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={pictureUrl}
+              src={getMediaUrl(pictureUrl)}
               alt="صورة السؤال كما سيراها اللاعبون"
               className="mx-auto max-h-72 w-full object-contain"
             />
