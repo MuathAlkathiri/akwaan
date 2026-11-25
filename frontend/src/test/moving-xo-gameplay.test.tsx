@@ -157,7 +157,7 @@ describe("Moving XO shared screen", () => {
     expect(options).toHaveTextContent("الخيار الثاني");
   });
 
-  it("keeps the expiring mark visible, then renders a same-cell refresh only from the next snapshot", () => {
+  it("keeps the expiring mark visible, then moves it only from the next snapshot", () => {
     const placement = baseState({
       phase: "placement",
       deadlineAt: "2026-10-07T00:00:20.000Z",
@@ -198,30 +198,30 @@ describe("Moving XO shared screen", () => {
             ...placement,
             board: board(
               [
-                "team-alpha",
-                "team-beta",
-                "team-alpha",
-                "team-beta",
-                "team-alpha",
                 null,
+                "team-beta",
+                "team-alpha",
+                "team-beta",
+                "team-alpha",
+                "team-alpha",
                 null,
                 null,
                 null,
               ],
-              { "team-alpha": [2, 4, 0], "team-beta": [1, 3] },
+              { "team-alpha": [2, 4, 5], "team-beta": [1, 3] },
             ),
           },
           5,
         )}
       />,
     );
-    expect(screen.getByTestId("moving-xo-cell-0")).toHaveAttribute(
+    expect(screen.getByTestId("moving-xo-cell-0")).not.toHaveAttribute(
       "data-owner",
       "team-alpha",
     );
-    expect(screen.getByTestId("moving-xo-cell-0")).toHaveAttribute(
-      "data-expiring",
-      "false",
+    expect(screen.getByTestId("moving-xo-cell-5")).toHaveAttribute(
+      "data-owner",
+      "team-alpha",
     );
     expect(screen.getByTestId("moving-xo-cell-2")).toHaveAttribute(
       "data-expiring",

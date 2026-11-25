@@ -70,7 +70,7 @@ const placementState = (overrides: Record<string, unknown> = {}) => ({
     ],
     { "team-alpha": [0, 2, 4], "team-beta": [1, 3] },
   ),
-  legalCells: [0, 5, 6, 7, 8],
+  legalCells: [5, 6, 7, 8],
   expiringCell: 0,
   ...overrides,
 });
@@ -241,12 +241,12 @@ describe("Moving XO phone placement", () => {
     expect(screen.getByTestId("moving-xo-board")).toBeInTheDocument();
   });
 
-  it("makes only projected legal cells tappable, including the expiring same cell", () => {
+  it("makes only projected legal cells tappable: the mark about to move is shown but cannot be renewed", () => {
     const { gameplayCommand } = renderPhone(placementState(), [
       "mode:place-moving-xo-mark",
     ]);
 
-    expect(screen.getByTestId("moving-xo-cell-0")).toBeEnabled();
+    expect(screen.getByTestId("moving-xo-cell-0")).toBeDisabled();
     expect(screen.getByTestId("moving-xo-cell-0")).toHaveAttribute(
       "data-expiring",
       "true",
@@ -255,13 +255,13 @@ describe("Moving XO phone placement", () => {
     expect(screen.getByTestId("moving-xo-cell-1")).toBeDisabled();
     expect(screen.getByTestId("moving-xo-cell-5")).toBeEnabled();
 
-    fireEvent.click(screen.getByTestId("moving-xo-cell-0"));
+    fireEvent.click(screen.getByTestId("moving-xo-cell-5"));
 
     fireEvent.click(screen.getByTestId("moving-xo-confirm-place"));
     expect(gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "place-moving-xo-mark",
-      payload: { cell: 0 },
+      payload: { cell: 5 },
     });
     expect(
       screen.getByTestId("moving-xo-placement-pending"),
@@ -340,7 +340,7 @@ describe("Moving XO phone placement", () => {
 
   it("reconnects directly into an expiring placement window", () => {
     renderPhone(placementState(), ["mode:place-moving-xo-mark"]);
-    expect(screen.getByTestId("moving-xo-cell-0")).toBeEnabled();
+    expect(screen.getByTestId("moving-xo-cell-5")).toBeEnabled();
     expect(screen.getByTestId("challenge-countdown")).toHaveTextContent("10");
   });
 });
