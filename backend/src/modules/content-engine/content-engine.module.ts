@@ -50,6 +50,8 @@ import {
 } from './domain/fact-verification.types';
 import { WigoloFactEvidenceRetriever } from './infrastructure/wigolo-fact-evidence.retriever';
 import { EngineImageIngestionService } from './infrastructure/engine-image-ingestion.service';
+import { SvgRasterizer } from './infrastructure/svg-rasterizer';
+import { ComposedVisualService } from './application/composed-visual.service';
 import { MediaStorageModule } from '../../common/uploads/media-storage.module';
 import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
@@ -231,6 +233,9 @@ import {
     ImageDownloadService,
     LocalImageStorageService,
     EngineImageIngestionService,
+    // مركّب الصور: pictures the engine draws itself.
+    SvgRasterizer,
+    ComposedVisualService,
     CandidateMediaReviewService,
     {
       // Image discovery is fail-closed like the provider slots above: with the
