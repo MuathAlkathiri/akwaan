@@ -85,6 +85,7 @@ export function MovingXoScreen({
     remainingMs !== undefined ? (
       <ChallengeCountdown
         remainingMs={remainingMs}
+        size="md"
         thresholds={
           phase === "placement"
             ? MOVING_XO_PLACEMENT_THRESHOLDS

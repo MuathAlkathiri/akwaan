@@ -135,7 +135,7 @@ describe("the clue race on a phone", () => {
   it("uses the compact frame", () => {
     renderPhone();
     const frame = screen.getByTestId("challenge-frame");
-    expect(frame.innerHTML).toContain("px-4");
+    expect(frame).toHaveAttribute("data-frame-surface", "phone");
     expect(frame).toHaveTextContent("الفيلم 1 من 3");
     expect(frame).not.toHaveTextContent("القطها");
   });
@@ -480,7 +480,10 @@ describe("the host is untouched", () => {
 
   it("keeps its non-compact frame and offers no phone controls", () => {
     renderHost();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
     expect(screen.queryByTestId("mobile-action-area")).toBeNull();
     expect(screen.queryByTestId("laqatha-claim")).toBeNull();
   });

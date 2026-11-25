@@ -43,7 +43,15 @@ export function BombResultRecap({
           <ResolutionAnswerRow label="الإجابة الصحيحة">
             {item.correctAnswer}
           </ResolutionAnswerRow>
-          <ResolutionOutcome>
+          <ResolutionOutcome
+            tone={
+              item.outcome === "correct"
+                ? "correct"
+                : item.outcome === "skipped"
+                  ? "neutral"
+                  : "wrong"
+            }
+          >
             {item.outcome === "correct"
               ? "إجابة صحيحة"
               : item.outcome === "skipped"

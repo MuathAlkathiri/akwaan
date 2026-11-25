@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Presentation only: callers supply already-authorized server result material. */
+/**
+ * What the answer was, held for a beat before the challenge moves on.
+ *
+ * The round card of the approved result screen, used live: a sticker card with
+ * small labels, the answers in bold, and the verdict as a stamp. Presentation
+ * only: callers supply already-authorized server result material.
+ */
 export function ResolutionReveal({
   title,
   children,
@@ -17,13 +23,13 @@ export function ResolutionReveal({
       aria-label={title}
       data-testid="resolution-reveal"
       className={cn(
-        "min-w-0 rounded-[var(--radius)] border border-primary/20 bg-card text-card-foreground",
-        compact ? "space-y-3 p-3" : "space-y-5 p-5 sm:p-6",
+        "flex min-w-0 flex-col rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper text-[hsl(var(--brand-navy))] shadow-[5px_6px_0_hsl(var(--brand-navy))]",
+        compact ? "gap-3 p-4" : "gap-4 p-5 sm:p-6",
       )}
     >
       <h3
         className={cn(
-          "break-words font-black",
+          "break-words font-display font-extrabold",
           compact ? "text-lg" : "text-xl sm:text-2xl",
         )}
       >
@@ -42,18 +48,47 @@ export function ResolutionAnswerRow({
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-2">
-      <p className="text-sm font-bold text-muted-foreground">{label}</p>
-      <div className="break-words text-xl font-black [overflow-wrap:anywhere] sm:text-2xl">
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <p className="text-[13px] text-brand-slate sm:text-sm">{label}</p>
+      <div className="break-words text-xl font-bold [overflow-wrap:anywhere] sm:text-2xl">
         {children}
       </div>
     </div>
   );
 }
 
-export function ResolutionOutcome({ children }: { children: ReactNode }) {
+/**
+ * The verdict. Green and red are spent here and nowhere else on the card: a
+ * stamp for a right or a wrong answer, a plain lavender line for anything that
+ * is neither.
+ */
+export function ResolutionOutcome({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "correct" | "wrong" | "neutral";
+}) {
+  if (tone === "neutral") {
+    return (
+      <p
+        data-outcome-tone="neutral"
+        className="break-words rounded-[14px] border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-3.5 py-2 text-base font-bold"
+      >
+        {children}
+      </p>
+    );
+  }
   return (
-    <p className="break-words rounded-lg bg-primary/10 px-3 py-2 text-base font-bold">
+    <p
+      data-outcome-tone={tone}
+      className={cn(
+        "inline-flex min-h-9 -rotate-3 items-center self-start break-words rounded-[10px] border-[3px] bg-white px-3.5 text-base font-extrabold",
+        tone === "correct"
+          ? "border-success text-success"
+          : "border-sem-error text-sem-error",
+      )}
+    >
       {children}
     </p>
   );

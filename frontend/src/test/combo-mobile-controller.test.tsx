@@ -104,7 +104,10 @@ describe("الكومبو phone controller", () => {
   it("uses the compact frame, one concise question, and the shared action area", () => {
     renderPhone();
     expect(screen.getByTestId("combo-phone-controller")).toBeInTheDocument();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-4");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "phone",
+    );
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
       "من هو الهوكاجي السابع؟",
     );
@@ -360,7 +363,10 @@ describe("الكومبو host regression", () => {
     expect(screen.getByTestId("combo-prompt").className).toContain(
       "text-[2rem]",
     );
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
     expect(screen.queryByTestId("combo-phone-controller")).toBeNull();
   });
 });

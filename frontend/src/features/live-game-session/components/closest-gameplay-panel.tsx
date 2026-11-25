@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
+import { TeamStatusCard, TeamStatusRow } from "../match/components/team-status-card";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
@@ -116,6 +117,9 @@ function parsed<T>(value: unknown, fallback: T): T {
     return fallback;
   }
 }
+
+const STEP_BUTTON =
+  "grid size-12 flex-none place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-2xl font-bold text-[hsl(var(--brand-navy))] active:bg-brand-lavender";
 
 export function ClosestGameplayPanel({
   runtime,
@@ -247,47 +251,38 @@ export function ClosestGameplayPanel({
   const hasEstimate = item?.slider
     ? chosen && estimate.trim() !== "" && Number.isFinite(Number(estimate))
     : estimate.trim() !== "" && Number.isFinite(Number(estimate));
-  const wideBubble = bubbleText.length > 18;
-  // Compact values can follow the thumb with a small edge clamp. A deliberately
-  // long unit gets a predictable width and switches to side-aware placement;
-  // its pointer continues to identify the true value while the card contains it.
-  const bubblePlacement = (() => {
-    if (!wideBubble) {
-      return {
-        left: `${Math.max(12, Math.min(88, sliderProgress))}%`,
-        transform: "translateX(-50%)",
-        pointer: "50%",
-      };
-    }
-    if (sliderProgress <= 32) {
-      return {
-        left: "0%",
-        transform: "translateX(0)",
-        pointer: `${Math.max(8, (sliderProgress / 64) * 100)}%`,
-      };
-    }
-    if (sliderProgress >= 68) {
-      return {
-        left: "100%",
-        transform: "translateX(-100%)",
-        pointer: `${Math.min(92, ((sliderProgress - 36) / 64) * 100)}%`,
-      };
-    }
-    return {
-      left: `${sliderProgress}%`,
-      transform: "translateX(-50%)",
-      pointer: "50%",
-    };
-  })();
+  /**
+   * One fine step either way, for the value a thumb cannot land on. Uses the
+   * question's own step, so a nudge can never produce a value the server would
+   * refuse; a continuous range moves by a hundredth of its width.
+   */
+  const nudge = (direction: 1 | -1) => {
+    const slider = item?.slider;
+    if (!slider) return;
+    const step =
+      slider.step && slider.step > 0
+        ? slider.step
+        : (slider.max - slider.min) / 100;
+    const current = Number.isFinite(Number(estimate))
+      ? Number(estimate)
+      : seedClosestEstimate(slider);
+    const next = Math.min(
+      slider.max,
+      Math.max(slider.min, current + direction * step),
+    );
+    setChosen(true);
+    // Trim float noise so 0.1 + 0.2 is sent as 0.3.
+    setEstimate(String(Number(next.toFixed(6))));
+  };
 
   return (
     <ChallengeFrame
       // The phone's shell header already names the world and the challenge, so
       // repeating it here is the duplication that made a controller feel like a
       // small television. The progress ("السؤال 2 من 3") is not duplicated and stays.
-      {...(phone ? {} : { eyebrow: "مين أقرب" })}
-      title={`السؤال ${itemIndex + 1} من 3`}
-      progressValue={(itemIndex / 3) * 100}
+      // The question itself opens the card's body, so the shell adds no heading
+      // of its own; the navy strip above already names the challenge.
+      progressLabel={`السؤال ${itemIndex + 1} من 3`}
       compact={phone}
       aside={
         remainingMs !== undefined && !revealed ? (
@@ -330,8 +325,8 @@ export function ClosestGameplayPanel({
         <h2
           className={
             phone
-              ? "text-center text-sm font-bold leading-snug text-muted-foreground"
-              : "text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]"
+              ? "text-center font-display text-xl font-extrabold leading-relaxed text-[hsl(var(--brand-navy))]"
+              : "font-display text-3xl font-extrabold leading-relaxed text-[hsl(var(--brand-navy))] lg:text-[44px] lg:leading-[1.55]"
           }
         >
           <BidiText>
@@ -340,33 +335,19 @@ export function ClosestGameplayPanel({
         </h2>
 
         {!revealed && !phone && (
-          <div
-            className="grid gap-3 sm:grid-cols-2"
-            data-testid="closest-submission-status"
-          >
-            {teams.map((teamId) => {
-              const identity = teamIdentityOf(teamId, snapshot?.teams ?? []);
-              return (
-                <div
-                  key={teamId}
-                  className={cn(
-                    "rounded-[var(--radius)] border p-4 text-center",
-                    identity.surface,
-                    identity.border,
-                  )}
-                >
-                  <p className={cn("font-black", identity.text)}>
-                    {teamName(teamId)}
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-muted-foreground">
-                    {submitted[teamId]
-                      ? "✓ تم إرسال الإجابة"
-                      : `بانتظار ${nameOf(assigned[teamId])}…`}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+          <TeamStatusRow data-testid="closest-submission-status">
+            {teams.map((teamId) => (
+              <TeamStatusCard
+                key={teamId}
+                role="يقدّر"
+                name={teamName(teamId)}
+                dotClass={teamIdentityOf(teamId, snapshot?.teams ?? []).dot}
+                done={Boolean(submitted[teamId])}
+                doneLabel="ثبّتوا تقديرهم"
+                pendingLabel={`ننتظر ${nameOf(assigned[teamId])}…`}
+              />
+            ))}
+          </TeamStatusRow>
         )}
 
         {canAnswer &&
@@ -377,142 +358,155 @@ export function ClosestGameplayPanel({
               className="flex min-h-0 flex-1 flex-col"
               data-testid="closest-answer-controls"
             >
-              <div
-                className={cn(
-                  "flex flex-1 flex-col justify-center",
-                  item?.slider &&
-                    "rounded-[var(--radius)] bg-[#fff6df] px-4 py-5 text-[#10253f]",
-                )}
-              >
+              <div className="flex flex-1 flex-col items-center justify-center gap-3.5">
                 <label
                   htmlFor="closest-estimate"
-                  className="mb-2 text-center text-xs font-black text-muted-foreground"
+                  className="text-sm font-semibold text-brand-slate"
                 >
                   تقدير فريقكم
                 </label>
                 {item?.slider ? (
                   <div
-                    className="space-y-4"
+                    className="flex w-full flex-col items-center gap-3.5"
                     data-testid={`closest-${item.slider.mode}-slider`}
                   >
-                    <p className="text-center text-xs font-bold text-[#10253f]/70">
-                      {colourQuestion
-                        ? "اسحب للّون اللي تتذكره ثم أكّد الإجابة"
-                        : "حرّك المؤشر إلى تقديرك ثم أكّد الإجابة"}
-                    </p>
-                    <div className="relative pt-12">
-                      {chosen && (
-                      <div
-                        className={cn(
-                          "absolute top-0 z-10 max-w-[76%] rounded-xl bg-[#10253f] px-3 py-2 text-center text-sm font-black leading-tight text-white shadow-md",
-                          wideBubble && "w-48",
-                        )}
-                        style={{
-                          left: bubblePlacement.left,
-                          transform: bubblePlacement.transform,
-                        }}
+                    {/* The value appears only once the team has moved the
+                        thumb: the seeded position is nobody's answer. */}
+                    {chosen ? (
+                      <output
+                        htmlFor="closest-estimate"
                         aria-live="polite"
                         data-testid="closest-value-bubble"
+                        className={cn(
+                          "min-w-[150px] max-w-full rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 py-1.5 text-center font-bold leading-tight text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+                          item.slider.mode === "numeric-range" &&
+                            bubbleText.length <= 8
+                            ? "akwaan-numeral text-6xl"
+                            : "text-2xl",
+                        )}
                       >
                           {colourQuestion && (
                             <span
                               aria-hidden
                               data-testid="closest-colour-swatch"
-                              className="me-2 inline-block size-5 rounded-full border-2 border-white align-middle"
+                              className="me-2 inline-block size-5 rounded-full border-2 border-[hsl(var(--brand-navy))] align-middle"
                               style={{
                                 background: hueColour(Number(estimate)),
                               }}
                             />
                           )}
                         {bubbleText}
-                        <span
-                          aria-hidden
-                          className="absolute top-full -translate-x-1/2 border-x-[6px] border-t-[7px] border-x-transparent border-t-[#10253f]"
-                          style={{ left: bubblePlacement.pointer }}
-                        />
-                      </div>
-                      )}
-                      <input
-                        id="closest-estimate"
-                        type="range"
-                        dir="ltr"
-                        min={item.slider.min}
-                        max={item.slider.max}
-                        step={item.slider.step ?? "any"}
-                        value={estimate}
-                        // `onChange` on a range input fires for pointer, touch
-                        // and keyboard alike, so every real way of moving the
-                        // thumb counts as choosing.
-                        onChange={(event) => {
-                          setChosen(true);
-                          setEstimate(event.target.value);
-                        }}
-                        // …except an adjustment key pressed while already at an
-                        // endpoint, which changes nothing and so fires no
-                        // change. That is still a deliberate act, and a keyboard
-                        // player must not be the one who cannot answer.
-                        onKeyDown={(event) => {
-                          if (
-                            [
-                              "ArrowLeft",
-                              "ArrowRight",
-                              "ArrowUp",
-                              "ArrowDown",
-                              "Home",
-                              "End",
-                              "PageUp",
-                              "PageDown",
-                            ].includes(event.key)
-                          )
+                      </output>
+                    ) : (
+                      <p className="min-w-[150px] rounded-[20px] border-[3px] border-dashed border-brand-dash bg-white px-6 py-4 text-center text-base font-bold text-brand-plum">
+                        {colourQuestion
+                          ? "اسحبوا للّون اللي تتذكرونه"
+                          : "حرّكوا المؤشر"}
+                      </p>
+                    )}
+                    <div className="flex w-full items-center gap-2.5">
+                      <button
+                        type="button"
+                        aria-label="نقّص"
+                        data-testid="closest-step-down"
+                        onClick={() => nudge(-1)}
+                        className={STEP_BUTTON}
+                      >
+                        −
+                      </button>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <input
+                          id="closest-estimate"
+                          type="range"
+                          dir="ltr"
+                          min={item.slider.min}
+                          max={item.slider.max}
+                          step={item.slider.step ?? "any"}
+                          value={estimate}
+                          // `onChange` on a range input fires for pointer,
+                          // touch and keyboard alike, so every real way of
+                          // moving the thumb counts as choosing.
+                          onChange={(event) => {
                             setChosen(true);
-                        }}
-                        aria-valuetext={
-                          !chosen
-                            ? "لم تختاروا تقديركم بعد"
-                            : item.slider.mode === "numeric-range"
-                              ? formatValue(Number(estimate))
-                              : colourQuestion
-                                ? `درجة اللون ${Math.round(Number(estimate))} من 360`
-                              : `موضع ${Math.round(sliderProgress)} بالمئة`
-                        }
-                        style={
-                          {
-                            "--closest-progress": `${sliderProgress}%`,
-                            ...(colourQuestion
-                              ? {
-                                  "--closest-track": HUE_TRACK,
-                                  "--closest-thumb": chosen
-                                    ? hueColour(Number(estimate))
-                                    : "#ffffff",
-                                }
-                              : {}),
-                          } as CSSProperties
-                        }
-                        data-testid="closest-estimate-slider"
-                        className={cn(
-                          "closest-slider h-12 w-full cursor-pointer accent-[#d6a928]",
-                          colourQuestion && "closest-slider--colour",
-                        )}
-                      />
-                    </div>
-                    <div
-                      dir="ltr"
-                      className={cn(
-                        "flex items-start justify-between gap-3 text-xs font-black",
-                        // A wheel has no ends to label: the track is the legend.
-                        colourQuestion && "hidden",
-                      )}
-                    >
-                      <span className="max-w-[45%] text-start">
-                        {item.slider.mode === "numeric-range"
-                          ? formatValue(item.slider.min)
-                          : item.slider.leftAnchor}
-                      </span>
-                      <span className="max-w-[45%] text-end">
-                        {item.slider.mode === "numeric-range"
-                          ? formatValue(item.slider.max)
-                          : item.slider.rightAnchor}
-                      </span>
+                            setEstimate(event.target.value);
+                          }}
+                          // …except an adjustment key pressed while already at
+                          // an endpoint, which changes nothing and so fires no
+                          // change. That is still a deliberate act, and a
+                          // keyboard player must not be the one who cannot
+                          // answer.
+                          onKeyDown={(event) => {
+                            if (
+                              [
+                                "ArrowLeft",
+                                "ArrowRight",
+                                "ArrowUp",
+                                "ArrowDown",
+                                "Home",
+                                "End",
+                                "PageUp",
+                                "PageDown",
+                              ].includes(event.key)
+                            )
+                              setChosen(true);
+                          }}
+                          aria-valuetext={
+                            !chosen
+                              ? "لم تختاروا تقديركم بعد"
+                              : item.slider.mode === "numeric-range"
+                                ? formatValue(Number(estimate))
+                                : colourQuestion
+                                  ? `درجة اللون ${Math.round(Number(estimate))} من 360`
+                                  : `موضع ${Math.round(sliderProgress)} بالمئة`
+                          }
+                          style={
+                            {
+                              "--closest-progress": `${sliderProgress}%`,
+                              ...(colourQuestion
+                                ? {
+                                    "--closest-track": HUE_TRACK,
+                                    "--closest-thumb": chosen
+                                      ? hueColour(Number(estimate))
+                                      : "#ffffff",
+                                  }
+                                : {}),
+                            } as CSSProperties
+                          }
+                          data-testid="closest-estimate-slider"
+                          className={cn(
+                            "closest-slider h-11 w-full cursor-pointer accent-[hsl(var(--brand-navy))]",
+                            colourQuestion && "closest-slider--colour",
+                          )}
+                        />
+                        <div
+                          dir="ltr"
+                          className={cn(
+                            "flex items-start justify-between gap-3 text-[13px] font-semibold text-brand-slate",
+                            // A wheel has no ends to label: the track is the legend.
+                            colourQuestion && "hidden",
+                          )}
+                        >
+                          <span className="max-w-[45%] text-start">
+                            {item.slider.mode === "numeric-range"
+                              ? formatValue(item.slider.min)
+                              : item.slider.leftAnchor}
+                          </span>
+                          <span className="max-w-[45%] text-end">
+                            {item.slider.mode === "numeric-range"
+                              ? formatValue(item.slider.max)
+                              : item.slider.rightAnchor}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="زوّد"
+                        data-testid="closest-step-up"
+                        onClick={() => nudge(1)}
+                        className={STEP_BUTTON}
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -531,19 +525,15 @@ export function ClosestGameplayPanel({
                 )}
               </div>
               <MobileActionArea>
-                <Button
-                  size="lg"
+                <button
+                  type="button"
                   disabled={sending || !hasEstimate}
                   onClick={submitEstimate}
                   data-testid="closest-submit"
-                  className="h-14 w-full text-base font-black"
+                  className="min-h-[62px] w-full rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform duration-fast active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_3px_0_hsl(var(--brand-navy))] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none"
                 >
-                  {sending
-                    ? "جارٍ التأكيد…"
-                    : item?.slider
-                      ? "تأكيد الإجابة"
-                      : "إرسال الإجابة"}
-                </Button>
+                  {sending ? "نرسلها…" : "إرسال الإجابة"}
+                </button>
               </MobileActionArea>
             </div>
           ) : (

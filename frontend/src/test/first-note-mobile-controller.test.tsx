@@ -410,7 +410,10 @@ describe("the host keeps its production-verified Master path", () => {
 
   it("keeps its non-compact frame, its eyebrow and its clip duration", () => {
     renderHost(screenState({ phase: "answering", finalBidSeconds: 5 }));
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
     expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
       "من أول نغمة",
     );

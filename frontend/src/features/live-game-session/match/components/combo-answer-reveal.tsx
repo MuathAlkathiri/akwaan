@@ -34,7 +34,7 @@ export function ComboAnswerReveal({
         <ResolutionAnswerRow label="الإجابة الصحيحة">
           {reveal.correctAnswer}
         </ResolutionAnswerRow>
-        <ResolutionOutcome>
+        <ResolutionOutcome tone={reveal.correct ? "correct" : "wrong"}>
           {reveal.correct
             ? `إجابة صحيحة · +${reveal.earned}`
             : timedOut

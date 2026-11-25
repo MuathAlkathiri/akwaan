@@ -272,14 +272,14 @@ describe("8. the room's box fits a 720p screen", () => {
   });
 
   it("lowers the box on a short screen, after the wide-screen rule so it wins", () => {
-    // المرحلة keeps its whole board on a 1280×720 screen; a 72px timer pushed
-    // it down 27px. On a screen 800px tall or less the box is 48px.
+    // The round face is the approved shape for every challenge; on a screen
+    // 800px tall or less it shrinks so a 1280×720 room still fits the card.
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
     const wide = css.indexOf("@media (min-width: 1024px) {\n  .akwaan-stage-countdown");
     const short = css.indexOf("@media (max-height: 800px) {\n  .akwaan-stage-countdown");
     expect(wide).toBeGreaterThan(-1);
     expect(short).toBeGreaterThan(wide);
-    expect(css.slice(short, short + 200)).toMatch(/height: 3rem/);
+    expect(css.slice(short, short + 200)).toMatch(/height: 7\.5rem/);
   });
 });
 
@@ -287,7 +287,7 @@ describe("9. phones keep a compact, steady timer", () => {
   it("has no stage size, no sound switch and a fixed-width numeral", () => {
     render(<ChallengeCountdown remainingMs={8000} />);
     expect(timer()).toHaveAttribute("data-surface", "compact");
-    expect(timer().className).toMatch(/text-sm/);
+    expect(timer().className).toMatch(/size-\[72px\]/);
     expect(screen.queryByTestId("countdown-sound-toggle")).toBeNull();
     expect(timer().querySelector(".akwaan-numeral")?.className).toMatch(/min-w-\[2ch\]/);
   });

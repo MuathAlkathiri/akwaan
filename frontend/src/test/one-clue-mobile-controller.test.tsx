@@ -223,7 +223,7 @@ describe("the phone is a controller", () => {
   it("uses the compact frame and one authoritative countdown", () => {
     renderPhone();
     const frame = screen.getByTestId("challenge-frame");
-    expect(frame.innerHTML).toContain("px-4");
+    expect(frame).toHaveAttribute("data-frame-surface", "phone");
     expect(frame).toHaveTextContent("السؤال 2 من 3");
     expect(frame).not.toHaveTextContent("بدليل واحد");
     expect(screen.getAllByTestId("challenge-countdown")).toHaveLength(1);
@@ -291,7 +291,10 @@ describe("the host is untouched", () => {
 
   it("keeps its non-compact frame and its full recap", () => {
     renderHost(runtimeWith(REVEALED));
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
     expect(document.body.textContent).toContain("عبدالله السدحان");
     expect(screen.queryByTestId("one-clue-phone-reveal")).toBeNull();
   });

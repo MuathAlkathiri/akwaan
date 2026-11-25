@@ -201,7 +201,7 @@ describe("the phone is a decision controller", () => {
   it("uses the compact frame and drops the room's card history", () => {
     renderPhone();
     const frame = screen.getByTestId("challenge-frame");
-    expect(frame.innerHTML).toContain("px-4");
+    expect(frame).toHaveAttribute("data-frame-surface", "phone");
     expect(frame).not.toHaveTextContent("البطاقات الموزّعة");
     expect(frame).not.toHaveTextContent("أفضل 5");
   });
@@ -262,7 +262,10 @@ describe("the host is untouched", () => {
 
   it("keeps its non-compact frame and its own decision styling", () => {
     renderHost();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
     expect(screen.queryByTestId("mobile-action-area")).toBeNull();
   });
 

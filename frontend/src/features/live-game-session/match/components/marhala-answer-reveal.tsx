@@ -29,7 +29,7 @@ export function MarhalaAnswerReveal({
         <ResolutionAnswerRow label="إجابتكم">
           {/* Never invented: a timeout submitted nothing, and says so. */}
           {timedOut || !turn.submittedAnswer
-            ? "ما تم إرسال إجابة"
+            ? "ما أرسلوا إجابة"
             : turn.submittedAnswer}
         </ResolutionAnswerRow>
         {turn.correctAnswer && (
@@ -37,8 +37,8 @@ export function MarhalaAnswerReveal({
             {turn.correctAnswer}
           </ResolutionAnswerRow>
         )}
-        <ResolutionOutcome>
-          {turn.correct ? "إجابة صحيحة" : timedOut ? "انتهى الوقت" : "إجابة خاطئة"}
+        <ResolutionOutcome tone={turn.correct ? "correct" : "wrong"}>
+          {turn.correct ? "جاوبوا صح" : timedOut ? "خلص الوقت" : "جاوبوا غلط"}
         </ResolutionOutcome>
       </ResolutionReveal>
     </div>

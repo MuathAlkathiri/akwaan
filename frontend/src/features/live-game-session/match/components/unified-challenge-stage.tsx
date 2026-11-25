@@ -7,10 +7,11 @@ import { abortActiveChallenge } from "@/features/match-setup";
 import { occurrenceLabel } from "@/features/match-setup";
 import { useLiveSession } from "../../hooks/live-session-context";
 import { MatchGameplayRenderer } from "../match-stage-router";
+import { ChallengeContextStrip } from "./challenge-context-strip";
+import { ChallengeStripSlotContext } from "./challenge-frame";
 import { QuestionBackdrop } from "./question-backdrop";
-import { slotLabels, teamName } from "../presentation";
 import { localizeMatchError } from "../errors/match-errors";
-import type { MatchActor, MatchTeamStanding } from "../types";
+import type { MatchActor } from "../types";
 
 const SELF_FRAMED_MODES: ReadonlySet<string> = new Set([
   "marhala",
@@ -51,6 +52,8 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       setAborting(false);
     }
   }, [aborting, adoptSnapshot, resync, snapshot]);
+  // A state, not a ref: the frame below must re-render once the slot exists.
+  const [stripSlot, setStripSlot] = useState<HTMLElement | null>(null);
   const match = snapshot?.match;
   if (!snapshot || !match) return null;
 
@@ -62,13 +65,6 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
           candidate.slotKey === current.slotKey,
       )
     : undefined;
-  const standings: MatchTeamStanding[] =
-    match.standings ??
-    match.scoring.matchTotals.map((score) => ({
-      ...score,
-      name: teamName(snapshot, score.teamId),
-    }));
-
   // A phone already carries its challenge and team identity in the mobile shell's
   // own header, and the two-team scoreboard belongs to the screen the whole room
   // is looking at. Repeating it here is what made a controller feel like a small
@@ -88,44 +84,35 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       className={
         phone
           ? "flex min-h-0 flex-1 flex-col"
-          : `stage-center space-y-4${backdropUrl ? " relative isolate" : ""}`
+          : `stage-center flex flex-col gap-[18px]${backdropUrl ? " relative isolate" : ""}`
       }
       data-testid="unified-challenge"
       data-challenge-surface={phone ? "phone" : "screen"}
     >
       {backdropUrl && <QuestionBackdrop url={backdropUrl} />}
       {!phone && !selfFramed && (
-      <header className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-4">
-        <div className="min-w-0">
-          {current && (
-            <p className="text-xs font-black text-primary">
-              {occurrenceLabel(current.occurrenceIndex)}
-              {position?.worldName ? ` · ${position.worldName}` : ""}
-              {` · ${slotLabels[current.slotKey]}`}
-            </p>
-          )}
-          <h1 className="mt-0.5 truncate text-xl font-black text-foreground">
-            {position?.challengeName ?? "جارٍ استعادة التحدي"}
-          </h1>
-        </div>
-        <ul className="flex list-none flex-wrap items-center gap-4">
-          {standings.map((team) => (
-            <li key={team.teamId} className="text-center">
-              <p className="text-xs font-bold text-muted-foreground">{team.name}</p>
-              <p className="text-2xl font-black akwaan-numeral text-foreground">
-                {team.displayTotal}
-              </p>
-              {current?.doubledTeamIds?.includes(team.teamId) && (
-                <p className="text-xs font-black text-warning">فعّل الدبل ×2</p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </header>
+        <ChallengeContextStrip
+          {...(current
+            ? {
+                eyebrow: [
+                  occurrenceLabel(current.occurrenceIndex),
+                  position?.worldName,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+              }
+            : {})}
+          title={position?.challengeName ?? "نرجّع التحدي…"}
+          // The mechanic's own progress («السؤال 1 من 3» and its dashes) is
+          // portalled in here by the frame it renders below.
+          aside={<div ref={setStripSlot} data-testid="challenge-strip-slot" />}
+        />
       )}
 
       {snapshot.gameplay ? (
-        <MatchGameplayRenderer actor={actor} />
+        <ChallengeStripSlotContext.Provider value={phone ? null : stripSlot}>
+          <MatchGameplayRenderer actor={actor} />
+        </ChallengeStripSlotContext.Provider>
       ) : (
         <section
           data-testid="challenge-restoring"
@@ -146,20 +133,20 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
       )}
 
       {actor === "controller" && (
-        <div className="flex flex-col items-center gap-2 text-center">
+        <div className="flex flex-col items-end gap-2">
           <Button
             type="button"
             variant="outline"
             disabled={aborting || !snapshot.gameplay}
             onClick={abort}
-            className="font-black"
+            className="min-h-[46px] rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-5 text-[15px] font-bold text-[hsl(var(--brand-navy))] hover:bg-brand-lavender"
           >
             {aborting ? (
               <RefreshCw className="size-4 animate-spin" aria-hidden />
             ) : (
               <ArrowLeft className="size-4" aria-hidden />
             )}
-            {aborting ? "جارٍ إلغاء التحدي…" : "العودة إلى اللوحة"}
+            {aborting ? "نلغي التحدي…" : "العودة إلى اللوحة"}
           </Button>
           {abortError && (
             <p role="alert" className="text-sm font-bold text-destructive">

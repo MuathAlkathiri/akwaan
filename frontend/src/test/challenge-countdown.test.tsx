@@ -71,9 +71,13 @@ describe("ChallengeCountdown urgency presentation", () => {
   });
 
   it("keeps the error red for the last three seconds", () => {
-    for (const variant of ["chip", "prominent"] as const) {
+    // The round chip fills with the error red; the plain numeral wears it.
+    for (const [variant, tone] of [
+      ["chip", /\bbg-sem-error\b/],
+      ["prominent", /\btext-sem-error\b/],
+    ] as const) {
       const { view, timer } = at(2, variant);
-      expect(timer.className).toMatch(/\btext-sem-error\b/);
+      expect(timer.className).toMatch(tone);
       view.unmount();
     }
   });

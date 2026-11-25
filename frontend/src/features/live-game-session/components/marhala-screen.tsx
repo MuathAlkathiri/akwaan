@@ -206,6 +206,7 @@ export function MarhalaScreen({
               view.phase === "question" && (
                 <ChallengeCountdown
                   remainingMs={remainingMs}
+                  size="md"
                   sound={view.media?.type !== "audio"}
                 />
               )}
@@ -535,24 +536,27 @@ export function MarhalaQuestionImage({
   const [state, setState] = useState<"loading" | "loaded" | "unavailable">(
     url ? "loading" : "unavailable",
   );
+  // Each retry mounts a fresh <img>, which is what makes the browser ask again.
+  const [attempt, setAttempt] = useState(0);
   const resolvedUrl = getMediaUrl(url);
 
   return (
     <div
       data-testid="marhala-question-image"
-      className="relative mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border/50 bg-muted/60"
+      className="relative mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-wash"
     >
       {state === "loading" && (
         <div
           role="status"
-          className="absolute inset-0 flex animate-pulse items-center justify-center text-xs font-bold text-muted-foreground"
+          className="absolute inset-0 flex animate-pulse items-center justify-center text-sm font-bold text-brand-slate motion-reduce:animate-none"
         >
-          جارٍ تحميل الصورة…
+          نحمّل الصورة…
         </div>
       )}
       {resolvedUrl && state !== "unavailable" && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          key={attempt}
           src={resolvedUrl}
           alt={altText || "صورة السؤال"}
           className={cn(
@@ -564,13 +568,30 @@ export function MarhalaQuestionImage({
         />
       )}
       {state === "unavailable" && (
-        <p
+        // The same slot, saying what happened and offering the one thing that
+        // can fix it, instead of a blank box the room has to guess about.
+        <div
           role="status"
           data-testid="marhala-image-unavailable"
-          className="p-4 text-center text-xs font-bold text-muted-foreground"
+          className="flex flex-col items-center gap-3 p-4 text-center"
         >
-          تعذّر تحميل صورة السؤال
-        </p>
+          <p className="text-base font-bold text-[hsl(var(--brand-navy))]">
+            ما قدرنا نحمّل الصورة
+          </p>
+          {resolvedUrl && (
+            <button
+              type="button"
+              data-testid="marhala-image-retry"
+              onClick={() => {
+                setAttempt((current) => current + 1);
+                setState("loading");
+              }}
+              className="inline-flex min-h-11 items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-5 text-[15px] font-bold text-[hsl(var(--brand-navy))] hover:bg-brand-lavender"
+            >
+              حاول مرة ثانية
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

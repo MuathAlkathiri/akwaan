@@ -365,7 +365,6 @@ describe("a running challenge is routed by its runtime mode key", () => {
 
     const header = screen.getByTestId("unified-challenge");
     expect(header.textContent).toContain("العالم الثاني · انمي");
-    expect(header.textContent).toContain("الخانة 2");
     expect(header.textContent).toContain("اقرأ خصمك 1-1");
   });
 

@@ -129,11 +129,12 @@ describe("the phone is a controller", () => {
     expect(screen.queryByTestId("closest-value-bubble")).toBeNull();
     fireEvent.change(slider, { target: { value: "1950" } });
     const bubble = screen.getByTestId("closest-value-bubble");
-    expect(bubble).toHaveStyle({ left: "12%" });
+    // The value sits in its own gold box above the slider, not on the thumb.
+    expect(bubble.tagName).toBe("OUTPUT");
     fireEvent.change(slider, { target: { value: "2000" } });
     expect(bubble).toHaveTextContent("سنة");
     expect(gameplayCommand).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "تأكيد الإجابة" }));
+    fireEvent.click(screen.getByRole("button", { name: "إرسال الإجابة" }));
     expect(gameplayCommand).toHaveBeenCalledTimes(1);
     expect(gameplayCommand).toHaveBeenCalledWith(
       "gameplay-command",
@@ -233,8 +234,11 @@ describe("the phone is a controller", () => {
 
   it("uses the compact challenge frame", () => {
     renderPhone();
-    // Compact is a real mode: it changes the frame's own padding scale.
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-4");
+    // Compact is a real mode: the phone's own card, not a shrunken screen.
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "phone",
+    );
     // Progress stays; the challenge name does not, because the shell says it.
     expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
       "السؤال 1 من 3",
@@ -260,13 +264,13 @@ describe("the phone does not restate the shared screen", () => {
     );
   });
 
-  it("keeps one quiet line of the question for context", () => {
+  it("keeps the question on the phone, at phone scale", () => {
     renderPhone();
     // Present, but not the shared screen's hero treatment.
     const heading = screen.getByRole("heading", { level: 2 });
     expect(heading).toHaveTextContent("كم طول برج المملكة بالمتر؟");
-    expect(heading.className).toContain("text-sm");
-    expect(heading.className).not.toContain("text-[2rem]");
+    expect(heading.className).toContain("text-xl");
+    expect(heading.className).not.toContain("lg:text-[44px]");
   });
 
   it("reduces the reveal to the one fact, not the host recap", () => {
@@ -327,16 +331,18 @@ describe("the host is untouched", () => {
   it("keeps the full prompt, the media and the shared context", () => {
     renderHost();
     expect(screen.getByRole("heading", { level: 2 }).className).toContain(
-      "text-[2rem]",
+      "lg:text-[44px]",
     );
     expect(document.querySelector("img")).not.toBeNull();
     expect(screen.getByTestId("closest-submission-status")).toBeInTheDocument();
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent("مين أقرب");
   });
 
   it("keeps its own non-compact frame", () => {
     renderHost();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-5");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
   });
 
   it("keeps the full recap", () => {

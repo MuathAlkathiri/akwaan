@@ -64,7 +64,10 @@ describe("Rakkibha private UI", () => {
       />,
     );
     expect(screen.getByTestId("rakkibha-reference")).toBeTruthy();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-4");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "phone",
+    );
     expect(screen.getByTestId("rakkibha-reference")).toHaveAttribute(
       "dir",
       "ltr",

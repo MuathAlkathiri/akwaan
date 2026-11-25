@@ -217,7 +217,7 @@ describe("the phone is not a small television", () => {
     expect(stage).not.toHaveTextContent("صقور الرياض");
   });
 
-  it("still gives the host that header, unchanged", () => {
+  it("gives the shared screen the navy context strip, and the phone none", () => {
     renderHost(
       snapshotWith("challenge", {
         currentChallenge: { occurrenceIndex: 0, slotKey: "slot_1" },
@@ -225,8 +225,12 @@ describe("the phone is not a small television", () => {
     );
     const stage = screen.getByTestId("unified-challenge");
     expect(stage).toHaveAttribute("data-challenge-surface", "screen");
-    expect(stage).toHaveTextContent("صقور الرياض");
-    expect(stage).toHaveTextContent("أسود الشمال");
+    // Where in the Match this is. The two-team score sits in the Match header
+    // above the stage, so the strip does not repeat it.
+    expect(screen.getByTestId("challenge-context-strip")).toHaveTextContent(
+      "العالم الأول",
+    );
+    expect(stage).not.toHaveTextContent("صقور الرياض");
   });
 
   it("does not surface any board position content on the phone", () => {

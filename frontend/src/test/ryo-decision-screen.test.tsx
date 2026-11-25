@@ -236,7 +236,7 @@ describe("the read-your-opponent choice terminology", () => {
 });
 
 describe("the blind window's clock", () => {
-  it("renders the seconds prominently, in tabular numerals, below the question", () => {
+  it("renders the seconds on the shared round face, in tabular numerals, beside the question", () => {
     render(<RyoGameplayPanel runtime={ryoRuntime({ role: "opposing" })} />);
 
     const countdown = screen.getByTestId("challenge-countdown");
@@ -245,21 +245,16 @@ describe("the blind window's clock", () => {
     // watched element on the screen visibly jitters.
     const numeral = countdown.querySelector(".akwaan-numeral");
     expect(numeral?.textContent).toBe("10");
-    expect(countdown.className).toContain("flex-col");
+    // The same round face every challenge uses, not a clock of its own.
+    expect(countdown.className).toContain("rounded-full");
 
-    // Second-largest, not largest. Measured in a browser, the clock at `text-6xl`
-    // rendered 72px against a 40px question and the room read the timer first — so
-    // the two scales are asserted against each other rather than pinned separately.
-    const scaleOf = (className: string) =>
-      Number(
-        className.match(/text-(?:\[(\d+(?:\.\d+)?)rem\]|(\d)xl)/)?.slice(1).find(Boolean),
-      );
+    // The approved question card: the clock takes the side of the card and the
+    // question keeps the body, so the clock is a sibling of the body rather
+    // than something stacked under the question.
+    const frame = screen.getByTestId("challenge-frame");
     const question = screen.getByRole("heading", { level: 2 });
-    // The question is written in rem, the timer on Tailwind's xl scale; both parse to
-    // a comparable number only because the timer's tier is deliberately low.
-    expect(question.className).toMatch(/text-\[2rem\]/);
-    expect(numeral?.className).toMatch(/text-3xl/);
-    expect(scaleOf(numeral?.className ?? "")).toBeLessThan(4);
+    expect(frame).toContainElement(countdown);
+    expect(question.parentElement).not.toContainElement(countdown);
   });
 
   it("escalates to gold and then to the error red in the last three seconds", () => {

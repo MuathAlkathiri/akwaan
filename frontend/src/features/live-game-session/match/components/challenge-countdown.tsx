@@ -45,6 +45,7 @@ export function ChallengeCountdown({
   variant = "chip",
   thresholds = DEFAULT_COUNTDOWN_THRESHOLDS,
   sound = true,
+  size = "lg",
   className,
 }: {
   remainingMs: number;
@@ -57,6 +58,11 @@ export function ChallengeCountdown({
   thresholds?: CountdownThresholds;
   /** False while the question itself is audio, so cues never talk over it. */
   sound?: boolean;
+  /**
+   * How big the shared screen's face is. `lg` when the clock has the card to
+   * itself; `md` when it shares a row with something else (a board, a panel).
+   */
+  size?: "lg" | "md";
   className?: string;
 }) {
   const seconds = countdownSeconds(remainingMs);
@@ -71,9 +77,16 @@ export function ChallengeCountdown({
   if (variant === "chip" && stage) {
     return (
       <div
-        className={cn("inline-flex items-center gap-2", className)}
+        className={cn("relative inline-flex items-center gap-2", className)}
         data-testid="challenge-countdown-stage"
       >
+        {/* The only purple on a question screen: two small stars by the clock. */}
+        {size === "lg" && (
+          <>
+            <CountdownStar className="absolute -top-3 end-10 size-9 rotate-12 lg:size-12" />
+            <CountdownStar className="absolute -bottom-1 -start-4 size-5 -rotate-12 lg:size-7" />
+          </>
+        )}
         <div
           data-testid="challenge-countdown"
           data-urgency={urgency}
@@ -81,34 +94,39 @@ export function ChallengeCountdown({
           role="timer"
           aria-label={label}
           className={cn(
-            // One fixed footprint for all four states, so the header never
-            // jumps — not even when "انتهى الوقت" replaces the number.
-            // Height and digit size live in `.akwaan-stage-countdown` so a short
-            // (720p) screen gets a lower box; see globals.css.
-            "akwaan-stage-countdown inline-flex min-w-[12rem] items-center justify-center gap-2.5 rounded-[var(--radius)] border-2 px-4 shadow-sm transition-colors duration-fast ease-akwaan lg:min-w-[13.5rem]",
+            // One round face for every challenge and all four states, so the
+            // card never jumps — not even when «انتهى الوقت» replaces the
+            // number. Its size lives in `.akwaan-stage-countdown` so a short
+            // (720p) screen gets a smaller face; see globals.css.
+            size === "md" && "akwaan-stage-countdown-md",
+            "akwaan-stage-countdown relative flex shrink-0 flex-col items-center justify-center rounded-full outline outline-4 outline-[hsl(var(--brand-navy))] transition-colors duration-fast ease-akwaan",
             STAGE_TONE[urgency],
           )}
         >
-          <UrgencyIcon
-            urgency={urgency}
-            className="size-7 shrink-0 lg:size-8"
-          />
+          {urgency !== "calm" && (
+            <UrgencyIcon
+              urgency={urgency}
+              className="absolute top-[12%] size-5 lg:size-6"
+            />
+          )}
           {urgency === "expired" ? (
-            <span className="min-w-[4.5ch] text-xl font-black lg:text-2xl">
+            <span className="px-2 text-center font-display text-lg font-extrabold leading-tight lg:text-xl">
               انتهى الوقت
             </span>
           ) : (
-            <span className="flex items-baseline gap-1.5">
+            <>
               <span
                 className={cn(
-                  "akwaan-numeral akwaan-stage-countdown-digits inline-block min-w-[2ch] text-center font-black leading-none",
+                  "akwaan-numeral akwaan-stage-countdown-digits inline-block min-w-[2ch] text-center font-bold leading-none",
                   urgency === "critical" && "akwaan-countdown-beat",
                 )}
               >
                 {seconds}
               </span>
-              <span className="text-sm font-bold lg:text-base">ثانية</span>
-            </span>
+              <span className="text-sm font-semibold opacity-80 lg:text-lg">
+                ثانية
+              </span>
+            </>
           )}
         </div>
         <CountdownSoundToggle />
@@ -125,42 +143,38 @@ export function ChallengeCountdown({
         role="timer"
         aria-label={label}
         className={cn(
-          // A chip the size of a label is a chip a player loses the round to.
-          // Calm it stays out of the way; critical it grows, thickens its
-          // border and beats, so the last seconds are seen from the corner of
-          // an eye that is on the answer buttons.
-          "inline-flex items-baseline gap-1 rounded-full border border-border px-2.5 py-1 text-sm font-black transition-all duration-base ease-akwaan",
+          // The same round face as the shared screen, at thumb scale. Calm it
+          // stays out of the way; critical it grows and beats, so the last
+          // seconds are seen from the corner of an eye that is on the answer
+          // buttons.
+          "relative inline-flex size-[72px] shrink-0 flex-col items-center justify-center rounded-full outline outline-[3px] outline-[hsl(var(--brand-navy))] transition-all duration-base ease-akwaan",
           CHIP_TONE[urgency],
-          urgency === "critical" &&
-            "scale-110 border-2 px-3.5 py-1.5 text-base shadow-[0_3px_0_hsl(var(--brand-navy))]",
-          urgency === "expired" && "border-2",
+          urgency === "critical" && "scale-110",
           className,
         )}
       >
         {urgency !== "calm" && (
           <UrgencyIcon
             urgency={urgency}
-            className={cn(
-              "shrink-0 self-center",
-              urgency === "critical" ? "size-5" : "size-3.5",
-            )}
+            className="absolute top-1.5 size-3.5"
             data-testid="challenge-countdown-urgent-cue"
           />
         )}
         {urgency === "expired" ? (
-          <span>انتهى الوقت</span>
+          <span className="px-1 text-center text-[11px] font-extrabold leading-tight">
+            انتهى الوقت
+          </span>
         ) : (
           <>
             <span
               className={cn(
-                "akwaan-numeral inline-block min-w-[2ch] text-center",
-                urgency === "critical" &&
-                  "akwaan-countdown-beat text-xl leading-none",
+                "akwaan-numeral inline-block min-w-[2ch] text-center text-[26px] font-bold leading-none",
+                urgency === "critical" && "akwaan-countdown-beat",
               )}
             >
               {seconds}
             </span>
-            <span className="text-[0.7rem] font-bold">ثانية</span>
+            <span className="text-[10px] font-semibold opacity-80">ثانية</span>
           </>
         )}
       </span>
@@ -213,21 +227,22 @@ export function ChallengeCountdown({
 }
 
 /**
- * Stage tones. Critical is a filled panel, the one state that has to be seen
- * from the far end of a room; white on `--sem-error` clears 4.5:1.
+ * The face in each state. Calm is the gold ring every challenge shares;
+ * critical is a filled face, the one state that has to be seen from the far
+ * end of a room; white on `--sem-error` clears 4.5:1.
  */
 const STAGE_TONE: Record<CountdownUrgency, string> = {
-  calm: "border-border bg-card text-foreground",
+  calm: "border-[hsl(var(--brand-gold))] bg-card text-foreground",
   warning: "border-warning bg-warning-subtle text-foreground",
-  critical: "border-sem-error bg-sem-error text-white",
-  expired: "border-sem-error/50 bg-muted text-sem-error",
+  critical: "border-white bg-sem-error text-white",
+  expired: "border-brand-dash bg-brand-wash text-sem-error",
 };
 
 const CHIP_TONE: Record<CountdownUrgency, string> = {
-  calm: "text-foreground",
-  warning: "border-warning bg-warning-subtle text-foreground",
-  critical: "text-sem-error",
-  expired: "border-sem-error/50 text-sem-error",
+  calm: "border-[6px] border-[hsl(var(--brand-gold))] bg-card text-foreground",
+  warning: "border-[6px] border-warning bg-warning-subtle text-foreground",
+  critical: "border-[6px] border-white bg-sem-error text-white",
+  expired: "border-[6px] border-brand-dash bg-brand-wash text-sem-error",
 };
 
 const PROMINENT_TONE: Record<CountdownUrgency, string> = {
@@ -236,6 +251,20 @@ const PROMINENT_TONE: Record<CountdownUrgency, string> = {
   critical: "text-sem-error",
   expired: "text-sem-error",
 };
+
+function CountdownStar({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="-12 -12 24 24" className={className}>
+      <path
+        d="M0 -10 Q1.8 -1.8 10 0 Q1.8 1.8 0 10 Q-1.8 1.8 -10 0 Q-1.8 -1.8 0 -10Z"
+        fill="hsl(var(--brand-purple))"
+        stroke="hsl(var(--brand-navy))"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function UrgencyIcon({
   urgency,
@@ -266,7 +295,7 @@ export function CountdownSoundToggle() {
       aria-label={enabled ? "إيقاف أصوات المؤقت" : "تشغيل أصوات المؤقت"}
       title={enabled ? "إيقاف أصوات المؤقت" : "تشغيل أصوات المؤقت"}
       onClick={() => setEnabled(!enabled)}
-      className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="grid size-10 shrink-0 place-items-center self-end rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white text-[hsl(var(--brand-navy))] transition-colors hover:bg-brand-lavender focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {enabled ? (
         <Volume2 className="size-5" aria-hidden />
