@@ -265,7 +265,9 @@ export function MovingXoPhonePanel({
             disabled={!live || Boolean(sending)}
           />
           <p className="text-center text-sm leading-relaxed text-brand-plum">
-            {movingCell !== undefined
+            {view.decisivePhase
+              ? "الحسم: كل علامة تحطونها تبقى في مكانها."
+              : movingCell !== undefined
               ? "معكم 3 علامات، فالباهتة بتنتقل للخانة اللي تختارونها."
               : "اختاروا خانة من الخانات الذهبية."}
           </p>

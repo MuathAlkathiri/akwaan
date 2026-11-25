@@ -6,7 +6,7 @@ import { MOVING_XO_SLUG } from '../../world-content/domain/world-content.constan
  * Pure and deterministic. Nothing here knows about Mongo, sockets, content,
  * timers or actors: the plugin owns the runtime, and this owns the question
  * "given this board, is that placement legal, and what does the board become?".
- * Keeping it separable is what lets the whole rule set — FIFO, refresh, the
+ * Keeping it separable is what lets the whole rule set — FIFO, the
  * decisive phase, the draw — be exercised without a runtime at all.
  *
  * Board ownership is keyed by **canonical team id**, never by "X" or "O". X and O
@@ -67,8 +67,7 @@ export interface MovingXoBoard {
 export type MovingXoPlacementIssue =
   | 'cell-out-of-range'
   | 'cell-occupied-by-opponent'
-  | 'cell-occupied-by-own-live-mark'
-  | 'cell-not-the-expiring-mark';
+  | 'cell-occupied-by-own-live-mark';
 
 export function createMovingXoBoard(teamIds: readonly string[]): MovingXoBoard {
   return {
@@ -104,15 +103,14 @@ export function expiringCellFor(
  * Why this placement is illegal, or `undefined` if it is allowed.
  *
  * Returning the reason rather than a boolean so the command layer can answer
- * *why* a placement was refused. The rules, from §23.11: an empty cell is always
- * legal; the team's own expiring cell is legal and refreshes in place; an
- * opponent's cell and the team's own non-expiring cells never are.
+ * *why* a placement was refused. Only an empty cell is legal: an opponent's cell
+ * and every one of the team's own cells are refused, the mark about to move
+ * included. (Renewing that mark in place was dropped on 2026-11-25.)
  */
 export function placementIssue(
   board: MovingXoBoard,
   teamId: string,
   cell: number,
-  decisivePhase: boolean,
 ): MovingXoPlacementIssue | undefined {
   if (!Number.isInteger(cell) || cell < 0 || cell >= MOVING_XO_CELL_COUNT) {
     return 'cell-out-of-range';
@@ -120,20 +118,16 @@ export function placementIssue(
   const owner = board.cells[cell];
   if (owner === null) return undefined;
   if (owner !== teamId) return 'cell-occupied-by-opponent';
-
-  const expiring = expiringCellFor(board, teamId, decisivePhase);
-  if (expiring === null) return 'cell-occupied-by-own-live-mark';
-  return cell === expiring ? undefined : 'cell-not-the-expiring-mark';
+  return 'cell-occupied-by-own-live-mark';
 }
 
 export function legalTargetsFor(
   board: MovingXoBoard,
   teamId: string,
-  decisivePhase: boolean,
 ): readonly number[] {
   const targets: number[] = [];
   for (let cell = 0; cell < MOVING_XO_CELL_COUNT; cell += 1) {
-    if (!placementIssue(board, teamId, cell, decisivePhase)) targets.push(cell);
+    if (!placementIssue(board, teamId, cell)) targets.push(cell);
   }
   return targets;
 }
@@ -141,13 +135,9 @@ export function legalTargetsFor(
 /**
  * The board after a legal placement — **one** transition.
  *
- * A refresh is not modelled as remove-then-add. The cell never becomes empty and
- * no intermediate board is produced: the mark keeps its square and moves to the
- * back of the FIFO. Anything observing committed state sees a single step, which
- * is what stops a reconnect or a projection catching the board mid-move.
- *
- * Eviction and placement are likewise one step: the oldest cell is cleared and
- * the chosen cell written in the same construction.
+ * Eviction and placement are one step: the oldest cell is cleared and the chosen
+ * cell written in the same construction, so nothing observing committed state
+ * can catch the board mid-move.
  *
  * Throws if the placement is illegal — callers check `placementIssue` first.
  */
@@ -157,15 +147,14 @@ export function applyPlacement(
   cell: number,
   decisivePhase: boolean,
 ): MovingXoBoard {
-  const issue = placementIssue(board, teamId, cell, decisivePhase);
+  const issue = placementIssue(board, teamId, cell);
   if (issue) {
     throw new Error(`Illegal Moving XO placement (${issue}) on cell ${cell}`);
   }
 
   const marks = marksOf(board, teamId);
-  const refreshing = board.cells[cell] === teamId;
   const evicting =
-    !refreshing && !decisivePhase && marks.length >= MOVING_XO_MAX_LIVE_MARKS
+    !decisivePhase && marks.length >= MOVING_XO_MAX_LIVE_MARKS
       ? marks[0]
       : null;
 
@@ -173,11 +162,8 @@ export function applyPlacement(
   if (evicting !== null) cells[evicting] = null;
   cells[cell] = teamId;
 
-  // The cell moves to the back of this team's order whether it was refreshed or
-  // newly placed; an evicted cell leaves it entirely.
-  const nextOrder = marks.filter(
-    (owned) => owned !== cell && owned !== evicting,
-  );
+  // The new cell joins the back of this team's order; an evicted cell leaves it.
+  const nextOrder = marks.filter((owned) => owned !== evicting);
   return {
     cells,
     markOrder: { ...board.markOrder, [teamId]: [...nextOrder, cell] },

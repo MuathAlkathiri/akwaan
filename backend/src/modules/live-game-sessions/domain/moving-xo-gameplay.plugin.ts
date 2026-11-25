@@ -626,12 +626,7 @@ function handle(
     }
 
     const cell = Number(command.payload.cell);
-    const issue = placementIssue(
-      runtime.board,
-      runtime.activeTeamId,
-      cell,
-      runtime.decisivePhase,
-    );
+    const issue = placementIssue(runtime.board, runtime.activeTeamId, cell);
     if (issue) {
       fail('MOVING_XO_ILLEGAL_PLACEMENT', `Illegal placement: ${issue}`);
     }
@@ -955,11 +950,7 @@ export const MOVING_XO_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         runtime.activeTeamId,
         runtime.decisivePhase,
       ),
-      legalCells: legalTargetsFor(
-        runtime.board,
-        runtime.activeTeamId,
-        runtime.decisivePhase,
-      ),
+      legalCells: legalTargetsFor(runtime.board, runtime.activeTeamId),
     } as unknown as GameplayModeState;
   },
 };

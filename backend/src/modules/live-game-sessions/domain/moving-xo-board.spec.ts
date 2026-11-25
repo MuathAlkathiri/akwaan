@@ -28,21 +28,21 @@ function board(
 
 describe('Moving XO board — placement legality', () => {
   it('allows any empty cell on an empty board', () => {
-    expect(legalTargetsFor(createMovingXoBoard([X, O]), X, false)).toEqual([
+    expect(legalTargetsFor(createMovingXoBoard([X, O]), X)).toEqual([
       0, 1, 2, 3, 4, 5, 6, 7, 8,
     ]);
   });
 
   it('allows only empty cells while a team holds one or two marks', () => {
     const one = board([[X, 0]]);
-    expect(legalTargetsFor(one, X, false)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(legalTargetsFor(one, X)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(expiringCellFor(one, X, false)).toBeNull();
 
     const two = board([
       [X, 0],
       [X, 1],
     ]);
-    expect(legalTargetsFor(two, X, false)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(legalTargetsFor(two, X)).toEqual([2, 3, 4, 5, 6, 7, 8]);
     expect(expiringCellFor(two, X, false)).toBeNull();
   });
 
@@ -53,39 +53,38 @@ describe('Moving XO board — placement legality', () => {
       [X, 2],
     ]);
     expect(expiringCellFor(three, X, false)).toBe(0);
-    // Empty cells, plus the expiring cell itself — and nothing else.
-    expect(legalTargetsFor(three, X, false)).toEqual([0, 3, 4, 5, 6, 7, 8]);
+    // Empty cells only: the mark about to move cannot be renewed in place.
+    expect(legalTargetsFor(three, X)).toEqual([3, 4, 5, 6, 7, 8]);
   });
 
   it('refuses an opponent cell', () => {
-    expect(placementIssue(board([[O, 4]]), X, 4, false)).toBe(
+    expect(placementIssue(board([[O, 4]]), X, 4)).toBe(
       'cell-occupied-by-opponent',
     );
   });
 
-  it('refuses the team own non-expiring marks', () => {
+  it('refuses every one of the team own marks, the expiring one included', () => {
     const three = board([
       [X, 0],
       [X, 1],
       [X, 2],
     ]);
-    expect(placementIssue(three, X, 1, false)).toBe(
-      'cell-not-the-expiring-mark',
-    );
-    expect(placementIssue(three, X, 2, false)).toBe(
-      'cell-not-the-expiring-mark',
-    );
+    for (const cell of [0, 1, 2]) {
+      expect(placementIssue(three, X, cell)).toBe(
+        'cell-occupied-by-own-live-mark',
+      );
+    }
   });
 
   it('refuses an own cell when nothing is expiring yet', () => {
-    expect(placementIssue(board([[X, 0]]), X, 0, false)).toBe(
+    expect(placementIssue(board([[X, 0]]), X, 0)).toBe(
       'cell-occupied-by-own-live-mark',
     );
   });
 
   it.each([-1, 9, 1.5, Number.NaN])('refuses the invalid cell %p', (cell) => {
     expect(
-      placementIssue(createMovingXoBoard([X, O]), X, cell as number, false),
+      placementIssue(createMovingXoBoard([X, O]), X, cell as number),
     ).toBe('cell-out-of-range');
   });
 
@@ -135,36 +134,16 @@ describe('Moving XO board — FIFO', () => {
   });
 });
 
-describe('Moving XO board — same-cell refresh', () => {
+describe('Moving XO board — no same-cell renewal', () => {
   const three = board([
     [X, 0],
     [X, 4],
     [X, 8],
   ]);
 
-  it('is legal on the expiring cell', () => {
-    expect(placementIssue(three, X, 0, false)).toBeUndefined();
-  });
-
-  it('leaves board occupancy identical', () => {
-    const refreshed = applyPlacement(three, X, 0, false);
-    expect(refreshed.cells).toEqual(three.cells);
-    expect(marksOf(refreshed, X)).toHaveLength(3);
-  });
-
-  it('moves the refreshed cell to newest', () => {
-    const refreshed = applyPlacement(three, X, 0, false);
-    expect(marksOf(refreshed, X)).toEqual([4, 8, 0]);
-    // The expiring mark is now a different cell, which is the whole point.
-    expect(expiringCellFor(refreshed, X, false)).toBe(4);
-  });
-
-  it('never exposes an empty intermediate cell', () => {
-    // One transition: the refreshed cell is owned before and after, so no
-    // observer of committed state can see it vacant.
-    const refreshed = applyPlacement(three, X, 0, false);
-    expect(three.cells[0]).toBe(X);
-    expect(refreshed.cells[0]).toBe(X);
+  it('refuses the expiring cell as a target', () => {
+    expect(placementIssue(three, X, 0)).toBe('cell-occupied-by-own-live-mark');
+    expect(() => applyPlacement(three, X, 0, false)).toThrow();
   });
 });
 
@@ -210,16 +189,6 @@ describe('Moving XO board — win detection', () => {
     expect(evicted.cells[0]).toBeNull();
     expect(winnerOf(evicted)).toBeNull();
   });
-
-  it('counts a refreshed mark as live', () => {
-    const refreshed = board([
-      [X, 0],
-      [X, 1],
-      [X, 2],
-      [X, 0], // refresh the oldest in place — the row survives
-    ]);
-    expect(winnerOf(refreshed)).toBe(X);
-  });
 });
 
 describe('Moving XO board — decisive phase (الحسم)', () => {
@@ -259,10 +228,8 @@ describe('Moving XO board — decisive phase (الحسم)', () => {
       [X, 8],
     ]);
     expect(expiringCellFor(three, X, true)).toBeNull();
-    expect(placementIssue(three, X, 0, true)).toBe(
-      'cell-occupied-by-own-live-mark',
-    );
-    expect(legalTargetsFor(three, X, true)).toEqual([1, 2, 3, 5, 6, 7]);
+    expect(placementIssue(three, X, 0)).toBe('cell-occupied-by-own-live-mark');
+    expect(legalTargetsFor(three, X)).toEqual([1, 2, 3, 5, 6, 7]);
   });
 
   it('lets a team exceed three marks', () => {

@@ -4792,6 +4792,10 @@ CAS/idempotency and actor-safe projections; V1 accepts `match` and `multiple_cho
 supplier durably converges `question-pending` one item at a time across launch, recurring turns, reads and
 reconnects, with no launch deck and no prefetch.
 
+**Rule change (2026-11-25, product owner).** Same-cell refresh is removed: a team may place only on an empty
+cell, and its oldest mark always moves once it holds three. الحسم after 12 successful moves and the draw stay.
+Mentions of same-cell refresh elsewhere in this document describe the earlier rule.
+
 **Frontend implementation coverage (2026-10-07).** The shared screen renders the authoritative 3×3 board,
 active team, puzzle and stable `question-pending` state, server-derived question/placement countdowns, FIFO
 expiring-mark treatment without premature removal, placement transition, الحسم, and terminal win/draw with a
