@@ -717,6 +717,27 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     });
   });
 
+  it("shows a مين أقرب question's own picture, and nothing when it has none", async () => {
+    const closestDraft = (media?: unknown) => ({
+      prompt: { ar: "كم نسبة شحن هذا الجوال؟" },
+      answerPayload: { mode: "closest", correctValue: 27 },
+      mechanicPayload: { closestSlider: { mode: "between-anchors", min: 0, max: 100, step: 1, leftAnchor: "فاضية", rightAnchor: "مليانة" } },
+      ...(media ? { media } : {}),
+    });
+    renderWorkspace([
+      mockCandidate("cid-1", "كم نسبة شحن هذا الجوال؟", { draft: closestDraft({ type: "image", assets: [{ url: "https://cdn.example/engine-battery.png" }] }) as never }),
+      mockCandidate("cid-2", "كم مرة ينكتب الرقم 7؟", { draft: closestDraft() as never }),
+    ]);
+    await openReview(); fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const figure = await screen.findByTestId("closest-draft-picture");
+    expect(figure.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/engine-battery.png");
+    fireEvent.click(screen.getByTestId("candidate-row-cid-2"));
+    await waitFor(() => {
+      expect(screen.getByTestId("closest-answer-summary")).toBeTruthy();
+      expect(screen.queryByTestId("closest-draft-picture")).toBeNull();
+    });
+  });
+
   it("blocks approval when duplicate screening is blocking", async () => {
     renderWorkspace([mockCandidate("cid-1", "السؤال الأول", { findings: [{ code: "PROVEN_DUPLICATE_IN_SCOPE", severity: "blocking", message: "duplicate" }] })]);
     await openReview(); fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
