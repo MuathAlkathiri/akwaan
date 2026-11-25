@@ -2938,32 +2938,61 @@ function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
           }
         | undefined
     )?.closestSlider;
+    // A picture the engine drew itself sits on the draft, outside the media
+    // contract, so the media panel above shows nothing for it. The reviewer
+    // still has to see what the players will see.
+    const draftMedia = candidate.draft?.media as
+      | { type?: string; assets?: Array<{ url?: string }> }
+      | undefined;
+    const pictureUrl =
+      draftMedia?.type === "image"
+        ? draftMedia.assets?.find((asset) => asset?.url?.trim())?.url
+        : undefined;
     return (
-      <div
-        className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-sm sm:grid-cols-3"
-        data-testid="closest-answer-summary"
-      >
-        <div>
-          <span className="text-xs text-muted-foreground">القيمة الصحيحة: </span>
-          <strong className="font-mono">
-            {answerPayload?.correctValue ?? "—"}
-            {slider?.unit ? ` ${slider.unit}` : ""}
-          </strong>
-        </div>
-        <div>
-          <span className="text-xs text-muted-foreground">نطاق المؤشر: </span>
-          <span className="font-mono">
-            {slider ? `${slider.min} .. ${slider.max} (step ${slider.step})` : "—"}
-          </span>
-        </div>
-        <div>
-          <span className="text-xs text-muted-foreground">نمط المؤشر: </span>
-          <span>
-            {slider?.mode ?? "—"}
-            {slider?.leftAnchor && slider?.rightAnchor
-              ? ` (${slider.leftAnchor} ↔ ${slider.rightAnchor})`
-              : ""}
-          </span>
+      <div className="space-y-3">
+        {pictureUrl ? (
+          <figure
+            className="overflow-hidden rounded-lg border bg-muted/20"
+            data-testid="closest-draft-picture"
+          >
+            {/* Backend-hosted upload; next/image cannot optimize arbitrary origins. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pictureUrl}
+              alt="صورة السؤال كما سيراها اللاعبون"
+              className="mx-auto max-h-72 w-full object-contain"
+            />
+            <figcaption className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+              صورة السؤال — يراها اللاعبون على الشاشة المشتركة.
+            </figcaption>
+          </figure>
+        ) : null}
+        <div
+          className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-sm sm:grid-cols-3"
+          data-testid="closest-answer-summary"
+        >
+          <div>
+            <span className="text-xs text-muted-foreground">القيمة الصحيحة: </span>
+            <strong className="font-mono">
+              {answerPayload?.correctValue ?? "—"}
+              {slider?.unit ? ` ${slider.unit}` : ""}
+            </strong>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground">نطاق المؤشر: </span>
+            <span className="font-mono">
+              {slider ? `${slider.min} .. ${slider.max} (step ${slider.step})` : "—"}
+            </span>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground">نمط المؤشر: </span>
+            <span>
+              {slider?.mode ?? "—"}
+              {slider?.leftAnchor && slider?.rightAnchor
+                ? ` (${slider.leftAnchor} ↔ ${slider.rightAnchor})`
+                : ""}
+            </span>
+          </div>
         </div>
       </div>
     );
