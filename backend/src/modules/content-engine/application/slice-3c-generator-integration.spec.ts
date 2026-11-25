@@ -928,6 +928,115 @@ describe('Slice 3C — Generator Integration, Pinned Plans & Family Compliance',
       );
     });
 
+    it("replaces what the model wrote for a composed slot with the engine's own item", async () => {
+      const plan = {
+        ...createDummyPlan([
+          dummySlot(0, 'occurrence-count'),
+          dummySlot(1, 'battery-level'),
+        ]),
+      };
+      const closestPlan = (() => {
+        const base = {
+          ...plan,
+          mechanicKey: 'closest',
+          scopeKey: 'numbers-estimation',
+        };
+        const { digest: _stale, ...rest } = base;
+        void _stale;
+        return { ...rest, digest: computeGenerationPlanDigest(rest) };
+      })();
+      const modelItem = (slotIndex: number, prompt: string) => ({
+        slotIndex,
+        concept: 'c',
+        answerBasis: 'reasoning',
+        playerReasoningStrategy: 's',
+        prompt,
+        domainDescription: 'd',
+        sliderMode: 'numeric-range',
+        leftAnchor: '',
+        rightAnchor: '',
+        min: 0,
+        max: 100,
+        step: 1,
+        correctValue: 1,
+        stepsFromMin: 1,
+        unit: '',
+        displayFormat: 'number',
+        factualClaims: ['f'],
+      });
+      const updateOne = jest.fn(() => ({
+        exec: async () => ({ matchedCount: 1 }),
+      }));
+      const compose = jest.fn(async () => ({
+        draft: {
+          prompt: { ar: 'كم نسبة شحن هذا الجوال؟' },
+          media: { type: 'image' },
+        },
+        factualClaims: ['The battery is drawn 27% full.'],
+        authoring: {
+          composedVisual: { familyKey: 'battery-level', value: 27 },
+        },
+      }));
+      const generator = new CandidateGeneratorService(
+        { updateOne } as never,
+        { holdsLease: async () => true } as never,
+        {
+          reserve: jest.fn(async () => ({ reservedMicros: 1000 })),
+          settle: jest.fn(async () => ({ actualMicros: 800 })),
+        } as never,
+        {
+          get: (key: string) =>
+            key === 'ENGINE_GENERATION_MODEL' ? 'fake-model' : undefined,
+        } as never,
+        {
+          generateText: jest.fn(async () => ({
+            text: JSON.stringify({
+              candidates: [
+                modelItem(0, 'كم مرة ينكتب الرقم 4 من 1 إلى 60؟'),
+                modelItem(1, 'placeholder'),
+              ],
+            }),
+            usage: { promptTokens: 100, outputTokens: 200 },
+          })),
+        } as never,
+        { compose } as never,
+      );
+
+      await generator.generate({
+        jobId: 'job-composed-1',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: {
+          ...dummyContext(),
+          mechanicKey: 'closest',
+          scopeKey: 'numbers-estimation',
+        } as ResolvedAuthoringContext,
+        count: 2,
+        generationPlan: closestPlan as GenerationPlan,
+      });
+
+      // Only the composed slot is composed, seeded by job and ordinal.
+      expect(compose).toHaveBeenCalledTimes(1);
+      expect(compose).toHaveBeenCalledWith('battery-level', 'job-composed-1:1');
+      const saved = (
+        updateOne.mock.calls as unknown as Array<
+          [{ ordinal: number }, { $set: Record<string, any> }]
+        >
+      ).map(([, update]): Record<string, any> => update.$set);
+      expect(saved[0].draft.prompt.ar).toBe(
+        'كم مرة ينكتب الرقم 4 من 1 إلى 60؟',
+      );
+      expect(saved[0].authoring).not.toHaveProperty('composedVisual');
+      expect(saved[1].draft.prompt.ar).toBe('كم نسبة شحن هذا الجوال؟');
+      expect(saved[1].factualClaims).toEqual([
+        'The battery is drawn 27% full.',
+      ]);
+      expect(saved[1].authoring).toMatchObject({
+        composedVisual: { familyKey: 'battery-level', value: 27 },
+        assignedSlot: { familyKey: 'battery-level', slotIndex: 1 },
+      });
+    });
+
     it('fails closed with SLOT_IDENTITY_MISSING when creative-slot job candidate lacks slotIndex', () => {
       const generator = new CandidateGeneratorService(
         {} as never,

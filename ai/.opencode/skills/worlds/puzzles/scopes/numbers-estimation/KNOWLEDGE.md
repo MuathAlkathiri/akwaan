@@ -391,6 +391,8 @@
 | 26 | `everyday-conversions` | تحويلات يومية | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 27 | `direct-fraction` | نسبة مباشرة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 28 | `number-riddle` | فزورة رقمية | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 29 | `battery-level` | شحن الجوال | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
+| 30 | `copy-the-mark` | انقل العلامة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 
 ---
 
@@ -578,6 +580,20 @@ really say. The choosing families above are switched off for اقرأ خصمك
 | `everyday-conversions` | One step between units everyone knows | كم دقيقة في ساعتين ونص؟ | 150 |
 | `direct-fraction` | A simple fraction or share, asked directly | كم نص الربع؟ | الثُمن |
 | `number-riddle` | A number from one direct description | رقم لو ضربته في نفسه طلع 81؟ | 9 |
+
+### Composed pictures — مركّب الصور (2026-11-25)
+
+`battery-level` and `copy-the-mark` have **no author**. The engine draws the
+picture and sets the answer from one value, so the answer is correct by
+construction; whatever a model returns for these slots is discarded. Both are
+answered on a between-anchors slider from 0 to 100, and the value is never in
+the middle fifth or at either end. A candidate whose picture could not be drawn
+or stored is blocked by the screen (`COMPOSED_VISUAL_MISSING`).
+
+| Key | Picture | Prompt | Ends |
+|---|---|---|---|
+| `battery-level` | A phone battery with no number, charged as one solid block | كم نسبة شحن هذا الجوال؟ | فاضية · مليانة |
+| `copy-the-mark` | A plain line with one mark and no ticks | حط مؤشرك في نفس مكان العلامة على الخط. | أول الخط · آخر الخط |
 
 ## 12. Machine-Readable Family Catalog
 
@@ -1111,6 +1127,40 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "battery-level",
+      "name": "شحن الجوال",
+      "description": "بطارية جوال مرسومة بدون رقم، والمطلوب تقدير نسبة شحنها على خط بين «فاضية» و«مليانة». المحرك يرسم الصورة ويحدد الجواب بنفسه.",
+      "playerSolve": "تقدير نسبة الامتلاء بالعين ونقلها إلى السلايدر.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "copy-the-mark",
+      "name": "انقل العلامة",
+      "description": "خط مرسوم عليه علامة واحدة، والمطلوب وضع المؤشر في نفس موضعها على السلايدر. المحرك يرسم الصورة ويحدد الجواب بنفسه.",
+      "playerSolve": "نقل موضع نسبي من خط مرسوم إلى السلايدر بالعين.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
       ]
     }
   ]

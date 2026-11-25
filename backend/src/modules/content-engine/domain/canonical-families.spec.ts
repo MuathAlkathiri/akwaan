@@ -451,9 +451,11 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           .sort();
       };
 
-      it('numbers-estimation: مين أقرب draws five number families and the year line', () => {
+      it('numbers-estimation: مين أقرب draws five number families, the year line and two composed pictures', () => {
         expect(drawable('numbers-estimation', 'closest')).toEqual([
+          'battery-level',
           'calendar-position',
+          'copy-the-mark',
           'everyday-quantities',
           'gathering-pairs',
           'occurrence-count',

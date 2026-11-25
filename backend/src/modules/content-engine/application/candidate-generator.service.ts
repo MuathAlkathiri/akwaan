@@ -45,6 +45,8 @@ import {
 } from '../domain/candidate-media-intent';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { ResolvedAuthoringContext } from './authoring-context.service';
+import { ComposedVisualService } from './composed-visual.service';
+import { isComposedVisualFamily } from '../domain/composed-visuals';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
 
@@ -976,6 +978,8 @@ export const CLOSEST_TASK_GUIDANCE = [
   '  - the prompt never states a position, a count or a fraction — the player has no number to read, so a number in the prompt is either the answer or noise;',
   '  - NEVER pick a thing that falls in the middle fifth of the line, and avoid the two ends: a mark left in the centre must not win. Good targets sit clearly off-centre and still take thought to place;',
   '  - the asked thing must have ONE fixed position everyone would accept (a date that does not move from year to year, a letter in the standard order). A lunar-calendar date moves — never use one.',
+  '',
+  'DRAWN BY THE ENGINE. A slot whose Task says composed-visual is not yours to author: the engine draws its picture and sets its answer itself, and discards whatever you return for it. For such a slot return the shortest valid item you can (a one-line prompt, numeric-range, min 0, max 100, step 1, correctValue 1) and spend no thought on it.',
 ].join('\n');
 
 import {
@@ -1275,6 +1279,7 @@ export class CandidateGeneratorService {
     @Optional()
     @Inject(ENGINE_AI_PROVIDER)
     private readonly provider?: AiProvider,
+    @Optional() private readonly composedVisuals?: ComposedVisualService,
   ) {}
 
   maxBatchSize(): number {
@@ -1574,13 +1579,29 @@ export class CandidateGeneratorService {
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
 
     for (let ordinal = 0; ordinal < parsed.length; ordinal += 1) {
-      const { draft, factualClaims, authoring } = parsed[ordinal];
+      let { draft, factualClaims, authoring } = parsed[ordinal];
       const candidateId = this.candidateId(
         input.jobId,
         ordinal,
         effectiveContextHash,
       );
       const assignedSlot = input.generationPlan?.slots?.[ordinal];
+      // A composed family has no author: the engine draws the picture and
+      // the answer from one value, and what the model wrote for this slot is
+      // discarded. Seeded by job and ordinal, so a recovered job redraws the
+      // same items.
+      if (
+        this.composedVisuals &&
+        isComposedVisualFamily(assignedSlot?.familyKey)
+      ) {
+        const composed = await this.composedVisuals.compose(
+          assignedSlot.familyKey,
+          `${input.jobId}:${ordinal}`,
+        );
+        draft = composed.draft;
+        factualClaims = composed.factualClaims;
+        authoring = composed.authoring;
+      }
       const mergedAuthoring = {
         ...(authoring ?? {}),
         ...(assignedSlot
