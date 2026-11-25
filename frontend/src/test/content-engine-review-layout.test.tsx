@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -736,6 +737,23 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
       expect(screen.getByTestId("closest-answer-summary")).toBeTruthy();
       expect(screen.queryByTestId("closest-draft-picture")).toBeNull();
     });
+  });
+
+  it("loads a stored picture from the backend, where relative upload paths live", async () => {
+    renderWorkspace([
+      mockCandidate("cid-1", "كم نسبة شحن هذا الجوال؟", {
+        draft: {
+          prompt: { ar: "كم نسبة شحن هذا الجوال؟" },
+          answerPayload: { mode: "closest", correctValue: 71 },
+          mechanicPayload: { closestSlider: { mode: "between-anchors", min: 0, max: 100, step: 1, leftAnchor: "فاضية", rightAnchor: "مليانة" } },
+          media: { type: "image", assets: [{ url: "/uploads/world-content/content-items/engine-abc.png" }] },
+        } as never,
+      }),
+    ]);
+    await openReview(); fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const src = (await screen.findByTestId("closest-draft-picture")).querySelector("img")?.getAttribute("src") ?? "";
+    expect(src).toMatch(/^https?:\/\/[^/]+\/uploads\/world-content\/content-items\/engine-abc\.png$/);
+    expect(src).toBe(getMediaUrl("/uploads/world-content/content-items/engine-abc.png"));
   });
 
   it("blocks approval when duplicate screening is blocking", async () => {
