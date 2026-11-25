@@ -520,7 +520,7 @@ describeIf(
           // stale on staging), and this Scope's SCOPE.md, KNOWLEDGE.md and the
           // World profile gained the owner's 2026-11-24 product selection.
           // f989ae76… reproduces from the files before both.
-          'd54509e7203fd8cae109ed9922bf01052bb7fd226c26930b9edede6a27f39c70',
+          '7939c43948909266154c165e5aa4ccb871028111c3ce2d289440237ff3180ba0',
         );
       });
 

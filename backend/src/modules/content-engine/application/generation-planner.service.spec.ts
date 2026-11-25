@@ -12,7 +12,7 @@ describe('GenerationPlannerService', () => {
 
   it('computes mixed difficulty quotas for N=5 candidates', () => {
     const plan = planner.plan({
-      worldKey: 'puzzles',
+      worldKey: 'football',
       scopeKey: 'wordplay-letters',
       mechanicKey: 'read-your-opponent',
       count: 5,
@@ -45,7 +45,7 @@ describe('GenerationPlannerService', () => {
 
   it('includes RYO archetypes, 40-80% bluff sweet spot, and anti-patterns', () => {
     const plan = planner.plan({
-      worldKey: 'puzzles',
+      worldKey: 'football',
       scopeKey: 'wordplay-letters',
       mechanicKey: 'read-your-opponent',
       count: 5,
@@ -86,7 +86,7 @@ describe('GenerationPlannerService', () => {
 
   it('formats plan cleanly into markdown for prompt embedding', () => {
     const plan = planner.plan({
-      worldKey: 'puzzles',
+      worldKey: 'football',
       scopeKey: 'wordplay-letters',
       mechanicKey: 'read-your-opponent',
       count: 5,
@@ -1015,25 +1015,29 @@ describe('GenerationPlannerService', () => {
         const planner = new GenerationPlannerService();
 
         const mixed1 = planner.plan({
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
           count: 1,
           difficulty: 'mixed',
-          catalog: mockCatalog,
-          coverage: createMockCoverage({ 'fam-1': 5 }),
+          catalog: { ...mockCatalog, worldKey: 'football' },
+          coverage: createMockCoverage({ 'fam-1': 5 }, [], {
+            worldKey: 'football',
+          }),
         });
         expect(mixed1.difficultyQuotas).toEqual({ medium: 1 });
         expect(mixed1.slots?.map((s) => s.difficulty)).toEqual(['medium']);
 
         const mixed5 = planner.plan({
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
           count: 5,
           difficulty: 'mixed',
-          catalog: mockCatalog,
-          coverage: createMockCoverage({ 'fam-1': 5 }),
+          catalog: { ...mockCatalog, worldKey: 'football' },
+          coverage: createMockCoverage({ 'fam-1': 5 }, [], {
+            worldKey: 'football',
+          }),
         });
         expect(mixed5.difficultyQuotas).toEqual({
           medium: 3,
@@ -1051,13 +1055,15 @@ describe('GenerationPlannerService', () => {
         ).toHaveLength(1);
 
         const mixed20 = planner.plan({
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
           count: 20,
           difficulty: 'mixed',
-          catalog: mockCatalog,
-          coverage: createMockCoverage({ 'fam-1': 5 }),
+          catalog: { ...mockCatalog, worldKey: 'football' },
+          coverage: createMockCoverage({ 'fam-1': 5 }, [], {
+            worldKey: 'football',
+          }),
         });
         expect(mixed20.difficultyQuotas).toEqual({
           medium: 12,
@@ -1075,17 +1081,19 @@ describe('GenerationPlannerService', () => {
         ).toHaveLength(4);
 
         const relDiff5 = planner.plan({
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
           count: 5,
           difficulty: 'relatively_difficult',
-          catalog: mockCatalog,
-          coverage: createMockCoverage({ 'fam-1': 5 }),
+          catalog: { ...mockCatalog, worldKey: 'football' },
+          coverage: createMockCoverage({ 'fam-1': 5 }, [], {
+            worldKey: 'football',
+          }),
         });
         const prompt = composeGenerationPrompt(
           {
-            worldKey: 'puzzles',
+            worldKey: 'football',
             scopeKey: 'wordplay-letters',
             mechanicKey: 'read-your-opponent',
           },

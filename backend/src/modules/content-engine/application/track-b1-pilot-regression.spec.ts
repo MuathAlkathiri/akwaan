@@ -105,7 +105,7 @@ describe('Track B1 — Pilot Regression & Content Quality Suite', () => {
       expect(RYO_TASK_GUIDANCE).toContain('NEGATIVE ANTI-PATTERNS');
 
       const plan = plannerService.plan({
-        worldKey: 'puzzles',
+        worldKey: 'football',
         scopeKey: 'wordplay-letters',
         mechanicKey: 'read-your-opponent',
         count: 5,
@@ -290,7 +290,7 @@ describe('Track B1 — Pilot Regression & Content Quality Suite', () => {
   describe('Tactical Generation Planning & Prompt Formatting', () => {
     it('generates a full tactical plan with difficulty quotas, anti-patterns, and media metadata', () => {
       const plan = plannerService.plan({
-        worldKey: 'puzzles',
+        worldKey: 'football',
         scopeKey: 'wordplay-letters',
         mechanicKey: 'read-your-opponent',
         count: 5,
@@ -308,7 +308,7 @@ describe('Track B1 — Pilot Regression & Content Quality Suite', () => {
     it('embeds tactical plan into generation prompt via composeGenerationPrompt', () => {
       const prompt = composeGenerationPrompt(
         {
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
           global: 'GLOBAL',
@@ -337,7 +337,7 @@ describe('Track B1 — Pilot Regression & Content Quality Suite', () => {
     it('simulates the entire lifecycle from planning to review for the target pilot setup', async () => {
       // 1. Generation Planning
       const plan = plannerService.plan({
-        worldKey: 'puzzles',
+        worldKey: 'football',
         scopeKey: 'wordplay-letters',
         mechanicKey: 'read-your-opponent',
         count: 5,
@@ -349,7 +349,7 @@ describe('Track B1 — Pilot Regression & Content Quality Suite', () => {
       // 2. Composed Prompt contains plan and negative anti-patterns
       const prompt = composeGenerationPrompt(
         {
-          worldKey: 'puzzles',
+          worldKey: 'football',
           scopeKey: 'wordplay-letters',
           mechanicKey: 'read-your-opponent',
         },

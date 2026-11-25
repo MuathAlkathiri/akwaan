@@ -386,6 +386,11 @@
 | 21 | `age-trap` | فخ العمر | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 numbers) |
 | 22 | `symbol-arithmetic` | حساب بالرموز | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (4 numbers) |
 | 23 | `colour-pattern-position` | النمط الملوّن | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (3 colours) |
+| 24 | `mental-arithmetic` | حساب ذهني | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 25 | `sequence-next` | كمّل السلسلة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 26 | `everyday-conversions` | تحويلات يومية | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 27 | `direct-fraction` | نسبة مباشرة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 28 | `number-riddle` | فزورة رقمية | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 
 ---
 
@@ -551,6 +556,28 @@ Per-family notes:
   the head. Not a system of equations to work through on paper.
 - `colour-pattern-position` — show at least two full cycles so the pattern is
   discoverable, and ask for a position beyond what is shown.
+
+### اقرأ خصمك in this Scope — owner decision 2026-11-25
+
+اقرأ خصمك no longer shares its families with إكس أو المتحرك. The owner's rule:
+**the difficulty of this challenge is reading the other team, not the
+question.** So its items here are the plain "you know it or you don't" kind the
+knowledge Worlds ask — direct, one answer, four options, **medium leaning
+easy**, never a trap and never a multi-step puzzle. A team must know in itself
+whether it knew the answer, so that it has something to hide or to act.
+
+"Solved, not recalled" is relaxed **for this mechanic only**: riddles, proverbs
+and everyday word knowledge are allowed, as long as they are the ones people
+really say. The choosing families above are switched off for اقرأ خصمك
+(`pausedFor`) and stay with إكس أو المتحرك.
+
+| Key | What it asks | Example | Answer |
+|---|---|---|---|
+| `mental-arithmetic` | One direct sum done in the head | كم يساوي 12 × 12؟ | 144 |
+| `sequence-next` | The next number in a short, one-rule sequence | 2، 4، 8، 16، ؟ | 32 |
+| `everyday-conversions` | One step between units everyone knows | كم دقيقة في ساعتين ونص؟ | 150 |
+| `direct-fraction` | A simple fraction or share, asked directly | كم نص الربع؟ | الثُمن |
+| `number-riddle` | A number from one direct description | رقم لو ضربته في نفسه طلع 81؟ | 9 |
 
 ## 12. Machine-Readable Family Catalog
 
@@ -916,6 +943,9 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
       ]
     },
     {
@@ -933,6 +963,9 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
       ]
     },
     {
@@ -950,6 +983,9 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
       ]
     },
     {
@@ -967,6 +1003,9 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
       ]
     },
     {
@@ -979,6 +1018,94 @@ out of generation; `pausedReason` says why.
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
         "read-your-opponent": "GOOD",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
+      ]
+    },
+    {
+      "familyKey": "mental-arithmetic",
+      "name": "حساب ذهني",
+      "description": "عملية حسابية واحدة مباشرة تنحسب في الراس (ضرب، جمع، طرح، قسمة) بأعداد صغيرة أو متوسطة.",
+      "playerSolve": "حساب ذهني مباشر: يا حسبتها يا خمّنت.",
+      "modality": "direct-mental-arithmetic",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "sequence-next",
+      "name": "كمّل السلسلة",
+      "description": "سلسلة أرقام قصيرة بقاعدة واحدة واضحة، والمطلوب الرقم التالي.",
+      "playerSolve": "اكتشاف قاعدة واحدة بسيطة وتطبيقها مرة واحدة.",
+      "modality": "direct-number-sequence",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "everyday-conversions",
+      "name": "تحويلات يومية",
+      "description": "تحويل بين وحدات يعرفها الجميع (دقائق وساعات، أيام وأسابيع، ريال وهللة) بخطوة واحدة.",
+      "playerSolve": "تحويل مباشر بخطوة واحدة من وحدة مألوفة إلى أخرى.",
+      "modality": "direct-unit-conversion",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "direct-fraction",
+      "name": "نسبة مباشرة",
+      "description": "كسر أو نسبة بسيطة تُسأل مباشرة (نص الربع، ربع المئة، 10% من عدد مدوّر).",
+      "playerSolve": "معرفة أو حساب كسر بسيط بخطوة واحدة.",
+      "modality": "direct-fraction",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "number-riddle",
+      "name": "فزورة رقمية",
+      "description": "فزورة قصيرة جوابها رقم واحد، من وصف مباشر للرقم (لو ضربته في نفسه طلع 81).",
+      "playerSolve": "التعرّف على الرقم من وصف مباشر واحد.",
+      "modality": "direct-number-riddle",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
         "bomb": "DO_NOT_FORCE",
         "closest": "DO_NOT_FORCE"
       },

@@ -458,6 +458,10 @@
 | 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (3 words) |
 | 17 | `alphabet-counts` | من لغتنا | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
 | 18 | `alphabet-position` | وين في الترتيب؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Slider (Between Anchors) |
+| 19 | `classic-riddle` | فوازير | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 20 | `proverb-completion` | كمّل المثل | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 
 ---
 
@@ -576,6 +580,30 @@ Per-family rules added by this decision:
   and the letter, and never a number. The target is never in the middle fifth
   of the line (letters 12–17) and not the first or last three letters.
 
+### اقرأ خصمك in this Scope — owner decision 2026-11-25
+
+اقرأ خصمك no longer shares its families with إكس أو المتحرك. The owner's rule:
+**the difficulty of this challenge is reading the other team, not the
+question.** So its items here are the plain "you know it or you don't" kind the
+knowledge Worlds ask — direct, one answer, four options, **medium leaning
+easy**, never a trap and never a multi-step puzzle. A team must know in itself
+whether it knew the answer, so that it has something to hide or to act.
+
+"Solved, not recalled" is relaxed **for this mechanic only**: riddles, proverbs
+and everyday word knowledge are allowed, as long as they are the ones people
+really say. The choosing families above are switched off for اقرأ خصمك
+(`pausedFor`) and stay with إكس أو المتحرك.
+
+| Key | What it asks | Example | Answer |
+|---|---|---|---|
+| `classic-riddle` | A well-known riddle with a one-word answer | شي له أسنان وما يعض؟ | المشط |
+| `proverb-completion` | The ending of a proverb people really use | اللي ما يعرف الصقر… | يشويه |
+| `word-completion` | A common word with some letters blanked | م ـ ت ـ ف ـ ى | مستشفى |
+| `antonym` | The opposite of an everyday word | وش عكس كلمة «الكرم»؟ | البخل |
+
+Rejected the same day: «اقراها بالعكس» (what a word becomes read backwards) —
+the answer is one of the options on the phone, so it is simply read off.
+
 ---
 
 ## 11. Machine-Readable Family Catalog
@@ -623,7 +651,8 @@ The block below is the structured form of the 15 canonical families approved for
         "multiple_choice"
       ],
       "pausedFor": [
-        "bomb"
+        "bomb",
+        "read-your-opponent"
       ]
     },
     {
@@ -776,7 +805,8 @@ The block below is the structured form of the 15 canonical families approved for
         "multiple_choice"
       ],
       "pausedFor": [
-        "bomb"
+        "bomb",
+        "read-your-opponent"
       ]
     },
     {
@@ -889,6 +919,9 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "pausedFor": [
+        "read-your-opponent"
       ]
     },
     {
@@ -923,6 +956,74 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "closest"
+      ]
+    },
+    {
+      "familyKey": "classic-riddle",
+      "name": "فوازير",
+      "description": "فزورة شعبية معروفة جوابها كلمة واحدة (شي له أسنان وما يعض).",
+      "playerSolve": "تذكّر أو استنتاج جواب فزورة متداولة.",
+      "modality": "riddle-recall",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "proverb-completion",
+      "name": "كمّل المثل",
+      "description": "مثل شعبي متداول ناقص آخره، والمطلوب تكملته.",
+      "playerSolve": "تذكّر نهاية مثل معروف.",
+      "modality": "proverb-recall",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "word-completion",
+      "name": "كمّل الكلمة",
+      "description": "كلمة شائعة ناقصة بعض حروفها مكتوبة بفراغات، والمطلوب الكلمة كاملة.",
+      "playerSolve": "تمييز كلمة مألوفة من حروفها الظاهرة.",
+      "modality": "word-gap-recognition",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ]
+    },
+    {
+      "familyKey": "antonym",
+      "name": "وش عكسها؟",
+      "description": "كلمة يومية والمطلوب عكسها في المعنى.",
+      "playerSolve": "استحضار ضد كلمة مألوفة.",
+      "modality": "antonym-recall",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
       ]
     }
   ]

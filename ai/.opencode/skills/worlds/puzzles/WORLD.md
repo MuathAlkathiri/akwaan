@@ -99,6 +99,11 @@ Avoid breaking the core experience of puzzles.
     a picture, so it is paused per family (`pausedFor: ["bomb"]`).
   - **No pictures yet.** Families that need a drawn or templated picture are
     paused until the image composer exists.
+  - **اقرأ خصمك is the exception to the first two rules (2026-11-25).** Its
+    difficulty is reading the other team, not the question: direct
+    know-it-or-not items, medium leaning easy, never a trap. Riddles, proverbs
+    and everyday word knowledge are allowed for it. It has its own families
+    and shares none with Moving XO.
 
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.
