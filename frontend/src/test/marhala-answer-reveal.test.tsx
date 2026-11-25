@@ -149,7 +149,7 @@ describe("المرحلة reveals the answer before the board moves", () => {
     const reveal = screen.getByTestId("marhala-answer-reveal");
     expect(reveal).toHaveAttribute("data-correct", "true");
     expect(reveal).toHaveTextContent("روكستار");
-    expect(reveal).toHaveTextContent("إجابة صحيحة");
+    expect(reveal).toHaveTextContent("جاوبوا صح");
     expect(screen.queryByTestId("marhala-movement-reveal")).toBeNull();
     expect(screen.getByTestId("marhala-token-team-alpha")).toHaveAttribute(
       "data-token-position",
@@ -218,8 +218,8 @@ describe("المرحلة reveals the answer before the board moves", () => {
       ),
     );
     const reveal = screen.getByTestId("marhala-answer-reveal");
-    expect(reveal).toHaveTextContent("ما تم إرسال إجابة");
-    expect(reveal).toHaveTextContent("انتهى الوقت");
+    expect(reveal).toHaveTextContent("ما أرسلوا إجابة");
+    expect(reveal).toHaveTextContent("خلص الوقت");
     expect(reveal).toHaveTextContent("روكستار");
   });
 

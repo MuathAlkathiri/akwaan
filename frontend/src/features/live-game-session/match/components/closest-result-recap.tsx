@@ -1,7 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { teamIdentityOf } from "@/lib/team-identity";
+import {
+  ChallengeWinnerBanner,
+  ResultRoundCard,
+} from "./challenge-result-banner";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 
@@ -31,39 +33,48 @@ export function ClosestResultRecap({
   const teams = snapshot.teams.filter((team) => team.active);
   return (
     <div className="space-y-5" data-testid="closest-challenge-result">
-      <div className="text-center">
-        <p className="text-sm font-black text-muted-foreground">نتيجة تحدي مين أقرب</p>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {teams.map((team) => {
-            const identity = teamIdentityOf(team.id, snapshot.teams);
-            return (
-              <div key={team.id} className={cn("rounded-[var(--radius)] border p-4", identity.surface, identity.border)}>
-                <p className={cn("font-black", identity.text)}>{team.name}</p>
-                <p className="akwaan-numeral text-4xl font-black">{totals[team.id] ?? 0}</p>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-4 text-xl font-black">
-          {result.tie
-            ? "تعادل التحدي — لا توجد نقطة للمباراة"
-            : `${teams.find((team) => team.id === result.winnerTeamId)?.name ?? "الفريق"} فاز بالتحدي — +1 نقطة للمباراة`}
-        </p>
-      </div>
-      <ol className="grid gap-3 sm:grid-cols-3">
+      <ol className="grid list-none gap-5 sm:grid-cols-3">
         {items.map((item) => (
-          <li key={item.itemIndex} className="rounded-[var(--radius)] border border-border bg-muted/35 p-3 text-center">
-            <p className="text-xs font-black text-muted-foreground">السؤال {item.itemIndex + 1}</p>
-            <p className="akwaan-numeral mt-1 text-xl font-black">الصحيح: {item.correctValue}</p>
-            <p className="mt-2 text-xs font-bold text-muted-foreground">
-              {teams.map((team) => `${team.name}: ${item.answers[team.id] ?? "—"}`).join(" · ")}
-            </p>
-            <p className="mt-2 font-black">
-              {item.tie ? "تعادل" : teams.find((team) => team.id === item.winnerTeamId)?.name}
-            </p>
-          </li>
+          <ResultRoundCard
+            key={item.itemIndex}
+            round={item.itemIndex + 1}
+            snapshot={snapshot}
+            facts={[
+              ...teams.map((team) => ({
+                label: `تقدير ${team.name}`,
+                value: (
+                  <span className="akwaan-numeral">
+                    {item.answers[team.id] ?? "—"}
+                  </span>
+                ),
+              })),
+              {
+                label: "الرقم الصحيح",
+                value: (
+                  <span className="akwaan-numeral">{item.correctValue}</span>
+                ),
+              },
+            ]}
+            // Closest to the number takes the round; a tie gives it to nobody.
+            points={
+              item.winnerTeamId ? [{ teamId: item.winnerTeamId, points: 1 }] : []
+            }
+          >
+            {item.tie && (
+              <p className="rounded-full border-2 border-dashed border-brand-dash bg-white px-3 py-1.5 text-center text-[15px] font-bold text-brand-plum">
+                تعادل في هالجولة
+              </p>
+            )}
+          </ResultRoundCard>
         ))}
       </ol>
+      <ChallengeWinnerBanner
+        result={result}
+        snapshot={snapshot}
+        totals={Object.fromEntries(
+          teams.map((team) => [team.id, totals[team.id] ?? 0]),
+        )}
+      />
     </div>
   );
 }

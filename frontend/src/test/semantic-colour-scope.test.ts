@@ -109,14 +109,17 @@ describe("team colour never means correct or wrong", () => {
     expect(panel).toContain("text-sem-reveal-foreground");
   });
 
-  it("keeps the lock indicators in team colour, since locking in is not a verdict", () => {
+  it("keeps the lock indicators out of the verdict colours, since locking in is not a verdict", () => {
     // Both sides lock in during the blind window; neither has been right or wrong yet.
     const panel = read(
       "src/features/live-game-session/components/ryo-gameplay-panel.tsx",
     );
     const indicator = panel.slice(panel.indexOf("function TeamLockIndicator"));
     expect(indicator).not.toMatch(SEMANTIC_UTILITY);
-    expect(indicator).toContain("identity.surface");
+    // The team is a dot beside its name, never a filled surface: the project's
+    // colour rule since 2026-11-19.
+    expect(indicator).toContain("identity.dot");
+    expect(indicator).not.toContain("identity.surface");
   });
 
   it("keeps a chosen answer out of the correctness colours", () => {

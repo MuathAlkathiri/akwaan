@@ -594,25 +594,57 @@
    it gives height back, because mechanics such as المرحلة are sized to keep
    their whole board on a 1280×720 screen and a taller header pushed it down. */
 .akwaan-stage-countdown {
-  height: 4rem;
+  width: 8.5rem;
+  height: 8.5rem;
+  border-width: 9px;
+  border-style: solid;
+  box-shadow: 6px 7px 0 hsl(var(--brand-navy));
 }
 .akwaan-stage-countdown-digits {
-  font-size: 2.25rem;
+  font-size: 3.5rem;
 }
 @media (min-width: 1024px) {
   .akwaan-stage-countdown {
-    height: 4.5rem;
+    width: 12rem;
+    height: 12rem;
+    border-width: 13px;
+    box-shadow: 8px 9px 0 hsl(var(--brand-navy));
+  }
+  .akwaan-stage-countdown-digits {
+    font-size: 5.25rem;
+  }
+}
+@media (max-height: 800px) {
+  .akwaan-stage-countdown {
+    width: 7.5rem;
+    height: 7.5rem;
+    border-width: 8px;
+    box-shadow: 5px 6px 0 hsl(var(--brand-navy));
   }
   .akwaan-stage-countdown-digits {
     font-size: 3rem;
   }
 }
-@media (max-height: 800px) {
-  .akwaan-stage-countdown {
-    height: 3rem;
+
+/* The same face beside a board or a panel, where it cannot have the card. */
+.akwaan-stage-countdown.akwaan-stage-countdown-md {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-width: 7px;
+  box-shadow: 4px 5px 0 hsl(var(--brand-navy));
+}
+.akwaan-stage-countdown-md .akwaan-stage-countdown-digits {
+  font-size: 2.5rem;
+}
+@media (min-width: 1280px) and (min-height: 801px) {
+  .akwaan-stage-countdown.akwaan-stage-countdown-md {
+    width: 9rem;
+    height: 9rem;
+    border-width: 10px;
+    box-shadow: 6px 7px 0 hsl(var(--brand-navy));
   }
-  .akwaan-stage-countdown-digits {
-    font-size: 2rem;
+  .akwaan-stage-countdown-md .akwaan-stage-countdown-digits {
+    font-size: 3.75rem;
   }
 }
 

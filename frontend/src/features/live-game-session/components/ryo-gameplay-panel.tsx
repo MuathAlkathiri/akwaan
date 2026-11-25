@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HelpCircle, Lock, Swords, Unlock } from "lucide-react";
+import { HelpCircle, Lock, Swords } from "lucide-react";
+import { TeamStatusCard } from "../match/components/team-status-card";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import type { CountdownThresholds } from "../match/components/countdown-urgency";
@@ -627,17 +628,29 @@ export function RyoGameplayPanel({
 
   return (
     <ChallengeFrame
-      eyebrow="اقرأ خصمك"
-      title={`السؤال ${Math.min(3, itemIndex + 1)} من 3`}
-      progressValue={(Math.min(3, itemIndex) / 3) * 100}
-      className="mx-auto max-w-3xl"
+      // The navy strip above names the challenge and the question opens the
+      // body, so the card adds no heading of its own.
+      progressLabel={`السؤال ${Math.min(3, itemIndex + 1)} من 3`}
+      aside={
+        // In a ~10-second blind window the clock is the only tension driver in
+        // the mechanic: it takes the side of the card, the same round face as
+        // every other challenge.
+        item && remainingMs !== undefined ? (
+          <ChallengeCountdown
+            remainingMs={remainingMs}
+            // A ten-second blind window: warn in its second half.
+            thresholds={RYO_BLIND_WINDOW_THRESHOLDS}
+            sound={item.media?.type !== "audio"}
+          />
+        ) : null
+      }
     >
       <div className="space-y-5">
         {/* Both sides' lock state, one indicator each, both visible to both teams.
             That a team has committed is public; what it chose is not — the drama of
             this mechanic is watching your opponent lock in before you do. */}
         <div
-          className="grid gap-2 text-sm sm:grid-cols-2"
+          className="flex flex-col gap-5 sm:flex-row"
           data-testid="ryo-lock-indicators"
         >
           <TeamLockIndicator
@@ -656,7 +669,7 @@ export function RyoGameplayPanel({
           />
         </div>
         {item ? (
-          <section className="mx-auto flex max-w-2xl flex-col items-center gap-5 text-center">
+          <section className="flex flex-col items-start gap-5">
             {item.media?.type === "image" && item.media.url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -687,21 +700,9 @@ export function RyoGameplayPanel({
             )}
             {/* The question is the largest thing on screen, at a size that reads
                 from three metres on a television. */}
-            <h2 className="text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]">
+            <h2 className="font-display text-3xl font-extrabold leading-relaxed text-[hsl(var(--brand-navy))] lg:text-[44px] lg:leading-[1.55]">
               <BidiText>{authoredText(item.prompt)}</BidiText>
             </h2>
-
-            {/* Second-largest, immediately after it: in a ~10-second blind window
-                the clock is the only tension driver in the mechanic. */}
-            {remainingMs !== undefined && (
-              <ChallengeCountdown
-                remainingMs={remainingMs}
-                variant="prominent"
-                // A ten-second blind window: warn in its second half.
-                thresholds={RYO_BLIND_WINDOW_THRESHOLDS}
-                sound={item.media?.type !== "audio"}
-              />
-            )}
 
             {role === "answering" &&
               canSubmit &&
@@ -962,10 +963,9 @@ function PhoneRyoController({
   return (
     <ChallengeFrame
       compact
-      title={
-        completed ? "انتهى التحدي" : `السؤال ${Math.min(3, itemIndex + 1)} من 3`
-      }
-      progressValue={completed ? 100 : (Math.min(3, itemIndex) / 3) * 100}
+      {...(completed
+        ? { title: "انتهى التحدي" }
+        : { progressLabel: `السؤال ${Math.min(3, itemIndex + 1)} من 3` })}
       aside={
         remainingMs !== undefined && !outcome ? (
           <ChallengeCountdown remainingMs={remainingMs} />
@@ -1138,9 +1138,9 @@ function PhoneRyoController({
                   // person goes here.
                   <section
                     data-testid="ryo-phone-read-panel"
-                    className="flex flex-1 flex-col justify-center gap-3 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center"
+                    className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender p-3 text-center"
                   >
-                    <p className="text-xs font-black text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-brand-slate">
                       اللي يجاوب عنهم
                     </p>
                     {answererName ? (
@@ -1151,7 +1151,7 @@ function PhoneRyoController({
                             size={44}
                           />
                         )}
-                        <span className="text-xl font-black text-foreground">
+                        <span className="font-display text-2xl font-extrabold text-[hsl(var(--brand-navy))]">
                           {answererName}
                         </span>
                       </div>
@@ -1160,32 +1160,32 @@ function PhoneRyoController({
                         الفريق الثاني
                       </p>
                     )}
-                    <p className="text-sm font-bold leading-relaxed text-muted-foreground">
+                    <p className="text-sm leading-relaxed text-brand-slate">
                       تظنونه يعرف الجواب؟ قراءتكم صح تكسبكم نقطة، وغلط تكلفكم
                       وحدة.
                     </p>
                   </section>
                 )}
-                <MobileActionArea className="grid grid-cols-2">
-                  {DECISIONS.map(({ decision, label, description, Icon }) => (
-                    <Button
+                <MobileActionArea className="grid grid-cols-2 gap-2.5">
+                  {DECISIONS.map(({ decision, label, description }) => (
+                    <button
                       key={decision}
-                      size="lg"
-                      variant="outline"
+                      type="button"
                       data-decision={decision}
                       disabled={sending}
-                      className="h-auto min-h-20 flex-col gap-1 whitespace-normal border-2 bg-card px-2 py-3 text-center font-black"
+                      className="flex min-h-[120px] flex-col items-center justify-center gap-1.5 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-2 py-3 text-center text-[hsl(var(--brand-navy))] shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform duration-fast active:translate-x-[2px] active:translate-y-[2px] active:bg-[hsl(var(--brand-gold))] active:shadow-[1px_2px_0_hsl(var(--brand-navy))] disabled:cursor-not-allowed disabled:opacity-55"
                       onClick={() => {
                         setMyDecision(decision);
                         submit({ kind: "decision", decision });
                       }}
                     >
-                      <Icon className="size-5" aria-hidden />
-                      <span>{label}</span>
-                      <span className="text-[0.65rem] font-medium leading-tight text-muted-foreground">
+                      <span className="font-display text-xl font-extrabold">
+                        {label}
+                      </span>
+                      <span className="text-xs leading-relaxed">
                         {description}
                       </span>
-                    </Button>
+                    </button>
                   ))}
                 </MobileActionArea>
               </section>
@@ -1344,31 +1344,20 @@ function TeamLockIndicator({
   locked: boolean;
   testId: string;
 }) {
-  const Icon = locked ? Lock : Unlock;
   return (
-    <p
+    <TeamStatusCard
       data-testid={testId}
+      // Kept beside the shared `data-team-state`: this mechanic's tests and its
+      // explainer read the lock by this name.
       data-locked={locked ? "true" : "false"}
-      className={cn(
-        "flex items-center justify-between gap-2 rounded-[var(--radius)] border-2 p-3 font-bold transition-colors duration-base ease-akwaan",
-        identity.border,
-        // Locked fills with the team's own colour; still deciding stays a tint. An
-        // opacity step alone was too quiet to read across a room, and this is the
-        // moment the mechanic wants everyone to notice. Both states are the team's
-        // colour: committing is not a correct or an incorrect thing to have done.
-        locked ? identity.solid : cn(identity.surface, identity.text),
-      )}
-    >
-      <span className="min-w-0">
-        <span className="block text-[0.7rem] font-bold opacity-80">{role}</span>
-        <strong className="block truncate font-black">{teamName}</strong>
-      </span>
-      <span className="flex shrink-0 items-center gap-1.5 text-xs font-black">
-        <Icon className="size-4" aria-hidden />
-        {/* One verb for both sides: the answering team picks an answer and the
-            opposing team picks Steal or Trust, and "يقرر" only described the second. */}
-        {locked ? "اختار" : "يختار…"}
-      </span>
-    </p>
+      role={role}
+      name={teamName}
+      dotClass={identity.dot}
+      done={locked}
+      // One verb for both sides: the answering team picks an answer and the
+      // opposing team picks Steal or Trust.
+      doneLabel="ثبّتوا اختيارهم"
+      pendingLabel="يختارون…"
+    />
   );
 }

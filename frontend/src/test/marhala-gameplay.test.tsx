@@ -1042,7 +1042,7 @@ describe("multimodal question presentation (image, audio, text)", () => {
     });
 
     expect(screen.getByTestId("marhala-image-unavailable")).toHaveTextContent(
-      "تعذّر تحميل صورة السؤال",
+      "ما قدرنا نحمّل الصورة",
     );
   });
 

@@ -123,7 +123,10 @@ describe("اقرأ خصمك phone controller", () => {
   it("uses the compact controller without shared-screen lock spectacle", () => {
     renderPhone();
     expect(screen.getByTestId("ryo-phone-controller")).toBeInTheDocument();
-    expect(screen.getByTestId("challenge-frame").innerHTML).toContain("px-4");
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "phone",
+    );
     expect(screen.getByText(ITEM.prompt.ar)).toBeInTheDocument();
     expect(screen.queryByTestId("ryo-lock-indicators")).toBeNull();
     expect(screen.queryByText("اقرأ خصمك")).toBeNull();

@@ -1,11 +1,11 @@
 "use client";
 
 import { BidiText } from "@/components/akwaan/bidi-text";
-import { Separator } from "@/components/ui/separator";
-import { teamIdentityOf } from "@/lib/team-identity";
-import { cn } from "@/lib/utils";
 import { teamName } from "../presentation";
-import { HelpCircle, Swords } from "lucide-react";
+import {
+  ChallengeWinnerBanner,
+  ResultRoundCard,
+} from "./challenge-result-banner";
 import { ryoDecisionRevealLabel } from "../ryo-decision.presentation";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
@@ -73,9 +73,6 @@ export function RyoResultRecap({
       }
       return totals;
     }, {});
-  const winnerIdentity = result.winnerTeamId
-    ? teamIdentityOf(result.winnerTeamId, snapshot.teams)
-    : undefined;
 
   return (
     <div className="space-y-5" data-testid="ryo-result-recap">
@@ -85,171 +82,65 @@ export function RyoResultRecap({
           list repeated every question in prose, which on a screen read from
           across a room nobody reads. */}
       <ol
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid list-none gap-5 sm:grid-cols-2 lg:grid-cols-3"
         data-testid="ryo-result-items"
       >
-        {items.map((item, index) => {
-          const DecisionIcon = item.decision === "steal" ? Swords : HelpCircle;
-          return (
-            <li
-              key={item.itemIndex ?? index}
-              data-testid={`ryo-result-item-${index}`}
-              className="relative flex flex-col items-center gap-3 overflow-hidden rounded-[var(--radius)] border-2 border-brand-navy bg-card p-4 text-center shadow-[0_5px_0_hsl(var(--brand-navy))]"
-            >
-              <span
-                data-testid={`ryo-result-stamp-${index}`}
-                className={cn(
-                  "absolute end-3 top-3 rotate-[-12deg] rounded-md border-4 border-double px-2 py-0.5 text-xs font-black",
-                  item.correct
-                    ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
-                    : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
-                )}
-              >
-                {item.correct ? "جاوب صح" : "جاوب غلط"}
-              </span>
-              <p className="self-start text-xs font-black text-muted-foreground">
-                الجولة {index + 1}
-              </p>
-              <span
-                aria-hidden
-                className="grid size-16 place-items-center rounded-full border-2 border-brand-navy bg-muted"
-              >
-                <DecisionIcon className="size-8" />
-              </span>
-              <div>
-                <p className="text-lg font-black text-foreground">
-                  {ryoDecisionRevealLabel(item.decision)}
-                </p>
-                {/* Whose read it was. The decision is this card's subject, so
-                    the person who made it belongs with it and not in a line
-                    somewhere else. */}
-                <p className="mt-0.5 text-xs font-bold text-muted-foreground">
-                  {person(item.deciderParticipantId) ||
-                    teamName(snapshot, item.opposingTeamId)}
-                </p>
-              </div>
-              <div className="w-full border-t border-border pt-3 text-sm">
-                <p className="font-black text-foreground">
-                  {person(item.answererParticipantId) ||
-                    teamName(snapshot, item.answeringTeamId)}
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  {item.correct ? (
-                    <BidiText>{String(item.selectedAnswer ?? "—")}</BidiText>
-                  ) : (
-                    <>
-                      {"الصحيح: "}
-                      <BidiText>{String(item.correctAnswer ?? "—")}</BidiText>
-                    </>
-                  )}
-                </p>
-              </div>
-              {(item.mechanicPoints ?? [])
-                .filter((entry) => entry.points !== 0)
-                .map((entry) => {
-                  const identity = teamIdentityOf(entry.teamId, snapshot.teams);
-                  return (
-                    <p
-                      key={entry.teamId}
-                      className={cn(
-                        "mt-auto inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius)] border-2 border-brand-navy px-2 py-1.5 text-sm font-black text-brand-navy",
-                        entry.points > 0 ? "bg-brand-gold" : "bg-muted",
-                      )}
-                    >
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "size-2.5 rounded-full border border-brand-navy",
-                          identity.solid,
-                        )}
-                      />
-                      {teamName(snapshot, entry.teamId)}
-                      <span className="akwaan-numeral">
-                        {entry.points > 0 ? `+${entry.points}` : entry.points}
-                      </span>
-                    </p>
-                  );
-                })}
-            </li>
-          );
-        })}
+        {items.map((item, index) => (
+          <ResultRoundCard
+            key={item.itemIndex ?? index}
+            data-testid={`ryo-result-item-${index}`}
+            round={index + 1}
+            snapshot={snapshot}
+            {...(item.prompt
+              ? { question: <BidiText>{item.prompt}</BidiText> }
+              : {})}
+            stamp={{
+              label: item.correct ? "جاوب صح" : "جاوب غلط",
+              tone: item.correct ? "correct" : "wrong",
+              testId: `ryo-result-stamp-${index}`,
+            }}
+            facts={[
+              {
+                // Whose answer it was, and what they sent.
+                label: `إجابة ${
+                  person(item.answererParticipantId) ||
+                  teamName(snapshot, item.answeringTeamId)
+                }`,
+                value: <BidiText>{String(item.selectedAnswer ?? "—")}</BidiText>,
+              },
+              {
+                label: "الإجابة الصحيحة",
+                value: <BidiText>{String(item.correctAnswer ?? "—")}</BidiText>,
+              },
+              {
+                // The decision is what this challenge is about, so the person
+                // who made it is named with it.
+                label: `قراءة ${
+                  person(item.deciderParticipantId) ||
+                  teamName(snapshot, item.opposingTeamId)
+                }`,
+                value: ryoDecisionRevealLabel(item.decision),
+              },
+            ]}
+            points={item.mechanicPoints ?? []}
+          />
+        ))}
       </ol>
 
-      <Separator />
-
       {/* RYO's payoff matrix can genuinely tie, so a tie is stated rather than
-          dressed up as a win for whoever happens to be listed first. */}
-      <section
-        className={cn(
-          "akwaan-rise space-y-2 rounded-[var(--radius)] border-2 p-6 text-center",
-          winnerIdentity
-            ? cn(winnerIdentity.surface, winnerIdentity.border)
-            : "border-border bg-muted",
-        )}
-        data-testid="ryo-result-winner"
-        data-tie={result.winnerTeamId ? "false" : "true"}
-      >
-        <p className="text-2xl font-black text-foreground sm:text-3xl">
-          {result.winnerTeamId
-            ? `فوز ${teamName(snapshot, result.winnerTeamId)}`
-            : "تعادل في هذا التحدي"}
-        </p>
-        {/* The challenge's own signed totals — the thing the three items above
-            actually add up to. Deliberately labelled as the challenge result,
-            because the Match point below is a different number entirely. */}
-        <p className="text-xs font-bold text-muted-foreground">
-          نتيجة التحدي
-        </p>
-        <ul
-          className="flex list-none flex-wrap justify-center gap-2"
-          data-testid="ryo-mechanic-totals"
-        >
-          {Object.entries(mechanicTotals).map(([teamId, total]) => {
-            const identity = teamIdentityOf(teamId, snapshot.teams);
-            return (
-              <li
-                key={teamId}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-sm font-black",
-                  identity.border,
-                  identity.text,
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn("size-2 rounded-full", identity.dot)}
-                />
-                {teamName(snapshot, teamId)}
-                <span className="akwaan-numeral">
-                  {total > 0 ? `+${total}` : total}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* And the one line that actually moves the Match. Gold, like every
-            other point in this product: green here would say "correct", which
-            is a different question from who the point went to. */}
-        <p
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-brand-navy bg-brand-gold px-3 py-1 text-sm font-black text-brand-navy"
-          data-testid="ryo-match-point"
-        >
-          {result.tie ? (
-            "لا نقطة مباراة — تعادل"
-          ) : (
-            <>
-              <span className="akwaan-numeral">
-                +
-                {result.matchPoints.find(
-                  (entry) => entry.teamId === result.winnerTeamId,
-                )?.points ?? 1}
-              </span>{" "}
-              نقطة للمباراة
-            </>
-          )}
-        </p>
-      </section>
+          dressed up as a win for whoever happens to be listed first. The
+          challenge's own signed totals and the one Match point are separate
+          numbers, and the banner keeps them apart. */}
+      <ChallengeWinnerBanner
+        result={result}
+        snapshot={snapshot}
+        totals={mechanicTotals}
+        testIds={{
+          root: "ryo-result-winner",
+          totals: "ryo-mechanic-totals",
+          matchPoint: "ryo-match-point",
+        }}
+      />
     </div>
   );
 }

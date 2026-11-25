@@ -77,7 +77,9 @@ export function RakkibhaResultRecap({
               ? puzzle.selections.map((entry, index) => (
                   <div key={index} className="space-y-2 pb-3">
                     <SelectionView selection={entry.selected} />
-                    <ResolutionOutcome>
+                    <ResolutionOutcome
+                      tone={entry.correct ? "correct" : "wrong"}
+                    >
                       {entry.correct ? "اختيار صحيح" : "اختيار غير صحيح"}
                     </ResolutionOutcome>
                   </div>
