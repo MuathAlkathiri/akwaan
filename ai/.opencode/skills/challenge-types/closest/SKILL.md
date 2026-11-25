@@ -138,6 +138,7 @@ interaction on `mechanicPayload.closestSlider`.
 |---|---|
 | `numeric-range` | `{ mode, min, max, step, unit?, displayFormat? }` |
 | `between-anchors` | `{ mode, min, max, leftAnchor, rightAnchor, step? }` |
+| `colour-hue` | `{ mode, min: 0, max: 360, step?, revealSeconds? }` |
 
 **Never author:** `legacy`, an unset mode, or a fabricated default continuum.
 `legacy` — a Closest item carrying no `closestSlider` — exists only as backward
@@ -243,6 +244,31 @@ Still supported, and still the exception. Use it only when:
 Do **not** use it for visual variety, to dress up an ordinary numeric question,
 to expose a meaningless normalized `0–100` scale, or where the anchor labels
 leak the answer.
+
+## colour-hue — «تذكّر اللون»
+
+The answer is a colour. The shared screen shows the picture in colour for
+`revealSeconds` (1–10, default 4), then in grey; each team slides along the
+colour wheel to the colour it remembers, and the nearer colour wins.
+
+- `correctValue` is the hue in degrees, `0 ≤ hue < 360`. `min` is `0` and `max`
+  is `360`, always: the wheel is the range, and the runtime measures distance
+  **around** it, so red at either end of the slider is the same answer.
+- The item **must** carry the picture as image media. The prompt names the part
+  being asked about: «وش لون القميص؟».
+- Only the hue is chosen. Players cannot pick how light or dark a colour is, so
+  the target must be a **vivid, saturated** colour. White, black, grey, brown,
+  beige and pastel targets are not answerable and must not be authored.
+- Exactly **one** region of the picture has the target colour, and nothing else
+  in the frame is close to it — two blue things make the question ambiguous.
+- No known cartoon or brand characters. Use Akwaan's own characters or drawings
+  of everyday things.
+- The colour must not be guessable without looking: a banana asked "what
+  colour" is knowledge, not memory. Pick objects whose colour is arbitrary — a
+  shirt, a car, a cup, a balloon.
+
+Blockers: `CLOSEST_COLOUR_RANGE_INVALID`, `CLOSEST_COLOUR_TARGET_INVALID`,
+`CLOSEST_COLOUR_REVEAL_INVALID`, `CLOSEST_COLOUR_IMAGE_REQUIRED`.
 
 ## Midpoint — a QA signal, never a rejection
 

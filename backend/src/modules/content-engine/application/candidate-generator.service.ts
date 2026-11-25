@@ -31,10 +31,22 @@ import {
   resolveRequestedDifficulty,
   resolveRyoMixedDifficultyTargets,
   generatorAnswerModeFor,
+  promptVersionFor,
   validateTargetCount,
 } from '../domain/generation-specification';
+import {
+  BOMB_SLUG,
+  MOVING_XO_SLUG,
+} from '../../world-content/domain/world-content.constants';
+import {
+  BOMB_IMAGE_KINDS,
+  BombImageKind,
+  CandidateMediaIntent,
+} from '../domain/candidate-media-intent';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { ResolvedAuthoringContext } from './authoring-context.service';
+import { ComposedVisualService } from './composed-visual.service';
+import { isComposedVisualFamily } from '../domain/composed-visuals';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
 
@@ -234,10 +246,13 @@ export const RYO_CANDIDATE_SCHEMA: Record<string, unknown> = {
  *
  * The slider is authored **before** the answer is looked at (the Skill's
  * domain-first rule), so the schema asks for the domain span and the target as
- * separate facts rather than letting one be derived from the other. Only
- * `numeric-range` is offered: `between-anchors` needs two authored anchor
- * labels whose quality is a judgement call, and the first pilot has no way to
- * assess them.
+ * separate facts rather than letting one be derived from the other.
+ *
+ * Two sliders are authored. `numeric-range` shows the player numbers.
+ * `between-anchors` shows a bare line between two labelled ends and no number
+ * at all — the player places a mark — so it is offered only for a quantity
+ * that is naturally a *position* (a date on the year, a letter in the
+ * alphabet). `colour-hue` needs a picture and is authored by hand.
  */
 export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
   type: 'object',
@@ -259,6 +274,9 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
           'playerReasoningStrategy',
           'prompt',
           'domainDescription',
+          'sliderMode',
+          'leftAnchor',
+          'rightAnchor',
           'min',
           'max',
           'step',
@@ -268,7 +286,8 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
           // strict structured-output mode requires every declared property to
           // appear in `required` — a schema with optional keys is rejected
           // with HTTP 400 before any inference runs. Optionality is expressed
-          // through a nullable type instead, which Gemini also accepts.
+          // through a value instead: an empty unit, and "number" for the
+          // ordinary display format.
           'unit',
           'displayFormat',
           'factualClaims',
@@ -296,6 +315,22 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
             description:
               'The natural quantitative span this question lives in, decided before looking at the answer.',
           },
+          sliderMode: {
+            type: 'string',
+            enum: ['numeric-range', 'between-anchors'],
+            description:
+              '"numeric-range": the player reads numbers on the slider. "between-anchors": the player sees only a line between two labelled ends and places a mark — use it ONLY when the slot asks for a position (its Task says position-estimation).',
+          },
+          leftAnchor: {
+            type: 'string',
+            description:
+              'between-anchors only: the Arabic label of the end where the scale starts (the thing at min). An empty string for numeric-range.',
+          },
+          rightAnchor: {
+            type: 'string',
+            description:
+              'between-anchors only: the Arabic label of the end where the scale finishes (the thing at max). An empty string for numeric-range.',
+          },
           min: { type: 'number' },
           max: { type: 'number' },
           step: {
@@ -309,16 +344,23 @@ export const CLOSEST_CANDIDATE_SCHEMA: Record<string, unknown> = {
             description:
               'Whole number of steps from min to correctValue: correctValue must equal min + stepsFromMin * step exactly. Compute it; do not guess. If it is not a whole number, change the step to another the domain justifies — never move an endpoint and never round the answer.',
           },
+          // Plain strings, not `['string', 'null']`. A nullable type written
+          // as a type list is valid JSON Schema and OpenAI accepts it, but
+          // Anthropic and Google reject the request outright when such a
+          // field also carries an `enum` ("Enum value 'number' does not match
+          // declared type") — so the same model fails or works depending on
+          // which upstream OpenRouter happens to pick. "Nothing" is spelled as
+          // a value every provider can express instead.
           unit: {
-            type: ['string', 'null'],
+            type: 'string',
             description:
-              'Unit of the quantity, or null when the value takes none (a calendar year never takes one).',
+              'Unit of the quantity, or an empty string when the value takes none (a calendar year never takes one).',
           },
           displayFormat: {
-            type: ['string', 'null'],
-            enum: ['number', 'calendar-year', null],
+            type: 'string',
+            enum: ['number', 'calendar-year'],
             description:
-              'Omit by returning null; null means an ordinary number.',
+              '"number" for an ordinary quantity; "calendar-year" only when the value is a year.',
           },
           factualClaims: {
             type: 'array',
@@ -407,6 +449,194 @@ export const COMBO_TASK_GUIDANCE = [
   'Digits are NOT folded: ٧ and 7 grade as different answers, so an answer that is a number belongs to another mechanic.',
   'Spread the batch across the four stages rather than clustering on one rung.',
 ].join('\n');
+
+/** The Bomb Skill's own bound: a prompt a player reads in one glance. */
+export const BOMB_MAX_PROMPT_LENGTH = 70;
+
+/**
+ * What a Bomb question asks about the thing in its picture. Named so a batch
+ * can be told to spread across them: left alone, a generator settles on "who
+ * is this?" and "what is his first name?" and a round of it is a drill.
+ */
+export const BOMB_ANGLES = [
+  'identify',
+  'name-part',
+  'affiliation',
+  'origin',
+  'home',
+  'known-for',
+  'moved',
+  'opponent',
+  'succession',
+] as const;
+
+export type BombAngle = (typeof BOMB_ANGLES)[number];
+
+export const BOMB_CANDIDATE_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['candidates'],
+  properties: {
+    candidates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        // Authoring order: the picture is decided before the wording. A Bomb
+        // item whose image was an afterthought is a text question with a
+        // decoration, which is the thing the mechanic exists to avoid.
+        required: [
+          'concept',
+          'angle',
+          'timeAnchor',
+          'imageSubject',
+          'imageSubjectAr',
+          'imageKind',
+          'imageMustNotShow',
+          'imageAltText',
+          'prompt',
+          'acceptedAnswers',
+          'factualClaims',
+        ],
+        properties: {
+          concept: {
+            type: 'string',
+            description:
+              'The idea in one line, before any wording exists: what the player recognises or recalls, and why it belongs to this Scope.',
+          },
+          angle: {
+            type: 'string',
+            enum: [...BOMB_ANGLES],
+            description:
+              'What the question asks about the pictured subject. identify: its name. name-part: a part of its name, the rest given in the prompt. affiliation: the team, club, maker, series or organisation it belongs to or is best known for. origin: the country, national team or city it comes from. home: for a place, what is based there or which city holds it. known-for: the title, role, work or event it is famous for. moved: where it came from or went next — a transfer, a move, a previous or following work. opponent: who it faced or beat at a named event. succession: who or what came immediately before or after it in the same role or series.',
+          },
+          timeAnchor: {
+            type: 'string',
+            description:
+              'The season, year or named event the answer is true for, exactly as it appears in the prompt — "موسم 2015-16", "نهائي 2005". Empty string ONLY when the answer can never change (a name, a birthplace, a nationality, the city a stadium stands in).',
+          },
+          imageSubject: {
+            type: 'string',
+            description:
+              'The one real thing the picture shows, as the exact name an encyclopedia files it under, in Latin script — "Luka Modrić", "Santiago Bernabéu Stadium", "Toyota Supra (A80)". A name to search for, never a description, a scene, or two subjects. It must be a real, specific, photographed subject: an existing photograph will be found for it, nothing is drawn or generated.',
+          },
+          imageSubjectAr: {
+            type: 'string',
+            description: 'The same subject by its common Arabic name.',
+          },
+          imageKind: {
+            type: 'string',
+            enum: [...BOMB_IMAGE_KINDS],
+            description:
+              'What kind of thing the subject is. Use "other" only when none fits.',
+          },
+          imageMustNotShow: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Anything that would give the answer away if it were readable in the picture: a name printed on a shirt, a caption, a scoreboard, a badge with the club name spelled out. Empty when nothing would.',
+          },
+          imageAltText: {
+            type: 'string',
+            description:
+              'One short Arabic sentence describing the picture for a player who cannot see it, WITHOUT stating the answer.',
+          },
+          prompt: {
+            type: 'string',
+            description: `Arabic question text, under ${BOMB_MAX_PROMPT_LENGTH} characters, read in one glance. It must not contain the answer, any accepted spelling of it, or a word that gives it away.`,
+          },
+          acceptedAnswers: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 10,
+            items: { type: 'string' },
+            description:
+              'The typed answer, graded by text match. The SHORTEST widely recognised unique name first, then only genuinely DIFFERENT forms a correct player would type: a well-known nickname or short form, the full name beside the common one, a widely used Latin transliteration. Do NOT list spelling variants that differ only in أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, letter case, or a leading ال — grading already folds those. Never a different entity, a broader category, or a near-miss that should be wrong.',
+          },
+          factualClaims: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'The answer-critical claim(s) that make the accepted answer the correct one for this subject.',
+          },
+        },
+      },
+    },
+  },
+};
+
+export const BOMB_TASK_GUIDANCE = [
+  '## BOMB TASK',
+  'القنبلة is a recognition race against a running clock. A player glances, knows, types. Anything that needs working out belongs to another mechanic.',
+  'EVERY item is about ONE real picture. Decide the picture first, then write the question for it.',
+  'The picture always shows the subject; what changes is what you ask about it. Choose the `angle` before the wording. identify — name what the picture shows ("من هذا اللاعب؟", "وش اسم هذا الملعب؟"). name-part — the prompt gives part of the name and asks for the rest ("وش الاسم الأول لمودريتش؟"). affiliation — what it belongs to or is best known for ("وش النادي اللي اشتهر فيه هذا اللاعب؟", "وش الشركة اللي تصنع هذي السيارة؟"). origin — where it is from ("من أي منتخب هذا اللاعب؟", "من أي بلد هذا المدرب؟"). home — for a place, what is based there or where it stands ("وش النادي صاحب هذا الملعب؟", "في أي مدينة هذا الملعب؟"). known-for — the title, award, role or event a person or club is famous for, pinned to when ("وش الجائزة اللي فاز فيها هذا اللاعب سنة 2018؟"). moved — where it came from or went next ("من أي نادي انتقل هذا اللاعب لليفربول؟", "وش النادي اللي راح له بعد أرسنال؟"). opponent — who it faced at a named event ("ضد مين سجل هذا اللاعب في نهائي 2014؟"). succession — who came right before or after it in the same role ("مين المدرب اللي جا بعده في مانشستر يونايتد؟").',
+  'moved, opponent and succession ask the player to recall, not just recognise, so they are the slow ones. Use at most ceil(N / 3) of them in a batch of N, and only where the fact is one a follower of this Scope actually remembers: a famous transfer, a final everyone watched, a succession people argued about.',
+  'SPREAD THE ANGLES. A batch that asks the same thing five times is a drill, not a game. In a batch of N items use at least min(N, 4) different angles, use no angle more than ceil(N / 3) times, and never give two items the same prompt wording. `name-part` is one angle among nine, not the default: at most one item per batch.',
+  'Spread the pictures too: players, managers, stadiums, kits, crests, and whatever else this Scope has that people know on sight. Not five photographs of five players.',
+  'NO TROPHY QUIZZES. Never make the picture a trophy, cup, medal, ball or other object and ask which competition or award it stands for. The picture is a person, a club or a place; a competition or an award may be the ANSWER about them, never the thing shown.',
+  'ANSWERS THAT CAN CHANGE MUST BE PINNED TO A DATE. Who someone plays for, who manages a club, who is captain, who holds a record — all of these change, and an item that was right when written becomes wrong in play. Either ask for something that cannot change (a name, a nationality, a birthplace, the city a stadium stands in, a finished event) or pin the question to a season, a year or a named event inside the prompt itself: "وش النادي اللي لعب له هذا اللاعب موسم 2015-16؟", "من درّب هذا الفريق في نهائي 2005؟". Put that same anchor in `timeAnchor`. Never write "currently", "now", "this season", "الحين", "حاليًا" or "هذا الموسم": an unpinned changeable answer is not allowed at all.',
+  'A pinned question still needs an answer the table can recall. Pin to seasons and events people remember — a title win, a famous final, a long spell at one club — not to an arbitrary year.',
+  'The subject must be something a real photograph of already exists: a named person, club, stadium, vehicle, place, object or work. Give its exact encyclopedia name in `imageSubject`. Never describe an illustration to be drawn, never invent a scene, never ask for two subjects in one picture.',
+  'The picture must not answer the question in writing. List in `imageMustNotShow` whatever would: for a completion item that is the answer itself appearing as readable text; for a recognition item it is the name on a shirt, a caption, a scoreboard, a spelled-out badge.',
+  `The prompt is under ${BOMB_MAX_PROMPT_LENGTH} characters and is one plain spoken question. No scene-setting, no clauses, no "which of the following".`,
+  'The answer is typed and graded by text match, so it must be ONE short canonical name — the shortest name people actually use for it. Not a sentence, not a list.',
+  'If two correct players would plausibly type genuinely different words, the item has no stable written answer. Replace it.',
+  'Grading folds أ/إ/آ, ة/ه, ى/ي, diacritics, punctuation, case and a leading ال, so never spend an accepted answer on those. List only forms that differ as words.',
+  'Digits are NOT folded: ٧ and 7 grade as different answers, so an answer that is a number belongs to another mechanic.',
+  'DIFFICULTY HAS ONE TARGET: someone who follows this Scope well — not an expert, not a casual — should need two or three seconds of thought and then know it. If that person answers before the picture has finished loading, it is too easy: drop it or change the angle. If they would have to guess, look it up, or be a specialist, it is too hard: drop it. A world-famous face asked "who is this?" is too easy; the same face asked where he moved from is about right. An obscure squad player is too hard from any angle.',
+  'Vary the subjects across the batch: do not return several items about the same person, club or place.',
+  'An answer is still ONE short name whatever the angle: a club, a country, a city, a person. If the honest answer is a number, a date or a sentence, pick another angle.',
+].join('\n');
+
+/** Steps a slider may fall back to, roundest first. */
+const CLOSEST_ROUND_STEPS = [
+  1000, 500, 250, 200, 100, 50, 25, 20, 10, 5, 2, 1,
+] as const;
+
+/**
+ * The step a derived مين أقرب answer can actually be reached on.
+ *
+ * When the answer is computed from the prompt — 22 teams home and away is 462
+ * matches — the answer is fixed and only the step is a choice. A model that
+ * picks a tidy step of 10 for a range starting at 50 has authored a slider
+ * that cannot land on its own answer, and the screen rightly blocks it; the
+ * first real عالم الألغاز batch lost four of five candidates that way. The
+ * Skill's rule for this case is "change the step, never move an endpoint,
+ * never round the answer", and that rule is arithmetic, so it is applied here
+ * rather than asked of the model: the roundest step, no coarser than the one
+ * stated, that reaches both the answer and the far end of the range.
+ *
+ * Returns nothing for values that are not whole numbers or a range that is
+ * not a range — those are left exactly as stated for the screen to judge.
+ */
+export function settleClosestGrid(input: {
+  min: number;
+  max: number;
+  step: number;
+  correctValue: number;
+}): { step: number; stepsFromMin: number } | undefined {
+  const { min, max, step, correctValue } = input;
+  if (
+    ![min, max, correctValue].every(Number.isInteger) ||
+    !(step > 0) ||
+    max <= min ||
+    correctValue < min ||
+    correctValue > max
+  )
+    return undefined;
+  const reaches = (candidate: number) =>
+    (correctValue - min) % candidate === 0 && (max - min) % candidate === 0;
+  const settled =
+    Number.isInteger(step) && reaches(step)
+      ? step
+      : CLOSEST_ROUND_STEPS.find(
+          (candidate) => candidate <= step && reaches(candidate),
+        );
+  // A stated step below 1 (0.5) has no rounder step under it; whole numbers
+  // are always reachable in ones.
+  const resolved = settled ?? 1;
+  return { step: resolved, stepsFromMin: (correctValue - min) / resolved };
+}
 
 /**
  * Extends a candidate generation schema with an explicit `slotIndex` property
@@ -506,6 +736,148 @@ export const ORIGINALITY_GUIDANCE = [
  * The multiple-choice path previously appended nothing, so its prompt ended on
  * generic formatting instructions while Closest ended on mechanic rules.
  */
+/**
+ * إكس أو المتحرك candidates: the اقرأ خصمك shape without its bet.
+ *
+ * `estimatedConfidence` is the Steal/Trust hypothesis, and the screen reads it
+ * as one. A Moving XO item carries no such bet, so the field is not asked for
+ * rather than asked for and ignored.
+ */
+export const MOVING_XO_CANDIDATE_SCHEMA: Record<string, unknown> = (() => {
+  const ryoItem = (
+    (RYO_CANDIDATE_SCHEMA.properties as Record<string, unknown>).candidates as {
+      items: Record<string, unknown>;
+    }
+  ).items;
+  const { estimatedConfidence: _bet, ...properties } =
+    ryoItem.properties as Record<string, unknown>;
+  void _bet;
+  return {
+    ...RYO_CANDIDATE_SCHEMA,
+    properties: {
+      candidates: {
+        type: 'array',
+        items: {
+          ...ryoItem,
+          required: (ryoItem.required as string[]).filter(
+            (field) => field !== 'estimatedConfidence',
+          ),
+          properties: {
+            ...properties,
+            concept: {
+              type: 'string',
+              description:
+                'The puzzle in one line, before any wording exists: what the team works out, and the natural mistake a rushed team makes.',
+            },
+            options: {
+              type: 'array',
+              minItems: 3,
+              maxItems: 3,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['id', 'label'],
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+})();
+
+export const MOVING_XO_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. This is a turn of X-O. One team is on turn, sees the',
+  'puzzle on the shared screen and taps one of three text buttons on a phone.',
+  'Right: they play a move on the board. Wrong: the turn passes and they play',
+  'nothing. There is no bet and no opponent prediction — only: can this team',
+  'work it out, together, before the clock runs out?',
+  '',
+  'THE CLOCK. A team has about fifteen seconds. Everything is read aloud once',
+  'and solved in the head:',
+  '  - the prompt is at most two short sentences, in plain Arabic;',
+  '  - at most three numbers or three named things to hold in mind;',
+  '  - one step of insight, or two short steps — never a chain;',
+  '  - each option is a few words at most, readable at a glance on a phone.',
+  'If the fair way to solve it needs a pen, it is the wrong puzzle for this mechanic.',
+  '',
+  'Author each item in this order, and fill the schema fields in this order:',
+  '  1. concept — the puzzle and the natural mistake, before any wording exists.',
+  '  2. prompt, then exactly three options and correctOptionId.',
+  '  3. distractorRationale — one entry per INCORRECT option: the specific mistake that produces it.',
+  '  4. factualClaims — the derivation that proves the correct option, step by step, and why each other option fails.',
+  '',
+  'SOLVED, NOT RECALLED. Everything needed is in the prompt or is something',
+  'every player knows. A team that has never heard of the subject must still be',
+  'able to answer. No trivia, no dates, no records.',
+  '',
+  'EXACTLY ONE OPTION IS RIGHT. Solve the puzzle yourself from the prompt alone',
+  'and check all three options against it. If a second option can be defended',
+  'by any reasonable reading, rewrite the prompt until it cannot.',
+  '',
+  'EACH WRONG OPTION IS A REAL MISTAKE. It is the answer a specific, natural',
+  'slip produces — the rushed reading, the off-by-one, the trap the puzzle',
+  'sets. An option nobody would pick turns three choices into two.',
+  '',
+  'FAIR TO GUESS, WORTH SOLVING. One in three is luck; the puzzle must reward',
+  'the team that thinks. Never make the correct option stand out by length,',
+  'by being the middle value, or by being the only "careful" wording, and vary',
+  'which position holds it across the batch.',
+  '',
+  'Text only. The prompt must not refer to a picture, a shape or a diagram:',
+  'nothing is drawn yet. A pattern is written with words or emoji in the prompt itself.',
+].join('\n');
+
+/**
+ * اقرأ خصمك inside عالم الألغاز — owner decision 2026-11-25.
+ *
+ * Everywhere else the item itself is pitched to be hard to call. Here the
+ * owner wants the opposite: the same plain "you know it or you don't"
+ * question the knowledge Worlds ask («ما اسم هذه اللعبة؟»), so that all the
+ * doubt sits between the two teams. This replaces the general guidance and
+ * its difficulty mix rather than adding to them — the two contradict.
+ */
+export const PUZZLES_RYO_TASK_GUIDANCE = [
+  'GAMEPLAY-FIRST INTENT. One team answers on a phone; the other team does not',
+  'answer — it bets, blind, on whether they got it right: Steal or Trust. In this',
+  'World the bet is a read of PEOPLE, not of the question. The item is direct and',
+  'fair; what the other team must work out is whether this team really knew it',
+  'or is acting sure.',
+  '',
+  'So write the plain question, the kind asked across a table:',
+  '  - one direct question with one plain answer — a team either has it at once or is guessing, and knows which;',
+  '  - medium leaning EASY. An easy item is good here: it makes the other team hesitate ("surely they got that… did they?");',
+  '  - NEVER a trap. No trick wording, no catch, no "the obvious answer is wrong". A team fooled by the item has nothing to bluff;',
+  '  - NEVER a multi-step puzzle. One look, one recall, or one short sum in the head;',
+  '  - a short prompt — one sentence where possible.',
+  '',
+  'Riddles, proverbs and everyday word knowledge ARE allowed for this mechanic in',
+  'this World, although they are known rather than worked out. Use only the ones',
+  'people really say and really know; a rare one is a lottery, not a read.',
+  '',
+  'Author each item in this order, and fill the schema fields in this order:',
+  '  1. concept — the plain thing being asked, before any wording exists.',
+  '  2. prompt, then exactly four options and correctOptionId.',
+  '  3. distractorRationale — one entry per INCORRECT option: why a guessing team might pick it.',
+  '  4. estimatedConfidence — aim for "likely". "even" is fine. Never "unlikely" or "near-impossible".',
+  '  5. factualClaims — the fact, the sum or the accepted wording that proves the correct option.',
+  '',
+  'EXACTLY ONE OPTION IS RIGHT, and nobody could argue for another: no riddle',
+  'with two accepted answers, no proverb with two common endings, no word with',
+  'two fair opposites among the options.',
+  '',
+  'THE WRONG OPTIONS ARE WHAT A GUESSER PICKS. Same kind of thing as the answer,',
+  'same length, same register. A team that does not know must have a real one-',
+  'in-four hope — that hope is what lets it act confident. Never put the answer',
+  'inside the prompt, and vary which position holds it across the batch.',
+  '',
+  'Text only. Nothing is drawn yet.',
+].join('\n');
+
 export const RYO_TASK_GUIDANCE = [
   'GAMEPLAY-FIRST INTENT. Design the Steal/Trust decision before choosing the',
   'question. The subject must come from the resolved World and Scope, but the',
@@ -595,6 +967,19 @@ export const CLOSEST_TASK_GUIDANCE = [
   'If the answer does not land on the grid, change the STEP to another the domain justifies — never move an endpoint, never round the answer.',
   'Prefer one shared span across comparable questions over a bespoke range per item.',
   'Numbers should be reasonable to reach on a phone slider: aim for a span the step divides into at least a few dozen positions, not three or four.',
+  '',
+  'TWO SLIDERS. Set sliderMode for every item:',
+  '  - numeric-range — the default. leftAnchor and rightAnchor are empty strings.',
+  '  - between-anchors — ONLY for a slot whose Task says position-estimation. Use numeric-range for every other slot.',
+  'A between-anchors item is a POSITION question. The player sees a bare line with a label at each end and NO numbers, and places a mark where the thing falls:',
+  '  - the line is a complete order everybody knows (the days of the year, the letters of the alphabet), and min..max counts its positions in order (1..365, 1..28);',
+  '  - leftAnchor is the thing at min and rightAnchor the thing at max, each a short Arabic label («1 يناير», «31 ديسمبر»). The prompt names both ends in the same words;',
+  '  - correctValue is the position of the asked thing in that order, step is 1, unit is empty;',
+  '  - the prompt never states a position, a count or a fraction — the player has no number to read, so a number in the prompt is either the answer or noise;',
+  '  - NEVER pick a thing that falls in the middle fifth of the line, and avoid the two ends: a mark left in the centre must not win. Good targets sit clearly off-centre and still take thought to place;',
+  '  - the asked thing must have ONE fixed position everyone would accept (a date that does not move from year to year, a letter in the standard order). A lunar-calendar date moves — never use one.',
+  '',
+  'DRAWN BY THE ENGINE. A slot whose Task says composed-visual is not yours to author: the engine draws its picture and sets its answer itself, and discards whatever you return for it. For such a slot return the shortest valid item you can (a one-line prompt, numeric-range, min 0, max 100, step 1, correctValue 1) and spend no thought on it.',
 ].join('\n');
 
 import {
@@ -612,9 +997,58 @@ export interface GenerateInput {
   difficulty?: RyoRequestedDifficulty | string | null;
   batchGuidance?: string | null;
   generationPlan?: GenerationPlan | null;
+  /** Prompts already in this Scope's library; see `formatExistingContent`. */
+  existingPrompts?: readonly string[];
+}
+
+export const EXISTING_CONTENT_MAX_ITEMS = 80;
+export const EXISTING_CONTENT_MAX_CHARS = 160;
+
+/**
+ * The questions this Scope already holds, as a list the generator must not
+ * repeat.
+ *
+ * The screen has always rejected a repeat — but only after it was paid for.
+ * A generator that is never shown the library walks straight back to the
+ * same handful of natural examples (the first Puzzles re-run re-authored
+ * «الرقم 7 من 1 إلى 300» and «30 واحد في قروب» number for number), and each
+ * one costs a candidate. Showing it the list is what makes the second batch
+ * different from the first.
+ *
+ * Newest last and capped: the most recent items are the ones a model is most
+ * likely to produce again.
+ */
+export function formatExistingContent(
+  prompts: readonly string[] | undefined,
+): string | undefined {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const raw of prompts ?? []) {
+    const line = String(raw ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!line || seen.has(line)) continue;
+    seen.add(line);
+    lines.push(
+      line.length > EXISTING_CONTENT_MAX_CHARS
+        ? `${line.slice(0, EXISTING_CONTENT_MAX_CHARS)}…`
+        : line,
+    );
+  }
+  if (!lines.length) return undefined;
+  return [
+    '## ALREADY IN THE LIBRARY — DO NOT REPEAT',
+    'These questions already exist in this Scope. A candidate that asks any of',
+    'them again is rejected automatically and wasted — and so is the same',
+    'question with the wording changed, and the same scenario with the same',
+    'numbers. Author NEW items: a different scenario, different numbers and a',
+    'different answer from every line below.',
+    ...lines.slice(-EXISTING_CONTENT_MAX_ITEMS).map((line) => `  - ${line}`),
+  ].join('\n');
 }
 
 export interface BuildPromptOptions {
+  existingPrompts?: readonly string[];
   difficulty?: RyoRequestedDifficulty | string | null;
   ryoDifficultyTargets?: Readonly<RyoDifficultyTargets> | null;
   batchGuidance?: string | null;
@@ -670,10 +1104,21 @@ export function composeGenerationPrompt(
     answerMode === 'closest'
       ? resolveRequestedDifficulty('closest', options?.difficulty)
       : answerMode === 'match'
-        ? // الكومبو carries its difficulty in the stage ladder, so it takes no
-          // separate difficulty selection.
-          resolveRequestedDifficulty('combo', options?.difficulty)
-        : resolveRequestedDifficulty('read-your-opponent', options?.difficulty);
+        ? // Neither match mechanic takes a difficulty selection: الكومبو
+          // carries its difficulty in the stage ladder, and القنبلة is a
+          // recognition race with no difficulty axis at all.
+          resolveRequestedDifficulty(
+            context.mechanicKey === BOMB_SLUG ? BOMB_SLUG : 'combo',
+            options?.difficulty,
+          )
+        : // Two mechanics author in options. Only اقرأ خصمك takes a
+          // difficulty mix; إكس أو المتحرك has one level.
+          resolveRequestedDifficulty(
+            context.mechanicKey === MOVING_XO_SLUG
+              ? MOVING_XO_SLUG
+              : 'read-your-opponent',
+            options?.difficulty,
+          );
   const normalizedGuidance = normalizeBatchGuidance(options?.batchGuidance);
 
   const planner = new GenerationPlannerService();
@@ -710,15 +1155,21 @@ export function composeGenerationPrompt(
     answerMode === 'closest'
       ? CLOSEST_TASK_GUIDANCE
       : answerMode === 'match'
-        ? COMBO_TASK_GUIDANCE
-        : [
-            RYO_TASK_GUIDANCE,
-            buildRyoDifficultyGuidance(
-              resolvedDifficulty ?? 'mixed',
-              options?.ryoDifficultyTargets,
-              fallbackTargetsResolver,
-            ),
-          ].join('\n\n'),
+        ? context.mechanicKey === BOMB_SLUG
+          ? BOMB_TASK_GUIDANCE
+          : COMBO_TASK_GUIDANCE
+        : context.mechanicKey === MOVING_XO_SLUG
+          ? MOVING_XO_TASK_GUIDANCE
+          : context.worldKey === 'puzzles'
+            ? PUZZLES_RYO_TASK_GUIDANCE
+            : [
+                RYO_TASK_GUIDANCE,
+                buildRyoDifficultyGuidance(
+                  resolvedDifficulty ?? 'mixed',
+                  options?.ryoDifficultyTargets,
+                  fallbackTargetsResolver,
+                ),
+              ].join('\n\n'),
     ...(normalizedGuidance
       ? [
           [
@@ -729,6 +1180,9 @@ export function composeGenerationPrompt(
             `<batch_guidance>\n${normalizedGuidance}\n</batch_guidance>`,
           ].join('\n'),
         ]
+      : []),
+    ...(formatExistingContent(options?.existingPrompts)
+      ? [formatExistingContent(options?.existingPrompts) as string]
       : []),
     // Last, deliberately: the instruction a generator is most likely to act
     // on is the one it read most recently.
@@ -775,6 +1229,8 @@ export interface CandidateAuthoring {
   estimatedConfidence?: { band: string; why: string };
   /** الكومبو: why the item sits on the stage it claims. */
   stageJustification?: string;
+  /** القنبلة: the real picture this item needs, for discovery and review. */
+  mediaIntent?: CandidateMediaIntent;
   /** Which Closest direction this item takes. Absent on pre-2g candidates. */
   answerBasis?: 'reasoning' | 'knowledge-anchored';
   playerReasoningStrategy?: string;
@@ -823,6 +1279,7 @@ export class CandidateGeneratorService {
     @Optional()
     @Inject(ENGINE_AI_PROVIDER)
     private readonly provider?: AiProvider,
+    @Optional() private readonly composedVisuals?: ComposedVisualService,
   ) {}
 
   maxBatchSize(): number {
@@ -937,10 +1394,13 @@ export class CandidateGeneratorService {
         `generationSpec answerMode "${spec.answerMode}" does not match canonical answerMode "${answerMode}" for mechanic "${input.context.mechanicKey}"`,
       );
     }
-    if (spec && spec.promptVersion !== PROMPT_VERSIONS[answerMode]) {
+    const activePromptVersion = promptVersionFor(
+      input.context.mechanicKey,
+    ) as string;
+    if (spec && spec.promptVersion !== activePromptVersion) {
       throw new CandidateParseError(
         'PROMPT_VERSION_DRIFT',
-        `generationSpec promptVersion "${spec.promptVersion}" does not match active generator promptVersion "${PROMPT_VERSIONS[answerMode]}"`,
+        `generationSpec promptVersion "${spec.promptVersion}" does not match active generator promptVersion "${activePromptVersion}"`,
       );
     }
     const resolvedDifficulty = resolveRequestedDifficulty(
@@ -968,6 +1428,7 @@ export class CandidateGeneratorService {
       ryoDifficultyTargets: spec?.ryoDifficultyTargets,
       batchGuidance: normalizedGuidance,
       generationPlan: input.generationPlan,
+      existingPrompts: input.existingPrompts,
     });
     // Reserved *and* sent, so actual output cost cannot exceed what the cap
     // approved. Sized with headroom: a bound tight enough to truncate the JSON
@@ -986,7 +1447,7 @@ export class CandidateGeneratorService {
       spec?.generationModel ??
       this.config.get<string>('ENGINE_GENERATION_MODEL') ??
       'fake-model';
-    const promptVersion = spec?.promptVersion ?? PROMPT_VERSIONS[answerMode];
+    const promptVersion = spec?.promptVersion ?? activePromptVersion;
     const omitTemperature =
       spec?.omitTemperature ?? resolveOmitTemperature(this.config);
     const temperature = omitTemperature
@@ -1018,8 +1479,12 @@ export class CandidateGeneratorService {
       answerMode === 'closest'
         ? CLOSEST_CANDIDATE_SCHEMA
         : answerMode === 'match'
-          ? COMBO_CANDIDATE_SCHEMA
-          : RYO_CANDIDATE_SCHEMA;
+          ? input.context.mechanicKey === BOMB_SLUG
+            ? BOMB_CANDIDATE_SCHEMA
+            : COMBO_CANDIDATE_SCHEMA
+          : input.context.mechanicKey === MOVING_XO_SLUG
+            ? MOVING_XO_CANDIDATE_SCHEMA
+            : RYO_CANDIDATE_SCHEMA;
     const responseSchema = hasCreativeSlots
       ? schemaWithCreativeSlots(baseSchema)
       : baseSchema;
@@ -1108,18 +1573,35 @@ export class CandidateGeneratorService {
 
     const parsed = this.parse(raw, count, answerMode, {
       requireSlotIdentity: hasCreativeSlots,
+      mechanicKey: input.context.mechanicKey,
     });
     const saved: GeneratedCandidate[] = [];
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
 
     for (let ordinal = 0; ordinal < parsed.length; ordinal += 1) {
-      const { draft, factualClaims, authoring } = parsed[ordinal];
+      let { draft, factualClaims, authoring } = parsed[ordinal];
       const candidateId = this.candidateId(
         input.jobId,
         ordinal,
         effectiveContextHash,
       );
       const assignedSlot = input.generationPlan?.slots?.[ordinal];
+      // A composed family has no author: the engine draws the picture and
+      // the answer from one value, and what the model wrote for this slot is
+      // discarded. Seeded by job and ordinal, so a recovered job redraws the
+      // same items.
+      if (
+        this.composedVisuals &&
+        isComposedVisualFamily(assignedSlot?.familyKey)
+      ) {
+        const composed = await this.composedVisuals.compose(
+          assignedSlot.familyKey,
+          `${input.jobId}:${ordinal}`,
+        );
+        draft = composed.draft;
+        factualClaims = composed.factualClaims;
+        authoring = composed.authoring;
+      }
       const mergedAuthoring = {
         ...(authoring ?? {}),
         ...(assignedSlot
@@ -1276,6 +1758,119 @@ export class CandidateGeneratorService {
     };
   }
 
+  /**
+   * One القنبلة candidate, parsed strictly.
+   *
+   * The picture is part of the item, so a candidate that does not say what its
+   * picture shows is refused like one with no answer: there would be nothing to
+   * search for, and the item could only ever be finished by hand.
+   *
+   * The draft carries no `media` yet. The image is found, reviewed and written
+   * into the draft by the media stage; until then the canonical media contract
+   * holds the candidate back, which is the point.
+   */
+  private parseBomb(item: unknown): ParsedCandidate {
+    const value = item as {
+      concept?: unknown;
+      imageSubject?: unknown;
+      imageSubjectAr?: unknown;
+      imageKind?: unknown;
+      imageMustNotShow?: unknown;
+      imageAltText?: unknown;
+      prompt?: unknown;
+      acceptedAnswers?: unknown;
+      factualClaims?: unknown;
+      angle?: unknown;
+      timeAnchor?: unknown;
+    };
+
+    const factualClaims = Array.isArray(value.factualClaims)
+      ? value.factualClaims.filter(
+          (claim): claim is string =>
+            typeof claim === 'string' && Boolean(claim.trim()),
+        )
+      : [];
+    if (!factualClaims.length) {
+      throw new CandidateParseError(
+        'CANDIDATE_FACTUAL_CLAIMS_REQUIRED',
+        'every candidate must state its answer-critical claim',
+      );
+    }
+
+    const subject = text(value.imageSubject);
+    if (!subject) {
+      throw new CandidateParseError(
+        'BOMB_IMAGE_SUBJECT_REQUIRED',
+        'every Bomb candidate must name the real subject its picture shows',
+      );
+    }
+
+    const seen = new Set<string>();
+    const acceptedAnswers: string[] = [];
+    for (const raw of Array.isArray(value.acceptedAnswers)
+      ? value.acceptedAnswers
+      : []) {
+      const answer = text(raw);
+      if (!answer) continue;
+      const key = answer.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      acceptedAnswers.push(answer);
+    }
+    if (
+      !acceptedAnswers.length ||
+      acceptedAnswers.length > COMBO_MAX_ACCEPTED_ANSWERS
+    ) {
+      throw new CandidateParseError(
+        'BOMB_ACCEPTED_ANSWERS_INVALID',
+        `acceptedAnswers must hold 1 to ${COMBO_MAX_ACCEPTED_ANSWERS} distinct non-empty answers`,
+      );
+    }
+
+    const angle = text(value.angle);
+    const kind = text(value.imageKind);
+    const mustNotShow = (
+      Array.isArray(value.imageMustNotShow) ? value.imageMustNotShow : []
+    )
+      .map((entry) => text(entry))
+      .filter((entry): entry is string => Boolean(entry));
+    const mediaIntent: CandidateMediaIntent = {
+      slotKey: 'item-image',
+      subject,
+      ...(text(value.imageSubjectAr)
+        ? { subjectAr: text(value.imageSubjectAr) }
+        : {}),
+      // An unknown kind is not worth losing the item over; it only tunes search.
+      kind: (BOMB_IMAGE_KINDS as readonly string[]).includes(kind ?? '')
+        ? (kind as BombImageKind)
+        : 'other',
+      mustNotShow,
+      ...(text(value.imageAltText)
+        ? { altText: text(value.imageAltText) }
+        : {}),
+    };
+
+    return {
+      factualClaims,
+      draft: {
+        prompt: { ar: typeof value.prompt === 'string' ? value.prompt : '' },
+        answerPayload: { mode: 'match', acceptedAnswers },
+      },
+      authoring: {
+        ...(text(value.concept) ? { concept: text(value.concept) } : {}),
+        // Kept so a reviewer, and the screen, can see what the item set out to
+        // ask and which moment its answer is true for.
+        ...((BOMB_ANGLES as readonly string[]).includes(angle ?? '')
+          ? { angle }
+          : {}),
+        ...(text(value.timeAnchor)
+          ? { timeAnchor: text(value.timeAnchor) }
+          : {}),
+        mediaIntent,
+      },
+    };
+  }
+
   private parseClosest(item: unknown): ParsedCandidate {
     const value = item as {
       concept?: unknown;
@@ -1283,6 +1878,9 @@ export class CandidateGeneratorService {
       playerReasoningStrategy?: unknown;
       prompt?: unknown;
       domainDescription?: unknown;
+      sliderMode?: unknown;
+      leftAnchor?: unknown;
+      rightAnchor?: unknown;
       min?: unknown;
       max?: unknown;
       step?: unknown;
@@ -1323,28 +1921,98 @@ export class CandidateGeneratorService {
         ? value.unit.trim()
         : undefined;
 
+    // Absent on replies shaped before the second slider existed: those are
+    // ordinary numeric sliders.
+    const betweenAnchors = value.sliderMode === 'between-anchors';
+    const leftAnchor = text(value.leftAnchor) ?? '';
+    const rightAnchor = text(value.rightAnchor) ?? '';
+    if (
+      betweenAnchors &&
+      (!leftAnchor ||
+        !rightAnchor ||
+        leftAnchor === rightAnchor ||
+        leftAnchor.length > 80 ||
+        rightAnchor.length > 80)
+    ) {
+      throw new CandidateParseError(
+        'CLOSEST_SLIDER_ANCHORS_INVALID',
+        'a between-anchors slider needs two distinct labels of at most 80 characters',
+      );
+    }
+
+    const correctValue = num(value.correctValue, 'correctValue');
+    const min = num(value.min, 'min');
+    const max = num(value.max, 'max');
+    const statedStep = num(value.step, 'step');
+    const statedStepsFromMin =
+      typeof value.stepsFromMin === 'number' &&
+      Number.isFinite(value.stepsFromMin)
+        ? value.stepsFromMin
+        : undefined;
+    // A derived answer is whatever the derivation says it is; only the step
+    // is a choice. So for a reasoning item the grid is settled here instead
+    // of being left to the model's arithmetic. See `settleClosestGrid`.
+    // A position line shows the player no numbers at all and counts whole
+    // positions, so its step is never a product choice either: it is settled
+    // the same way, from the finest step.
+    const settled = betweenAnchors
+      ? settleClosestGrid({ min, max, step: 1, correctValue })
+      : value.answerBasis === 'reasoning'
+        ? settleClosestGrid({ min, max, step: statedStep, correctValue })
+        : undefined;
+    const step = settled?.step ?? statedStep;
+    // A reply that stated no stepsFromMin on a grid that was already right
+    // keeps none: there is nothing to correct, and nothing was claimed.
+    const stepsFromMin =
+      settled &&
+      (settled.step !== statedStep || statedStepsFromMin !== undefined)
+        ? settled.stepsFromMin
+        : statedStepsFromMin;
+    const gridRepair =
+      settled &&
+      (settled.step !== statedStep ||
+        (statedStepsFromMin !== undefined &&
+          settled.stepsFromMin !== statedStepsFromMin))
+        ? {
+            statedStep,
+            ...(statedStepsFromMin !== undefined ? { statedStepsFromMin } : {}),
+          }
+        : undefined;
+
     return {
       factualClaims,
       draft: {
         prompt: { ar: typeof value.prompt === 'string' ? value.prompt : '' },
         answerPayload: {
           mode: 'closest',
-          correctValue: num(value.correctValue, 'correctValue'),
+          correctValue,
           // No tolerance is authored. The Closest runtime never reads it —
           // grading is nearest-wins — so inventing one would add a field that
           // changes nothing and misleads a reviewer.
         },
         mechanicPayload: {
-          closestSlider: {
-            mode: 'numeric-range',
-            min: num(value.min, 'min'),
-            max: num(value.max, 'max'),
-            step: num(value.step, 'step'),
-            // A calendar year is a value, not an amount: the policy forbids a
-            // unit on one, so it is dropped rather than passed through.
-            ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
-            ...(displayFormat === 'calendar-year' ? { displayFormat } : {}),
-          },
+          closestSlider: betweenAnchors
+            ? {
+                // No unit and no display format: nothing on this slider is
+                // ever shown as a number.
+                mode: 'between-anchors',
+                min,
+                max,
+                step,
+                leftAnchor,
+                rightAnchor,
+              }
+            : {
+                mode: 'numeric-range',
+                min,
+                max,
+                step,
+                // A calendar year is a value, not an amount: the policy
+                // forbids a unit on one, so it is dropped rather than passed
+                // through.
+                ...(unit && displayFormat !== 'calendar-year' ? { unit } : {}),
+                ...(displayFormat === 'calendar-year' ? { displayFormat } : {}),
+              },
         },
         metadata: {
           notes: text(value.domainDescription)
@@ -1368,10 +2036,10 @@ export class CandidateGeneratorService {
           : {}),
         playerReasoningStrategy: text(value.playerReasoningStrategy),
         domainDescription: text(value.domainDescription),
-        ...(typeof value.stepsFromMin === 'number' &&
-        Number.isFinite(value.stepsFromMin)
-          ? { stepsFromMin: value.stepsFromMin }
-          : {}),
+        ...(stepsFromMin !== undefined ? { stepsFromMin } : {}),
+        // What the model stated before the grid was settled, kept so a
+        // reviewer can see the slider's step is ours and not the model's.
+        ...(gridRepair ? { gridRepair } : {}),
       },
     };
   }
@@ -1380,7 +2048,14 @@ export class CandidateGeneratorService {
     raw: string,
     count: number,
     answerMode: 'multiple_choice' | 'closest' | 'match' = 'multiple_choice',
-    options?: { requireSlotIdentity?: boolean },
+    options?: {
+      requireSlotIdentity?: boolean;
+      /**
+       * Two mechanics share the `match` answer mode. Absent means الكومبو, the
+       * first of them, so a caller that predates القنبلة keeps its behaviour.
+       */
+      mechanicKey?: string;
+    },
   ): ParsedCandidate[] {
     let payload: unknown;
     try {
@@ -1527,7 +2202,9 @@ export class CandidateGeneratorService {
       return orderedCandidates.map((item) => this.parseClosest(item));
     }
     if (answerMode === 'match') {
-      return orderedCandidates.map((item) => this.parseCombo(item));
+      return options?.mechanicKey === BOMB_SLUG
+        ? orderedCandidates.map((item) => this.parseBomb(item))
+        : orderedCandidates.map((item) => this.parseCombo(item));
     }
     return orderedCandidates.map((item) => {
       const value = item as {

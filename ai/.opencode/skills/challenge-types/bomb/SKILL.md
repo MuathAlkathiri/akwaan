@@ -4,10 +4,15 @@
 Rapid-fire, high-pressure recognition. The clock is continuous; hesitation is punished. Players must recognize the subject instantly from clean, distinctive evidence.
 
 ## Gameplay / Authoring Contract
-No extra reading. No complex inference. The prompt must be $<70$ chars. The media (if any) MUST be instantly clear.
+No extra reading. No complex inference. The prompt must be $<70$ chars. The image MUST be instantly clear.
 
 ## Item Structure
-1 Prompt (Text). Up to 1 Media Asset.
+1 Prompt (Text). Exactly 1 image.
+
+**Every Bomb item carries an image** (Product decision 2026-11-22, roadmap §23.4).
+A text-only item is not a Bomb item. This holds for every World and every
+archetype, name completion included: the item still asks for the name, and it
+shows the person, club or thing the prompt is about.
 
 ## Payload Contract
 `mode: 'match'`
@@ -18,7 +23,9 @@ Run cardinality: 10–15 items per pack.
 Brevity must preserve uniqueness.
 
 ## Modality Constraints
-- Allowed: `image`, `none`
+- Required: `image` — exactly one, on every item.
+- FORBIDDEN: `none` (text-only). Forward authoring only: text-only items that
+  already exist keep running, and the runtime contract still accepts them.
 - FORBIDDEN: `audio` (Clock continuous mechanics do not support audio-driven items).
 
 ## Mechanic-Native Quality Bar
@@ -45,7 +52,10 @@ name-completion item (`NAME_FRAGMENT`) and at least two media-recognition items
 
 - Name completion: the famous surname is in the prompt and the less familiar
   first name is the answer (`"وش الاسم الأول لمودريتش؟"` → `"لوكا"`). Avoid
-  obvious missing names, obscure players, and ambiguous surnames.
+  obvious missing names, obscure players, and ambiguous surnames. The item
+  carries a picture of the person named — Modrić's photo for the Modrić
+  question. The picture is context, not the clue, so it must not show the
+  answer as readable text (a caption, a name card, a shirt printed with it).
 - Media recognition: player, stadium, or crest images (`"من هذا اللاعب؟"`,
   `"وش اسم هذا الملعب؟"`).
 - Football's name-fragment ratio does not generalise to any other World.
@@ -76,7 +86,9 @@ transformation), not trivia. No name-completion templates.
 - Complex multi-step reasoning.
 - Long prompts.
 - Audio media.
+- A text-only item, in any World.
 
 ## QA Gates
 - `BOMB_FAST_ANSWER_UNIQUENESS`
 - `NO_AUDIO`
+- `BOMB_ITEM_IMAGE_REQUIRED`

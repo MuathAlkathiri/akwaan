@@ -514,7 +514,13 @@ describeIf(
           // changed (Bomb/Top-5/Distributed Information contracts moved to
           // their mechanic Skills, then the pointer named the required Skill
           // files); c2205015… and 9c891eac… reproduce from the prior files.
-          'f989ae76d25e38f5dcf74f7e57f4c750c34a6b62a027f963f1a86f66e0b5c505',
+          // Refreshed 2026-11-24 for two source changes, algorithm unchanged:
+          // the Closest SKILL.md gained the `colour-hue` mode («تذكّر اللون»,
+          // PR #99 — which moved this hash to 979ba6da… and left this fixture
+          // stale on staging), and this Scope's SCOPE.md, KNOWLEDGE.md and the
+          // World profile gained the owner's 2026-11-24 product selection.
+          // f989ae76… reproduces from the files before both.
+          'a357b2c86b13114597ba8bcb167fb7f83268fb1e012594c636f035a536a1031e',
         );
       });
 

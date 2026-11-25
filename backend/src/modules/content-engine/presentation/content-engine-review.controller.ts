@@ -32,6 +32,7 @@ import {
   CandidateMediaAttachDto,
   CandidateMediaReviewDto,
   CandidateMediaRightsAcknowledgementDto,
+  CandidateMediaSuggestionDto,
   CandidateRejectionDto,
   CreateCandidateDraftDto,
   ReviewCandidateQueryDto,
@@ -133,7 +134,9 @@ export class ContentEngineReviewController {
     @Body() dto: CreateCandidateDraftDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return envelope(await this.review.publishReady(candidateId, dto.expectedRevision, user));
+    return envelope(
+      await this.review.publishReady(candidateId, dto.expectedRevision, user),
+    );
   }
 
   /**
@@ -153,6 +156,18 @@ export class ContentEngineReviewController {
   ) {
     return envelope(
       await this.media.attachUpload(candidateId, slotKey, dto, asset, user),
+    );
+  }
+
+  @Post('candidates/:candidateId/media/:slotKey/suggestion')
+  async attachSuggestedMedia(
+    @Param('candidateId') candidateId: string,
+    @Param('slotKey') slotKey: string,
+    @Body() dto: CandidateMediaSuggestionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return envelope(
+      await this.media.attachSuggestion(candidateId, slotKey, dto, user),
     );
   }
 

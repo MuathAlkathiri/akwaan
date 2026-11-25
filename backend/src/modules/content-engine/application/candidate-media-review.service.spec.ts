@@ -92,6 +92,15 @@ const build = (
         },
     ),
   };
+  (ingestion as Record<string, unknown>).ingestRemote = jest.fn(
+    async () =>
+      options.ingest ?? {
+        status: 'resolved',
+        asset: { url: URL_B, mimetype: 'image/jpeg', sha256: 'b'.repeat(64) },
+        provenance: { acquisition: 'retrieve', provider: 'wikimedia-commons' },
+        rights: { status: 'UNKNOWN', source: 'unrecorded' },
+      },
+  );
   const review = { detail: jest.fn(async () => ({ id: 'presented' })) };
   const status = (url: string) => ({
     assetUrl: url,
@@ -702,6 +711,121 @@ describe('CandidateMediaReviewService', () => {
         response: { code: 'MEDIA_REVISION_CONFLICT' },
       });
       expect(ingestion.ingestBytes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('choosing a suggested image', () => {
+    const suggestion = (name: string) => ({
+      provider: 'wikimedia-commons',
+      title: `${name}.jpg`,
+      downloadUrl: `https://img.example/${name}.jpg`,
+      pageUrl: `https://commons.example/File:${name}.jpg`,
+      width: 1280,
+      height: 960,
+      licenceNote: `CC BY-SA 4.0 via wikimedia-commons ${name}`,
+    });
+    const bomb = (slot: Record<string, unknown> = {}) => ({
+      mechanicKey: 'bomb',
+      scopeKey: 'premier-league',
+      current: candidate({
+        authoring: {
+          mediaIntent: {
+            slotKey: 'item-image',
+            subject: 'Bukayo Saka',
+            kind: 'person',
+            mustNotShow: [],
+            altText: 'لاعب يجري بالكرة.',
+          },
+        },
+        mediaPlan: [
+          resolvedSlot({
+            slotKey: 'item-image',
+            suggestions: [suggestion('one'), suggestion('two')],
+            ...slot,
+          }),
+        ],
+      }),
+    });
+    const choose = (
+      service: CandidateMediaReviewService,
+      downloadUrl: string,
+      expectedMediaReviewRevision = 1,
+    ) =>
+      service.attachSuggestion(
+        'cand-1',
+        'item-image',
+        { expectedMediaReviewRevision, downloadUrl },
+        actor,
+      );
+
+    it('fetches the chosen suggestion, replaces the slot and keeps the others on offer', async () => {
+      const { service, candidates, ingestion } = build(bomb());
+      await choose(service, 'https://img.example/two.jpg');
+
+      expect(
+        (ingestion as unknown as { ingestRemote: jest.Mock }).ingestRemote,
+      ).toHaveBeenCalledWith({
+        url: 'https://img.example/two.jpg',
+        provenance: {
+          provider: 'wikimedia-commons',
+          licenceNote: 'CC BY-SA 4.0 via wikimedia-commons two',
+        },
+      });
+      const [filter, update] = writeOf(candidates);
+      expect(filter).toMatchObject({
+        mediaReviewRevision: 1,
+        reviewRevision: 3,
+      });
+      expect(update.$set['draft.media']).toEqual({
+        type: 'image',
+        assets: [{ url: URL_B, altText: 'لاعب يجري بالكرة.' }],
+      });
+      const slot = (update.$set.mediaPlan as Array<Record<string, any>>)[0];
+      expect(slot.asset.url).toBe(URL_B);
+      expect(slot.review).toBeNull();
+      expect(slot.suggestions.map((s: any) => s.title)).toEqual(['one.jpg']);
+      expect(update.$push.mediaEvents).toMatchObject({
+        action: 'media_attached',
+        details: { source: 'suggestion', superseded: { assetUrl: URL_A } },
+      });
+    });
+
+    it('refuses a URL that is not one of the stored suggestions, fetching nothing', async () => {
+      const { service, candidates, ingestion } = build(bomb());
+      await expect(
+        choose(service, 'https://attacker.example/x.jpg'),
+      ).rejects.toMatchObject({
+        response: { code: 'MEDIA_SUGGESTION_UNKNOWN' },
+      });
+      expect(
+        (ingestion as unknown as { ingestRemote: jest.Mock }).ingestRemote,
+      ).not.toHaveBeenCalled();
+      expect(candidates.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('checks the media revision before fetching', async () => {
+      const { service, ingestion } = build(bomb());
+      await expect(
+        choose(service, 'https://img.example/two.jpg', 0),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(
+        (ingestion as unknown as { ingestRemote: jest.Mock }).ingestRemote,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('reports an image that cannot be fetched without changing the candidate', async () => {
+      const { service, candidates } = build({
+        ...bomb(),
+        ingest: {
+          status: 'failed',
+          failureReason: 'HTTP_STATUS_NOT_OK',
+          detail: 'responded 404',
+        },
+      });
+      await expect(
+        choose(service, 'https://img.example/two.jpg'),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      expect(candidates.updateOne).not.toHaveBeenCalled();
     });
   });
 });

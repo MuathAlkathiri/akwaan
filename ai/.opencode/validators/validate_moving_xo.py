@@ -50,6 +50,24 @@ AUTHORING_MANIFEST = Path(__file__).resolve().parents[2] / ".opencode" / "author
 VISUAL_SCOPES = {"observation-illusions", "assembly-rotation", "paths-motion"}
 
 _FAMILY_MODES = {"multiple_choice", "match", "closest"}
+#: The answer modes a Moving XO phone can actually collect.
+_MOVING_XO_MODES = {"multiple_choice", "match"}
+#: Families answered by choosing that belong to اقرأ خصمك alone (owner decision
+#: 2026-11-25). The Scope table carries no per-mechanic column, so they are
+#: named here: they keep their rows and numbers and are not Moving XO families.
+_OTHER_MECHANIC_ONLY_FAMILIES = frozenset(
+    {
+        "mental-arithmetic",
+        "sequence-next",
+        "everyday-conversions",
+        "direct-fraction",
+        "number-riddle",
+        "classic-riddle",
+        "proverb-completion",
+        "word-completion",
+        "antonym",
+    }
+)
 
 
 def _table_cells(line: str) -> list[str]:
@@ -109,6 +127,7 @@ def _load_scope_families(scope: str) -> dict[str, dict]:
         raise RuntimeError(f"approved family table header is malformed: {scope_file}")
 
     families: dict[str, dict] = {}
+    slider_only: set[str] = set()
     expected_number = 1
     for line in lines[header + 2 :]:
         if not line.startswith("|"):
@@ -127,8 +146,16 @@ def _load_scope_families(scope: str) -> dict[str, dict]:
         modes = set(re.findall(r"\b(?:multiple_choice|match|closest)\b", cells[-1]))
         if not modes or not modes.issubset(_FAMILY_MODES):
             raise RuntimeError(f"approved family modes are invalid: {scope_file}: {line}")
-        if family in families:
+        if family in families or family in slider_only:
             raise RuntimeError(f"duplicate approved family '{family}' in {scope_file}")
+        if not modes & _MOVING_XO_MODES or family in _OTHER_MECHANIC_ONLY_FAMILIES:
+            # A family answered only on the مين أقرب slider shares the Scope's
+            # table and is not a Moving XO family: the phone here offers text
+            # choices or one text input, never a slider. It keeps its row and
+            # its number; it simply is not registered for this mechanic.
+            slider_only.add(family)
+            expected_number += 1
+            continue
         families[family] = {
             "media": _family_media_policy(scope, cells[-2]),
             "modes": modes,

@@ -60,6 +60,33 @@ const request = {
 };
 
 describe('OpenRouterAiProvider request shape', () => {
+  it('sends pictures as image parts beside the prompt, at low detail unless told otherwise', async () => {
+    const { seen, fetchImpl } = capture();
+    await new OpenRouterAiProvider(config(), fetchImpl).generateText({
+      ...request,
+      images: ['https://img.example/a.jpg'],
+    });
+    const [message] = (
+      seen.body!.messages as Array<{ role: string; content: unknown }>
+    ).filter((entry) => entry.role === 'user');
+    expect(message.content).toEqual([
+      { type: 'text', text: request.prompt },
+      {
+        type: 'image_url',
+        image_url: { url: 'https://img.example/a.jpg', detail: 'low' },
+      },
+    ]);
+  });
+
+  it('keeps the prompt a plain string when there are no pictures', async () => {
+    const { seen, fetchImpl } = capture();
+    await new OpenRouterAiProvider(config(), fetchImpl).generateText(request);
+    const [message] = (
+      seen.body!.messages as Array<{ role: string; content: unknown }>
+    ).filter((entry) => entry.role === 'user');
+    expect(message.content).toBe(request.prompt);
+  });
+
   it('sends temperature by default', async () => {
     const { seen, fetchImpl } = capture();
     await new OpenRouterAiProvider(config(), fetchImpl).generateText(request);
@@ -75,6 +102,61 @@ describe('OpenRouterAiProvider request shape', () => {
       fetchImpl,
     ).generateText(request);
     expect(seen.body).not.toHaveProperty('temperature');
+  });
+
+  describe('routing around an upstream (ENGINE_OPENROUTER_IGNORE_PROVIDERS)', () => {
+    const bodyWith = async (
+      value: string | undefined,
+      overrides: Partial<typeof request> = {},
+    ) => {
+      const { seen, fetchImpl } = capture();
+      await new OpenRouterAiProvider(
+        config(
+          value === undefined
+            ? {}
+            : { ENGINE_OPENROUTER_IGNORE_PROVIDERS: value },
+        ),
+        fetchImpl,
+      ).generateText({ ...request, ...overrides });
+      return seen.body!;
+    };
+
+    it('names the upstream to skip, beside the parameter-aware routing', async () => {
+      expect((await bodyWith('azure')).provider).toEqual({
+        require_parameters: true,
+        ignore: ['azure'],
+      });
+    });
+
+    it('takes a list, tidied and without repeats', async () => {
+      expect(
+        (await bodyWith(' Azure, deepinfra/turbo ,azure,, ')).provider,
+      ).toEqual({
+        require_parameters: true,
+        ignore: ['azure', 'deepinfra/turbo'],
+      });
+    });
+
+    it('drops anything that is not a slug instead of sending it', async () => {
+      expect((await bodyWith('azure; drop, "openai"')).provider).toEqual({
+        require_parameters: true,
+      });
+    });
+
+    it('changes nothing when unset or empty', async () => {
+      expect((await bodyWith(undefined)).provider).toEqual({
+        require_parameters: true,
+      });
+      expect((await bodyWith('')).provider).toEqual({
+        require_parameters: true,
+      });
+    });
+
+    it('still skips the upstream for a request with no schema', async () => {
+      const body = await bodyWith('azure', { responseSchema: undefined });
+      expect(body.provider).toEqual({ ignore: ['azure'] });
+      expect(body).not.toHaveProperty('response_format');
+    });
   });
 
   it('still demands a strict schema and parameter-aware routing', async () => {
@@ -337,7 +419,7 @@ describe('the serialized request body OpenAI will validate', () => {
     expect(validateStrict(RYO_CANDIDATE_SCHEMA).length).toBe(3);
   });
 
-  it('keeps unit and displayFormat required and nullable on the wire', async () => {
+  it('keeps unit and displayFormat required, as plain strings, on the wire', async () => {
     const wire = await serializedSchema(CLOSEST_CANDIDATE_SCHEMA);
     const item = (
       wire.properties as {
@@ -351,9 +433,12 @@ describe('the serialized request body OpenAI will validate', () => {
     ).candidates.items;
     expect(item.required).toContain('unit');
     expect(item.required).toContain('displayFormat');
-    expect(item.properties.unit.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.enum).toContain(null);
+    expect(item.properties.unit.type).toBe('string');
+    expect(item.properties.displayFormat.type).toBe('string');
+    expect(item.properties.displayFormat.enum).toEqual([
+      'number',
+      'calendar-year',
+    ]);
   });
 
   it('sends strict mode, parameter-aware routing, and no temperature', async () => {

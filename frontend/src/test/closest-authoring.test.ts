@@ -4,6 +4,8 @@ import {
   emptyContentItemForm,
   findLocalFormProblems,
   hasClosestSliderMode,
+  hexToHue,
+  hueToHex,
   toContentItemForm,
 } from "@/features/world-management/services/content-item-form.service";
 import type { ContentItem } from "@/features/world-management/types";
@@ -76,7 +78,7 @@ describe("Closest slider authoring", () => {
  */
 describe("the interaction mode new Closest content must choose", () => {
   const MODE_REQUIRED =
-    "اختر طريقة التفاعل لمين أقرب: نطاق رقمي أو بين نقطتي ارتكاز.";
+    "اختر طريقة التفاعل لمين أقرب: نطاق رقمي، بين نقطتي ارتكاز، أو تذكّر اللون.";
 
   const newClosest = () => {
     const values = emptyContentItemForm("scope-1");
@@ -269,5 +271,105 @@ describe("the value a Closest slider starts on", () => {
     expect(seedClosestEstimate({ min: 0, max: 100, step: 5 })).toBe(50);
     expect(seedClosestEstimate({ min: 150, max: 350, step: 5 })).toBe(250);
     expect(seedClosestEstimate({ min: 1900, max: 1960, step: 1 })).toBe(1930);
+  });
+});
+
+describe("«تذكّر اللون» authoring", () => {
+  const colour = () => {
+    const values = emptyContentItemForm("scope-1");
+    values.compatibleChallengeTypeIds = ["closest-type"];
+    values.promptAr = "وش لون القميص؟";
+    values.mediaType = "image";
+    values.mediaUrls = ["https://cdn/shirt.webp"];
+    values.answer.mode = "closest";
+    values.answer.closestInteraction = "colour-hue";
+    values.answer.closestMin = "0";
+    values.answer.closestMax = "360";
+    values.answer.closestStep = "1";
+    values.answer.correctValue = "210";
+    return values;
+  };
+
+  it("is a mode new content may choose", () => {
+    expect(hasClosestSliderMode("colour-hue")).toBe(true);
+    expect(findLocalFormProblems(colour(), { isNewItem: true })).toEqual([]);
+  });
+
+  it("serializes the whole wheel, with the reveal only when authored", () => {
+    expect(buildContentItemPayload(colour()).mechanicPayload).toEqual({
+      closestSlider: { mode: "colour-hue", min: 0, max: 360, step: 1 },
+    });
+    const timed = colour();
+    timed.answer.closestRevealSeconds = "6";
+    expect(buildContentItemPayload(timed).mechanicPayload).toEqual({
+      closestSlider: {
+        mode: "colour-hue",
+        min: 0,
+        max: 360,
+        step: 1,
+        revealSeconds: 6,
+      },
+    });
+  });
+
+  it("round-trips through a stored item", () => {
+    const timed = colour();
+    timed.answer.closestRevealSeconds = "6";
+    const payload = buildContentItemPayload(timed);
+    const restored = toContentItemForm({
+      id: "item-1",
+      scopeId: "scope-1",
+      worldId: "world-1",
+      prompt: { ar: "وش لون القميص؟" },
+      compatibleChallengeTypeIds: [],
+      answerPayload: payload.answerPayload,
+      mechanicPayload: payload.mechanicPayload,
+      status: "draft",
+      isReusableAcrossSessions: false,
+      readiness: { readiness: "not_ready", blockers: [], warnings: [] },
+      compatibleFamilies: [],
+      isSessionReuseExempt: false,
+    });
+    expect(restored.answer).toMatchObject({
+      closestInteraction: "colour-hue",
+      closestMin: "0",
+      closestMax: "360",
+      closestRevealSeconds: "6",
+      correctValue: "210",
+    });
+  });
+
+  it("refuses a colour question with no picture", () => {
+    const values = colour();
+    values.mediaType = "none";
+    expect(findLocalFormProblems(values, { isNewItem: true })).toContain(
+      "سؤال اللون يحتاج صورة: اللون موجود فيها.",
+    );
+  });
+
+  it.each(["0", "11", "2.5"])("refuses a reveal of %s seconds", (reveal) => {
+    const values = colour();
+    values.answer.closestRevealSeconds = reveal;
+    expect(
+      findLocalFormProblems(values, { isNewItem: true }).some((problem) =>
+        problem.startsWith("مدة ظهور الصورة ملوّنة"),
+      ),
+    ).toBe(true);
+  });
+
+  it("reads a hue off a picked colour, and gives none for a grey", () => {
+    expect(hexToHue("#ff0000")).toBe(0);
+    expect(hexToHue("#00ff00")).toBe(120);
+    expect(hexToHue("#0000ff")).toBe(240);
+    expect(hexToHue("#888888")).toBeUndefined();
+    expect(hexToHue("#ffffff")).toBeUndefined();
+    expect(hexToHue("#000000")).toBeUndefined();
+    expect(hexToHue("not a colour")).toBeUndefined();
+  });
+
+  it("shows the author the colour the players will see", () => {
+    // The picker round-trips: what it displays for a hue reads back as that hue.
+    for (const hue of [0, 30, 120, 210, 300, 359])
+      expect(hexToHue(hueToHex(hue))).toBe(hue);
   });
 });

@@ -228,3 +228,17 @@ export class CandidateMediaAttachDto {
   @Min(0)
   expectedMediaReviewRevision!: number;
 }
+
+/**
+ * Choosing one of the images discovery already proposed for a slot. The URL
+ * only *names* which stored suggestion is meant: one that is not on the slot
+ * is refused, so the client can never make the server fetch an address of its
+ * own choosing.
+ */
+export class CandidateMediaSuggestionDto {
+  @IsInt() @Min(0) expectedMediaReviewRevision!: number;
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  downloadUrl!: string;
+}

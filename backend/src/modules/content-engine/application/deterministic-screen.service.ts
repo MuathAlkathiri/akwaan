@@ -10,7 +10,14 @@ import {
   type RyoConfidenceBand,
 } from './candidate-generator.service';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { COMBO_MAX_ACCEPTED_ANSWERS } from './candidate-generator.service';
+import {
+  BOMB_MAX_PROMPT_LENGTH,
+  COMBO_MAX_ACCEPTED_ANSWERS,
+} from './candidate-generator.service';
+import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
+import { isComposedVisualFamily } from '../domain/composed-visuals';
+import { mediaIntentOf } from '../domain/candidate-media-intent';
+import { BOMB_IMAGE_SLOT } from '../domain/media-requirements';
 import {
   ScreenFinding,
   EngineCandidateDocument,
@@ -79,9 +86,27 @@ export interface ScreenOptions {
   candidateId?: string;
   scopeKey?: string;
   worldKey?: string;
+  /**
+   * The mechanic the candidate was authored for. Two mechanics share the
+   * `match` answer mode, and only this tells them apart. Absent means الكومبو:
+   * a caller that does not say is held to the stricter of the two contracts,
+   * so a forgotten argument blocks a candidate instead of waving it through.
+   */
+  mechanicKey?: string;
   session?: DeterministicScreenSession;
   historicalRecords?: HistoricalContentRecord[];
 }
+
+/** Words that ask about the present moment, which no stored item can answer for long. */
+const BOMB_UNPINNED_NOW = [
+  'حاليًا',
+  'حالياً',
+  'حاليا',
+  'الحين',
+  'الآن',
+  'هذا الموسم',
+  'الموسم الحالي',
+] as const;
 
 export interface DeterministicScreenSession {
   worldKey?: string;
@@ -236,6 +261,15 @@ const mechanicRetiredPhrases = (profile?: string): string[][] => {
   }
   return phrases;
 };
+
+/**
+ * Half-width of the centre band a between-anchors target may not fall in, as
+ * a share of the line: 0.1 either side of the midpoint is the middle fifth.
+ */
+export const CLOSEST_ANCHOR_CENTRE_BAND = 0.1;
+
+/** The World whose items are solved from the prompt rather than recalled. */
+const PUZZLES_WORLD_KEY = 'puzzles';
 
 const blocking = (code: string, message: string): ScreenFinding => ({
   code,
@@ -873,7 +907,9 @@ export class DeterministicScreenService {
     }
     if (payload.mode === 'match') {
       findings.push(
-        ...this.screenCombo(draft, prompt, payload.acceptedAnswers),
+        ...(screenOptions?.mechanicKey === BOMB_SLUG
+          ? this.screenBomb(prompt, payload.acceptedAnswers, authoring)
+          : this.screenCombo(draft, prompt, payload.acceptedAnswers)),
       );
       findings.push(...this.screenFamilyCompliance(draft, authoring));
       findings.push(...this.deferredNotes());
@@ -962,10 +998,20 @@ export class DeterministicScreenService {
     const normalizedPrompt = normalizeAnswer(prompt);
     if (correctLabel && this.detectAnswerLeakage(prompt, correctLabel)) {
       findings.push(
-        blocking(
-          'ANSWER_LEAKAGE',
-          'the correct answer appears in the prompt text',
-        ),
+        // A Puzzles item is solved from what the prompt states, so the right
+        // option is routinely built from the prompt's own words — «5 مكائن
+        // تصنع 5 ألعاب في 5 دقائق» is answered «5 دقائق», and a ووردل prompt
+        // lists every option. There the overlap is the trap, not a giveaway,
+        // and only a reader can tell the two apart.
+        screenOptions?.worldKey === PUZZLES_WORLD_KEY
+          ? warning(
+              'ANSWER_WORDING_IN_PROMPT',
+              'the correct option also appears in the prompt text; check the prompt does not give it away',
+            )
+          : blocking(
+              'ANSWER_LEAKAGE',
+              'the correct answer appears in the prompt text',
+            ),
       );
     }
 
@@ -1156,6 +1202,103 @@ export class DeterministicScreenService {
     prompt: string,
     rawAnswers: unknown,
   ): ScreenFinding[] {
+    const findings = this.screenMatchAnswers(prompt, rawAnswers);
+
+    const stage = (
+      draft.mechanicPayload as { comboStage?: unknown } | undefined
+    )?.comboStage;
+    if (
+      typeof stage !== 'number' ||
+      !Number.isInteger(stage) ||
+      stage < 1 ||
+      stage > 4
+    ) {
+      findings.push(
+        blocking(
+          'COMBO_STAGE_REQUIRED',
+          'mechanicPayload.comboStage must be an integer from 1 to 4',
+        ),
+      );
+    }
+
+    findings.push(...this.screenPromptHygiene(prompt));
+    return findings;
+  }
+
+  /**
+   * القنبلة: a typed answer about one picture, read at a glance.
+   *
+   * The answer contract is الكومبو's, so it is screened by the same rules.
+   * What is Bomb's own is the glance: the Skill bounds the prompt, and a prompt
+   * over that bound is a blocker rather than a note, because the clock does not
+   * stop while a player reads.
+   *
+   * The picture itself is not screened here. That it exists is the canonical
+   * media contract's job (the required `item-image` slot), and whether it is
+   * the right picture is a person's. This only notices when a candidate cannot
+   * be searched for, so the reviewer knows the image must be supplied by hand.
+   */
+  private screenBomb(
+    prompt: string,
+    rawAnswers: unknown,
+    authoring?: Record<string, unknown> | null,
+  ): ScreenFinding[] {
+    const findings = this.screenMatchAnswers(prompt, rawAnswers);
+
+    if ([...prompt].length >= BOMB_MAX_PROMPT_LENGTH) {
+      findings.push(
+        blocking(
+          'BOMB_PROMPT_TOO_LONG',
+          `a Bomb prompt must be under ${BOMB_MAX_PROMPT_LENGTH} characters; this one is ${[...prompt].length}`,
+        ),
+      );
+    }
+    if (!mediaIntentOf(authoring, BOMB_IMAGE_SLOT)) {
+      findings.push(
+        warning(
+          'BOMB_IMAGE_SUBJECT_MISSING',
+          'the candidate does not name the subject of its picture, so no image can be found for it automatically',
+        ),
+      );
+    }
+
+    // A changeable answer has to be pinned to a moment, in the prompt itself:
+    // "who does he play for" is right today and wrong after a transfer.
+    const unpinned = BOMB_UNPINNED_NOW.find((word) => prompt.includes(word));
+    if (unpinned) {
+      findings.push(
+        blocking(
+          'BOMB_ANSWER_NOT_PINNED_IN_TIME',
+          `the prompt asks about "${unpinned}", so its answer will change; name the season, year or event instead`,
+        ),
+      );
+    }
+    const anchor = (authoring as { timeAnchor?: unknown } | null | undefined)
+      ?.timeAnchor;
+    if (
+      typeof anchor === 'string' &&
+      anchor.trim() &&
+      !(anchor.match(/[0-9٠-٩]{4}/g) ?? [anchor.trim()]).every((part) =>
+        prompt.includes(part),
+      )
+    ) {
+      findings.push(
+        warning(
+          'BOMB_TIME_ANCHOR_NOT_IN_PROMPT',
+          `the item says its answer is true for "${anchor.trim()}", but the prompt does not say so; a player cannot know which moment is meant`,
+        ),
+      );
+    }
+
+    findings.push(...this.screenPromptHygiene(prompt));
+    return findings;
+  }
+
+  /** What every text-matched answer list is held to, whatever the mechanic. */
+  private screenMatchAnswers(
+    prompt: string,
+    rawAnswers: unknown,
+  ): ScreenFinding[] {
     const findings: ScreenFinding[] = [];
 
     const answers = (Array.isArray(rawAnswers) ? rawAnswers : [])
@@ -1217,23 +1360,11 @@ export class DeterministicScreenService {
       }
     }
 
-    const stage = (
-      draft.mechanicPayload as { comboStage?: unknown } | undefined
-    )?.comboStage;
-    if (
-      typeof stage !== 'number' ||
-      !Number.isInteger(stage) ||
-      stage < 1 ||
-      stage > 4
-    ) {
-      findings.push(
-        blocking(
-          'COMBO_STAGE_REQUIRED',
-          'mechanicPayload.comboStage must be an integer from 1 to 4',
-        ),
-      );
-    }
+    return findings;
+  }
 
+  private screenPromptHygiene(prompt: string): ScreenFinding[] {
+    const findings: ScreenFinding[] = [];
     if (prompt !== prompt.replace(/\s{2,}/g, ' ')) {
       findings.push(
         warning('PROMPT_WHITESPACE', 'collapse repeated whitespace'),
@@ -1395,6 +1526,90 @@ export class DeterministicScreenService {
           'unit must be at most 40 characters',
         ),
       );
+    }
+
+    // --- a composed family is drawn by the engine, or it is not playable ---
+    const assignedFamily = (
+      authoring?.assignedSlot as { familyKey?: unknown } | undefined
+    )?.familyKey;
+    const composed = authoring?.composedVisual as
+      { failureReason?: unknown } | undefined;
+    if (
+      composed ||
+      isComposedVisualFamily(
+        typeof assignedFamily === 'string' ? assignedFamily : undefined,
+      )
+    ) {
+      const assets = (draft.media as { type?: unknown; assets?: unknown })
+        ?.assets;
+      const hasPicture =
+        (draft.media as { type?: unknown } | undefined)?.type === 'image' &&
+        Array.isArray(assets) &&
+        assets.some(
+          (asset) =>
+            typeof (asset as { url?: unknown })?.url === 'string' &&
+            Boolean((asset as { url: string }).url.trim()),
+        );
+      if (!composed || composed.failureReason || !hasPicture) {
+        findings.push(
+          blocking(
+            'COMPOSED_VISUAL_MISSING',
+            `this item is a picture the engine draws, and it has none${
+              composed?.failureReason
+                ? ` (${String(composed.failureReason)})`
+                : ''
+            }`,
+          ),
+        );
+      }
+    }
+
+    // --- a position line: two labelled ends, and a target off the centre --
+    if (mode === 'between-anchors') {
+      const left =
+        typeof slider.leftAnchor === 'string' ? slider.leftAnchor.trim() : '';
+      const right =
+        typeof slider.rightAnchor === 'string' ? slider.rightAnchor.trim() : '';
+      if (
+        !left ||
+        !right ||
+        left === right ||
+        left.length > 80 ||
+        right.length > 80
+      ) {
+        findings.push(
+          blocking(
+            'CLOSEST_SLIDER_ANCHORS_INVALID',
+            'a between-anchors slider needs two distinct labels of at most 80 characters',
+          ),
+        );
+      }
+      if (unit !== undefined || displayFormat !== undefined) {
+        findings.push(
+          blocking(
+            'CLOSEST_ANCHOR_SLIDER_SHOWS_NO_NUMBER',
+            'a between-anchors slider shows no number, so it takes no unit or display format',
+          ),
+        );
+      }
+      // The players see a bare line. A target in the middle of it is the
+      // guess a team makes without thinking, so both teams land on it and the
+      // round ties. Product rule 2026-11-24.
+      if (
+        finite(min) &&
+        finite(max) &&
+        min < max &&
+        finite(target) &&
+        Math.abs(target - (min + max) / 2) <=
+          (max - min) * CLOSEST_ANCHOR_CENTRE_BAND
+      ) {
+        findings.push(
+          blocking(
+            'CLOSEST_ANCHOR_TARGET_CENTRED',
+            `target ${target} sits in the middle of the line [${min}, ${max}]; a mark left in the centre would win`,
+          ),
+        );
+      }
     }
 
     // --- leakage: the number itself must not sit in the question ----------

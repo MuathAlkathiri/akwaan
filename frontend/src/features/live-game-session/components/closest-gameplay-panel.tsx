@@ -13,6 +13,7 @@ import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { authoredText, type AuthoredText } from "../authored-text";
+import { CLOSEST_COLOUR_MODE, HUE_TRACK, hueColour } from "../closest-colour";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -32,7 +33,7 @@ interface ClosestItem {
     altText?: AuthoredText;
   } | null;
   slider?: {
-    mode: "numeric-range" | "between-anchors";
+    mode: "numeric-range" | "between-anchors" | "colour-hue";
     min: number;
     max: number;
     step?: number;
@@ -97,7 +98,10 @@ export function formatClosestValue(
   value: number,
   slider?: ClosestItem["slider"],
 ): string {
-  if (slider?.mode === "numeric-range" && slider.displayFormat === "calendar-year")
+  if (
+    slider?.mode === "numeric-range" &&
+    slider.displayFormat === "calendar-year"
+  )
     return new Intl.NumberFormat("ar-SA", { useGrouping: false }).format(value);
   const number = new Intl.NumberFormat("ar-SA", {
     maximumFractionDigits: 4,
@@ -166,6 +170,18 @@ export function ClosestGameplayPanel({
     typeof state.deadlineAt === "string" ? state.deadlineAt : undefined,
     revealed,
   );
+  // «تذكّر اللون»: the picture is in colour only until the server's own moment
+  // passes, read off the same corrected clock as the countdown. No moment yet
+  // means grey — a screen that has not been told may not show the answer.
+  const colourQuestion = item?.slider?.mode === CLOSEST_COLOUR_MODE;
+  const colourRemainingMs = useInteractionDeadline(
+    typeof state.mediaGreyAt === "string" ? state.mediaGreyAt : undefined,
+    revealed,
+  );
+  const pictureGrey =
+    colourQuestion &&
+    !revealed &&
+    (colourRemainingMs === undefined || colourRemainingMs <= 0);
   const actorTeamId =
     typeof state.actorTeamId === "string" ? state.actorTeamId : "";
   const ownSubmitted = actorTeamId ? submitted[actorTeamId] : false;
@@ -188,9 +204,7 @@ export function ClosestGameplayPanel({
   // The same panel instance serves all three questions. Never carry a previous
   // estimate into the next item, even when the server advances without remounting.
   useEffect(() => {
-    setEstimate(
-      item?.slider ? String(seedClosestEstimate(item.slider)) : "",
-    );
+    setEstimate(item?.slider ? String(seedClosestEstimate(item.slider)) : "");
     setSending(false);
     // A new question is unanswered, and so is a reconnect that lands before
     // Confirm: neither may arrive already holding a commitment.
@@ -230,6 +244,8 @@ export function ClosestGameplayPanel({
   const bubbleText =
     item?.slider?.mode === "numeric-range"
       ? formatValue(Number(estimate))
+      : colourQuestion
+        ? "لونكم"
       : "موضع تقديركم";
   /** A slider item is answerable only once the player has moved it. */
   const hasEstimate = item?.slider
@@ -288,7 +304,16 @@ export function ClosestGameplayPanel({
           <img
             src={item.media.url}
             alt={authoredText(item.media.altText, "صورة السؤال")}
-            className="mx-auto max-h-64 rounded-[var(--radius)] object-contain"
+            data-testid="closest-question-image"
+            data-colour={
+              colourQuestion ? (pictureGrey ? "grey" : "shown") : undefined
+            }
+            className={cn(
+              "mx-auto max-h-64 rounded-[var(--radius)] object-contain",
+              colourQuestion &&
+                "transition-[filter] duration-500 motion-reduce:transition-none",
+              pictureGrey && "grayscale",
+            )}
           />
         ) : null}
         {!phone && item?.media?.type === "audio" && item.media.url ? (
@@ -360,11 +385,23 @@ export function ClosestGameplayPanel({
                             : "text-2xl",
                         )}
                       >
+                          {colourQuestion && (
+                            <span
+                              aria-hidden
+                              data-testid="closest-colour-swatch"
+                              className="me-2 inline-block size-5 rounded-full border-2 border-[hsl(var(--brand-navy))] align-middle"
+                              style={{
+                                background: hueColour(Number(estimate)),
+                              }}
+                            />
+                          )}
                         {bubbleText}
                       </output>
                     ) : (
                       <p className="min-w-[150px] rounded-[20px] border-[3px] border-dashed border-brand-dash bg-white px-6 py-4 text-center text-base font-bold text-brand-plum">
-                        حرّكوا المؤشر
+                        {colourQuestion
+                          ? "اسحبوا للّون اللي تتذكرونه"
+                          : "حرّكوا المؤشر"}
                       </p>
                     )}
                     <div className="flex w-full items-center gap-2.5">
@@ -418,19 +455,36 @@ export function ClosestGameplayPanel({
                               ? "لم تختاروا تقديركم بعد"
                               : item.slider.mode === "numeric-range"
                                 ? formatValue(Number(estimate))
-                                : `موضع ${Math.round(sliderProgress)} بالمئة`
+                                : colourQuestion
+                                  ? `درجة اللون ${Math.round(Number(estimate))} من 360`
+                                  : `موضع ${Math.round(sliderProgress)} بالمئة`
                           }
                           style={
                             {
                               "--closest-progress": `${sliderProgress}%`,
+                              ...(colourQuestion
+                                ? {
+                                    "--closest-track": HUE_TRACK,
+                                    "--closest-thumb": chosen
+                                      ? hueColour(Number(estimate))
+                                      : "#ffffff",
+                                  }
+                                : {}),
                             } as CSSProperties
                           }
                           data-testid="closest-estimate-slider"
-                          className="closest-slider h-11 w-full cursor-pointer accent-[hsl(var(--brand-navy))]"
+                          className={cn(
+                            "closest-slider h-11 w-full cursor-pointer accent-[hsl(var(--brand-navy))]",
+                            colourQuestion && "closest-slider--colour",
+                          )}
                         />
                         <div
                           dir="ltr"
-                          className="flex items-start justify-between gap-3 text-[13px] font-semibold text-brand-slate"
+                          className={cn(
+                            "flex items-start justify-between gap-3 text-[13px] font-semibold text-brand-slate",
+                            // A wheel has no ends to label: the track is the legend.
+                            colourQuestion && "hidden",
+                          )}
                         >
                           <span className="max-w-[45%] text-start">
                             {item.slider.mode === "numeric-range"
@@ -533,11 +587,20 @@ export function ClosestGameplayPanel({
                     {formatValue(ownSubmittedValue)}
                   </p>
                 )}
-                <div className="relative h-3 rounded-full bg-[#10253f]/20">
+                <div
+                  className="relative h-3 rounded-full bg-[#10253f]/20"
+                  style={colourQuestion ? { background: HUE_TRACK } : undefined}
+                >
                   <span
                     className="absolute top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-brand-gold/60 bg-[#10253f] shadow-sm"
                     style={{
                       left: `${((ownSubmittedValue - item.slider.min) / (item.slider.max - item.slider.min)) * 100}%`,
+                      ...(colourQuestion
+                        ? {
+                            background: hueColour(ownSubmittedValue),
+                            borderColor: "#ffffff",
+                          }
+                        : {}),
                     }}
                   />
                 </div>
@@ -575,10 +638,21 @@ export function ClosestGameplayPanel({
             data-testid="closest-phone-reveal"
           >
             <p className="text-xs font-black text-muted-foreground">
-              {item?.slider?.mode === "between-anchors"
+              {colourQuestion
+                ? "اللون الصحيح"
+                : item?.slider?.mode === "between-anchors"
                 ? "الموضع المرجعي"
                 : "الإجابة الصحيحة"}
             </p>
+            {colourQuestion ? (
+              <span
+                role="img"
+                aria-label="اللون الصحيح"
+                data-testid="closest-correct-colour"
+                className="size-24 rounded-full border-4 border-white shadow-md"
+                style={{ background: hueColour(result.correctValue) }}
+              />
+            ) : (
             <p className="akwaan-numeral text-5xl font-black text-foreground">
               {item?.slider?.mode === "between-anchors"
                 ? "على المقياس"
@@ -586,6 +660,7 @@ export function ClosestGameplayPanel({
                   ? formatValue(result.correctValue)
                   : result.correctValue}
             </p>
+            )}
             <p className="text-base font-black text-foreground">
               {result.tie
                 ? "تعادل"
@@ -604,10 +679,21 @@ export function ClosestGameplayPanel({
           >
             <div className="rounded-[var(--radius)] bg-primary px-5 py-4 text-primary-foreground">
               <p className="text-sm font-bold opacity-80">
-                {item?.slider?.mode === "between-anchors"
+                {colourQuestion
+                  ? "اللون الصحيح"
+                  : item?.slider?.mode === "between-anchors"
                   ? "الموضع المرجعي"
                   : "الإجابة الصحيحة"}
               </p>
+              {colourQuestion ? (
+                <span
+                  role="img"
+                  aria-label="اللون الصحيح"
+                  data-testid="closest-correct-colour"
+                  className="mx-auto mt-2 block size-16 rounded-full border-4 border-white shadow-md"
+                  style={{ background: hueColour(result.correctValue) }}
+                />
+              ) : (
               <p className="akwaan-numeral text-4xl font-black">
                 {item?.slider?.mode === "between-anchors"
                   ? "على المقياس"
@@ -615,6 +701,7 @@ export function ClosestGameplayPanel({
                     ? formatValue(result.correctValue)
                     : result.correctValue}
               </p>
+              )}
             </div>
             <p
               className="text-xl font-black"
@@ -630,7 +717,12 @@ export function ClosestGameplayPanel({
                 data-testid="closest-continuum-reveal"
               >
                 <div className="relative h-16">
-                  <div className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 rounded-full bg-[#10253f]/20" />
+                  <div
+                    className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 rounded-full bg-[#10253f]/20"
+                    style={
+                      colourQuestion ? { background: HUE_TRACK } : undefined
+                    }
+                  />
                   {[
                     ...teams.map((teamId, lane) => ({
                       id: teamId,
@@ -674,7 +766,10 @@ export function ClosestGameplayPanel({
                 </div>
                 <div
                   dir="ltr"
-                  className="mt-5 flex justify-between gap-3 text-xs font-black"
+                  className={cn(
+                    "mt-5 flex justify-between gap-3 text-xs font-black",
+                    colourQuestion && "hidden",
+                  )}
                 >
                   <span>
                     {item.slider.mode === "numeric-range"
@@ -705,19 +800,33 @@ export function ClosestGameplayPanel({
                       {teamName(teamId)}
                     </p>
                     <p className="akwaan-numeral mt-1 text-3xl font-black">
-                      {result.answers[teamId] === null
-                        ? "—"
-                        : item?.slider?.mode === "between-anchors"
-                          ? "موضع الفريق"
-                          : item?.slider
-                            ? formatValue(result.answers[teamId])
-                            : result.answers[teamId]}
+                      {result.answers[teamId] === null ? (
+                        "—"
+                      ) : colourQuestion ? (
+                        <span
+                          role="img"
+                          aria-label={`لون ${teamName(teamId)}`}
+                          data-testid={`closest-team-colour-${teamId}`}
+                          className="inline-block size-10 rounded-full border-4 border-white align-middle shadow"
+                          style={{
+                            background: hueColour(result.answers[teamId]!),
+                          }}
+                        />
+                      ) : item?.slider?.mode === "between-anchors" ? (
+                        "موضع الفريق"
+                      ) : item?.slider ? (
+                        formatValue(result.answers[teamId])
+                      ) : (
+                        result.answers[teamId]
+                      )}
                     </p>
                     <p className="text-sm font-bold text-muted-foreground">
                       {item?.slider?.mode === "between-anchors"
                         ? "على المقياس المشترك"
                         : result.distances[teamId] === null
                           ? "لم تُرسل إجابة"
+                          : colourQuestion
+                            ? `بفارق ${Math.round(result.distances[teamId]!)} درجة لون`
                           : `بفارق ${item?.slider ? formatValue(result.distances[teamId]!) : result.distances[teamId]}`}
                     </p>
                   </div>

@@ -29,6 +29,11 @@ import * as api from "./api";
 import { DeduplicationPanel } from "./deduplication-panel";
 import { CreativeSlotInspector } from "./creative-slot-inspector";
 import { CandidateMediaPanel } from "./candidate-media-panel";
+import { MediaLibraryPanel } from "./media-library-panel";
+
+/** Recorded with a rights acknowledgment made as part of a one-click approval. */
+const QUICK_RIGHTS_NOTE =
+  "اعتماد سريع: شفت الصورة ومصدرها، وأقرّ باستخدامها مع بقاء حالة الحقوق كما هي.";
 import {
   INCOMPLETE_HISTORICAL_CODES,
   INCONCLUSIVE_COMPARISON_CODES,
@@ -54,7 +59,7 @@ import {
   isShortcutBlockedTarget,
 } from "./review-navigation";
 
-export type StudioSurface = "generate" | "jobs" | "review";
+export type StudioSurface = "generate" | "jobs" | "review" | "library";
 
 export const STUDIO_STORAGE_KEY = "akwaan.contentEngineStudio.state.v1";
 const DEDUPLICATION_FINDING_CODES = new Set<string>([
@@ -96,7 +101,8 @@ const readInitialStudioState = (): PersistedStudioState => {
       if (
         parsed.surface === "generate" ||
         parsed.surface === "jobs" ||
-        parsed.surface === "review"
+        parsed.surface === "review" ||
+        parsed.surface === "library"
       ) {
         fallback.surface = parsed.surface;
       }
@@ -611,7 +617,7 @@ export function ContentEngineReviewWorkspace() {
       try {
         const params = new URLSearchParams(window.location.search);
         const surface = params.get("surface");
-        if (surface === "generate" || surface === "jobs" || surface === "review") {
+        if (surface === "generate" || surface === "jobs" || surface === "review" || surface === "library") {
           setActiveSurface(surface);
         }
         setSelectedId(params.get(CANDIDATE_URL_PARAM) ?? undefined);
@@ -705,7 +711,8 @@ export function ContentEngineReviewWorkspace() {
       rawCandidate.jobId !== activeFilterJobId,
   );
   const candidate = isCandidateJobMismatch ? undefined : rawCandidate;
-  const quickMode = Boolean(candidate?.reviewEligibility?.quickReview?.eligible && !detailedReview);
+  const quickEligible = Boolean(candidate?.reviewEligibility?.quickReview?.eligible || candidate?.reviewEligibility?.quickReview?.eligibleWithMediaSteps);
+  const quickMode = quickEligible && !detailedReview;
   const canonicalItem = useQuery({
     queryKey: ["content-engine-canonical-item", candidate?.publishedContentItemId],
     queryFn: () => api.getOverlapContentItem(candidate!.publishedContentItemId!),
@@ -1250,6 +1257,18 @@ export function ContentEngineReviewWorkspace() {
           >
             3. مراجعة المرشحين (Candidate Review)
           </button>
+          <button
+            type="button"
+            data-testid="surface-tab-library"
+            onClick={() => setActiveSurface("library")}
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeSurface === "library"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            4. مكتبة الصور
+          </button>
         </div>
 
         {(activeJobId || filters.jobId) && (
@@ -1270,6 +1289,8 @@ export function ContentEngineReviewWorkspace() {
           </div>
         )}
       </nav>
+
+      {activeSurface === "library" && <MediaLibraryPanel />}
 
       {activeSurface === "generate" && (
         <BatchSubmissionPanel
@@ -2168,7 +2189,7 @@ export function ContentEngineReviewWorkspace() {
             )}
           </SectionCard>
 
-          {candidate.reviewEligibility?.quickReview?.eligible && <Button variant="outline" onClick={() => setDetailedReview((value) => !value)}>{quickMode ? "فتح المراجعة التفصيلية" : "العودة للمراجعة السريعة"}</Button>}
+          {quickEligible && <Button variant="outline" onClick={() => setDetailedReview((value) => !value)}>{quickMode ? "فتح المراجعة التفصيلية" : "العودة للمراجعة السريعة"}</Button>}
           {!quickMode && <SectionCard
             title="التقييم البشري"
             description="الروابط والتفسير محفوظة مع هوية المراجع والتوقيت، ويُشترط رابط دليل عند توثيق الادعاءات غير المدعومة آلياً"
@@ -2454,6 +2475,24 @@ export function ContentEngineReviewWorkspace() {
             data-testid="decision-bar"
             className="z-10 space-y-2 rounded-xl border bg-card p-3 shadow-sm lg:sticky lg:bottom-4 lg:shadow-[0_-10px_24px_-14px_hsl(var(--foreground)/0.35)]"
           >
+            {quickMode && (candidate.reviewEligibility?.quickReview?.mediaSteps?.length ?? 0) > 0 && (
+              <p className="text-xs text-muted-foreground" data-testid="quick-approve-media-note">
+                الضغطة تعتمد السؤال والصورة مع بعض
+                {candidate.reviewEligibility?.quickReview?.mediaSteps?.some((step) => step.acknowledgeRights)
+                  ? "، وتسجّل إقرارك باستخدام الصورة وحقوقها غير مؤكدة."
+                  : "."}
+              </p>
+            )}
+            {!quickEligible && candidate.reviewStatus !== "approved" && (candidate.reviewEligibility?.quickReview?.reasons?.length ?? 0) > 0 && (
+              <div className="rounded-md bg-muted p-2 text-xs" data-testid="quick-approve-unavailable">
+                <p className="font-semibold">ليش ما فيه اعتماد بضغطة لهذا السؤال؟</p>
+                <ul className="list-disc ps-4">
+                  {candidate.reviewEligibility?.quickReview?.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {!quickMode && <DecisionBarSummary
               candidate={candidate}
               requirements={approvalRequirements}
@@ -2466,8 +2505,16 @@ export function ContentEngineReviewWorkspace() {
                   action.mutate(async () => {
                     try {
                       let approved: ReviewCandidate;
+                      setPublicationStage("approval");
+                      // One click also takes the media decisions the reviewer is
+                      // making by approving: the image they are looking at, and
+                      // its unknown rights. Each is its own recorded action.
+                      let mediaRevision = candidate.mediaReviewRevision ?? 0;
+                      for (const step of candidate.reviewEligibility?.quickReview?.mediaSteps ?? []) {
+                        if (step.review) mediaRevision = (await api.reviewCandidateMedia(candidate.candidateId, step.slotKey, { expectedMediaReviewRevision: mediaRevision, status: "approved" })).mediaReviewRevision ?? mediaRevision + 1;
+                        if (step.acknowledgeRights) mediaRevision = (await api.acknowledgeCandidateMediaRights(candidate.candidateId, step.slotKey, { expectedMediaReviewRevision: mediaRevision, note: QUICK_RIGHTS_NOTE })).mediaReviewRevision ?? mediaRevision + 1;
+                      }
                       try {
-                        setPublicationStage("approval");
                         approved = await api.approveCandidate(candidate.candidateId, { expectedRevision: candidate.reviewRevision, assessmentBasis: "HUMAN_DIRECT_REVIEW", readyPublicationAuthorized: true });
                       } catch (error) {
                         const status = (error as { response?: { status?: number } })?.response?.status;
@@ -2891,32 +2938,61 @@ function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
           }
         | undefined
     )?.closestSlider;
+    // A picture the engine drew itself sits on the draft, outside the media
+    // contract, so the media panel above shows nothing for it. The reviewer
+    // still has to see what the players will see.
+    const draftMedia = candidate.draft?.media as
+      | { type?: string; assets?: Array<{ url?: string }> }
+      | undefined;
+    const pictureUrl =
+      draftMedia?.type === "image"
+        ? draftMedia.assets?.find((asset) => asset?.url?.trim())?.url
+        : undefined;
     return (
-      <div
-        className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-sm sm:grid-cols-3"
-        data-testid="closest-answer-summary"
-      >
-        <div>
-          <span className="text-xs text-muted-foreground">القيمة الصحيحة: </span>
-          <strong className="font-mono">
-            {answerPayload?.correctValue ?? "—"}
-            {slider?.unit ? ` ${slider.unit}` : ""}
-          </strong>
-        </div>
-        <div>
-          <span className="text-xs text-muted-foreground">نطاق المؤشر: </span>
-          <span className="font-mono">
-            {slider ? `${slider.min} .. ${slider.max} (step ${slider.step})` : "—"}
-          </span>
-        </div>
-        <div>
-          <span className="text-xs text-muted-foreground">نمط المؤشر: </span>
-          <span>
-            {slider?.mode ?? "—"}
-            {slider?.leftAnchor && slider?.rightAnchor
-              ? ` (${slider.leftAnchor} ↔ ${slider.rightAnchor})`
-              : ""}
-          </span>
+      <div className="space-y-3">
+        {pictureUrl ? (
+          <figure
+            className="overflow-hidden rounded-lg border bg-muted/20"
+            data-testid="closest-draft-picture"
+          >
+            {/* Backend-hosted upload; next/image cannot optimize arbitrary origins. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pictureUrl}
+              alt="صورة السؤال كما سيراها اللاعبون"
+              className="mx-auto max-h-72 w-full object-contain"
+            />
+            <figcaption className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+              صورة السؤال — يراها اللاعبون على الشاشة المشتركة.
+            </figcaption>
+          </figure>
+        ) : null}
+        <div
+          className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-sm sm:grid-cols-3"
+          data-testid="closest-answer-summary"
+        >
+          <div>
+            <span className="text-xs text-muted-foreground">القيمة الصحيحة: </span>
+            <strong className="font-mono">
+              {answerPayload?.correctValue ?? "—"}
+              {slider?.unit ? ` ${slider.unit}` : ""}
+            </strong>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground">نطاق المؤشر: </span>
+            <span className="font-mono">
+              {slider ? `${slider.min} .. ${slider.max} (step ${slider.step})` : "—"}
+            </span>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground">نمط المؤشر: </span>
+            <span>
+              {slider?.mode ?? "—"}
+              {slider?.leftAnchor && slider?.rightAnchor
+                ? ` (${slider.leftAnchor} ↔ ${slider.rightAnchor})`
+                : ""}
+            </span>
+          </div>
         </div>
       </div>
     );

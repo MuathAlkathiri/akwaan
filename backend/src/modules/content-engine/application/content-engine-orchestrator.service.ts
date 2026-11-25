@@ -14,12 +14,13 @@ import {
   assertNoRuleConflicts,
 } from '../domain/effective-rules';
 import { planCandidateMedia } from '../domain/candidate-media-planning';
+import { CandidateMediaEnrichmentService } from './candidate-media-enrichment.service';
 import { resolveEngineMediaFlags } from '../domain/engine-media-flags';
 import type { CandidateMediaSlot } from '../domain/candidate-media-plan';
 import {
   GenerationSpecValidationError,
   GenerationSpecification,
-  PROMPT_VERSIONS,
+  promptVersionFor,
   computeGenerationPlanSeed,
   generatorAnswerModeFor,
   isGenerationSpecificationComplete,
@@ -71,6 +72,8 @@ export class ContentEngineOrchestratorService {
     private readonly planner?: GenerationPlannerService,
     @Optional()
     private readonly config?: ConfigService,
+    @Optional()
+    private readonly mediaEnrichment?: CandidateMediaEnrichmentService,
   ) {}
 
   async runNext(owner: string): Promise<{ jobId: string } | null> {
@@ -184,7 +187,7 @@ export class ContentEngineOrchestratorService {
     if (
       expectedAnswerMode &&
       (candidateSpec.answerMode !== expectedAnswerMode ||
-        candidateSpec.promptVersion !== PROMPT_VERSIONS[expectedAnswerMode])
+        candidateSpec.promptVersion !== promptVersionFor(job.mechanicKey))
     ) {
       return {
         valid: false,
@@ -235,6 +238,9 @@ export class ContentEngineOrchestratorService {
 
       // Inventory may have changed after the job was submitted. Recheck before
       // a queued or retried job can make its first paid generation call.
+      // What the Scope already holds, read from the same inventory load, so
+      // the generator is shown the library it must not repeat.
+      let existingPrompts: string[] = [];
       {
         let complete = false;
         try {
@@ -249,6 +255,19 @@ export class ContentEngineOrchestratorService {
                 session,
               )
             ).status === 'COMPLETE';
+          // Best effort: a library that cannot be read costs the generator
+          // a hint, never the batch.
+          try {
+            existingPrompts = (session?.historicalRecords ?? [])
+              .map((record) => {
+                const prompt = (record.draft as { prompt?: { ar?: unknown } })
+                  ?.prompt?.ar;
+                return typeof prompt === 'string' ? prompt : '';
+              })
+              .filter(Boolean);
+          } catch {
+            existingPrompts = [];
+          }
         } catch {
           complete = false;
         }
@@ -394,6 +413,7 @@ export class ContentEngineOrchestratorService {
           context,
           count: provenance.spec?.targetCount ?? job.targetCount,
           generationPlan: pinnedPlan ?? undefined,
+          existingPrompts,
           ...(provenance.spec
             ? {
                 generationSpec: provenance.spec,
@@ -469,6 +489,7 @@ export class ContentEngineOrchestratorService {
             candidateId: row.candidateId ?? String(row._id),
             scopeKey: job.scopeKey,
             worldKey: job.worldKey,
+            mechanicKey: job.mechanicKey,
             session: screenSession,
           },
         );
@@ -711,10 +732,11 @@ export class ContentEngineOrchestratorService {
    * resolved fail-closed, so a missing ConfigService plans nothing rather than
    * authorizing a call.
    *
-   * Nothing here contacts a provider yet. What it produces is the record a
-   * reviewer needs: which slots this target requires, and why each unfilled one
-   * is unfilled — which turns the readiness gate's "no plan entry" into a
-   * sentence that names the next action.
+   * Planning itself contacts nobody: it records which slots this target
+   * requires, and why each unfilled one is unfilled — which turns the readiness
+   * gate's "no plan entry" into a sentence that names the next action. When
+   * image discovery is switched on, the awaited image slots are then filled
+   * with a found image, still awaiting a person's review.
    */
   private async planMedia(job: LeasedJob): Promise<void> {
     const flags = resolveEngineMediaFlags(this.config);
@@ -733,10 +755,41 @@ export class ContentEngineOrchestratorService {
       // Ungoverned candidates are left byte-identical: a plan entry is itself
       // what makes a candidate media-governed, so writing one would gate a text
       // question's approval on media nobody requires.
-      if (!outcome.mediaPlan) continue;
-      await this.updateCandidate(job, String(row._id), {
-        mediaPlan: outcome.mediaPlan,
-      });
+      if (!outcome.governed) continue;
+      const stored = Array.isArray(row.mediaPlan)
+        ? (row.mediaPlan as unknown as CandidateMediaSlot[])
+        : [];
+      const changes: Record<string, unknown> = outcome.mediaPlan
+        ? { mediaPlan: outcome.mediaPlan }
+        : {};
+
+      // Finding the image. Off unless enrichment and a discovery provider are
+      // both switched on; and whatever it finds arrives unreviewed, so the
+      // candidate stays blocked on a person either way.
+      if (flags.enrichment && this.mediaEnrichment?.isAvailable()) {
+        // A search and a download per candidate is seconds, not milliseconds.
+        await this.jobs.renew({
+          jobId: job.jobId,
+          leaseEpoch: job.leaseEpoch,
+        });
+        const enriched = await this.mediaEnrichment.enrich({
+          mechanicKey: job.mechanicKey,
+          scopeKey: job.scopeKey,
+          authoring: row.authoring ?? null,
+          mediaPlan: outcome.mediaPlan ?? stored,
+          mediaReviewRevision: row.mediaReviewRevision ?? null,
+          check: {
+            jobId: job.jobId,
+            candidateId: String(row.candidateId ?? row._id),
+            question: questionTextOf(row.draft),
+            acceptedAnswers: acceptedAnswersOf(row.draft),
+          },
+        });
+        Object.assign(changes, enriched.set);
+      }
+
+      if (Object.keys(changes).length === 0) continue;
+      await this.updateCandidate(job, String(row._id), changes);
     }
     await this.jobs.checkpoint({
       jobId: job.jobId,
@@ -767,4 +820,23 @@ export class ContentEngineOrchestratorService {
       throw new LeaseLostError(job.jobId, job.leaseEpoch);
     }
   }
+}
+
+/** The question as players will read it, for a model that is shown its image. */
+function questionTextOf(draft: unknown): string {
+  const prompt = (draft as { prompt?: unknown } | null | undefined)?.prompt;
+  if (typeof prompt === 'string') return prompt;
+  const localized = prompt as { ar?: unknown; en?: unknown } | undefined;
+  return [localized?.ar, localized?.en]
+    .filter((text): text is string => typeof text === 'string' && !!text.trim())
+    .join(' / ');
+}
+
+function acceptedAnswersOf(draft: unknown): string[] {
+  const answers = (
+    draft as { answerPayload?: { acceptedAnswers?: unknown } } | null
+  )?.answerPayload?.acceptedAnswers;
+  return Array.isArray(answers)
+    ? answers.filter((answer): answer is string => typeof answer === 'string')
+    : [];
 }

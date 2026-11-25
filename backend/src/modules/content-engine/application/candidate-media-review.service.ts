@@ -25,6 +25,7 @@ import {
   MediaSlotRequirement,
   resolveMediaRequirements,
 } from '../domain/media-requirements';
+import { mediaIntentOf } from '../domain/candidate-media-intent';
 import { EngineImageIngestionService } from '../infrastructure/engine-image-ingestion.service';
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { EngineJobDocument } from '../schemas/engine-job.schema';
@@ -32,6 +33,7 @@ import {
   CandidateMediaAttachDto,
   CandidateMediaReviewDto,
   CandidateMediaRightsAcknowledgementDto,
+  CandidateMediaSuggestionDto,
 } from '../presentation/content-engine-review.dto';
 import { ContentEngineReviewService } from './content-engine-review.service';
 
@@ -174,6 +176,117 @@ export class CandidateMediaReviewService {
         },
       },
       event,
+    });
+    return this.review.detail(candidateId);
+  }
+
+  /**
+   * Replace the slot's image with one of the alternatives discovery stored on
+   * it. Same path as an upload from here on: verified bytes, a fresh review,
+   * rights starting from what the rights record says.
+   */
+  async attachSuggestion(
+    candidateId: string,
+    slotKey: string,
+    dto: CandidateMediaSuggestionDto,
+    actor: AuthenticatedUser,
+  ) {
+    const { candidate, requirement } = await this.target(candidateId, slotKey);
+    if (
+      requirement.mediaType !== 'image' ||
+      !requirement.acquisition.includes('retrieve')
+    ) {
+      throw new BadRequestException({
+        code: 'MEDIA_ACQUISITION_NOT_ALLOWED',
+        message: `Slot "${slotKey}" does not accept a retrieved image`,
+      });
+    }
+    this.assertExpectedRevision(candidate, dto.expectedMediaReviewRevision);
+    const slot = this.state(candidate).mediaPlan.find(
+      (entry) => entry.slotKey === slotKey,
+    );
+    const suggestions = slot?.suggestions ?? [];
+    const chosen = suggestions.find(
+      (suggestion) => suggestion.downloadUrl === dto.downloadUrl,
+    );
+    if (!chosen) {
+      throw new BadRequestException({
+        code: 'MEDIA_SUGGESTION_UNKNOWN',
+        message: 'That image is not one of the suggestions on this slot',
+      });
+    }
+
+    const ingested = await this.ingestion.ingestRemote({
+      url: chosen.downloadUrl,
+      provenance: {
+        provider: chosen.provider,
+        licenceNote: chosen.licenceNote,
+      },
+    });
+    if (ingested.status !== 'resolved') {
+      const body = { code: ingested.failureReason, message: ingested.detail };
+      if (STORAGE_FAILURES.has(ingested.failureReason)) {
+        throw new ServiceUnavailableException(body);
+      }
+      throw new UnprocessableEntityException(body);
+    }
+
+    const rights = await this.liveRights(ingested.asset.url, ingested.rights);
+    const next = this.transition(() =>
+      replaceMediaSlotAsset(this.state(candidate), {
+        requirement,
+        expectedMediaReviewRevision: dto.expectedMediaReviewRevision,
+        asset: ingested.asset,
+        provenance: { ...ingested.provenance, actorId: actor.id },
+        rights,
+      }),
+    );
+    // The others stay on offer; the one now attached is no longer a suggestion.
+    const mediaPlan = next.mediaPlan.map((entry) =>
+      entry.slotKey === slotKey
+        ? {
+            ...entry,
+            suggestions: suggestions.filter(
+              (suggestion) => suggestion !== chosen,
+            ),
+          }
+        : entry,
+    );
+    const altText = mediaIntentOf(candidate.authoring, slotKey)?.altText;
+    await this.write(candidate, {
+      textRevisionMustMatch: true,
+      set: {
+        mediaPlan,
+        mediaReviewRevision: next.mediaReviewRevision,
+        [`draft.${requirement.targetPath}`]: {
+          type: requirement.mediaType,
+          assets: [
+            {
+              url: ingested.asset.url,
+              ...(altText ? { altText: altText.slice(0, 200) } : {}),
+            },
+          ],
+        },
+      },
+      event: this.event('media_attached', [slotKey], actor, candidate, {
+        mediaReviewRevision: next.mediaReviewRevision,
+        details: {
+          source: 'suggestion',
+          provider: chosen.provider,
+          pageUrl: chosen.pageUrl,
+          asset: ingested.asset,
+          rightsStatus: rights.status,
+          superseded: next.previous
+            ? {
+                assetUrl: next.previous.asset?.url ?? null,
+                reviewStatus: next.previous.review?.status ?? null,
+                rightsAcknowledged: Boolean(
+                  next.previous.rightsAcknowledgement,
+                ),
+              }
+            : null,
+        },
+      }),
     });
     return this.review.detail(candidateId);
   }

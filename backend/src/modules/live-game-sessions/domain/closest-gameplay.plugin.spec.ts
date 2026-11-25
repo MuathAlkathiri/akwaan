@@ -1,6 +1,7 @@
 import {
   CLOSEST_GAMEPLAY_PLUGIN,
   closestAnswerAction,
+  closestDistance,
   gradeClosestItem,
 } from './closest-gameplay.plugin';
 import {
@@ -37,6 +38,106 @@ describe('Closest gameplay', () => {
       expect(result.tie).toBe(tie);
     },
   );
+
+  describe('colour-hue («تذكّر اللون»)', () => {
+    const hue = { mode: 'colour-hue' as const, min: 0, max: 360 };
+    const colour = (correctValue: number, revealSeconds?: number) => ({
+      id: 'colour-1',
+      prompt: 'وش لون القميص؟',
+      correctValue,
+      media: {
+        type: ContentMediaType.IMAGE,
+        assets: [{ url: 'https://cdn/shirt.webp' }],
+      },
+      slider: { ...hue, ...(revealSeconds ? { revealSeconds } : {}) },
+    });
+
+    it.each([
+      [10, 350, 20],
+      [350, 10, 20],
+      [0, 360, 0],
+      [180, 0, 180],
+      [200, 230, 30],
+    ])('measures %s against %s around the wheel as %s', (answer, target, d) => {
+      expect(closestDistance(answer, colour(target))).toBe(d);
+    });
+
+    it('still measures every other mode in a straight line', () => {
+      expect(
+        closestDistance(10, {
+          correctValue: 350,
+          slider: { mode: 'numeric-range', min: 0, max: 360 },
+        }),
+      ).toBe(340);
+      expect(closestDistance(10, { correctValue: 350 })).toBe(340);
+    });
+
+    it('gives the point to the team nearer across the red seam', () => {
+      const result = gradeClosestItem({
+        item: colour(355),
+        teamIds: ['a', 'b'],
+        answers: { a: 5, b: 330 },
+        assignedParticipantIds: { a: 'a1', b: 'b1' },
+        itemIndex: 0,
+        resolutionReason: 'both-submitted',
+        resolvedAt: '2026-01-01T00:00:00.000Z',
+      });
+      expect(result.distances).toEqual({ a: 10, b: 25 });
+      expect(result.winnerTeamId).toBe('a');
+      // The end-of-challenge recap sees results, not items.
+      expect(result.sliderMode).toBe('colour-hue');
+    });
+
+    const runtime = (first: unknown, deadlineAt?: string) => ({
+      itemsJson: JSON.stringify([
+        first,
+        { ...item, id: 'item-2' },
+        { ...item, id: 'item-3' },
+      ]),
+      teamIdsJson: '["a","b"]',
+      currentItemIndex: 0,
+      phase: 'collecting',
+      answersJson: '{}',
+      resultsJson: '[]',
+      teamActionJson: serializeTeamActionAssignments(
+        createTeamActionAssignmentState([
+          { teamId: 'a', order: ['a1'], cursor: 0 },
+          { teamId: 'b', order: ['b1'], cursor: 0 },
+        ]),
+      ),
+      ...(deadlineAt ? { deadlineAt } : {}),
+    });
+
+    it('tells the screen when the picture goes grey, from the server deadline', () => {
+      // 45-second timer armed to end at 00:00:45, so the item opened at 00:00:00.
+      const deadline = '2026-01-01T00:00:45.000Z';
+      expect(
+        CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(
+          runtime(colour(210), deadline),
+        ).mediaGreyAt,
+      ).toBe('2026-01-01T00:00:04.000Z');
+      expect(
+        CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(
+          runtime(colour(210, 7), deadline),
+        ).mediaGreyAt,
+      ).toBe('2026-01-01T00:00:07.000Z');
+    });
+
+    it('shows no colour before the deadline is armed', () => {
+      expect(
+        CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(runtime(colour(210)))
+          .mediaGreyAt,
+      ).toBeNull();
+    });
+
+    it('says nothing about grey for an ordinary item', () => {
+      expect(
+        CLOSEST_GAMEPLAY_PLUGIN.projectRuntimeState(
+          runtime(item, '2026-01-01T00:00:45.000Z'),
+        ),
+      ).not.toHaveProperty('mediaGreyAt');
+    });
+  });
 
   it('rejects malformed, NaN, and infinite estimates', () => {
     const validate =

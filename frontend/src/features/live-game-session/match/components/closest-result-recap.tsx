@@ -4,16 +4,45 @@ import {
   ChallengeWinnerBanner,
   ResultRoundCard,
 } from "./challenge-result-banner";
+import { hueColour } from "../../closest-colour";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 
 interface ClosestRecapItem {
   itemIndex: number;
   correctValue: number;
+  /** Present only for «تذكّر اللون»: the values are hues, drawn as colours. */
+  sliderMode?: "colour-hue";
   answers: Record<string, number | null>;
   distances: Record<string, number | null>;
   winnerTeamId: string | null;
   tie: boolean;
+}
+
+function isColour(item: ClosestRecapItem) {
+  return item.sliderMode === "colour-hue";
+}
+
+/** «تذكّر اللون» answers are hues: they are shown as colours, never numbers. */
+function renderValue(
+  item: ClosestRecapItem,
+  value: number | null | undefined,
+  label: string,
+  testId?: string,
+) {
+  if (value === null || value === undefined) return "—";
+  if (isColour(item)) {
+    return (
+      <span
+        role="img"
+        aria-label={label}
+        data-testid={testId}
+        className="inline-block size-7 rounded-full border-2 border-brand-navy align-middle"
+        style={{ background: hueColour(value) }}
+      />
+    );
+  }
+  return <span className="akwaan-numeral">{value}</span>;
 }
 
 export function ClosestResultRecap({
@@ -42,16 +71,19 @@ export function ClosestResultRecap({
             facts={[
               ...teams.map((team) => ({
                 label: `تقدير ${team.name}`,
-                value: (
-                  <span className="akwaan-numeral">
-                    {item.answers[team.id] ?? "—"}
-                  </span>
+                value: renderValue(
+                  item,
+                  item.answers[team.id],
+                  `لون ${team.name}`,
                 ),
               })),
               {
-                label: "الرقم الصحيح",
-                value: (
-                  <span className="akwaan-numeral">{item.correctValue}</span>
+                label: isColour(item) ? "اللون الصحيح" : "الرقم الصحيح",
+                value: renderValue(
+                  item,
+                  item.correctValue,
+                  "اللون الصحيح",
+                  `closest-recap-colour-${item.itemIndex}`,
                 ),
               },
             ]}

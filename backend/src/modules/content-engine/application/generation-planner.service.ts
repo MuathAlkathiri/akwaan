@@ -121,6 +121,8 @@ export function computeGenerationPlanDigest(
     .digest('hex');
 }
 
+const PUZZLES_WORLD_KEY = 'puzzles';
+
 @Injectable()
 export class GenerationPlannerService {
   constructor(
@@ -225,10 +227,49 @@ export class GenerationPlannerService {
     const rawDifficulty = (input.difficulty ?? '').trim().toLowerCase();
     const difficulty = rawDifficulty || 'mixed';
 
-    const difficultyQuotas = this.computeDifficultyQuotas(count, difficulty);
-    const archetypes = this.resolveArchetypes(mechanicKey, scopeKey);
-    const decisionLoopGuidelines = this.resolveDecisionLoop(mechanicKey);
-    const antiPatterns = this.resolveAntiPatterns(mechanicKey, scopeKey);
+    // اقرأ خصمك in عالم الألغاز is its own contract (owner decision
+    // 2026-11-25): direct know-it-or-not questions at one easy-leaning level,
+    // because the difficulty is in reading the other team, not in the item.
+    const puzzlesRyo =
+      worldKey === PUZZLES_WORLD_KEY && mechanicKey === 'read-your-opponent';
+    const difficultyQuotas = this.computeDifficultyQuotas(
+      count,
+      difficulty,
+      // Only an unstated difficulty takes the World's own default; an
+      // operator who asks for a mix by name still gets one — except for
+      // اقرأ خصمك here, whose "mixed" is the form's default, not a request.
+      rawDifficulty && !puzzlesRyo ? '' : worldKey,
+    );
+    const archetypes = puzzlesRyo
+      ? [
+          'Know It Or Not: one direct question with one plain answer; a team either has it at once or is guessing, and knows which.',
+          'Easy Enough To Doubt: so reachable that the other team must ask whether anyone could really miss it.',
+          'Just Out Of Reach: answerable by some people and not others, which is the room a team needs to act sure.',
+        ]
+      : this.resolveArchetypes(mechanicKey, scopeKey);
+    const decisionLoopGuidelines = puzzlesRyo
+      ? [
+          'THE DIFFICULTY IS THE READ, NOT THE ITEM: the question is direct and medium leaning easy. The doubt belongs to the other team — did they really know it, or are they acting?',
+          'THE TEAM KNOWS WHETHER IT KNEW: never a trap that makes a team confidently wrong. A team fooled by the item has nothing to hide and nothing to bluff.',
+          'ONE PLAIN ANSWER: four options, exactly one right, and nothing a reasonable player could argue about afterwards.',
+        ]
+      : [
+          ...this.resolveDecisionLoop(mechanicKey),
+          ...this.resolveWorldDecisionLoop(mechanicKey, worldKey),
+        ];
+    const antiPatterns = puzzlesRyo
+      ? [
+          'NO TRAPS: no trick wording, no counter-intuitive catch, no "obvious answer is wrong". That is the opposite of this mechanic here.',
+          'NO MULTI-STEP PUZZLES: nothing that needs working through. One look, one recall, or one short sum.',
+          'NO ANSWER LEAKAGE: the correct answer must never appear inside the prompt.',
+          'NO OBSCURE KNOWLEDGE: a riddle or proverb only the well-read know is a lottery. Use the ones people actually say.',
+          'NO DISPUTABLE ANSWERS: a riddle with two accepted answers, or a proverb with two common endings, is discarded.',
+          'NO PICTURE YET: never write "shown", "drawn", "in the picture" or "الصورة".',
+        ]
+      : [
+          ...this.resolveAntiPatterns(mechanicKey, scopeKey),
+          ...this.resolveWorldAntiPatterns(worldKey),
+        ];
     const correctnessRequirements =
       this.resolveCorrectnessRequirements(mechanicKey);
     const mediaIntent = this.resolveMediaIntent(mechanicKey, worldKey);
@@ -386,10 +427,44 @@ export class GenerationPlannerService {
     return sections.join('\n');
   }
 
+  /**
+   * عالم الألغاز, owner decision 2026-11-24. Stated here rather than only in
+   * the World's profile because the plan is printed inside the TASK, which is
+   * the part of a prompt a generator reads last and acts on most; the same
+   * rules sit thousands of characters earlier in the Scope knowledge.
+   */
+  private resolveWorldAntiPatterns(worldKey: string): string[] {
+    if (worldKey !== PUZZLES_WORLD_KEY) return [];
+    return [
+      'PUZZLES — SOLVED, NOT RECALLED: Everything the player needs is in the prompt, or is something every player knows (the alphabet, the days of the week, minutes in an hour). Never a fact to look up. Local colour (cities, dishes, clubs) is decoration only.',
+      'PUZZLES — NOT A MATHS TEST: No visible worksheet, no formula to recall, no long multiplication on show. The player sizes something up; they do not sit an exam.',
+      'PUZZLES — NO PICTURE YET: No item has an image. Never write "shown", "drawn", "in the picture" or "الصورة". Emoji inside the prompt text are allowed.',
+    ];
+  }
+
+  private resolveWorldDecisionLoop(
+    mechanicKey: string,
+    worldKey: string,
+  ): string[] {
+    if (worldKey !== PUZZLES_WORLD_KEY || mechanicKey !== 'closest') return [];
+    return [
+      'PUZZLES — EXACT FOR US, OUT OF REACH FOR THEM: The answer is a number we can compute exactly and a player cannot reach exactly in the time. If a player who spots a trick can state it precisely in a few seconds, both teams will, the question ties and nobody scores — discard it.',
+      'PUZZLES — PITCHED A LITTLE HARD: Prefer larger sets and answers that are not round. A careless guess must land clearly further away than a thoughtful one.',
+      'PUZZLES — THE ANSWER IS A COUNT, SO THE STEP FOLLOWS IT: answerBasis is "reasoning". Use step 1 unless the answer and both ends of the range are all multiples of a rounder step. stepsFromMin is simply (correctValue − min) ÷ step.',
+    ];
+  }
+
   private computeDifficultyQuotas(
     count: number,
     difficulty: string,
+    defaultForWorld = '',
   ): Record<string, number> {
+    // عالم الألغاز has one level, by owner decision 2026-11-24: a batch that
+    // names no difficulty is all medium there, not a spread of easy, medium
+    // and hard. `defaultForWorld` is passed only when none was named.
+    if (defaultForWorld === PUZZLES_WORLD_KEY && difficulty === 'mixed') {
+      return { medium: count };
+    }
     if (difficulty === 'easy' || difficulty === 'medium') {
       return { [difficulty]: count };
     }
@@ -428,6 +503,13 @@ export class GenerationPlannerService {
       }
       return archetypes;
     }
+    if (mechanicKey === 'moving-xo') {
+      return [
+        'Quick Insight: one idea unlocks it; a team that sees it answers at once.',
+        'Set Trap: the obvious reading gives a wrong option, a second look gives the right one.',
+        'Short Deduction: two small steps from what the prompt states, done in the head.',
+      ];
+    }
     if (mechanicKey === 'closest') {
       return [
         'Knowledge-Anchored Estimation: Exact quantity known by specialists; broad population can reason to the correct order of magnitude.',
@@ -446,6 +528,13 @@ export class GenerationPlannerService {
         'THE 40-80% CONFIDENCE SWEET SPOT: The answering team must feel neither 100% certainty (which triggers automatic opponent Steal) nor 0% clue (which triggers automatic opponent Trust).',
         'EVERY DISTRACTOR MUST HAVE A RATIONALE: Each incorrect option must lure real players for an articulate, defensible psychological reason.',
         'UNAMBIGUOUS ARABIC PHRASING: Questions must be sharp and precise, avoiding linguistic ambiguity or debatable definitions.',
+      ];
+    }
+    if (mechanicKey === 'moving-xo') {
+      return [
+        'FIFTEEN SECONDS, NO PEN: read once, solved in the head by a team talking it over.',
+        'EXACTLY ONE CORRECT OPTION: the other two are each the product of a specific, natural mistake.',
+        'RIGHT EARNS A MOVE, WRONG PASSES THE TURN: there is no bet — the only question is whether the team works it out.',
       ];
     }
     if (mechanicKey === 'closest') {

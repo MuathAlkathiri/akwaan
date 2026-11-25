@@ -1,7 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import {
+  BOMB_CANDIDATE_SCHEMA,
   CLOSEST_CANDIDATE_SCHEMA,
   COMBO_CANDIDATE_SCHEMA,
+  settleClosestGrid,
   DEFAULT_RYO_DIFFICULTY_TARGETS,
   ORIGINALITY_GUIDANCE,
   PROMPT_VERSIONS,
@@ -10,12 +12,19 @@ import {
   RYO_CONFIDENCE_BANDS,
   RYO_TARGET_CONFIDENCE_BANDS,
   RYO_TASK_GUIDANCE,
+  PUZZLES_RYO_TASK_GUIDANCE,
+  EXISTING_CONTENT_MAX_CHARS,
+  EXISTING_CONTENT_MAX_ITEMS,
+  formatExistingContent,
+  MOVING_XO_CANDIDATE_SCHEMA,
+  MOVING_XO_TASK_GUIDANCE,
   CLOSEST_TASK_GUIDANCE,
   CandidateGeneratorService,
   OUTPUT_TOKENS_PER_CANDIDATE,
   estimateGenerationPromptTokens,
 } from './candidate-generator.service';
 import { ResolvedAuthoringContext } from './authoring-context.service';
+import { promptVersionFor } from '../domain/generation-specification';
 
 /**
  * Prompt construction and Closest parsing.
@@ -71,6 +80,169 @@ const parse = (items: unknown[]) =>
       parse: (raw: string, count: number, mode: string) => unknown[];
     }
   ).parse(JSON.stringify({ candidates: items }), items.length, 'closest');
+
+describe('settling the grid of a derived مين أقرب answer', () => {
+  type Parsed = {
+    draft: {
+      answerPayload: { correctValue: number };
+      mechanicPayload: { closestSlider: Record<string, number> };
+    };
+    authoring: Record<string, unknown>;
+  };
+  const parsed = (over: Record<string, unknown>) =>
+    parse([closestItem(over)])[0] as Parsed;
+
+  it('leaves a grid that already reaches the answer exactly as stated', () => {
+    const item = parsed({});
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(2);
+    expect(item.authoring.stepsFromMin).toBe(39);
+    expect(item.authoring).not.toHaveProperty('gridRepair');
+  });
+
+  it('takes a finer step when a tidy one cannot land on the answer', () => {
+    // The first real batch: 22 teams home and away is 462 matches, authored
+    // on 50→1000 in tens, with a stepsFromMin of 0.
+    const item = parsed({
+      min: 50,
+      max: 1000,
+      step: 10,
+      correctValue: 462,
+      stepsFromMin: 0,
+    });
+    expect(item.draft.answerPayload.correctValue).toBe(462);
+    expect(item.draft.mechanicPayload.closestSlider).toMatchObject({
+      min: 50,
+      max: 1000,
+      step: 2,
+    });
+    expect(item.authoring.stepsFromMin).toBe(206);
+    expect(item.authoring.gridRepair).toEqual({
+      statedStep: 10,
+      statedStepsFromMin: 0,
+    });
+  });
+
+  it('takes the roundest step that still reaches the answer and the far end', () => {
+    expect(
+      settleClosestGrid({ min: 0, max: 1000, step: 100, correctValue: 750 }),
+    ).toEqual({ step: 50, stepsFromMin: 15 });
+    expect(
+      settleClosestGrid({ min: 100, max: 1000, step: 100, correctValue: 756 }),
+    ).toEqual({ step: 2, stepsFromMin: 328 });
+    // Never coarser than the step the author chose.
+    expect(
+      settleClosestGrid({ min: 0, max: 1000, step: 10, correctValue: 500 }),
+    ).toEqual({ step: 10, stepsFromMin: 50 });
+  });
+
+  it('corrects a wrong stepsFromMin on a grid that was already right', () => {
+    const item = parsed({ stepsFromMin: 0 });
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(2);
+    expect(item.authoring.stepsFromMin).toBe(39);
+    expect(item.authoring.gridRepair).toEqual({
+      statedStep: 2,
+      statedStepsFromMin: 0,
+    });
+  });
+
+  it('never moves an endpoint and never rounds the answer', () => {
+    const item = parsed({ min: 3, max: 997, step: 50, correctValue: 461 });
+    expect(item.draft.answerPayload.correctValue).toBe(461);
+    expect(item.draft.mechanicPayload.closestSlider).toMatchObject({
+      min: 3,
+      max: 997,
+      step: 2,
+    });
+  });
+
+  it("does not touch a knowledge-anchored item: its grid is the author's claim to check", () => {
+    const item = parsed({
+      answerBasis: 'knowledge-anchored',
+      min: 50,
+      max: 1000,
+      step: 10,
+      correctValue: 462,
+      stepsFromMin: 0,
+    });
+    expect(item.draft.mechanicPayload.closestSlider.step).toBe(10);
+    expect(item.authoring.stepsFromMin).toBe(0);
+    expect(item.authoring).not.toHaveProperty('gridRepair');
+  });
+
+  describe('between-anchors', () => {
+    const yearLine = (over: Record<string, unknown> = {}) =>
+      parsed({
+        answerBasis: 'knowledge-anchored',
+        prompt: 'بين 1 يناير و31 ديسمبر، وين يجي يوم التأسيس؟',
+        sliderMode: 'between-anchors',
+        leftAnchor: '1 يناير',
+        rightAnchor: '31 ديسمبر',
+        min: 1,
+        max: 365,
+        step: 5,
+        correctValue: 53,
+        stepsFromMin: 10,
+        unit: 'يوم',
+        displayFormat: 'number',
+        ...over,
+      });
+
+    it('authors a labelled line with no unit, and settles its step', () => {
+      const item = yearLine();
+      expect(item.draft.mechanicPayload.closestSlider).toEqual({
+        mode: 'between-anchors',
+        min: 1,
+        max: 365,
+        // 5 cannot land on day 53; the players never see the step.
+        step: 1,
+        leftAnchor: '1 يناير',
+        rightAnchor: '31 ديسمبر',
+      });
+      expect(item.draft.answerPayload.correctValue).toBe(53);
+      expect(item.authoring.stepsFromMin).toBe(52);
+    });
+
+    it('rejects a line without two distinct labels', () => {
+      expect(() => yearLine({ rightAnchor: '' })).toThrow(
+        /two distinct labels/,
+      );
+      expect(() => yearLine({ rightAnchor: '1 يناير' })).toThrow(
+        /two distinct labels/,
+      );
+    });
+
+    it('keeps an ordinary item numeric when the field is absent or numeric-range', () => {
+      expect(parsed({}).draft.mechanicPayload.closestSlider.mode).toBe(
+        'numeric-range',
+      );
+      expect(
+        parsed({ sliderMode: 'numeric-range', leftAnchor: '', rightAnchor: '' })
+          .draft.mechanicPayload.closestSlider,
+      ).not.toHaveProperty('leftAnchor');
+    });
+
+    it('tells the model when to use it and to stay off the centre', () => {
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/TWO SLIDERS/);
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/position-estimation/);
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/middle fifth/);
+    });
+  });
+
+  it('leaves what it cannot settle for the screen to judge', () => {
+    expect(
+      settleClosestGrid({ min: 0, max: 10, step: 1, correctValue: 2.5 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 10, max: 10, step: 1, correctValue: 10 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 0, max: 100, step: 1, correctValue: 140 }),
+    ).toBeUndefined();
+    expect(
+      settleClosestGrid({ min: 0, max: 100, step: 0, correctValue: 40 }),
+    ).toBeUndefined();
+  });
+});
 
 describe('Closest generation schema', () => {
   const item = (
@@ -209,7 +381,7 @@ describe('OpenAI strict structured-output compliance', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('expresses optional content as a nullable type, not a missing key', () => {
+  it('expresses optional content as a value, not a missing key or a type list', () => {
     const item = (
       CLOSEST_CANDIDATE_SCHEMA.properties as {
         candidates: {
@@ -217,8 +389,47 @@ describe('OpenAI strict structured-output compliance', () => {
         };
       }
     ).candidates.items;
-    expect(item.properties.unit.type).toEqual(['string', 'null']);
-    expect(item.properties.displayFormat.type).toEqual(['string', 'null']);
+    // A type list beside an `enum` is rejected by Anthropic and Google, so a
+    // request that works on one upstream fails on the next. Plain strings.
+    expect(item.properties.unit.type).toBe('string');
+    expect(item.properties.displayFormat.type).toBe('string');
+    expect(
+      (item.properties.displayFormat as { enum?: unknown[] }).enum,
+    ).toEqual(['number', 'calendar-year']);
+  });
+
+  it('carries no type list anywhere in any generation schema', () => {
+    const typeLists: string[] = [];
+    const walk = (node: unknown, path: string) => {
+      if (Array.isArray(node)) {
+        node.forEach((entry, index) => walk(entry, `${path}[${index}]`));
+        return;
+      }
+      if (!node || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'type' && Array.isArray(value)) typeLists.push(path);
+        walk(value, `${path}.${key}`);
+      }
+    };
+    for (const [name, schema] of Object.entries({
+      closest: CLOSEST_CANDIDATE_SCHEMA,
+      multipleChoice: RYO_CANDIDATE_SCHEMA,
+      combo: COMBO_CANDIDATE_SCHEMA,
+      bomb: BOMB_CANDIDATE_SCHEMA,
+    }))
+      walk(schema, name);
+    expect(typeLists).toEqual([]);
+  });
+
+  it('parses a candidate that returns an empty unit and the ordinary format', () => {
+    const [parsed] = parse([
+      closestItem({ unit: '', displayFormat: 'number' }),
+    ]) as { draft: Record<string, unknown> }[];
+    const slider = (
+      parsed.draft.mechanicPayload as { closestSlider: Record<string, unknown> }
+    ).closestSlider;
+    expect(slider.unit).toBeUndefined();
+    expect(slider.displayFormat).toBeUndefined();
   });
 
   it('parses a candidate that returns null for the optional fields', () => {
@@ -314,7 +525,11 @@ describe('RYO gameplay and difficulty guidance', () => {
   });
 
   it('uses the approved experimental 25/50/25 defaults', () => {
-    const prompt = service().buildPrompt(context(), 10, 'multiple_choice');
+    const prompt = service().buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
     expect(DEFAULT_RYO_DIFFICULTY_TARGETS).toEqual({
       easy: 25,
       medium: 50,
@@ -333,8 +548,16 @@ describe('RYO gameplay and difficulty guidance', () => {
       [RYO_DIFFICULTY_CONFIG_KEYS.medium]: '60',
       [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '20',
     });
-    const first = configured.buildPrompt(context(), 10, 'multiple_choice');
-    const second = configured.buildPrompt(context(), 10, 'multiple_choice');
+    const first = configured.buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
+    const second = configured.buildPrompt(
+      context({ worldKey: 'football' }),
+      10,
+      'multiple_choice',
+    );
     expect(first).toBe(second);
     expect(first).toContain('easy: 20%');
     expect(first).toContain('medium: 60%');
@@ -348,7 +571,11 @@ describe('RYO gameplay and difficulty guidance', () => {
       [RYO_DIFFICULTY_CONFIG_KEYS.relativelyDifficult]: '25',
     });
     expect(() =>
-      configured.buildPrompt(context(), 10, 'multiple_choice'),
+      configured.buildPrompt(
+        context({ worldKey: 'football' }),
+        10,
+        'multiple_choice',
+      ),
     ).toThrow(
       expect.objectContaining({ code: 'RYO_DIFFICULTY_TARGETS_INVALID' }),
     );
@@ -369,7 +596,11 @@ describe('originality guidance reaches every mechanic', () => {
   // resolved prompt, not a constant, because a constant nothing appends is
   // documentation rather than instruction.
   const tail = (mode: 'multiple_choice' | 'closest') =>
-    service().buildPrompt(context({ exemplars: 'EXEMPLAR-TEXT' }), 3, mode);
+    service().buildPrompt(
+      context({ exemplars: 'EXEMPLAR-TEXT', worldKey: 'football' }),
+      3,
+      mode,
+    );
 
   it.each(['multiple_choice', 'closest'] as const)(
     'ends the %s prompt with the originality block',
@@ -417,6 +648,146 @@ describe('originality guidance reaches every mechanic', () => {
     );
   });
 
+  describe('إكس أو المتحرك', () => {
+    const xo = () =>
+      service().buildPrompt(
+        context({ mechanicKey: 'moving-xo' }),
+        3,
+        'multiple_choice',
+      );
+
+    it('is authored as a timed puzzle, not as a bet', () => {
+      const prompt = xo();
+      expect(prompt).toContain(MOVING_XO_TASK_GUIDANCE);
+      expect(prompt).toMatch(/fifteen seconds/);
+      expect(prompt).toMatch(/EXACTLY ONE OPTION IS RIGHT/);
+      expect(prompt).not.toMatch(/This mechanic is a bet/);
+      expect(prompt).not.toMatch(/EXPERIMENTAL DIFFICULTY MIX/);
+      expect(prompt.endsWith(ORIGINALITY_GUIDANCE)).toBe(true);
+    });
+
+    it('asks for three options and no Steal/Trust estimate', () => {
+      const item = (
+        (MOVING_XO_CANDIDATE_SCHEMA.properties as Record<string, unknown>)
+          .candidates as {
+          items: {
+            required: string[];
+            properties: Record<
+              string,
+              { minItems?: number; maxItems?: number }
+            >;
+          };
+        }
+      ).items;
+      expect(item.required).toEqual([
+        'concept',
+        'prompt',
+        'options',
+        'correctOptionId',
+        'distractorRationale',
+        'factualClaims',
+      ]);
+      expect(item.properties).not.toHaveProperty('estimatedConfidence');
+      expect(item.properties.options).toMatchObject({
+        minItems: 3,
+        maxItems: 3,
+      });
+      // The اقرأ خصمك schema it is built from is left as it was.
+      expect(JSON.stringify(RYO_CANDIDATE_SCHEMA)).toContain(
+        'estimatedConfidence',
+      );
+    });
+
+    it('has its own prompt contract', () => {
+      expect(promptVersionFor('moving-xo')).toBe('moving-xo-v1');
+      expect(promptVersionFor('read-your-opponent')).toBe('mc-v2');
+    });
+  });
+
+  describe('the library the generator must not repeat', () => {
+    const withLibrary = (existingPrompts: string[]) =>
+      service().buildPrompt(context(), 3, 'closest', { existingPrompts });
+
+    it('lists what the Scope already holds, before the originality block', () => {
+      const prompt = withLibrary([
+        'كم مرة ينكتب الرقم 7 من 1 إلى 300؟',
+        '30 واحد في قروب، وكل واحد أرسل رسالة خاصة لكل واحد من الباقين. كم رسالة؟',
+      ]);
+      expect(prompt).toMatch(/ALREADY IN THE LIBRARY — DO NOT REPEAT/);
+      expect(prompt).toContain('  - كم مرة ينكتب الرقم 7 من 1 إلى 300؟');
+      expect(prompt.indexOf('ALREADY IN THE LIBRARY')).toBeLessThan(
+        prompt.indexOf('ORIGINALITY —'),
+      );
+      expect(prompt.endsWith(ORIGINALITY_GUIDANCE)).toBe(true);
+    });
+
+    it('says nothing when the Scope is empty', () => {
+      expect(withLibrary([])).not.toMatch(/ALREADY IN THE LIBRARY/);
+      expect(formatExistingContent(undefined)).toBeUndefined();
+      expect(formatExistingContent(['  ', ''])).toBeUndefined();
+    });
+
+    it('drops repeats, shortens long lines and keeps the newest', () => {
+      const many = Array.from({ length: 100 }, (_, i) => `سؤال رقم ${i}`);
+      const block = formatExistingContent([
+        ...many,
+        many[99],
+        'ط'.repeat(400),
+      ])!;
+      const lines = block.split('\n').filter((line) => line.startsWith('  - '));
+      expect(lines).toHaveLength(EXISTING_CONTENT_MAX_ITEMS);
+      expect(block).not.toContain('  - سؤال رقم 0\n');
+      expect(block).toContain('  - سؤال رقم 99');
+      expect(lines[lines.length - 1]).toBe(
+        `  - ${'ط'.repeat(EXISTING_CONTENT_MAX_CHARS)}…`,
+      );
+    });
+  });
+
+  describe('اقرأ خصمك in عالم الألغاز', () => {
+    const puzzlesRyo = () =>
+      service().buildPrompt(
+        context({ mechanicKey: 'read-your-opponent', worldKey: 'puzzles' }),
+        5,
+        'multiple_choice',
+      );
+
+    it('asks for the plain know-it-or-not question, not a hard-to-call one', () => {
+      const prompt = puzzlesRyo();
+      expect(prompt).toContain(PUZZLES_RYO_TASK_GUIDANCE);
+      expect(prompt).toMatch(/a read of PEOPLE, not of the question/);
+      expect(prompt).toMatch(/medium leaning EASY/);
+      expect(prompt).toMatch(/NEVER a trap/);
+      expect(prompt).toMatch(
+        /Riddles, proverbs and everyday word knowledge ARE allowed/,
+      );
+    });
+
+    it('drops the general guidance it contradicts', () => {
+      const prompt = puzzlesRyo();
+      expect(prompt).not.toContain(RYO_TASK_GUIDANCE);
+      expect(prompt).not.toMatch(/EXPERIMENTAL DIFFICULTY MIX/);
+      expect(prompt).not.toMatch(/SOLVED, NOT RECALLED/);
+      expect(prompt).not.toMatch(/NO 100% ELEMENTARY TRIVIA/);
+      expect(prompt).not.toMatch(/40-80% CONFIDENCE SWEET SPOT/);
+    });
+
+    it('is one level even though the form sends "mixed"', () => {
+      expect(puzzlesRyo()).toMatch(/medium: exactly 5 item\(s\)/);
+      expect(puzzlesRyo()).not.toMatch(/easy: exactly/);
+    });
+
+    it('leaves every other World on the general contract', () => {
+      const prompt = service().buildPrompt(
+        context({ mechanicKey: 'read-your-opponent', worldKey: 'football' }),
+        5,
+        'multiple_choice',
+      );
+      expect(prompt).toContain(RYO_TASK_GUIDANCE);
+      expect(prompt).not.toContain(PUZZLES_RYO_TASK_GUIDANCE);
+    });
+  });
+
   it('appends RYO task guidance where there was none', () => {
     const prompt = tail('multiple_choice');
     expect(prompt).toMatch(/This mechanic is a bet, not a quiz/);
@@ -435,7 +806,7 @@ describe('buildPrompt', () => {
     // version, and an existing one cannot change contract without bumping.
     expect(PROMPT_VERSIONS).toEqual({
       multiple_choice: 'mc-v2',
-      closest: 'closest-v2',
+      closest: 'closest-v3',
       match: 'combo-v1',
     });
     expect(RYO_CANDIDATE_SCHEMA).toBeDefined();
@@ -518,7 +889,7 @@ describe('generator capability guard', () => {
         jobId: 'job-unsupported',
         leaseEpoch: 1,
         attempt: 1,
-        context: context({ mechanicKey: 'moving-xo' }),
+        context: context({ mechanicKey: 'top-5' }),
         count: 1,
       }),
     ).rejects.toMatchObject({ code: 'MECHANIC_NOT_GENERATABLE' });
@@ -726,7 +1097,10 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
 
   it('supports single-difficulty RYO modes (easy, medium, relatively_difficult) and rejects Quality Judge "hard"', () => {
     const gen = service();
-    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+    const ryoCtx = context({
+      mechanicKey: 'read-your-opponent',
+      worldKey: 'football',
+    });
 
     const easyPrompt = gen.buildPrompt(ryoCtx, 3, 'multiple_choice', {
       difficulty: 'easy',
@@ -849,7 +1223,10 @@ describe('Phase A generation contract in CandidateGeneratorService', () => {
       { generateText } as never,
     );
 
-    const ryoCtx = context({ mechanicKey: 'read-your-opponent' });
+    const ryoCtx = context({
+      mechanicKey: 'read-your-opponent',
+      worldKey: 'football',
+    });
     const pinnedContextHash = 'a'.repeat(64);
     const pinnedSpec = {
       specVersion: 'generation-spec-v1' as const,

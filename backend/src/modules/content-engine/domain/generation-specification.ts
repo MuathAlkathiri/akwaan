@@ -27,6 +27,15 @@ export const MECHANIC_ANSWER_MODES = {
   closest: 'closest',
   // الكومبو: one typed answer graded by text match, on a four-stage ladder.
   combo: 'match',
+  // القنبلة: one typed answer graded by text match, about one picture. Same
+  // answer mode as الكومبو and a different authoring contract — the mechanic
+  // key, not the answer mode, is what selects its prompt, schema and screen.
+  bomb: 'match',
+  // إكس أو المتحرك: a puzzle answered by tapping one of a few options. A
+  // correct answer earns a move on the board, so it needs a binary verdict
+  // and nothing else. Same answer mode as اقرأ خصمك, a different contract:
+  // there is no bet here, so none of the Steal/Trust authoring applies.
+  'moving-xo': 'multiple_choice',
 } as const;
 
 export type GeneratorMechanicKey = keyof typeof MECHANIC_ANSWER_MODES;
@@ -46,8 +55,29 @@ export const generatorAnswerModeFor = (
  */
 export const PROMPT_VERSIONS: Record<GeneratorAnswerMode, string> = {
   multiple_choice: 'mc-v2',
-  closest: 'closest-v2',
+  closest: 'closest-v3',
   match: 'combo-v1',
+};
+
+/**
+ * Mechanics that share an answer mode with another mechanic but are authored
+ * from their own prompt and schema. Two mechanics on one revision string would
+ * make a change to either look like a change to both in every request hash.
+ */
+const MECHANIC_PROMPT_VERSIONS: Partial<Record<GeneratorMechanicKey, string>> =
+  {
+    bomb: 'bomb-v3',
+    'moving-xo': 'moving-xo-v1',
+  };
+
+/** The prompt/schema revision a mechanic is generated with, if it can be. */
+export const promptVersionFor = (mechanicKey: string): string | undefined => {
+  const answerMode = generatorAnswerModeFor(mechanicKey);
+  if (!answerMode) return undefined;
+  return (
+    MECHANIC_PROMPT_VERSIONS[mechanicKey as GeneratorMechanicKey] ??
+    PROMPT_VERSIONS[answerMode]
+  );
 };
 
 export const RYO_REQUESTED_DIFFICULTIES = [
@@ -448,7 +478,7 @@ export const buildGenerationSpecification = (input: {
     batchGuidance,
     contextHash: input.context.contextHash,
     ruleSetDigest: input.context.effectiveRules.digest,
-    promptVersion: PROMPT_VERSIONS[answerMode],
+    promptVersion: promptVersionFor(input.context.mechanicKey) as string,
     provider,
     generationModel,
     qualityModel,

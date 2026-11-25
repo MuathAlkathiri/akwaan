@@ -50,10 +50,34 @@ import {
 } from './domain/fact-verification.types';
 import { WigoloFactEvidenceRetriever } from './infrastructure/wigolo-fact-evidence.retriever';
 import { EngineImageIngestionService } from './infrastructure/engine-image-ingestion.service';
+import { SvgRasterizer } from './infrastructure/svg-rasterizer';
+import { ComposedVisualService } from './application/composed-visual.service';
 import { MediaStorageModule } from '../../common/uploads/media-storage.module';
 import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
 import { CandidateMediaReviewService } from './application/candidate-media-review.service';
+import { MediaDiscoveryService } from './application/media-discovery.service';
+import { MediaLibraryService } from './application/media-library.service';
+import { ContentEngineMediaLibraryController } from './presentation/content-engine-media-library.controller';
+import {
+  EngineMediaLibraryDocument,
+  EngineMediaLibrarySchema,
+} from './schemas/engine-media-library.schema';
+import { MediaVisualCheckService } from './application/media-visual-check.service';
+import { CandidateMediaEnrichmentService } from './application/candidate-media-enrichment.service';
+import {
+  ENGINE_MEDIA_DISCOVERY_PROVIDERS,
+  MediaDiscoveryProvider,
+} from './domain/media-discovery';
+import { ENGINE_MEDIA_DISCOVERY_USER_AGENT } from './domain/content-engine.constants';
+import {
+  braveDiscoveryKey,
+  commonsDiscoveryEnabled,
+  wikidataDiscoveryEnabled,
+} from './domain/engine-media-flags';
+import { WikimediaCommonsDiscoveryProvider } from './infrastructure/wikimedia-commons.discovery';
+import { WikidataDiscoveryProvider } from './infrastructure/wikidata.discovery';
+import { BraveImageSearchDiscoveryProvider } from './infrastructure/brave-image-search.discovery';
 import { MediaRightsModule } from '../media-rights/media-rights.module';
 import { EnginePricingService } from './domain/engine-pricing.service';
 import { EngineJobAdminService } from './application/engine-job-admin.service';
@@ -117,6 +141,10 @@ import {
         name: EngineDraftPublicationDocument.name,
         schema: EngineDraftPublicationSchema,
       },
+      {
+        name: EngineMediaLibraryDocument.name,
+        schema: EngineMediaLibrarySchema,
+      },
     ]),
     // Explicit, though global in the app: the engine's media ingestion needs
     // the R2 mirror token even where the module is compiled on its own.
@@ -124,7 +152,11 @@ import {
     // Rights are read live from the authoritative record for media gates.
     MediaRightsModule,
   ],
-  controllers: [ContentEngineReviewController, ContentEngineJobsController],
+  controllers: [
+    ContentEngineReviewController,
+    ContentEngineJobsController,
+    ContentEngineMediaLibraryController,
+  ],
   providers: [
     ContentEngineDeletionParticipant,
     {
@@ -201,7 +233,41 @@ import {
     ImageDownloadService,
     LocalImageStorageService,
     EngineImageIngestionService,
+    // مركّب الصور: pictures the engine draws itself.
+    SvgRasterizer,
+    ComposedVisualService,
     CandidateMediaReviewService,
+    {
+      // Image discovery is fail-closed like the provider slots above: with the
+      // switch down the list is empty, the service reports itself unavailable,
+      // and no outbound call can be made on a reviewer's behalf.
+      provide: ENGINE_MEDIA_DISCOVERY_PROVIDERS,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): MediaDiscoveryProvider[] => {
+        const options = {
+          userAgent:
+            config.get<string>(ENGINE_MEDIA_DISCOVERY_USER_AGENT)?.trim() ||
+            undefined,
+        };
+        const braveKey = braveDiscoveryKey(config);
+        // Order is preference: the catalogue's own choice before word search.
+        return [
+          ...(wikidataDiscoveryEnabled(config)
+            ? [new WikidataDiscoveryProvider(options)]
+            : []),
+          ...(commonsDiscoveryEnabled(config)
+            ? [new WikimediaCommonsDiscoveryProvider(options)]
+            : []),
+          ...(braveKey
+            ? [new BraveImageSearchDiscoveryProvider(braveKey, options)]
+            : []),
+        ];
+      },
+    },
+    MediaDiscoveryService,
+    MediaVisualCheckService,
+    MediaLibraryService,
+    CandidateMediaEnrichmentService,
   ],
   exports: [
     EnginePricingService,

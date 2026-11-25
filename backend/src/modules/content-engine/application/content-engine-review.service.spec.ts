@@ -190,7 +190,55 @@ describe('ContentEngineReviewService enforcement characterization', () => {
       humanAssessment: null, factVerification: null, qualityEvaluation: null,
     }) });
     const detail = await service.detail('candidate-1');
-    expect(detail.reviewEligibility.quickReview).toEqual({ eligible: true, reasons: [] });
+    expect(detail.reviewEligibility.quickReview).toEqual({ eligible: true, reasons: [], eligibleWithMediaSteps: false, mediaSteps: [] });
+  });
+
+  describe('quick review of a القنبلة item', () => {
+    const bombJob = { _id: 'job-1', mechanicKey: 'bomb', worldKey: 'football', scopeKey: 'premier-league', status: 'awaiting_review' };
+    const URL = `/uploads/world-content/content-items/engine-${'a'.repeat(64)}.jpg`;
+    const slot = (over: Record<string, unknown> = {}) => ({
+      slotKey: 'item-image', purpose: 'gameplay', required: true, status: 'resolved',
+      asset: { url: URL }, provenance: { acquisition: 'retrieve', provider: 'wikidata' },
+      rights: { status: 'UNKNOWN', source: 'unrecorded' }, review: null, rightsAcknowledgement: null,
+      visualCheck: { status: 'clear' }, ...over,
+    });
+    const bomb = (over: Record<string, unknown> = {}, slotOver: Record<string, unknown> = {}) => candidate({
+      humanAssessment: null, factVerification: { state: 'UNRESOLVED' },
+      draft: { prompt: { ar: 'من هذا اللاعب؟' }, answerPayload: { mode: 'match', acceptedAnswers: ['تييري هنري'] }, media: { type: 'image', assets: [{ url: URL }] } },
+      mediaPlan: [slot(slotOver)], mediaReviewRevision: 1, ...over,
+    });
+    const quick = async (current: Record<string, unknown>) =>
+      (await build({ current, jobOverride: bombJob }).service.detail('candidate-1')).reviewEligibility.quickReview;
+
+    it('offers one click that also approves the image and acknowledges its unknown rights', async () => {
+      expect(await quick(bomb())).toMatchObject({
+        eligible: false,
+        eligibleWithMediaSteps: true,
+        mediaSteps: [{ slotKey: 'item-image', review: true, acknowledgeRights: true }],
+      });
+    });
+
+    it('asks only for what is still missing', async () => {
+      const reviewed = { status: 'approved', assetUrl: URL, mediaReviewRevision: 1, actorId: 'a', actorEmail: 'a', at: 'x' };
+      expect((await quick(bomb({}, { review: reviewed }))).mediaSteps).toEqual([
+        { slotKey: 'item-image', review: false, acknowledgeRights: true },
+      ]);
+    });
+
+    it.each([
+      ['an image a model saw the answer written in', { visualCheck: { status: 'leaks', evidence: 'HENRY 14' } }],
+      ['an image from a web search that states no licence', { provenance: { acquisition: 'retrieve', provider: 'brave-search' } }],
+      ['blocked rights', { rights: { status: 'BLOCKED', source: 'media-rights' } }],
+      ['no image at all', { status: 'planned', asset: null }],
+    ])('sends %s to detailed review', async (_name, slotOver) => {
+      expect(await quick(bomb({}, slotOver))).toMatchObject({ eligible: false, eligibleWithMediaSteps: false });
+    });
+
+    it('requires accepted answers', async () => {
+      const result = await quick(bomb({ draft: { prompt: { ar: 'من هذا؟' }, answerPayload: { mode: 'match', acceptedAnswers: [] } } }));
+      expect(result.reasons).toContain('الإجابات المقبولة غير مكتملة.');
+      expect(result.eligibleWithMediaSteps).toBe(false);
+    });
   });
 
   it('records direct human judgment without fabricating an assessment', async () => {
@@ -230,12 +278,25 @@ describe('ContentEngineReviewService enforcement characterization', () => {
 
   it.each([
     { findings: [{ code: 'DUPLICATE_IN_BATCH', severity: 'blocking', message: 'duplicate' }] },
-    { findings: [{ code: 'FAMILY_COMPLIANCE_UNVERIFIED', severity: 'warning', message: 'family' }] },
+    { findings: [{ code: 'FAMILY_COMPLIANCE_MISMATCH', severity: 'warning', message: 'family' }] },
     { factVerification: { state: 'UNSUPPORTED', claims: [{ state: 'UNSUPPORTED', evidence: [{ relation: 'contradicts' }] }] } },
   ])('blocks direct review for unresolved hard or exceptional findings %#', async (overrides) => {
     const { service } = build({ current: candidate(overrides) });
     expect((await service.detail('candidate-1')).reviewEligibility.quickReview.eligible).toBe(false);
     await expect(service.approve('candidate-1', { expectedRevision: 1, assessmentBasis: 'HUMAN_DIRECT_REVIEW' }, actor)).rejects.toThrow();
+  });
+
+  it('keeps direct review open when a family simply has no automatic rule', async () => {
+    // Most families have none, so "unverified" is the ordinary state of a
+    // candidate, not an exception: the reviewer approving it is the manual
+    // check. A detected mismatch (above) still takes the full form.
+    const { service } = build({
+      current: candidate({
+        findings: [{ code: 'FAMILY_COMPLIANCE_UNVERIFIED', severity: 'warning', message: 'family' }],
+      }),
+    });
+    const { quickReview } = (await service.detail('candidate-1')).reviewEligibility;
+    expect(quickReview.reasons).not.toContain('تتطلب ملاءمة العائلة مراجعة تفصيلية.');
   });
 
   it('blocks direct review when live canonical compatibility fails', async () => {

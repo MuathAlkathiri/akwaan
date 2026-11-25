@@ -58,6 +58,8 @@ import {
   FirstNotePayload,
   EkshifniPayload,
   LaTahriqhaPayload,
+  CLOSEST_COLOUR_HUE_MAX,
+  CLOSEST_COLOUR_REVEAL_MAX_SECONDS,
   CLOSEST_VALUE_DISPLAY_FORMATS,
   ClosestValueDisplayFormat,
 } from './world-content.types';
@@ -202,7 +204,11 @@ export class ContentItemCompatibilityPolicy {
           mode?: string;
           acceptedAnswers?: string[];
         },
-        status: item.status,
+        // Deliberately no `status`. This asks whether the item's *shape* could
+        // be played; the launch path separately refuses items that are not
+        // READY. Passing the status here made every draft a blocker of itself:
+        // a draft could never be judged fit to become READY because it was not
+        // READY yet.
       },
       1,
     );
@@ -1012,7 +1018,7 @@ export class ContentItemCompatibilityPolicy {
     return [
       issue(
         'CLOSEST_SLIDER_MODE_REQUIRED',
-        'A new مين أقرب item must choose numeric-range or between-anchors; the legacy number input is kept only for content authored before the slider',
+        'A new مين أقرب item must choose numeric-range, between-anchors or colour-hue; the legacy number input is kept only for content authored before the slider',
       ),
     ];
   }
@@ -1125,11 +1131,51 @@ export class ContentItemCompatibilityPolicy {
             'Closest slider needs distinct anchor labels of at most 80 characters',
           ),
         );
+    } else if (slider.mode === 'colour-hue') {
+      // The wheel is the range: 0 and 360 are one red, and the runtime
+      // measures distance around it. An authored sub-range would make that
+      // arithmetic wrong, so the bounds are not the author's to choose.
+      if (min !== 0 || max !== CLOSEST_COLOUR_HUE_MAX)
+        issues.push(
+          issue(
+            'CLOSEST_COLOUR_RANGE_INVALID',
+            'A colour question spans the whole wheel: min 0 and max 360',
+          ),
+        );
+      if (target >= CLOSEST_COLOUR_HUE_MAX)
+        issues.push(
+          issue(
+            'CLOSEST_COLOUR_TARGET_INVALID',
+            'The correct hue must be at least 0 and below 360',
+          ),
+        );
+      const reveal = slider.revealSeconds;
+      if (
+        reveal !== undefined &&
+        (typeof reveal !== 'number' ||
+          !Number.isInteger(reveal) ||
+          reveal < 1 ||
+          reveal > CLOSEST_COLOUR_REVEAL_MAX_SECONDS)
+      )
+        issues.push(
+          issue(
+            'CLOSEST_COLOUR_REVEAL_INVALID',
+            `The colour picture is shown for a whole number of seconds from 1 to ${CLOSEST_COLOUR_REVEAL_MAX_SECONDS}`,
+          ),
+        );
+      // Nothing to remember without a picture: the colour is in the image.
+      if (item.media?.type !== 'image' || !item.media.assets?.[0]?.url?.trim())
+        issues.push(
+          issue(
+            'CLOSEST_COLOUR_IMAGE_REQUIRED',
+            'A colour question needs the picture whose colour is being remembered',
+          ),
+        );
     } else {
       issues.push(
         issue(
           'CLOSEST_SLIDER_MODE_INVALID',
-          'Closest slider mode must be numeric-range or between-anchors',
+          'Closest slider mode must be numeric-range, between-anchors or colour-hue',
         ),
       );
     }

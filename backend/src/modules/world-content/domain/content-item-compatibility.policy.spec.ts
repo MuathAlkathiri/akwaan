@@ -490,6 +490,76 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
       }
     });
 
+    describe('colour-hue («تذكّر اللون»)', () => {
+      const picture = {
+        type: ContentMediaType.IMAGE,
+        assets: [{ url: 'https://cdn/shirt.webp' }],
+      };
+      const colourItem = (
+        slider: Record<string, unknown> = {},
+        overrides: Record<string, unknown> = {},
+      ) =>
+        contentItem({
+          compatibleChallengeTypeIds: ['closest'],
+          answerPayload: {
+            mode: ChallengeAnswerMode.CLOSEST,
+            correctValue: 210,
+          } as const,
+          media: picture,
+          mechanicPayload: {
+            closestSlider: { mode: 'colour-hue', min: 0, max: 360, ...slider },
+          },
+          ...overrides,
+        });
+      const colourCodes = (item: ReturnType<typeof colourItem>) =>
+        codes({
+          item,
+          challengeTypes: typeMap(closest),
+          authoring: { isNewItem: true },
+        });
+
+      it('accepts a hue on the whole wheel with a picture', () => {
+        expect(colourCodes(colourItem())).toEqual([]);
+        expect(colourCodes(colourItem({ revealSeconds: 6, step: 1 }))).toEqual(
+          [],
+        );
+      });
+
+      it('refuses an authored sub-range: the wheel is the range', () => {
+        expect(colourCodes(colourItem({ min: 100, max: 300 }))).toContain(
+          'CLOSEST_COLOUR_RANGE_INVALID',
+        );
+      });
+
+      it('refuses 360 as a target: it is the same red as 0', () => {
+        expect(
+          colourCodes(
+            colourItem(
+              {},
+              {
+                answerPayload: {
+                  mode: ChallengeAnswerMode.CLOSEST,
+                  correctValue: 360,
+                } as const,
+              },
+            ),
+          ),
+        ).toContain('CLOSEST_COLOUR_TARGET_INVALID');
+      });
+
+      it.each([0, 11, 2.5, '4'])('refuses a reveal of %p seconds', (reveal) => {
+        expect(colourCodes(colourItem({ revealSeconds: reveal }))).toContain(
+          'CLOSEST_COLOUR_REVEAL_INVALID',
+        );
+      });
+
+      it('refuses a colour question with no picture', () => {
+        expect(colourCodes(colourItem({}, { media: undefined }))).toContain(
+          'CLOSEST_COLOUR_IMAGE_REQUIRED',
+        );
+      });
+    });
+
     /**
      * The whole point of the rule being an authoring rule: content written
      * before the slider existed is still correct content, and asking to edit its
@@ -1055,6 +1125,17 @@ describe('ContentItemCompatibilityPolicy (roadmap 12-15)', () => {
 
     it('accepts a picture question with match answers', () => {
       expect(bombCodes()).toEqual([]);
+    });
+
+    it('judges a draft by its shape, not by its not being READY yet', () => {
+      expect(bombCodes({ status: ContentItemStatus.DRAFT })).toEqual([]);
+      // A draft with a real shape problem is still caught.
+      expect(
+        bombCodes({
+          status: ContentItemStatus.DRAFT,
+          media: { type: ContentMediaType.IMAGE, assets: [{ url: ' ' }] },
+        }),
+      ).toContain('BOMB_ITEM_IMAGE_URL_REQUIRED');
     });
 
     it('accepts a text-only question with match answers', () => {

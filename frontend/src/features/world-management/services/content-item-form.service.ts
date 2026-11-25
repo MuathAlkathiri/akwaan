@@ -439,11 +439,69 @@ export function toEkshifniFormState(
   };
 }
 
-/** The two modes new Closest content may choose between. */
+/** The modes new Closest content may choose between. */
 export const CLOSEST_SLIDER_MODES = [
   "numeric-range",
   "between-anchors",
+  "colour-hue",
 ] as const;
+
+/** «تذكّر اللون»: the wheel is the range, so the author never sets these. */
+export const CLOSEST_COLOUR_BOUNDS = { min: "0", max: "360", step: "1" } as const;
+export const CLOSEST_COLOUR_REVEAL_MAX_SECONDS = 10;
+
+/**
+ * The hue of a `#rrggbb` colour, or undefined when it has none.
+ *
+ * A colour question is answered on the colour wheel alone, so a grey, a white
+ * or a black — which sit at its centre, not on it — cannot be the answer. The
+ * picker can hand one back; this is where the form finds out.
+ */
+export function hexToHue(hex: string): number | undefined {
+  const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!match) return undefined;
+  const [r, g, b] = match.slice(1).map((part) => parseInt(part, 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const spread = max - min;
+  // Too close to the grey axis to name a hue anyone could aim for.
+  if (spread < 0.12) return undefined;
+  const raw =
+    max === r
+      ? ((g - b) / spread) % 6
+      : max === g
+        ? (b - r) / spread + 2
+        : (r - g) / spread + 4;
+  return Math.round((raw * 60 + 360) % 360) % 360;
+}
+
+/** The colour a hue is played as — the same formula the players' screens use. */
+export function hueToHex(hue: number): string {
+  const h = (((hue % 360) + 360) % 360) / 60;
+  const lightness = 0.5;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * 0.85;
+  const x = chroma * (1 - Math.abs((h % 2) - 1));
+  const [r, g, b] =
+    h < 1
+      ? [chroma, x, 0]
+      : h < 2
+        ? [x, chroma, 0]
+        : h < 3
+          ? [0, chroma, x]
+          : h < 4
+            ? [0, x, chroma]
+            : h < 5
+              ? [x, 0, chroma]
+              : [chroma, 0, x];
+  const offset = lightness - chroma / 2;
+  return `#${[r, g, b]
+    .map((part) =>
+      Math.round((part + offset) * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
 
 export type ClosestSliderMode = (typeof CLOSEST_SLIDER_MODES)[number];
 
@@ -726,7 +784,14 @@ export interface AnswerFormState {
   acceptedAnswers: string;
   consensusRule: VoteConsensusRule;
   fragments: Array<{ seat: number; clue: string }>;
-  closestInteraction: "" | "legacy" | "numeric-range" | "between-anchors";
+  closestInteraction:
+    | ""
+    | "legacy"
+    | "numeric-range"
+    | "between-anchors"
+    | "colour-hue";
+  /** `colour-hue` only: seconds the picture stays in colour; blank = default. */
+  closestRevealSeconds: string;
   /**
    * How the number is read. Explicit, never inferred from magnitude — a count of
    * 1930 and the year 1930 are the same number.
@@ -762,6 +827,7 @@ export function emptyAnswerState(
     // "legacy" is not offered: it exists for the catalog authored before the
     // slider, not for anything being authored now.
     closestInteraction: "",
+    closestRevealSeconds: "",
     closestDisplayFormat: "number",
     closestMin: "",
     closestMax: "",
@@ -842,10 +908,11 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
     item.mechanicPayload as
       | {
           closestSlider?: {
-            mode?: "numeric-range" | "between-anchors";
+            mode?: "numeric-range" | "between-anchors" | "colour-hue";
             min?: number;
             max?: number;
             step?: number;
+            revealSeconds?: number;
             unit?: string;
             displayFormat?: "number" | "calendar-year";
             leftAnchor?: string;
@@ -894,6 +961,10 @@ export function toContentItemForm(item: ContentItem): ContentItemFormValues {
         clue: fragment.clue.ar,
       })),
       closestInteraction: closestSlider?.mode ?? "legacy",
+      closestRevealSeconds:
+        closestSlider?.revealSeconds === undefined
+          ? ""
+          : String(closestSlider.revealSeconds),
       closestMin:
         closestSlider?.min === undefined ? "" : String(closestSlider.min),
       closestMax:
@@ -1311,7 +1382,16 @@ export function buildContentItemPayload(values: ContentItemFormValues) {
                       : values.answer.closestUnit.trim()
                         ? { unit: values.answer.closestUnit.trim() }
                         : {}
-                    : {
+                    : values.answer.closestInteraction === "colour-hue"
+                      ? toNumber(values.answer.closestRevealSeconds) ===
+                        undefined
+                        ? {}
+                        : {
+                            revealSeconds: toNumber(
+                              values.answer.closestRevealSeconds,
+                            ),
+                          }
+                      : {
                         leftAnchor: values.answer.closestLeftAnchor.trim(),
                         rightAnchor: values.answer.closestRightAnchor.trim(),
                       }),
@@ -1622,7 +1702,7 @@ export function findLocalFormProblems(
     const interaction = values.answer.closestInteraction;
     if (authoring.isNewItem && !hasClosestSliderMode(interaction)) {
       problems.push(
-        "اختر طريقة التفاعل لمين أقرب: نطاق رقمي أو بين نقطتي ارتكاز.",
+        "اختر طريقة التفاعل لمين أقرب: نطاق رقمي، بين نقطتي ارتكاز، أو تذكّر اللون.",
       );
     }
     if (hasClosestSliderMode(interaction)) {
@@ -1646,6 +1726,25 @@ export function findLocalFormProblems(
         values.answer.closestUnit.trim()
       )
         problems.push("سؤال السنة لا يأخذ وحدة — الرقم نفسه هو السنة.");
+      if (interaction === "colour-hue") {
+        if (min !== 0 || max !== 360)
+          problems.push("سؤال اللون يغطي دائرة الألوان كاملة: من 0 إلى 360.");
+        if (target !== undefined && target >= 360)
+          problems.push("اختر اللون الصحيح من منتقي الألوان.");
+        const reveal = toNumber(values.answer.closestRevealSeconds);
+        if (
+          values.answer.closestRevealSeconds.trim() &&
+          (reveal === undefined ||
+            !Number.isInteger(reveal) ||
+            reveal < 1 ||
+            reveal > CLOSEST_COLOUR_REVEAL_MAX_SECONDS)
+        )
+          problems.push(
+            `مدة ظهور الصورة ملوّنة عدد صحيح من 1 إلى ${CLOSEST_COLOUR_REVEAL_MAX_SECONDS} ثوانٍ.`,
+          );
+        if (values.mediaType !== "image")
+          problems.push("سؤال اللون يحتاج صورة: اللون موجود فيها.");
+      }
       if (interaction === "between-anchors") {
         const left = values.answer.closestLeftAnchor.trim();
         const right = values.answer.closestRightAnchor.trim();

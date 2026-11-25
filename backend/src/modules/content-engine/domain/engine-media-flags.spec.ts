@@ -1,4 +1,7 @@
-import { resolveEngineMediaFlags } from './engine-media-flags';
+import {
+  commonsDiscoveryEnabled,
+  resolveEngineMediaFlags,
+} from './engine-media-flags';
 
 const config = (values: Record<string, string>) => ({
   get: <T = string>(key: string) => values[key] as T | undefined,
@@ -67,5 +70,35 @@ describe('resolveEngineMediaFlags', () => {
         }),
       ).enrichment,
     ).toBe(false);
+  });
+});
+
+describe('commonsDiscoveryEnabled', () => {
+  const on = {
+    CONTENT_ENGINE_ENABLED: 'true',
+    ENGINE_MEDIA_ENRICHMENT_ENABLED: 'true',
+    ENGINE_MEDIA_DISCOVERY_COMMONS_ENABLED: 'true',
+  };
+
+  it('is off by default and with no configuration at all', () => {
+    expect(commonsDiscoveryEnabled(config({}))).toBe(false);
+    expect(commonsDiscoveryEnabled(undefined)).toBe(false);
+  });
+
+  it('needs the engine, enrichment and its own switch together', () => {
+    expect(commonsDiscoveryEnabled(config(on))).toBe(true);
+    for (const missing of Object.keys(on)) {
+      const partial: Record<string, string> = { ...on };
+      delete partial[missing];
+      expect(commonsDiscoveryEnabled(config(partial))).toBe(false);
+    }
+  });
+
+  it('does not change what may fill a slot automatically', () => {
+    expect(resolveEngineMediaFlags(config(on))).toEqual({
+      enrichment: true,
+      imageGeneration: false,
+      wigoloDiscovery: false,
+    });
   });
 });

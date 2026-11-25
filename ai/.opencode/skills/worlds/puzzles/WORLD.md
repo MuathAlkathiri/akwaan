@@ -82,6 +82,29 @@ Avoid breaking the core experience of puzzles.
   exists — is **superseded**: that precondition is satisfied, and it never
   applied to a mechanic Rakkibha does not own.
 
+- Product selection (owner decision 2026-11-24): the engine generates only the
+  families the owner chose that day. Every other canonical family stays in its
+  Scope's library with its ratings and is marked `status: "paused"` in that
+  Scope's machine-readable catalog — paused, not removed, and switched back on
+  by changing that one field. The selection, its rules and its examples are
+  recorded in each Scope's KNOWLEDGE.md under «Product Selection — 2026-11-24».
+  - **Solved, not recalled.** Everything needed is in the prompt, or is
+    something every player knows. Local colour (cities, dishes, clubs, cars) is
+    decoration, never a fact to know.
+  - **Not a maths test.** No visible worksheet and no formula to recall.
+  - **One difficulty: medium.** Not graded easy to hard. مين أقرب alone is
+    pitched a little harder, because two exact answers are a tie.
+  - **All four mechanics run here** — Moving XO, اقرأ خصمك, مين أقرب and
+    القنبلة. القنبلة waits for the image composer: every Bomb item must carry
+    a picture, so it is paused per family (`pausedFor: ["bomb"]`).
+  - **No pictures yet.** Families that need a drawn or templated picture are
+    paused until the image composer exists.
+  - **اقرأ خصمك is the exception to the first two rules (2026-11-25).** Its
+    difficulty is reading the other team, not the question: direct
+    know-it-or-not items, medium leaning easy, never a trap. Riddles, proverbs
+    and everyday word knowledge are allowed for it. It has its own families
+    and shares none with Moving XO.
+
 This file supplies presentation context only. It does not own mechanic behavior
 or Content Patterns.
 
