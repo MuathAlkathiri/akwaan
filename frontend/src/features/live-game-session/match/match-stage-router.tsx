@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -174,7 +175,16 @@ export function MatchStageRouter({
   return (
     <main
       dir="rtl"
-      className={`mx-auto w-full space-y-4 ${stage === "board" ? "max-w-[92rem]" : "max-w-6xl"}`}
+      className={cn(
+        "mx-auto w-full space-y-4",
+        stage === "board" ? "max-w-[92rem]" : "max-w-6xl",
+        // The board is one fixed screen, and it measures itself against the
+        // height the shell hands down. This element is in the middle of that
+        // chain, so it has to pass the height on rather than wrap the board in
+        // a block box: a size container that inherits no height collapses, and
+        // the three Worlds disappear.
+        stage === "board" && "flex min-h-0 flex-1 flex-col",
+      )}
       data-match-actor={actor}
       data-match-stage={stage}
     >
@@ -310,8 +320,7 @@ export function MatchGameplayRenderer({ actor }: { actor: MatchActor }) {
   // the socket so the server can bind the ack to this exact connection and
   // withdraw it on disconnect. Single-surface mechanics keep the HTTP ack.
   const multiSurface = gameplay?.presentationSurface?.running === true;
-  const deferOddPieceHotspotAck =
-    gameplay?.mode.key === ODD_PIECE_MODE_KEY;
+  const deferOddPieceHotspotAck = gameplay?.mode.key === ODD_PIECE_MODE_KEY;
   // The acknowledgement is keyed to the exact runtime revision, and is pinned
   // ONLY once the request has actually been issued and accepted. An attempt that
   // could not be delivered (or that the server rejected) leaves the key open, so

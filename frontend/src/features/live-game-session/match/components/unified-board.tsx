@@ -143,7 +143,10 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
   ) : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4" data-testid="unified-board">
+    <div
+      className="flex flex-1 flex-col gap-4 md:min-h-0 md:gap-3"
+      data-testid="unified-board"
+    >
       {turnSticker &&
         (turnSlot ? (
           createPortal(turnSticker, turnSlot)
@@ -165,7 +168,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
       {board.positions.length === 0 ? (
         <EmptyBoard onResync={() => resync?.()} />
       ) : (
-        <div className="grid gap-10 md:grid-cols-3 md:gap-6 xl:gap-10">
+        <div className="grid gap-10 md:min-h-0 md:flex-1 md:grid-cols-3 md:grid-rows-[minmax(0,1fr)] md:gap-6 xl:gap-10">
           {unified.occurrences.map((occurrence) => {
             // Sorted by slot, not left in whatever order the array arrived in: the
             // three columns showed their four challenges in different orders with no
@@ -186,7 +189,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                 key={occurrence.occurrenceIndex}
                 aria-label={`${occurrenceLabel(occurrence.occurrenceIndex)} · ${occurrence.worldName ?? ""}`}
                 data-testid={`unified-occurrence-${occurrence.occurrenceIndex}`}
-                className="flex flex-col"
+                className="flex flex-col md:min-h-0"
               >
                 {/* The artwork is the World's name on this screen: printing it
                     underneath as well put a caption under every orbit and made
@@ -199,33 +202,38 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
                   {positions.length}
                 </span>
 
-                <WorldOrbit
-                  seed={occurrence.occurrenceIndex}
-                  worldName={occurrence.worldName ?? "عالم"}
-                  {...(artworkByWorldId.get(occurrence.worldId)
-                    ? { artworkUrl: artworkByWorldId.get(occurrence.worldId) }
-                    : {})}
-                  positions={positions}
-                  // Any available position, from any occurrence, at any time.
-                  canSelect={(position) =>
-                    isController &&
-                    selectionOpen &&
-                    position.status === "available" &&
-                    position.launchability === "launchable"
-                  }
-                  blockedReason={(position) =>
-                    isController &&
-                    !selectionOpen &&
-                    position.status === "available" &&
-                    position.launchability === "launchable"
-                      ? "ما تقدرون تختارون تحدي الحين."
-                      : undefined
-                  }
-                  {...(pending ? { pendingKey: pending } : {})}
-                  standings={standings}
-                  onSelect={(chosen) => void prepare(chosen)}
-                  onResume={() => resync?.()}
-                />
+                {/* The orbit takes whatever height the screen has left and
+                    stays square inside it, so three Worlds, their names and
+                    the tally always fit one screen. */}
+                <div className="md:grid md:min-h-0 md:flex-1 md:place-items-center md:[container-type:size]">
+                  <WorldOrbit
+                    seed={occurrence.occurrenceIndex}
+                    worldName={occurrence.worldName ?? "عالم"}
+                    {...(artworkByWorldId.get(occurrence.worldId)
+                      ? { artworkUrl: artworkByWorldId.get(occurrence.worldId) }
+                      : {})}
+                    positions={positions}
+                    // Any available position, from any occurrence, at any time.
+                    canSelect={(position) =>
+                      isController &&
+                      selectionOpen &&
+                      position.status === "available" &&
+                      position.launchability === "launchable"
+                    }
+                    blockedReason={(position) =>
+                      isController &&
+                      !selectionOpen &&
+                      position.status === "available" &&
+                      position.launchability === "launchable"
+                        ? "ما تقدرون تختارون تحدي الحين."
+                        : undefined
+                    }
+                    {...(pending ? { pendingKey: pending } : {})}
+                    standings={standings}
+                    onSelect={(chosen) => void prepare(chosen)}
+                    onResume={() => resync?.()}
+                  />
+                </div>
 
                 {/* The World's name, then four dashes, one per challenge:
                     gold once it has been played. Who won each one is the dot
@@ -266,7 +274,7 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
         <p
           aria-hidden
           data-testid="board-progress-pill"
-          className="mt-auto inline-flex min-h-10 items-center self-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-5 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
+          className="mt-auto inline-flex min-h-10 shrink-0 items-center self-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-5 text-[17px] font-bold text-[hsl(var(--brand-navy))]"
         >
           <span className="me-1.5 text-xl font-extrabold">
             {board.completedPositionCount}
