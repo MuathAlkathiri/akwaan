@@ -2,6 +2,7 @@ import type {
   GameplayRuntimeSnapshot,
   LiveSessionSnapshot,
 } from "../live-game-session/model";
+import type { MatchChallengeResult } from "../live-game-session/match/types";
 import type { TutorialScenario } from "./tutorial-scenario";
 
 export type SceneExample =
@@ -130,6 +131,352 @@ function deriveClosestSlider(
     ...(example.unit ? { unit: example.unit } : {}),
   };
 }
+const challengeNames: Record<string, string> = {
+  "moving-xo": "إكس أو المتحركة",
+  "read-your-opponent": "اقرأ خصمك",
+  closest: "مين أقرب",
+  bomb: "القنبلة",
+  "top-5": "توب 5",
+  combo: "الكومبو",
+  "odd-piece": "القطعة الدخيلة",
+  marhala: "المرحلة",
+  ekshifni: "اكشفني",
+  "la-tahriqha": "لا تحرقها",
+  "first-note": "من أول نغمة",
+};
+
+function buildChallengeResult(
+  example: SceneExample,
+  modeKey: string,
+): MatchChallengeResult {
+  const base: MatchChallengeResult = {
+    id: "example",
+    positionKey: "example",
+    occurrenceIndex: 0,
+    slotKey: "slot_1",
+    worldId: "example",
+    worldName: "مثال توضيحي",
+    challengeTypeId: modeKey,
+    challengeKey: modeKey,
+    challengeName: challengeNames[modeKey] ?? "نتيجة التحدي",
+    selectedScopeIds: [],
+    winnerTeamId: null,
+    tie: false,
+    matchPoints: [],
+    startedAt: stamp,
+    completedAt: stamp,
+    details: {},
+  };
+
+  switch (example.kind) {
+    case "moving-xo":
+      return {
+        ...base,
+        winnerTeamId: a,
+        tie: false,
+        matchPoints: [{ teamId: a, points: 1 }],
+        details: { endedBy: "win" },
+      };
+    case "ryo":
+    case undefined: {
+      const owner = example.outcome.teamRole === "answering" ? a : b;
+      const other = owner === a ? b : a;
+      const winnerTeamId =
+        example.outcome.delta > 0
+          ? owner
+          : example.outcome.delta < 0
+            ? other
+            : null;
+      const answer = (id: string) =>
+        example.options.find((o) => o.id === id)?.label;
+      const mechanicTotals = {
+        [a]: owner === a ? example.outcome.delta : 0,
+        [b]: owner === b ? example.outcome.delta : 0,
+      };
+      return {
+        ...base,
+        winnerTeamId,
+        tie: winnerTeamId === null,
+        matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
+        details: {
+          itemsPlayed: 1,
+          mechanicTotals,
+          tie: winnerTeamId === null,
+          items: [
+            {
+              itemIndex: 0,
+              prompt: example.prompt,
+              answeringTeamId: a,
+              opposingTeamId: b,
+              selectedAnswer: answer(example.answeringSelectionOptionId),
+              correctAnswer: answer(example.correctOptionId),
+              decision: example.opposingDecision.toLowerCase(),
+              correct: example.outcome.correct,
+              mechanicPoints: [
+                { teamId: owner, points: example.outcome.delta },
+              ],
+            },
+          ],
+        },
+      };
+    }
+    case "closest": {
+      const winnerTeamId = example.outcome.tie
+        ? null
+        : example.outcome.winnerTeam;
+      const tie = example.outcome.tie || winnerTeamId === null;
+      const mechanicTotals = {
+        [a]: winnerTeamId === a ? example.outcome.mechanicTallyDelta : 0,
+        [b]: winnerTeamId === b ? example.outcome.mechanicTallyDelta : 0,
+      };
+      return {
+        ...base,
+        winnerTeamId,
+        tie,
+        matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
+        details: {
+          mechanicTotals,
+          items: [
+            {
+              itemIndex: 0,
+              correctValue: example.correctValue,
+              answers: {
+                [a]: example.teamAEstimate,
+                [b]: example.teamBEstimate,
+              },
+              distances: {
+                [a]: example.outcome.teamADistance,
+                [b]: example.outcome.teamBDistance,
+              },
+              winnerTeamId,
+              tie,
+            },
+          ],
+        },
+      };
+    }
+    case "bomb": {
+      const winnerTeamId = example.outcome.winnerTeam;
+      const secondQuestion = example.returnQuestion ?? example.nextQuestion;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: false,
+        matchPoints: [
+          { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
+        ],
+        details: {
+          items: [
+            {
+              teamId: example.startingTeam,
+              prompt: example.prompt,
+              submittedAnswer: example.acceptedAnswer,
+              correctAnswer: example.acceptedAnswer,
+              outcome: "correct",
+            },
+            ...(secondQuestion
+              ? [
+                  {
+                    teamId: example.outcome.expiredTeam,
+                    prompt: secondQuestion.prompt,
+                    submittedAnswer: null,
+                    correctAnswer: secondQuestion.acceptedAnswer,
+                    outcome: "timeout",
+                  },
+                ]
+              : []),
+          ],
+        },
+      };
+    }
+    case "top-5": {
+      const winnerTeamId = example.outcome.winnerTeam;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: false,
+        matchPoints: [
+          { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
+        ],
+        details: {
+          ...example.outcome,
+          title: example.title,
+          rankingBasis: example.rankingBasis,
+          sourceLabel: example.sourceLabel,
+          winnerTeamId,
+          ownership: example.outcome.ownership.map((o) => ({
+            ...o,
+            ownerTeamId: o.ownerTeam,
+            actingTeamId: o.actingTeam,
+          })),
+        },
+      };
+    }
+    case "combo": {
+      const question =
+        example.stages.find(
+          (s) => s.stage === example.outcome.forcedQuestionStage,
+        ) ?? example.stages.at(-1);
+      const bankedA = example.outcome.bankedPoints;
+      const bankedB = 0;
+      const tie = bankedA === bankedB;
+      const winnerTeamId = tie ? null : bankedA > bankedB ? a : b;
+      return {
+        ...base,
+        winnerTeamId,
+        tie,
+        matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
+        details: {
+          points: { [a]: bankedA, [b]: bankedB },
+          tie,
+          runs: question
+            ? [
+                {
+                  teamId: a,
+                  bankedPoints: bankedA,
+                  questionsAnswered: question.stage,
+                  endedBy: example.outcome.endedBy,
+                  brokenByTeamId: b,
+                },
+              ]
+            : [],
+        },
+      };
+    }
+    case "odd-piece": {
+      const winnerTeamId = example.outcome.winnerTeam;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: false,
+        matchPoints: [
+          { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
+        ],
+        details: {
+          points: example.outcome.points,
+        },
+      };
+    }
+    case "marhala": {
+      const reachedFinish = example.outcome.finalLanding >= 16;
+      const winnerTeamId = reachedFinish ? example.activeTeam : null;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: false,
+        matchPoints:
+          winnerTeamId && example.outcome.matchPointDelta
+            ? [{ teamId: winnerTeamId, points: example.outcome.matchPointDelta }]
+            : [],
+        details: {
+          endedBy: "finish",
+          positions: {
+            [a]: example.outcome.teamAPosition,
+            [b]: example.outcome.teamBPosition,
+          },
+        },
+      };
+    }
+    case "ekshifni": {
+      const winnerTeamId = example.outcome.winnerTeam;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: false,
+        matchPoints: [
+          { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
+        ],
+        details: {
+          mechanicTotals: example.outcome.finalTotals,
+          items: [
+            {
+              identity: example.celebrityIdentity,
+              winnerTeamId: example.outcome.correctTeam,
+              value: example.outcome.resolvedValue,
+              revealedRegionIds: example.outcome.revealedRegionIds,
+              resolvedBy: "answer",
+            },
+          ],
+        },
+      };
+    }
+    case "la-tahriqha": {
+      const winnerTeamId = example.outcome.tie
+        ? null
+        : example.outcome.winnerTeam;
+      const burns = example.outcome.dishResults.reduce(
+        (count, dish) =>
+          count + (dish.teamA.burned ? 1 : 0) + (dish.teamB.burned ? 1 : 0),
+        0,
+      );
+      const perfectDishes = example.outcome.dishResults.reduce(
+        (count, dish) =>
+          count + (dish.teamA.perfect ? 1 : 0) + (dish.teamB.perfect ? 1 : 0),
+        0,
+      );
+      return {
+        ...base,
+        winnerTeamId,
+        tie: example.outcome.tie,
+        matchPoints:
+          winnerTeamId && example.outcome.matchPointDelta
+            ? [{ teamId: winnerTeamId, points: example.outcome.matchPointDelta }]
+            : [],
+        details: {
+          mechanicTotals: example.outcome.finalTotals,
+          burns,
+          perfectDishes,
+          dishes: example.outcome.dishResults.map((dish) => ({
+            dishName: dish.dishName,
+            teams: [
+              {
+                teamId: a,
+                points: dish.teamA.points,
+                burned: dish.teamA.burned,
+                perfect: dish.teamA.perfect,
+              },
+              {
+                teamId: b,
+                points: dish.teamB.points,
+                burned: dish.teamB.burned,
+                perfect: dish.teamB.perfect,
+              },
+            ],
+          })),
+        },
+      };
+    }
+    case "first-note": {
+      const roundWinner = example.outcome.stolen
+        ? example.outcome.stealTeam
+        : example.outcome.firstAnswerFailed
+          ? null
+          : example.outcome.firstAnswerTeam;
+      const pointsA = example.outcome.points["team-a"] ?? 0;
+      const pointsB = example.outcome.points["team-b"] ?? 0;
+      const winnerTeamId =
+        pointsA === pointsB ? null : pointsA > pointsB ? a : b;
+      return {
+        ...base,
+        winnerTeamId,
+        tie: winnerTeamId === null,
+        matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
+        details: {
+          mechanicTotals: example.outcome.points,
+          items: [
+            {
+              title: example.title,
+              finalBidSeconds: example.outcome.finalBidSeconds,
+              winnerTeamId: roundWinner,
+              stolen: example.outcome.stolen,
+            },
+          ],
+        },
+      };
+    }
+  }
+}
+
 export function sceneProjection(
   example: SceneExample,
   step: number,
@@ -220,12 +567,15 @@ export function sceneProjection(
     revision: 1,
     status: "active",
     stage: {
-      key: "challenge",
+      key: step === 2 ? "challenge_result" : "challenge",
       enteredAt: stamp,
       minimumDisplayDurationMs: 0,
       animationCue: null,
       audioCue: null,
     },
+    ...(step === 2
+      ? { challengeResult: buildChallengeResult(example, mode.key) }
+      : {}),
     unified: {
       occurrences: [],
       board: {

@@ -1,9 +1,11 @@
 "use client";
 
-import { ClosestResultRecap } from "../live-game-session/match/components/closest-result-recap";
-import { RyoResultRecap } from "../live-game-session/match/components/ryo-result-recap";
-import { OddPieceResultRecap } from "../live-game-session/match/components/odd-piece-result-recap";
-import { MarhalaResultRecap } from "../live-game-session/match/components/marhala-result-recap";
+import {
+  QueryClient,
+  QueryClientContext,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { useContext, useMemo } from "react";
 import { MarhalaAnswerReveal } from "../live-game-session/match/components/marhala-answer-reveal";
 import styles from "./scene.module.css";
 import { LiveSessionContext } from "../live-game-session/hooks/live-session-context";
@@ -11,6 +13,7 @@ import { LiveSessionClockContext } from "../live-game-session/hooks/live-session
 import { CountdownSurfaceProvider } from "../live-game-session/match/components/countdown-presentation";
 import { MobileGameplayShell } from "../live-game-session/match/components/mobile-gameplay-shell";
 import { ParticipantWaiting } from "../live-game-session/match/components/participant-waiting";
+import { UnifiedChallengeResultStage } from "../live-game-session/match/components/unified-challenge-result-stage";
 import { MovingXoScreen } from "../live-game-session/components/moving-xo-screen";
 import { MovingXoPhonePanel } from "../live-game-session/components/moving-xo-phone-panel";
 import { RyoGameplayPanel } from "../live-game-session/components/ryo-gameplay-panel";
@@ -24,9 +27,8 @@ import { MarhalaPhonePanel } from "../live-game-session/components/marhala-phone
 import { EkshifniGameplayPanel } from "../live-game-session/components/ekshifni-gameplay-panel";
 import { LaTahriqhaGameplayPanel } from "../live-game-session/components/la-tahriqha-gameplay-panel";
 import { FirstNoteGameplayPanel } from "../live-game-session/components/first-note-gameplay-panel";
-import { BombResultRecap } from "../live-game-session/match/components/bomb-result-recap";
 import { Top5ResultReveal } from "../live-game-session/match/components/top5-result-reveal";
-import type { MatchChallengeResult } from "../live-game-session/match/types";
+import { playerCatalogKeys } from "../worlds/hooks/use-player-catalog";
 import { sceneProjection, type SceneExample } from "./scene-projection";
 import { SceneTemplate } from "./scene-template";
 
@@ -124,6 +126,32 @@ function ryoExplainLine(
   return `${answeringName} جاوب غلط، و${opposingName} وثق فيهم غلط وخسر نقطة.`;
 }
 
+function InertResultStage() {
+  const parentClient = useContext(QueryClientContext);
+  const cachedWorlds = parentClient?.getQueryData(playerCatalogKeys.worlds);
+  const inertClient = useMemo(() => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          enabled: false,
+          retry: false,
+          staleTime: Infinity,
+          refetchOnMount: false,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
+        },
+      },
+    });
+    client.setQueryData(playerCatalogKeys.worlds, cachedWorlds ?? []);
+    return client;
+  }, [cachedWorlds]);
+  return (
+    <QueryClientProvider client={inertClient}>
+      <UnifiedChallengeResultStage actor="shared-screen" />
+    </QueryClientProvider>
+  );
+}
+
 function Surface({
   example,
   step,
@@ -134,25 +162,36 @@ function Surface({
   team?: string;
 }) {
   const { runtime, snapshot } = sceneProjection(example, step, team);
-  const baseResult: MatchChallengeResult = {
-    id: "example",
-    positionKey: "example",
-    occurrenceIndex: 1,
-    slotKey: "slot_1",
-    worldId: "example",
-    challengeTypeId: runtime.mode.key,
-    challengeKey: runtime.mode.key,
-    selectedScopeIds: [],
-    winnerTeamId: null,
-    tie: false,
-    matchPoints: [],
-    startedAt: snapshot.createdAt,
-    completedAt: snapshot.createdAt,
-    details: {},
-  };
   const teamName = (id: string) =>
     snapshot.teams.find((t) => t.id === id)?.name ?? "الفريق";
   function content() {
+    if (step === 2) {
+      const challengeResult = snapshot.match?.challengeResult;
+      if (team) {
+        return (
+          <ParticipantWaiting
+            teamName={teamName(team)}
+            {...(challengeResult ? { challengeResult } : {})}
+          />
+        );
+      }
+      if (example.kind === "moving-xo") {
+        return <MovingXoScreen runtime={runtime} />;
+      }
+      if (example.kind === "top-5" && challengeResult) {
+        return (
+          <div className={styles.panelFill}>
+            <Top5ResultReveal
+              result={challengeResult}
+              snapshot={snapshot}
+              stepMs={0}
+            />
+          </div>
+        );
+      }
+      return <InertResultStage />;
+    }
+
     switch (example.kind) {
       case "moving-xo":
         return team ? (
@@ -162,51 +201,6 @@ function Surface({
         );
       case "ryo":
       case undefined:
-        if (step === 2) {
-          const owner =
-            example.outcome.teamRole === "answering" ? "team-a" : "team-b";
-          const other = owner === "team-a" ? "team-b" : "team-a";
-          const winnerTeamId =
-            example.outcome.delta > 0
-              ? owner
-              : example.outcome.delta < 0
-                ? other
-                : null;
-          if (team) {
-            return (
-              <ParticipantWaiting
-                teamName={teamName(team)}
-                challengeResult={{
-                  ...baseResult,
-                  winnerTeamId,
-                  tie: winnerTeamId === null,
-                  matchPoints: [],
-                }}
-              />
-            );
-          }
-          const answer = (id: string) =>
-            example.options.find((o) => o.id === id)?.label;
-          const item = {
-            itemIndex: 0,
-            prompt: example.prompt,
-            answeringTeamId: "team-a",
-            opposingTeamId: "team-b",
-            selectedAnswer: answer(example.answeringSelectionOptionId),
-            correctAnswer: answer(example.correctOptionId),
-            decision: example.opposingDecision.toLowerCase(),
-            correct: example.outcome.correct,
-            mechanicPoints: [{ teamId: owner, points: example.outcome.delta }],
-          };
-          return (
-            <div className={`${styles.centeredRecap} ${styles.roundOnly}`}>
-              <RyoResultRecap
-                result={{ ...baseResult, details: { items: [item] } }}
-                snapshot={snapshot}
-              />
-            </div>
-          );
-        }
         if (step === 1 && !team) {
           return (
             <div className={styles.panelFill}>
@@ -223,58 +217,10 @@ function Surface({
         }
         return <RyoGameplayPanel runtime={runtime} />;
       case "closest":
-        if (step === 2) {
-          if (team) {
-            return (
-              <ParticipantWaiting
-                teamName={teamName(team)}
-                challengeResult={{
-                  ...baseResult,
-                  winnerTeamId: example.outcome.winnerTeam,
-                  tie: example.outcome.tie,
-                  matchPoints: [],
-                }}
-              />
-            );
-          }
-          return (
-            <div className={`${styles.centeredRecap} ${styles.roundOnly}`}>
-              <ClosestResultRecap
-                result={{
-                  ...baseResult,
-                  details: {
-                    items: [
-                      {
-                        itemIndex: 0,
-                        ...JSON.parse(
-                          String(runtime.modeState.revealedResultJson),
-                        ),
-                      },
-                    ],
-                  },
-                }}
-                snapshot={snapshot}
-              />
-            </div>
-          );
-        }
         return <ClosestGameplayPanel runtime={runtime} />;
       case "combo":
         return <ComboGameplayPanel runtime={runtime} />;
       case "odd-piece":
-        if (step === 2 && !team)
-          return (
-            <div className={styles.centeredRecap}>
-              <OddPieceResultRecap
-                snapshot={snapshot}
-                result={{
-                  ...baseResult,
-                  winnerTeamId: example.outcome.winnerTeam,
-                  details: { points: example.outcome.points },
-                }}
-              />
-            </div>
-          );
         return (
           <OddPieceGameplayPanel
             runtime={runtime}
@@ -282,23 +228,6 @@ function Surface({
           />
         );
       case "marhala":
-        if (step === 2 && !team)
-          return (
-            <div className={`${styles.centeredRecap} ${styles.turnOnly}`}>
-              <MarhalaResultRecap
-                result={{
-                  ...baseResult,
-                  details: {
-                    positions: {
-                      "team-a": example.outcome.teamAPosition,
-                      "team-b": example.outcome.teamBPosition,
-                    },
-                  },
-                }}
-                snapshot={snapshot}
-              />
-            </div>
-          );
         if (step === 1) {
           if (team && team !== example.activeTeam) {
             return <MarhalaPhonePanel runtime={runtime} />;
@@ -329,80 +258,9 @@ function Surface({
           <MarhalaScreen runtime={runtime} />
         );
       case "bomb":
-      case "top-5": {
-        if (step !== 2 || (team && example.kind === "top-5"))
-          return example.kind === "bomb" ? (
-            <BombGameplayPanel runtime={runtime} />
-          ) : (
-            <Top5Panel runtime={runtime} />
-          );
-        const winnerTeamId = example.outcome.winnerTeam;
-        const result: MatchChallengeResult = {
-          ...baseResult,
-          winnerTeamId,
-          matchPoints: [{ teamId: winnerTeamId, points: 1 }],
-          details:
-            example.kind === "bomb"
-              ? {
-                  items: [
-                    {
-                      teamId: example.startingTeam,
-                      prompt: example.prompt,
-                      submittedAnswer: example.acceptedAnswer,
-                      correctAnswer: example.acceptedAnswer,
-                      outcome: "correct",
-                    },
-                    ...(example.nextQuestion
-                      ? [
-                          {
-                            teamId: example.outcome.expiredTeam,
-                            prompt: (
-                              example.returnQuestion ?? example.nextQuestion
-                            ).prompt,
-                            submittedAnswer: null,
-                            correctAnswer: (
-                              example.returnQuestion ?? example.nextQuestion
-                            ).acceptedAnswer,
-                            outcome: "timeout",
-                          },
-                        ]
-                      : []),
-                  ],
-                }
-              : {
-                  ...example.outcome,
-                  title: example.title,
-                  rankingBasis: example.rankingBasis,
-                  sourceLabel: example.sourceLabel,
-                  winnerTeamId,
-                  ownership: example.outcome.ownership.map((o) => ({
-                    ...o,
-                    ownerTeamId: o.ownerTeam,
-                    actingTeamId: o.actingTeam,
-                  })),
-                },
-        };
-        return example.kind === "bomb" ? (
-          team ? (
-            <ParticipantWaiting
-              teamName={teamName(team)}
-              challengeResult={result}
-            />
-          ) : (
-            <div className={styles.centeredRecap}>
-              <BombResultRecap result={result} snapshot={snapshot} />
-            </div>
-          )
-        ) : (
-          <div className={styles.panelFill}>
-            <Top5ResultReveal
-              result={result}
-              snapshot={snapshot}
-              stepMs={0}
-            />
-          </div>
-        );
-      }
+        return <BombGameplayPanel runtime={runtime} />;
+      case "top-5":
+        return <Top5Panel runtime={runtime} />;
       case "ekshifni":
         return (
           <EkshifniGameplayPanel

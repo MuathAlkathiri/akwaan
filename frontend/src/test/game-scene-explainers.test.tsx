@@ -140,7 +140,7 @@ describe("GameScene unified explainers", () => {
     );
   });
 
-  it("renders ekshifni through GameScene across all 3 steps with challenge recap on phones", () => {
+  it("renders ekshifni through GameScene across all 3 steps with UnifiedChallengeResultStage and waiting phones", () => {
     render(
       <MechanicTutorialRenderer scenario={SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO} />,
     );
@@ -162,11 +162,19 @@ describe("GameScene unified explainers", () => {
     expect(screen.getAllByTestId("ekshifni-reveal").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("ekshifni-recap")).toHaveLength(3);
+    expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
+    expect(screen.getByTestId("ekshifni-challenge-result")).toBeInTheDocument();
+    expect(screen.queryByTestId("challenge-result-continue")).toBeNull();
+    const waitingPhones = screen.getAllByTestId("participant-waiting");
+    expect(waitingPhones).toHaveLength(2);
+    for (const phone of waitingPhones) {
+      expect(phone).toHaveAttribute("data-match-complete", "false");
+      expect(phone).toHaveAttribute("data-showing-result", "true");
+    }
     expect(screen.queryByText(/فزتم بالمباراة/)).toBeNull();
   });
 
-  it("renders la-tahriqha through GameScene across all 3 steps with challenge recap on phones", () => {
+  it("renders la-tahriqha through GameScene across all 3 steps with UnifiedChallengeResultStage and waiting phones", () => {
     render(
       <MechanicTutorialRenderer
         scenario={SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO}
@@ -186,11 +194,21 @@ describe("GameScene unified explainers", () => {
     ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("la-tahriqha-recap")).toHaveLength(3);
+    expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("la-tahriqha-challenge-result"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("challenge-result-continue")).toBeNull();
+    const waitingPhones = screen.getAllByTestId("participant-waiting");
+    expect(waitingPhones).toHaveLength(2);
+    for (const phone of waitingPhones) {
+      expect(phone).toHaveAttribute("data-match-complete", "false");
+      expect(phone).toHaveAttribute("data-showing-result", "true");
+    }
     expect(screen.queryByText(/فزتم بالمباراة/)).toBeNull();
   });
 
-  it("renders first-note through GameScene with a bid slider and challenge recap on phones", () => {
+  it("renders first-note through GameScene with a bid slider and UnifiedChallengeResultStage on step 3", () => {
     render(<MechanicTutorialRenderer scenario={FIRST_NOTE_FIXTURE} />);
 
     expect(screen.getByTestId("first-note-bid-slider")).toBeInTheDocument();
@@ -205,7 +223,17 @@ describe("GameScene unified explainers", () => {
     ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("first-note-recap")).toHaveLength(3);
+    expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("first-note-challenge-result"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("challenge-result-continue")).toBeNull();
+    const waitingPhones = screen.getAllByTestId("participant-waiting");
+    expect(waitingPhones).toHaveLength(2);
+    for (const phone of waitingPhones) {
+      expect(phone).toHaveAttribute("data-match-complete", "false");
+      expect(phone).toHaveAttribute("data-showing-result", "true");
+    }
     expect(screen.queryByText(/فزتم بالمباراة/)).toBeNull();
   });
 
@@ -242,7 +270,7 @@ describe("GameScene unified explainers", () => {
     );
   });
 
-  it("shows reveal-only phone, spent charge, and 0 balance for combo step 2", () => {
+  it("shows reveal-only phone, spent charge, and 0 balance for combo step 2 and UnifiedChallengeResultStage on step 3", () => {
     render(
       <MechanicTutorialRenderer scenario={SAMPLE_COMBO_TUTORIAL_SCENARIO} />,
     );
@@ -253,5 +281,16 @@ describe("GameScene unified explainers", () => {
       "انصرف",
     );
     expect(screen.getByTestId("combo-streak-points")).toHaveTextContent("0");
+
+    fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
+    expect(screen.getByTestId("combo-challenge-result")).toBeInTheDocument();
+    expect(screen.queryByTestId("challenge-result-continue")).toBeNull();
+    const waitingPhones = screen.getAllByTestId("participant-waiting");
+    expect(waitingPhones).toHaveLength(2);
+    for (const phone of waitingPhones) {
+      expect(phone).toHaveAttribute("data-match-complete", "false");
+      expect(phone).toHaveAttribute("data-showing-result", "true");
+    }
   });
 });

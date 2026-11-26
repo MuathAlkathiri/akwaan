@@ -106,13 +106,47 @@
   justify-content: space-evenly;
 }
 
-.panelFill,
-.roundOnly,
-.turnOnly {
+.panelFill {
   display: flex;
   flex-direction: column;
   flex: 1 1 0%;
   min-height: 0;
+}
+
+.screenCanvas :global([data-testid="unified-challenge-result"]) {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  flex: 1 1 0%;
+  justify-content: flex-start;
+}
+
+.screenCanvas
+  :global([data-testid="unified-challenge-result"] [data-testid="world-media"]) {
+  aspect-ratio: auto;
+  height: 88px;
+}
+
+.screenCanvas :global([data-testid="unified-challenge-result"] > section) {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.screenCanvas
+  :global([data-testid="unified-challenge-result"] ol.grid:has(> li:only-child)) {
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      ol.grid:has(> li:nth-child(2):last-child)
+  ) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .centeredRecap {
@@ -261,20 +295,6 @@
   }
 }
 
-/* These publications score one round. Only a full challenge can award a Match point. */
-.roundOnly :global([data-testid="challenge-winner-banner"]),
-.roundOnly :global([data-testid="ryo-result-winner"]) {
-  display: none;
-}
-
-.roundOnly ol {
-  display: block;
-}
-
-.instantReveal:not(:has(:global([data-testid="top5-winner"]))) {
-  visibility: hidden;
-}
-
 .scene :global(.bg-sem-success),
 .scene :global(.bg-success),
 .scene :global(.bg-brand-mint),
@@ -291,9 +311,4 @@
   background: hsl(var(--sem-error));
   color: hsl(var(--brand-navy));
   border: 2px solid hsl(var(--brand-navy));
-}
-
-/* The published race example ends after one turn, before either team wins. */
-.turnOnly header {
-  display: none;
 }
