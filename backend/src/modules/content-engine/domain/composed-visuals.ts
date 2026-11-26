@@ -15,6 +15,7 @@ import { createHash } from 'crypto';
 export const COMPOSED_VISUAL_FAMILIES = [
   'battery-level',
   'copy-the-mark',
+  'colour-recall',
 ] as const;
 
 export type ComposedVisualFamily = (typeof COMPOSED_VISUAL_FAMILIES)[number];
@@ -61,8 +62,8 @@ export interface ComposedVisual {
   /** Which drawing of the family this is. */
   variant: string;
   prompt: string;
-  leftAnchor: string;
-  rightAnchor: string;
+  /** The slider the item is answered on, whole. */
+  slider: Record<string, unknown>;
   altText: string;
   concept: string;
   factualClaim: string;
@@ -182,6 +183,251 @@ export function markSvg(
   );
 }
 
+const shareSlider = (
+  leftAnchor: string,
+  rightAnchor: string,
+): Record<string, unknown> => ({
+  mode: 'between-anchors',
+  min: COMPOSED_SCALE_MIN,
+  max: COMPOSED_SCALE_MAX,
+  step: 1,
+  leftAnchor,
+  rightAnchor,
+});
+
+// ---------------------------------------------------------------------------
+// «تذكّر اللون»
+// ---------------------------------------------------------------------------
+
+/**
+ * The saturation and lightness every hue is shown at.
+ *
+ * These are the phone's own numbers (`closest-colour.ts`): the colour drawn
+ * here and the colour under the player's thumb at the same hue are one
+ * colour, or the question has no right answer.
+ */
+export const COLOUR_SATURATION = 85;
+export const COLOUR_LIGHTNESS = 50;
+
+/** Hues an answer may take: every fifth degree round the wheel. */
+export const COLOUR_HUE_STEP = 5;
+export const COLOUR_HUES: readonly number[] = Array.from(
+  { length: 360 / COLOUR_HUE_STEP },
+  (_, index) => index * COLOUR_HUE_STEP,
+);
+
+/** How far apart, the short way round, two colours in one picture must be. */
+export const COLOUR_MIN_SEPARATION = 90;
+
+export const COLOUR_REVEAL_SECONDS = { single: 3, trio: 5 } as const;
+
+/** hsl → #rrggbb, by the CSS definition, so a renderer needs no hsl support. */
+export function hueHex(hue: number): string {
+  const h = (((hue % 360) + 360) % 360) / 360;
+  const s = COLOUR_SATURATION / 100;
+  const l = COLOUR_LIGHTNESS / 100;
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const channel = (t: number): number => {
+    const wrapped = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+    const value =
+      wrapped < 1 / 6
+        ? p + (q - p) * 6 * wrapped
+        : wrapped < 1 / 2
+          ? q
+          : wrapped < 2 / 3
+            ? p + (q - p) * (2 / 3 - wrapped) * 6
+            : p;
+    return Math.round(value * 255);
+  };
+  return `#${[channel(h + 1 / 3), channel(h), channel(h - 1 / 3)]
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+/** Degrees between two hues, the short way round. */
+export function hueSeparation(a: number, b: number): number {
+  const around = Math.abs(a - b) % 360;
+  return Math.min(around, 360 - around);
+}
+
+const OUTLINE = `stroke="${PALETTE.ink}" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"`;
+
+/**
+ * Things anyone can name at a glance, drawn in a 300×300 box about the
+ * origin. Each is one flat colour with an ink outline — nothing that could be
+ * mistaken for a character or a brand.
+ */
+export const COLOUR_OBJECTS: ReadonlyArray<{
+  key: string;
+  /** With the article, as it reads after «وش كان لون». */
+  name: string;
+  draw: (fill: string) => string;
+}> = [
+  {
+    key: 'balloon',
+    name: 'البالون',
+    draw: (fill) =>
+      `<path d="M0 88 q-26 30 6 58 q-30 26 -2 4" fill="none" ${OUTLINE}/>` +
+      `<path d="M-16 92 l32 0 l-16 -22 z" fill="${fill}" ${OUTLINE}/>` +
+      `<ellipse cx="0" cy="-34" rx="96" ry="112" fill="${fill}" ${OUTLINE}/>`,
+  },
+  {
+    key: 'mug',
+    name: 'الكوب',
+    draw: (fill) =>
+      `<path d="M64 -52 h28 a52 52 0 0 1 0 104 h-28" fill="none" ${OUTLINE}/>` +
+      `<rect x="-104" y="-104" width="170" height="208" rx="24" fill="${fill}" ${OUTLINE}/>`,
+  },
+  {
+    key: 'tshirt',
+    name: 'التيشيرت',
+    draw: (fill) =>
+      `<path d="M-58 -118 q58 44 116 0 l84 58 l-42 52 l-30 -24 v162 h-140 v-162 l-30 24 l-42 -52 z" fill="${fill}" ${OUTLINE}/>`,
+  },
+  {
+    key: 'umbrella',
+    name: 'المظلة',
+    draw: (fill) =>
+      `<path d="M0 -20 v124 a22 22 0 0 0 44 0" fill="none" ${OUTLINE}/>` +
+      `<path d="M-140 -10 a140 124 0 0 1 280 0 z" fill="${fill}" ${OUTLINE}/>`,
+  },
+  {
+    key: 'gift',
+    name: 'الهدية',
+    draw: (fill) =>
+      `<rect x="-108" y="-44" width="216" height="172" rx="10" fill="${fill}" ${OUTLINE}/>` +
+      `<rect x="-124" y="-92" width="248" height="56" rx="10" fill="${fill}" ${OUTLINE}/>` +
+      `<rect x="-17" y="-92" width="34" height="220" fill="#FFFFFF" ${OUTLINE}/>` +
+      `<path d="M0 -92 q-70 -64 -78 -18 q4 30 78 18 q74 12 78 -18 q-8 -46 -78 18" fill="#FFFFFF" ${OUTLINE}/>`,
+  },
+  {
+    key: 'kite',
+    name: 'الطيارة الورقية',
+    draw: (fill) =>
+      `<path d="M0 118 q-34 26 -6 52 q30 22 -8 48" fill="none" ${OUTLINE}/>` +
+      `<path d="M0 -140 l104 110 l-104 148 l-104 -148 z" fill="${fill}" ${OUTLINE}/>` +
+      `<path d="M0 -140 v258 M-104 -30 h208" fill="none" ${OUTLINE}/>`,
+  },
+  {
+    key: 'cap',
+    name: 'الكاب',
+    draw: (fill) =>
+      `<rect x="64" y="42" width="136" height="38" rx="19" fill="${fill}" ${OUTLINE}/>` +
+      `<path d="M-124 60 a124 124 0 0 1 248 0 z" fill="${fill}" ${OUTLINE}/>` +
+      `<circle cx="0" cy="-64" r="12" fill="${PALETTE.ink}"/>`,
+  },
+  {
+    key: 'ball',
+    name: 'الكورة',
+    draw: (fill) =>
+      `<circle cx="0" cy="0" r="122" fill="${fill}" ${OUTLINE}/>` +
+      `<path d="M-116 -38 q116 60 232 0 M-116 38 q116 -60 232 0" fill="none" ${OUTLINE}/>`,
+  },
+];
+
+export const COLOUR_VARIANTS = ['single', 'trio'] as const;
+
+export interface ColourScene {
+  variant: (typeof COLOUR_VARIANTS)[number];
+  /** Every thing in the picture, left to right, with its hue. */
+  objects: Array<{ key: string; name: string; hue: number }>;
+  /** Index into `objects` of the one asked about. */
+  asked: number;
+}
+
+/** Decide what is drawn: which things, which colours, which one is asked. */
+export function colourScene(seed: string): ColourScene {
+  const bytes = seedBytes(`colour-recall:${seed}`);
+  const variant = COLOUR_VARIANTS[bytes[0] % COLOUR_VARIANTS.length];
+  const hue = COLOUR_HUES[bytes.readUInt16BE(1) % COLOUR_HUES.length];
+  const first = bytes[3] % COLOUR_OBJECTS.length;
+  if (variant === 'single') {
+    const object = COLOUR_OBJECTS[first];
+    return {
+      variant,
+      objects: [{ key: object.key, name: object.name, hue }],
+      asked: 0,
+    };
+  }
+  // Three different things, and three colours no two of which a player
+  // could confuse: each at least a quarter of the wheel from the others.
+  const second =
+    (first + 1 + (bytes[4] % (COLOUR_OBJECTS.length - 1))) %
+    COLOUR_OBJECTS.length;
+  let third = bytes[5] % COLOUR_OBJECTS.length;
+  while (third === first || third === second) {
+    third = (third + 1) % COLOUR_OBJECTS.length;
+  }
+  const secondOffset = 90 + (bytes[6] % 11) * COLOUR_HUE_STEP; // 90..140
+  const thirdOffset = 230 + (bytes[7] % 9) * COLOUR_HUE_STEP; // 230..270
+  const picks = [
+    { index: first, hue },
+    { index: second, hue: (hue + secondOffset) % 360 },
+    { index: third, hue: (hue + thirdOffset) % 360 },
+  ];
+  // Position must not tell which is asked: rotate the row by the seed.
+  const rotation = bytes[8] % 3;
+  const row = [0, 1, 2].map((slot) => picks[(slot + rotation) % 3]);
+  return {
+    variant,
+    objects: row.map(({ index, hue: objectHue }) => ({
+      key: COLOUR_OBJECTS[index].key,
+      name: COLOUR_OBJECTS[index].name,
+      hue: objectHue,
+    })),
+    asked: bytes[9] % 3,
+  };
+}
+
+export function colourSceneSvg(scene: ColourScene): string {
+  const placements =
+    scene.objects.length === 1
+      ? [{ x: 600, y: 330, scale: 1.55 }]
+      : [
+          { x: 215, y: 330, scale: 1.05 },
+          { x: 600, y: 330, scale: 1.05 },
+          { x: 985, y: 330, scale: 1.05 },
+        ];
+  return svgFrame(
+    scene.objects
+      .map((object, index) => {
+        const { x, y, scale } = placements[index];
+        const shape = COLOUR_OBJECTS.find((entry) => entry.key === object.key);
+        return `<g data-object="${object.key}" data-hue="${object.hue}" transform="translate(${x} ${y}) scale(${scale})">${shape?.draw(hueHex(object.hue)) ?? ''}</g>`;
+      })
+      .join(''),
+  );
+}
+
+function composeColourRecall(seed: string): ComposedVisual {
+  const scene = colourScene(seed);
+  const asked = scene.objects[scene.asked];
+  return {
+    familyKey: 'colour-recall',
+    value: asked.hue,
+    variant: `${scene.variant}:${scene.objects.map((object) => object.key).join('+')}:${asked.key}`,
+    prompt: `وش كان لون ${asked.name}؟`,
+    slider: {
+      mode: 'colour-hue',
+      min: 0,
+      max: 360,
+      step: 1,
+      revealSeconds: COLOUR_REVEAL_SECONDS[scene.variant],
+    },
+    altText:
+      scene.objects.length === 1
+        ? 'رسمة لشيء واحد بلون واحد'
+        : 'رسمة لثلاثة أشياء، كل واحد بلون',
+    concept:
+      scene.objects.length === 1
+        ? 'Remember the exact colour of one drawn thing after it turns grey.'
+        : 'Remember which of three colours belonged to one named thing after the picture turns grey.',
+    factualClaim: `The ${asked.key} is drawn at hue ${asked.hue}° (${hueHex(asked.hue)}).`,
+    svg: colourSceneSvg(scene),
+  };
+}
+
 /**
  * Compose one item of a family from a seed.
  *
@@ -192,6 +438,7 @@ export function composeVisual(
   familyKey: ComposedVisualFamily,
   seed: string,
 ): ComposedVisual {
+  if (familyKey === 'colour-recall') return composeColourRecall(seed);
   const value = pickComposedValue(`${familyKey}:${seed}`);
   if (familyKey === 'battery-level') {
     const variant = pickVariant(`${familyKey}:${seed}`, BATTERY_VARIANTS);
@@ -200,8 +447,7 @@ export function composeVisual(
       value,
       variant,
       prompt: 'كم نسبة شحن هذا الجوال؟',
-      leftAnchor: 'فاضية',
-      rightAnchor: 'مليانة',
+      slider: shareSlider('فاضية', 'مليانة'),
       altText: 'بطارية جوال مشحونة جزئيًا بدون رقم',
       concept:
         'Estimate a phone battery level from its drawing, with no number shown.',
@@ -215,8 +461,7 @@ export function composeVisual(
     value,
     variant,
     prompt: 'حط مؤشرك في نفس مكان العلامة على الخط.',
-    leftAnchor: 'أول الخط',
-    rightAnchor: 'آخر الخط',
+    slider: shareSlider('أول الخط', 'آخر الخط'),
     altText: 'خط أفقي عليه علامة واحدة',
     concept: 'Copy the position of a mark on a line onto the slider.',
     factualClaim: `The mark is drawn ${value}% of the way along the line.`,

@@ -82,7 +82,11 @@ describe('ComposedVisualService', () => {
 
   it('passes the screen when its picture exists', async () => {
     const { service } = build();
-    for (const familyKey of ['battery-level', 'copy-the-mark'] as const) {
+    for (const familyKey of [
+      'battery-level',
+      'copy-the-mark',
+      'colour-recall',
+    ] as const) {
       expect(
         blockingCodes(await service.compose(familyKey, 'job-1:0')),
       ).toEqual([]);
@@ -173,6 +177,35 @@ describe('ComposedVisualService', () => {
     expect(screenAgainst(same, first)).toContain(
       'DUPLICATE_HISTORICAL_CONTENT',
     );
+  });
+
+  it('authors a colour question on the whole wheel, shown for a few seconds', async () => {
+    const { service } = build();
+    const candidate = await service.compose('colour-recall', 'job-1:4');
+    const slider = (
+      candidate.draft.mechanicPayload as { closestSlider: Record<string, any> }
+    ).closestSlider;
+    expect(slider).toMatchObject({ mode: 'colour-hue', min: 0, max: 360 });
+    expect(slider.revealSeconds).toBeGreaterThanOrEqual(3);
+    expect(slider.revealSeconds).toBeLessThanOrEqual(10);
+    expect(
+      (candidate.draft.answerPayload as { correctValue: number }).correctValue,
+    ).toBeLessThan(360);
+  });
+
+  it('refuses a colour question nobody drew', () => {
+    expect(
+      blockingCodes({
+        draft: {
+          prompt: { ar: 'وش كان لون البالون في الصورة السابقة؟' },
+          answerPayload: { mode: 'closest', correctValue: 120 },
+          mechanicPayload: {
+            closestSlider: { mode: 'colour-hue', min: 0, max: 360, step: 1 },
+          },
+        },
+        authoring: {},
+      }),
+    ).toContain('CLOSEST_SLIDER_MODE_REQUIRED');
   });
 
   it('blocks a model-written item that landed on a composed slot', () => {

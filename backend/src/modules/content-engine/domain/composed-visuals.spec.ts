@@ -5,7 +5,14 @@ import {
   COMPOSED_SCALE_MIN,
   COMPOSED_VALUES,
   COMPOSED_VISUAL_FAMILIES,
+  COLOUR_HUES,
+  COLOUR_MIN_SEPARATION,
+  COLOUR_OBJECTS,
+  COLOUR_REVEAL_SECONDS,
   MARK_LINE,
+  colourScene,
+  hueHex,
+  hueSeparation,
   MARK_VARIANTS,
   batteryColour,
   batterySvg,
@@ -28,6 +35,7 @@ describe('composed visuals', () => {
     expect(COMPOSED_VISUAL_FAMILIES).toEqual([
       'battery-level',
       'copy-the-mark',
+      'colour-recall',
     ]);
     expect(isComposedVisualFamily('battery-level')).toBe(true);
     expect(isComposedVisualFamily('occurrence-count')).toBe(false);
@@ -110,10 +118,93 @@ describe('composed visuals', () => {
   it('ties the drawing, the claim and the answer to one value', () => {
     for (const familyKey of COMPOSED_VISUAL_FAMILIES) {
       const item = composeVisual(familyKey, 'job:7');
-      expect(item.factualClaim).toContain(`${item.value}%`);
+      expect(item.factualClaim).toContain(
+        familyKey === 'colour-recall' ? `${item.value}°` : `${item.value}%`,
+      );
       expect(item.prompt).not.toMatch(/\d/);
-      expect(item.leftAnchor).not.toBe(item.rightAnchor);
+      expect(item.slider.mode).toBeTruthy();
       expect(item.svg.startsWith('<svg')).toBe(true);
     }
+  });
+
+  describe('«تذكّر اللون»', () => {
+    const seeds = Array.from({ length: 300 }, (_, index) => `job:${index}`);
+    const scenes = seeds.map((seed) => colourScene(seed));
+
+    it('shows the colour the phone shows for the same hue', () => {
+      // closest-colour.ts draws hsl(h 85% 50%); these are that formula.
+      expect(hueHex(0)).toBe('#ec1313');
+      expect(hueHex(120)).toBe('#13ec13');
+      expect(hueHex(210)).toBe('#137fec');
+      expect(hueHex(360)).toBe(hueHex(0));
+    });
+
+    it('draws both kinds: one thing, and three', () => {
+      const variants = new Set(scenes.map((scene) => scene.variant));
+      expect([...variants].sort()).toEqual(['single', 'trio']);
+      for (const scene of scenes) {
+        expect(scene.objects).toHaveLength(scene.variant === 'single' ? 1 : 3);
+        expect(scene.asked).toBeLessThan(scene.objects.length);
+      }
+    });
+
+    it('never puts two confusable colours, or the same thing twice, in one picture', () => {
+      for (const scene of scenes.filter((entry) => entry.variant === 'trio')) {
+        const [a, b, c] = scene.objects;
+        expect(new Set([a.key, b.key, c.key]).size).toBe(3);
+        for (const [x, y] of [
+          [a, b],
+          [a, c],
+          [b, c],
+        ]) {
+          expect(hueSeparation(x.hue, y.hue)).toBeGreaterThanOrEqual(
+            COLOUR_MIN_SEPARATION,
+          );
+        }
+      }
+    });
+
+    it('asks about every position, so place tells nothing', () => {
+      const asked = new Set(
+        scenes
+          .filter((scene) => scene.variant === 'trio')
+          .map((scene) => scene.asked),
+      );
+      expect([...asked].sort()).toEqual([0, 1, 2]);
+    });
+
+    it('answers with the hue the asked thing was drawn in', () => {
+      for (const seed of seeds.slice(0, 40)) {
+        const item = composeVisual('colour-recall', seed);
+        const scene = colourScene(seed);
+        const asked = scene.objects[scene.asked];
+        expect(item.value).toBe(asked.hue);
+        expect(COLOUR_HUES).toContain(item.value);
+        expect(item.prompt).toBe(`وش كان لون ${asked.name}؟`);
+        expect(item.svg).toContain(
+          `data-object="${asked.key}" data-hue="${asked.hue}"`,
+        );
+        expect(item.svg).toContain(hueHex(asked.hue));
+        expect(item.slider).toEqual({
+          mode: 'colour-hue',
+          min: 0,
+          max: 360,
+          step: 1,
+          revealSeconds: COLOUR_REVEAL_SECONDS[scene.variant],
+        });
+      }
+    });
+
+    it('draws things with plain names and no writing', () => {
+      expect(COLOUR_OBJECTS.length).toBeGreaterThanOrEqual(8);
+      expect(new Set(COLOUR_OBJECTS.map((object) => object.key)).size).toBe(
+        COLOUR_OBJECTS.length,
+      );
+      for (const object of COLOUR_OBJECTS) {
+        expect(object.name.startsWith('ال')).toBe(true);
+        expect(object.draw('#123456')).not.toMatch(/<text/);
+        expect(object.draw('#123456')).toContain('#123456');
+      }
+    });
   });
 });

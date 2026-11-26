@@ -1448,11 +1448,33 @@ export class DeterministicScreenService {
     const unit = slider.unit;
     const displayFormat = slider.displayFormat;
 
-    if (mode !== 'numeric-range' && mode !== 'between-anchors') {
+    // A colour question needs a picture whose colour is known exactly, so
+    // the only author of one is the composer. A model that writes one has
+    // named a colour nothing was drawn in.
+    const composedColour =
+      mode === 'colour-hue' &&
+      (authoring?.composedVisual as { familyKey?: unknown } | undefined)
+        ?.familyKey === 'colour-recall';
+    if (
+      mode !== 'numeric-range' &&
+      mode !== 'between-anchors' &&
+      !composedColour
+    ) {
       findings.push(
         blocking(
           'CLOSEST_SLIDER_MODE_REQUIRED',
           `slider mode "${String(mode)}" is not authorable`,
+        ),
+      );
+    }
+    if (
+      composedColour &&
+      (min !== 0 || max !== 360 || !finite(target) || target >= 360)
+    ) {
+      findings.push(
+        blocking(
+          'CLOSEST_COLOUR_RANGE_INVALID',
+          'a colour question spans the whole wheel: min 0, max 360, and a hue below 360',
         ),
       );
     }
