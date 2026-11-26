@@ -664,7 +664,8 @@ function HotspotResolution({
       </div>
     ) : mode === "original" && originalImage ? (
       <div className="flex w-full flex-col gap-2">
-        <p className="text-base font-extrabold">الأصلية</p>
+        {/* On the phone the toggle above already names the picture. */}
+        {!compact && <p className="text-base font-extrabold">الأصلية</p>}
         <HotspotImageSurface
           image={originalImage}
           onTap={() => undefined}
@@ -673,7 +674,7 @@ function HotspotResolution({
       </div>
     ) : modifiedImage ? (
       <div className="flex w-full flex-col gap-2">
-        <p className="text-base font-extrabold">المعدّلة</p>
+        {!compact && <p className="text-base font-extrabold">المعدّلة</p>}
         <HotspotImageSurface
           image={modifiedImage}
           onTap={() => undefined}
@@ -686,16 +687,29 @@ function HotspotResolution({
   const summary = (
     <>
       <div
-        className="flex flex-col gap-2 rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender p-5 text-start"
+        className={cn(
+          "flex flex-col border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender text-start",
+          compact ? "gap-1 rounded-[22px] p-3.5" : "gap-2 rounded-[28px] p-5",
+        )}
         data-testid="odd-piece-v2-solution-recap"
       >
         <span className="text-[15px] font-bold text-brand-slate">
           القطعة الدخيلة
         </span>
-        <span className="font-display text-[30px] font-black leading-tight">
+        <span
+          className={cn(
+            "font-display font-black leading-tight",
+            compact ? "text-2xl" : "text-[30px]",
+          )}
+        >
           {reveal?.intruderPartLabel}
         </span>
-        <span className="text-base leading-[1.7] text-brand-slate">
+        <span
+          className={cn(
+            "text-brand-slate",
+            compact ? "text-sm leading-[1.55]" : "text-base leading-[1.7]",
+          )}
+        >
           السيارة <bdi>{reveal?.targetVehicleLabel}</bdi>، والقطعة مأخوذة من{" "}
           <bdi>{reveal?.intruderVehicleLabel}</bdi>. الدائرة الذهبية تبين
           مكانها.

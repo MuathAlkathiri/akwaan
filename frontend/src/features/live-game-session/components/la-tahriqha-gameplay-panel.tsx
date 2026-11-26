@@ -68,6 +68,7 @@ function IngredientCard({
   onToggle,
   disabled,
   compact,
+  dense,
 }: {
   card: LaTahriqhaCardView;
   chosen: boolean;
@@ -80,6 +81,8 @@ function IngredientCard({
   onToggle?: () => void;
   disabled?: boolean;
   compact: boolean;
+  /** Phone, after the reveal: the verdict has to fit under the cards. */
+  dense?: boolean;
 }) {
   const body = (
     <span className="flex w-full items-center justify-between gap-2">
@@ -113,7 +116,11 @@ function IngredientCard({
   const shell = cn(
     "grid w-full place-items-center rounded-2xl px-3 font-display font-extrabold text-[hsl(var(--brand-navy))]",
     NAVY,
-    compact ? "min-h-[52px] text-[15px]" : "min-h-[92px] text-xl",
+    dense
+      ? "min-h-[42px] text-sm"
+      : compact
+        ? "min-h-[52px] text-[15px]"
+        : "min-h-[92px] text-xl",
     truth === "right" && "bg-brand-mint-tint",
     truth === "wrong" && "bg-brand-coral-tint",
     !truth &&
@@ -276,21 +283,27 @@ function DishReveal({
   teamName,
   playerName,
   dotOf,
+  compact = false,
 }: {
   reveal: LaTahriqhaRevealView;
   view: LaTahriqhaView;
   teamName: (teamId: string) => string;
   playerName: (participantId: string) => string;
   dotOf: (teamId: string) => string;
+  /** The phone: tighter, and without each team's list (the cards carry the dots). */
+  compact?: boolean;
 }) {
   const labelOf = (localId: string) =>
     view.dish?.ingredients.find((card) => card.localId === localId)?.label ??
     localId;
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className={cn("flex flex-col", compact ? "gap-2" : "gap-3.5")}>
       <div
         className={cn(
-          "flex flex-col gap-1 rounded-[20px] bg-brand-lavender px-4 py-3 text-start",
+          "flex flex-col bg-brand-lavender text-start",
+          compact
+            ? "gap-0.5 rounded-2xl px-3 py-2"
+            : "gap-1 rounded-[20px] px-4 py-3",
           NAVY,
         )}
         data-testid="la-tahriqha-correct-recipe"
@@ -298,11 +311,16 @@ function DishReveal({
         <p className="text-sm font-bold text-brand-slate">
           {reveal.dishName} · المكوّنات الصح
         </p>
-        <p className="break-words font-display text-lg font-extrabold [overflow-wrap:anywhere]">
+        <p
+          className={cn(
+            "break-words font-display font-extrabold [overflow-wrap:anywhere]",
+            compact ? "text-[15px]" : "text-lg",
+          )}
+        >
           {reveal.correctIngredientIds.map(labelOf).join(" · ")}
         </p>
       </div>
-      <ul className="flex flex-col gap-3">
+      <ul className={cn("flex flex-col", compact ? "gap-2" : "gap-3")}>
         {reveal.teams.map((team) => (
           <li
             key={team.teamId}
@@ -310,7 +328,10 @@ function DishReveal({
             data-burned={String(team.burned)}
             data-perfect={String(team.perfect)}
             className={cn(
-              "flex flex-col gap-1.5 rounded-[20px] px-4 py-3 text-start",
+              "flex flex-col text-start",
+              compact
+                ? "gap-0.5 rounded-2xl px-3 py-2"
+                : "gap-1.5 rounded-[20px] px-4 py-3",
               NAVY,
               team.burned && "bg-brand-coral-tint",
               !team.burned &&
@@ -320,7 +341,12 @@ function DishReveal({
             )}
           >
             <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-              <span className="inline-flex items-center gap-2 font-display text-[19px] font-extrabold">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-2 font-display font-extrabold",
+                  compact ? "text-base" : "text-[19px]",
+                )}
+              >
                 <TeamDot className={dotOf(team.teamId)} />
                 {teamName(team.teamId)}
               </span>
@@ -349,7 +375,12 @@ function DishReveal({
                 </span>
               </p>
             ) : (
-              <p className="flex flex-wrap items-center gap-2 font-display text-xl font-black">
+              <p
+                className={cn(
+                  "flex flex-wrap items-center gap-2 font-display font-black",
+                  compact ? "text-lg" : "text-xl",
+                )}
+              >
                 <span>
                   <span className="akwaan-numeral">
                     {team.correctIds.length}
@@ -370,7 +401,7 @@ function DishReveal({
                 )}
               </p>
             )}
-            {!team.understaffed && (
+            {!team.understaffed && !compact && (
               <p className="break-words text-sm [overflow-wrap:anywhere]">
                 {team.selected.map(labelOf).join(" · ")}
               </p>
@@ -531,6 +562,7 @@ export function LaTahriqhaGameplayPanel({
           card={card}
           chosen={chosen.has(card.localId)}
           compact={phone}
+          dense={phone && revealed}
           pickedBy={pickedBy(card.localId)}
           {...(truthOf(card.localId) ? { truth: truthOf(card.localId) } : {})}
           {...(cardState(card.localId)
@@ -867,7 +899,7 @@ export function LaTahriqhaGameplayPanel({
 
         {revealed && view.reveal && (
           <section
-            className="akwaan-rise flex flex-col gap-3"
+            className="akwaan-rise flex flex-col gap-2"
             data-testid="la-tahriqha-reveal"
           >
             <DishReveal
@@ -876,6 +908,7 @@ export function LaTahriqhaGameplayPanel({
               teamName={teamName}
               playerName={playerName}
               dotOf={dotOf}
+              compact
             />
             {advance}
           </section>
