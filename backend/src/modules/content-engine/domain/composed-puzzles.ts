@@ -12,7 +12,7 @@ import {
  * Drawn puzzles answered by choosing — the second kind of composed item.
  *
  * Like every composed family, each is produced whole from one seed: the
- * drawing, the question, the three options and which of them is right. The
+ * drawing, the question, the options and which of them is right. The
  * answer is not looked up or reasoned out afterwards; it is the same fact the
  * drawing was made from (which thread was routed to which end, which faces a
  * fold brings opposite, how many layers a punch went through).
@@ -529,7 +529,7 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
         ...shuffled(
           labels.filter((label) => label !== correct),
           random,
-        ).slice(0, 2),
+        ).slice(0, 3),
       ],
       correct,
       random,
@@ -574,7 +574,7 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     const answer = threadCrossings(routing, asked);
     const wrong = [answer - 1, answer + 1, answer + 2, answer - 2]
       .filter((value) => value >= 1)
-      .slice(0, 2);
+      .slice(0, 3);
     const { options, correctOptionId } = asOptions(
       [answer, ...wrong].map((value) => COUNT_WORDS[value]),
       COUNT_WORDS[answer],
@@ -803,7 +803,10 @@ function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
         (pair) =>
           !pair.some((face) => far[0].includes(face) && answer.includes(face)),
       );
-    const wrong = [far[0], second ?? far[1]];
+    const first = second ?? far[1];
+    // A third pair unlike the two already taken.
+    const third = far.find((pair) => pair !== far[0] && pair !== first)!;
+    const wrong = [far[0], first, third];
     const { options, correctOptionId } = asOptions(
       [answer, ...wrong].map(name),
       name(answer),
@@ -842,7 +845,7 @@ function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
           ? apart(b, asked) - apart(a, asked)
           : apart(a, asked) - apart(b, asked)) || a - b,
     )
-    .slice(0, 2);
+    .slice(0, 3);
   const { options, correctOptionId } = asOptions(
     [labels[answer], ...wrong.map((index) => labels[index])],
     labels[answer],
@@ -1086,7 +1089,7 @@ function composeFold(seed: string, variantKey: string): ComposedPuzzle {
       slip.value >= 1 &&
       all.findIndex((other) => other.value === slip.value) === index,
   );
-  const wrong = slips.slice(0, 2);
+  const wrong = slips.slice(0, 3);
   const { options, correctOptionId } = asOptions(
     [holes, ...wrong.map((slip) => slip.value)].map(String),
     String(holes),
@@ -1132,7 +1135,7 @@ function thingAmongItsKind(
       (thing) => thing.key !== answer.key && !answer.twins.includes(thing.key),
     ),
     random,
-  ).slice(0, 2);
+  ).slice(0, 3);
   return asOptions(
     [answer.ar, ...others.map((thing) => thing.ar)],
     answer.ar,
@@ -1367,7 +1370,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, null], random);
     second = shuffled([...kept, odd], random);
     answer = odd;
-    tempting = shuffled(kept, random).slice(0, 2);
+    tempting = shuffled(kept, random).slice(0, 3);
     prompt = 'وش الشي الجديد اللي انضاف في الصورة 2؟';
     rationale = 'It is in both pictures; it only moved to another place.';
     claim = `"${odd.key}" is in picture 2 and not in picture 1.`;
@@ -1376,7 +1379,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, odd], random);
     second = first.map((thing) => (thing === odd ? newcomer : thing));
     answer = odd;
-    tempting = [newcomer, pick(kept, random)];
+    tempting = [newcomer, ...shuffled(kept, random).slice(0, 2)];
     prompt = 'أي واحد من الصورة 1 انبدل بشي ثاني في الصورة 2؟';
     rationale =
       'Either the thing that took the place — it is what arrived, not what left — or one that is unchanged in both pictures.';
@@ -1386,7 +1389,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, odd], random);
     second = shuffled([...kept, null], random);
     answer = odd;
-    tempting = shuffled(kept, random).slice(0, 2);
+    tempting = shuffled(kept, random).slice(0, 3);
     prompt = 'وش اللي اختفى في الصورة 2؟';
     rationale = 'It is still in picture 2; it only moved to another place.';
     claim = `"${odd.key}" is in picture 1 and not in picture 2.`;
@@ -1439,7 +1442,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
       random,
     );
     cells = shuffled(cast, random);
-    tempting = [like, cast[1]];
+    tempting = [like, cast[1], cast[2]];
     prompt = 'أي واحد من هذول مو موجود في الصورة؟';
     rationale = 'It is on the board, among the other things.';
     claim = `"${answer.key}" is not on the board; the other two options are.`;
@@ -1448,7 +1451,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
     const cast = castOfThings(8, random);
     answer = cast[0];
     cells = shuffled([...cast, ...cast.slice(1)], random);
-    tempting = cast.slice(1, 3);
+    tempting = cast.slice(1, 4);
     prompt = 'كل رسمة لها توأم إلا وحدة. أي وحدة؟';
     rationale = 'It appears twice on the board; its twin is farther away.';
     claim = `"${answer.key}" appears once; every other drawing appears twice.`;
@@ -1457,7 +1460,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
     const cast = castOfThings(14, random);
     answer = cast[0];
     cells = shuffled([...cast, answer], random);
-    tempting = cast.slice(1, 3);
+    tempting = cast.slice(1, 4);
     prompt = 'أي رسمة تكررت مرتين في الصورة؟';
     rationale = 'It appears once only.';
     claim = `"${answer.key}" appears twice; every other drawing appears once.`;

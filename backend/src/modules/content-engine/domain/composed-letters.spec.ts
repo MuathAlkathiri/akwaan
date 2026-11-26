@@ -8,8 +8,12 @@ import { COMPOSED_PUZZLE_VARIANTS, composePuzzle } from './composed-puzzles';
 import { drawnThings } from './drawn-things';
 
 const seeds = Array.from({ length: 150 }, (_, index) => `job:${index}`);
-const answerOf = (item: ReturnType<typeof composeLetters>): string =>
-  item.options.find((option) => option.id === item.correctOptionId)!.label;
+/** The word is typed: one accepted spelling, and no options to match against. */
+const answerOf = (item: ReturnType<typeof composeLetters>): string => {
+  expect(item.options).toEqual([]);
+  expect(item.acceptedAnswers).toHaveLength(1);
+  return item.acceptedAnswers![0];
+};
 const things = new Map(drawnThings().map((thing) => [thing.key, thing]));
 
 /** The row as drawn, right to left: each thing and the letter taken from it. */
@@ -91,49 +95,13 @@ describe('«أول حرف», drawn', () => {
     }
   });
 
-  it('extra: without the extra picture the first letters spell one thing of the named kind, and with it no other', () => {
-    const sorted = (word: string) => [...word].sort().join('');
-    for (const seed of seeds) {
-      const item = composeLetters('picture-initials', seed, 'extra');
-      const target = item.variant.split(':')[1];
-      const names = row(item.svg).map((entry) => entry.name);
-      const extra = answerOf(item);
-      expect(names).toContain(extra);
-      expect(names).toHaveLength(target.length + 1);
-      expect(target.length).toBeGreaterThanOrEqual(3);
-      expect(
-        sorted(
-          names
-            .filter((name) => name !== extra)
-            .map((name) => name[0])
-            .join(''),
-        ),
-      ).toBe(sorted(target));
-      const kind = drawnThings().find((thing) => thing.ar === target)!.category;
-      expect(item.prompt).toContain(kind === 'animal' ? 'حيوان' : 'أكل');
-      // Dropping any other picture spells no thing of that kind.
-      const sameKind = drawnThings()
-        .filter((thing) => thing.category === kind)
-        .map((thing) => sorted(thing.ar));
-      for (const dropped of names.filter((name) => name !== extra)) {
-        const rest = sorted(
-          names
-            .filter((name) => name !== dropped)
-            .map((name) => name[0])
-            .join(''),
-        );
-        expect(sameKind.includes(rest) && rest !== sorted(target)).toBe(false);
-      }
-    }
-  });
-
   it('never uses one picture twice, nor the answer as a picture', () => {
     for (const variantKey of LETTERS_VARIANTS['picture-initials']) {
       for (const seed of seeds.slice(0, 60)) {
         const item = composeLetters('picture-initials', seed, variantKey);
         const names = row(item.svg).map((entry) => entry.name);
         expect(new Set(names).size).toBe(names.length);
-        if (variantKey !== 'extra') expect(names).not.toContain(answerOf(item));
+        expect(names).not.toContain(answerOf(item));
       }
     }
   });

@@ -147,14 +147,16 @@ export class ComposedVisualService {
         factualClaims: [puzzle.factualClaim],
         draft: {
           prompt: { ar: puzzle.prompt },
-          answerPayload: {
-            mode: 'multiple_choice',
-            options: puzzle.options.map((option) => ({
-              id: option.id,
-              label: { ar: option.label },
-            })),
-            correctOptionId: puzzle.correctOptionId,
-          },
+          answerPayload: puzzle.acceptedAnswers
+            ? { mode: 'match', acceptedAnswers: puzzle.acceptedAnswers }
+            : {
+                mode: 'multiple_choice',
+                options: puzzle.options.map((option) => ({
+                  id: option.id,
+                  label: { ar: option.label },
+                })),
+                correctOptionId: puzzle.correctOptionId,
+              },
           ...(media ? { media } : {}),
           metadata: { notes: COMPOSED_NOTE, entityId },
         },

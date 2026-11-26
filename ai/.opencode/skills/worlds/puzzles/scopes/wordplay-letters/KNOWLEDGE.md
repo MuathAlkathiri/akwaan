@@ -462,7 +462,7 @@
 | 20 | `proverb-completion` | كمّل المثل | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
-| 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Multiple Choice (3 options) |
+| 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
 
 ---
 
@@ -552,7 +552,7 @@ exists.
 |---|---|---|---|
 | `anagram-rearrange` | Rearrange the letters, **with a hint that fixes the answer** | رتّبها وتطلع فاكهة: ز، م، و | موز |
 | `dotless-disambiguation` | Read a familiar phrase written without its dots | «الصٮر مڡٮاح الڡرح» | الصبر مفتاح الفرج |
-| `wordle-single-guess` | One coloured guess, three options, one fits | ق⬜ م🟨 ر🟩 — مطر، نمر، قصر؟ | مطر |
+| `wordle-single-guess` | One coloured guess, four options, one fits | ق⬜ م🟨 ر🟩 — مطر، نمر، قصر؟ | مطر |
 | `alphabet-counts` | A count over the alphabet nobody has memorised (slider) | كم نقطة في حروف الأبجدية العربية كلها؟ | 22 |
 | `alphabet-position` | Where a letter sits in an order everyone knows (between-anchors: a bare line, two labelled ends, no numbers; the target is never in the middle fifth) | بين «أ» و«ي»، وين حرف القاف؟ | letter 21 of 28 |
 
@@ -1284,7 +1284,7 @@ The block below is the structured form of the 15 canonical families approved for
     {
       "familyKey": "picture-initials",
       "name": "أول حرف",
-      "description": "صف من رسمات لأشياء معروفة، وكل رسمة تعطي حرفًا من اسمها، والحروف تكوّن كلمة. المحرك يختار الكلمة والرسمات من مكتبته ويرسم الصف. (اعتماد المالك 2026-11-27: أربعة أشكال، وبدون الشكل السهل «أول حرف بالترتيب».)",
+      "description": "صف من رسمات لأشياء معروفة، وكل رسمة تعطي حرفًا من اسمها، والحروف تكوّن كلمة يكتبها اللاعب. المحرك يختار الكلمة والرسمات من مكتبته ويرسم الصف. (اعتماد المالك 2026-11-27: ثلاثة أشكال، الجواب مكتوب بلا اختيارات، وبدون الشكل السهل «أول حرف بالترتيب».)",
       "playerSolve": "تسمية الرسمات وأخذ حرف من كل اسم.",
       "modality": "composed-visual",
       "scalability": "HIGH",
@@ -1295,7 +1295,7 @@ The block below is the structured form of the 15 canonical families approved for
         "closest": "DO_NOT_FORCE"
       },
       "answerModes": [
-        "multiple_choice"
+        "match"
       ],
       "variants": [
         {
@@ -1312,11 +1312,6 @@ The block below is the structured form of the 15 canonical families approved for
           "key": "cipher",
           "name": "الشفرة",
           "brief": "A number under each picture says which letter of its name to take."
-        },
-        {
-          "key": "extra",
-          "name": "الرسمة الزايدة",
-          "brief": "All but one of the pictures spell a thing of a named kind by their first letters; name the extra picture."
         }
       ],
       "capacity": 300

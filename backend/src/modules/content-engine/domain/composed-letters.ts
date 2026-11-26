@@ -3,11 +3,9 @@ import {
   H,
   INK,
   W,
-  asOptions,
   frame,
   letterBadge,
   round,
-  sameReason,
   seededRandom,
   shuffled,
 } from './composed-kit';
@@ -16,10 +14,11 @@ import { DrawnThing, drawnThings, thingSvg } from './drawn-things';
 /**
  * «أول حرف» — a word spelled by drawn things, one letter from the name of
  * each. Naming the pictures is the easy half; every template adds a second
- * step, so it is never the nursery version (first letters, in order).
+ * step, so it is never the nursery version (first letters, in order). The
+ * word is typed: offered among options it would be found by matching letters.
  */
 export const LETTERS_VARIANTS = {
-  'picture-initials': ['scrambled', 'last-letter', 'cipher', 'extra'],
+  'picture-initials': ['scrambled', 'last-letter', 'cipher'],
 } as const;
 
 export type LettersFamily = keyof typeof LETTERS_VARIANTS;
@@ -219,25 +218,6 @@ export const LETTER_WORDS = [
   'صباح',
 ].filter((word) => word.length <= 4);
 
-const KIND_WORDS: Partial<Record<DrawnThing['category'], string>> = {
-  animal: 'حيوان',
-  food: 'أكل',
-};
-
-/** Words of the same length sharing the most letters: the tempting wrong ones. */
-function nearWords(word: string, random: () => number): string[] {
-  const shared = (other: string) =>
-    [...other].filter((letter) => word.includes(letter)).length;
-  return shuffled(
-    LETTER_WORDS.filter(
-      (other) => other !== word && other.length === word.length,
-    ),
-    random,
-  )
-    .sort((a, b) => shared(b) - shared(a))
-    .slice(0, 2);
-}
-
 interface Lender {
   thing: DrawnThing;
   /** Which letter of its name is taken, counted from one. */
@@ -321,78 +301,6 @@ function composeInitials(
       'Name each drawn thing, take one letter from each name, and read the word they make.',
   };
 
-  if (variantKey === 'extra') {
-    // Three or four things whose first letters spell a thing of a named kind,
-    // and one more whose letter belongs to no such name.
-    const targets = shuffled(
-      letterThings().filter(
-        (thing) =>
-          KIND_WORDS[thing.category] &&
-          thing.ar.length >= 3 &&
-          thing.ar.length <= 4,
-      ),
-      random,
-    );
-    const sameKind = (kind: DrawnThing['category']) =>
-      drawnThings()
-        .filter((thing) => thing.category === kind)
-        .map((thing) => thing.ar);
-    const sorted = (word: string) => [...word].sort().join('');
-    for (const target of targets) {
-      const lenders = lendersFor(target.ar, () => [1], random);
-      if (!lenders) continue;
-      const taken = new Set(lenders.map((lender) => lender.thing.key));
-      const extra = shuffled(letterThings(), random).find((thing) => {
-        if (taken.has(thing.key) || thing.key === target.key) return false;
-        const letters = [...target.ar, thing.ar[0]];
-        // With the extra's letter in hand, no other name of the kind — of
-        // this length or one longer — can be spelled.
-        return !sameKind(target.category).some((name) => {
-          if (name === target.ar) return false;
-          if (name.length === target.ar.length) {
-            return letters.some(
-              (_, drop) =>
-                sorted(
-                  letters.filter((__, index) => index !== drop).join(''),
-                ) === sorted(name),
-            );
-          }
-          return sorted(letters.join('')) === sorted(name);
-        });
-      });
-      if (!extra) continue;
-      const row = shuffled(
-        [...lenders.map((lender) => lender.thing), extra],
-        random,
-      );
-      const tempting = shuffled(
-        lenders.map((lender) => lender.thing),
-        random,
-      ).slice(0, 2);
-      const { options, correctOptionId } = asOptions(
-        [extra, ...tempting].map((thing) => thing.ar),
-        extra.ar,
-        random,
-      );
-      const some = target.ar.length === 3 ? 'ثلاث' : 'أربع';
-      return {
-        ...shared,
-        variant: `${variantKey}:${target.ar}:${extra.key}`,
-        prompt: `أول حروف ${some} من هذي الرسمات تكوّن اسم ${KIND_WORDS[target.category]}. أي رسمة زايدة؟`,
-        options,
-        correctOptionId,
-        distractorRationale: sameReason(
-          options,
-          correctOptionId,
-          `Its first letter is one of the letters of «${target.ar}».`,
-        ),
-        altText: `${row.length} رسمات لأشياء معروفة في صف`,
-        factualClaim: `The first letters of ${lenders.map((lender) => lender.thing.key).join(', ')} spell «${target.ar}»; "${extra.key}" is the extra one.`,
-        svg: lettersSvg(row, { ordered: false }),
-      };
-    }
-  }
-
   const positionsOf =
     variantKey === 'last-letter'
       ? (name: string) => [name.length]
@@ -410,12 +318,6 @@ function composeInitials(
   for (const word of words) {
     const lenders = lendersFor(word, positionsOf, random);
     if (!lenders) continue;
-    const wrong = nearWords(word, random);
-    const { options, correctOptionId } = asOptions(
-      [word, ...wrong],
-      word,
-      random,
-    );
     let row = lenders;
     if (variantKey === 'scrambled') {
       do {
@@ -431,13 +333,12 @@ function composeInitials(
           : variantKey === 'cipher'
             ? 'الرقم تحت كل رسمة يقول أي حرف تاخذ من اسمها. بالترتيب من اليمين، وش الكلمة؟'
             : 'خذ أول حرف من اسم كل رسمة ورتّب الحروف. وش الكلمة اللي تطلع؟',
-      options,
-      correctOptionId,
-      distractorRationale: sameReason(
-        options,
-        correctOptionId,
-        'It shares letters with the answer, so one letter read wrong — or a picture named differently — leads here.',
-      ),
+      // Typed, not chosen (owner decision 2026-11-27): with options beside
+      // it the word is found by matching letters. One spelling is right.
+      options: [],
+      correctOptionId: '',
+      acceptedAnswers: [word],
+      distractorRationale: [],
       altText: `${row.length} رسمات لأشياء معروفة في صف`,
       factualClaim: `Letters taken: ${lenders.map((lender) => `${lender.thing.ar}[${lender.position}]`).join(', ')} → «${word}».`,
       svg: lettersSvg(

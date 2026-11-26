@@ -52,7 +52,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 20 | `proverb-completion` | كمّل المثل | Text only | `multiple_choice` |
 | 21 | `word-completion` | كمّل الكلمة | Text only | `multiple_choice` |
 | 22 | `antonym` | وش عكسها؟ | Text only | `multiple_choice` |
-| 23 | `picture-initials` | أول حرف | Image (drawn) | `multiple_choice` |
+| 23 | `picture-initials` | أول حرف | Image (drawn) | `match` |
 
 > Rows 16–18 were approved by the owner on 2026-11-24. Which families the engine generates today — and which are paused — is recorded in KNOWLEDGE.md §10b–11. A row whose only answer mode is `closest` is answered on the مين أقرب slider and is not a Moving XO family.
 

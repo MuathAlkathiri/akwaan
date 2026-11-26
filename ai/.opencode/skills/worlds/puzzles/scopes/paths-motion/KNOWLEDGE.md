@@ -446,7 +446,7 @@ When generating or reviewing an authored batch for `paths-motion`:
 
 The families of this Scope need a picture, and until now nothing could make
 one. The engine now **draws** the ones listed here itself (`gear-train-direction`, `electrical-switch-circuit`, `maze-exit-route`, `domino-cascade-chain`, `one-way-traffic-flow`, `shortest-path-grid`, `wire-trace-terminal`): the
-picture, the question, the three options and the right answer are all made
+picture, the question, the options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
 

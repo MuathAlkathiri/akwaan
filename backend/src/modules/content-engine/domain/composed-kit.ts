@@ -35,6 +35,11 @@ export interface ComposedPuzzleDrawing {
   prompt: string;
   options: Array<{ id: string; label: string }>;
   correctOptionId: string;
+  /**
+   * Set when the answer is typed, not chosen: every spelling that is right.
+   * Such a puzzle has no options and no correct option.
+   */
+  acceptedAnswers?: string[];
   /** Why each wrong option is wrong, for the reviewer. */
   distractorRationale: Array<{ optionId: string; why: string }>;
   altText: string;
@@ -117,19 +122,20 @@ export const sameReason = (
       why: typeof why === 'string' ? why : why(option.id),
     }));
 
-/** A whole number against two near it, as words or digits. */
+/** A whole number against three near it, as words or digits. */
 export function countOptions(
   answer: number,
   random: () => number,
   label: (value: number) => string = String,
   minimum = 1,
+  maximum = Number.POSITIVE_INFINITY,
 ): { options: Array<{ id: string; label: string }>; correctOptionId: string } {
   const near = shuffled(
-    [answer - 1, answer + 1, answer + 2, answer - 2],
+    [answer - 1, answer + 1, answer + 2, answer - 2, answer + 3, answer - 3],
     random,
   )
-    .filter((value) => value >= minimum)
+    .filter((value) => value >= minimum && value <= maximum)
     .sort((a, b) => Math.abs(a - answer) - Math.abs(b - answer))
-    .slice(0, 2);
+    .slice(0, 3);
   return asOptions([answer, ...near].map(label), label(answer), random);
 }
