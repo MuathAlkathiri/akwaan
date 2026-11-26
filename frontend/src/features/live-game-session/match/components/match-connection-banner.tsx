@@ -32,13 +32,19 @@ export function MatchConnectionBanner() {
       aria-live="polite"
       data-testid="match-connection-banner"
       {...(error?.code ? { "data-error-code": error.code } : {})}
-      className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-3 text-sm text-foreground"
+      // A strip, not a screen: the last screen stays where it was, and what is
+      // safe is said before what to do.
+      className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[hsl(var(--brand-navy))] px-5 py-3 text-base font-bold text-white"
     >
       <span className="flex items-center gap-2">
-        <AlertTriangle className="size-4 text-warning" aria-hidden />
+        <AlertTriangle className="size-5 text-warning" aria-hidden />
         {message}
       </span>
-      <Button size="sm" variant="outline" onClick={() => resync?.()}>
+      <Button
+        size="sm"
+        onClick={() => resync?.()}
+        className="rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] font-extrabold text-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-gold))]"
+      >
         حدِّث الآن
       </Button>
     </aside>

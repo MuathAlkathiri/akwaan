@@ -111,8 +111,8 @@ describe("الكومبو — shared screen", () => {
       "من فاز بكأس العالم 2018؟",
     );
     expect(screen.getByTestId("combo-streak-points")).toHaveTextContent("2");
-    expect(screen.getByTestId("combo-charge-team-alpha")).toHaveTextContent(
-      "الكسر متاح",
+    expect(screen.getByTestId("combo-charge-team-beta")).toHaveTextContent(
+      "باقي",
     );
     // No actor projection means no actor controls, even though the runtime lists
     // the actions — the shared screen is nobody's phone.
@@ -134,7 +134,7 @@ describe("الكومبو — shared screen", () => {
       />,
     );
     expect(screen.getByTestId("combo-charge-team-beta")).toHaveTextContent(
-      "استُخدم الكسر",
+      "انصرف",
     );
   });
 });
@@ -143,7 +143,7 @@ describe("الكومبو — the running team", () => {
   it("submits a trimmed answer against the open question", async () => {
     render(<ComboGameplayPanel runtime={runtime(runningTeamState())} />);
     await userEvent.type(
-      screen.getByPlaceholderText("اكتب الإجابة"),
+      screen.getByPlaceholderText("اكتب إجابتك"),
       "  فرنسا  ",
     );
     await userEvent.click(screen.getByRole("button", { name: "إرسال" }));
@@ -181,7 +181,7 @@ describe("الكومبو — the running team", () => {
       />,
     );
     await userEvent.click(screen.getByTestId("combo-cash-out"));
-    expect(screen.getByTestId("combo-cash-out")).toHaveTextContent("اسحب 3");
+    expect(screen.getByTestId("combo-cash-out")).toHaveTextContent("3 نقاط");
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round-1",
       commandType: "cash-out-combo",
@@ -193,7 +193,7 @@ describe("الكومبو — the running team", () => {
     const { rerender } = render(
       <ComboGameplayPanel runtime={runtime(runningTeamState())} />,
     );
-    await userEvent.type(screen.getByPlaceholderText("اكتب الإجابة"), "خطأ");
+    await userEvent.type(screen.getByPlaceholderText("اكتب إجابتك"), "خطأ");
     rerender(
       <ComboGameplayPanel
         runtime={runtime(
@@ -201,13 +201,13 @@ describe("الكومبو — the running team", () => {
         )}
       />,
     );
-    expect(screen.getByPlaceholderText("اكتب الإجابة")).toHaveValue("");
+    expect(screen.getByPlaceholderText("اكتب إجابتك")).toHaveValue("");
   });
 
   it("waits when the other team is the one answering", () => {
     render(<ComboGameplayPanel runtime={runtime(opposingTeamState())} />);
     expect(screen.queryByTestId("combo-answer-controls")).toBeNull();
-    expect(screen.getByText(/ألفا يجيب الآن/)).toBeInTheDocument();
+    expect(screen.getByText(/ألفا يجاوبون الحين/)).toBeInTheDocument();
   });
 });
 
@@ -279,7 +279,7 @@ describe("الكومبو — surviving the break", () => {
       />,
     );
     expect(screen.getByTestId("combo-break-reveal")).toHaveTextContent(
-      "بيتا كسر كومبوكم",
+      "بيتا قفّل عليكم التثبيت",
     );
     // Removing cash-out is the whole ability; the server rejects it here too.
     expect(screen.queryByTestId("combo-cash-out")).toBeNull();
@@ -299,7 +299,7 @@ describe("الكومبو — surviving the break", () => {
     );
     const banner = screen.getByTestId("combo-forced-banner");
     expect(banner).toHaveTextContent("سؤال إجباري");
-    expect(banner).toHaveTextContent("بيتا كسر كومبوكم");
+    expect(banner).toHaveTextContent("بيتا كسر الكومبو");
     expect(screen.queryByTestId("combo-cash-out")).toBeNull();
     // The bonus is not paid until this question is answered, so the streak on
     // screen is still the pre-bonus figure the server sent. Previewing the
@@ -336,13 +336,13 @@ describe("الكومبو — run handover and result", () => {
     );
     expect(screen.getByTestId("combo-recap-team-alpha")).toHaveTextContent("3");
     expect(screen.getByTestId("combo-recap-team-alpha")).toHaveTextContent(
-      "كُسر الكومبو",
+      "انكسر الكومبو",
     );
     expect(screen.getByTestId("combo-recap-team-alpha")).toHaveTextContent(
       "على يد بيتا",
     );
     expect(screen.getByTestId("combo-recap-team-beta")).toHaveTextContent(
-      "لم تلعب بعد",
+      "ما لعبوا للحين",
     );
     unmount();
 
@@ -353,7 +353,7 @@ describe("الكومبو — run handover and result", () => {
       />,
     );
     expect(screen.queryByTestId("combo-advance-run")).toBeNull();
-    expect(screen.getByText("بانتظار المضيف للمتابعة…")).toBeInTheDocument();
+    expect(screen.getByText("ننتظر المضيف يكمّل…")).toBeInTheDocument();
   });
 
   it("words the final handover as the challenge result", () => {

@@ -55,7 +55,7 @@ export function readOddPieceHotspotView(
     phase: String(state.phase ?? "preparing") as OddPieceHotspotView["phase"],
     puzzleIndex: Number(state.currentPuzzleIndex ?? 0),
     puzzleCount: Number(state.puzzleCount ?? 3),
-    prompt: String(state.prompt ?? "أين القطعة الدخيلة؟"),
+    prompt: String(state.prompt ?? "وين القطعة الدخيلة؟"),
     ...(state.modifiedImageJson
       ? {
           modifiedImage: json<OddPieceHotspotImage | undefined>(

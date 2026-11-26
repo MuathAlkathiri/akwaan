@@ -575,7 +575,7 @@
   }
 }
 .akwaan-orbit {
-  animation: akwaan-orbit 3.4s linear infinite;
+  animation: akwaan-orbit 2.4s linear infinite;
 }
 .akwaan-orbit-reverse {
   animation: akwaan-orbit 5s linear infinite reverse;
@@ -689,6 +689,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .akwaan-bob,
+  .akwaan-dot {
+    animation: none;
+  }
   .akwaan-countdown-beat,
   .akwaan-rise,
   .akwaan-pop,
@@ -743,4 +747,31 @@ html[dir="rtl"] {
 
 html[dir="ltr"] {
   direction: ltr;
+}
+
+/* The loader's planet bobbing, and its three waiting dots. */
+@keyframes akwaan-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.akwaan-bob {
+  animation: akwaan-bob 2.2s ease-in-out infinite;
+}
+@keyframes akwaan-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.akwaan-dot {
+  animation: akwaan-dot 1.2s ease-in-out infinite;
 }

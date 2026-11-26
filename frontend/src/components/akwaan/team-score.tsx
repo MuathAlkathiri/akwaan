@@ -41,7 +41,8 @@ export function TeamScore({
         "flex items-center gap-3 rounded-[var(--radius)] border px-3 py-2 transition-colors duration-base ease-akwaan",
         identity.surface,
         identity.border,
-        active && cn("ring-2 ring-offset-2 ring-offset-background", identity.ring),
+        active &&
+          cn("ring-2 ring-offset-2 ring-offset-background", identity.ring),
         className,
       )}
     >
@@ -60,7 +61,12 @@ export function TeamScore({
           {name}
         </p>
         {label && (
-          <p className={cn("text-[0.7rem] font-bold leading-tight", identity.text)}>
+          <p
+            className={cn(
+              "text-[0.7rem] font-bold leading-tight",
+              identity.text,
+            )}
+          >
             {label}
           </p>
         )}
@@ -68,11 +74,7 @@ export function TeamScore({
       <span
         className={cn(
           "akwaan-numeral ms-auto font-black leading-none text-foreground",
-          size === "lg"
-            ? "text-4xl"
-            : size === "sm"
-              ? "text-lg"
-              : "text-2xl",
+          size === "lg" ? "text-4xl" : size === "sm" ? "text-lg" : "text-2xl",
         )}
       >
         {score}

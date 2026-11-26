@@ -53,7 +53,8 @@ export function BidiText({
   children: string | number | null | undefined;
   className?: string;
 }) {
-  const text = children === null || children === undefined ? "" : String(children);
+  const text =
+    children === null || children === undefined ? "" : String(children);
   const segments = bidiSegments(text);
   // No mixed content: render it plainly rather than wrapping every string in a span.
   if (!segments.some((segment) => segment.ltr)) {

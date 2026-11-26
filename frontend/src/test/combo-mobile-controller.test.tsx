@@ -149,14 +149,14 @@ describe("الكومبو phone controller", () => {
       ),
     );
     const area = screen.getByTestId("mobile-action-area");
-    expect(screen.getByText("وش تبون تسوون؟")).toBeInTheDocument();
+    expect(screen.getByText("نوقف ولا نكمل؟")).toBeInTheDocument();
     expect(screen.getByTestId("combo-phone-balance")).toHaveTextContent("4");
     expect(
       within(area).getByTestId("combo-phone-cash-out").className,
-    ).toContain("h-16");
+    ).toContain("min-h-[104px]");
     expect(
       within(area).getByTestId("combo-phone-continue").className,
-    ).toContain("h-16");
+    ).toContain("min-h-[104px]");
   });
 
   it("keeps bank and continue commands exact and permits only one decision", () => {
@@ -251,7 +251,7 @@ describe("الكومبو phone controller", () => {
     expect(screen.getByTestId("combo-phone-opponent-run")).toBeInTheDocument();
     expect(screen.queryByTestId("combo-answer-input")).toBeNull();
     expect(screen.getByTestId("combo-phone-force")).toHaveTextContent(
-      "كمّل غصب",
+      "فعّل الكسر على هالسؤال",
     );
   });
 
@@ -305,7 +305,7 @@ describe("الكومبو phone controller", () => {
       ),
     );
     expect(screen.getByTestId("combo-phone-break-reveal")).toHaveTextContent(
-      "الخصم أجبركم تكملون",
+      "الخصم قفّل عليكم التثبيت",
     );
     expect(
       screen.getByTestId("combo-phone-forced-continue"),
@@ -363,10 +363,7 @@ describe("الكومبو host regression", () => {
     expect(screen.getByTestId("combo-prompt").className).toContain(
       "text-[2rem]",
     );
-    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
-      "data-frame-surface",
-      "screen",
-    );
+    expect(screen.getByTestId("challenge-context-strip")).toBeInTheDocument();
     expect(screen.queryByTestId("combo-phone-controller")).toBeNull();
   });
 });

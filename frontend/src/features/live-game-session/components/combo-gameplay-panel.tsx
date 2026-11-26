@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BidiText } from "@/components/akwaan/bidi-text";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
+import { AnswerEntry } from "../match/components/answer-entry";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import {
+  ChallengeContextStrip,
+  TeamDot,
+  useChallengeContext,
+} from "../match/components/challenge-context-strip";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { ComboAnswerReveal } from "../match/components/combo-answer-reveal";
@@ -32,6 +36,34 @@ import {
   type ComboView,
 } from "../match/combo.presentation";
 
+type Sending = "answer" | "cash-out" | "continue" | "force" | undefined;
+
+/** «نقطة», «نقطتين», «3 نقاط» — never «2 نقاط». */
+function pointsLabel(count: number) {
+  if (count === 1) return "نقطة";
+  if (count === 2) return "نقطتين";
+  if (count >= 3 && count <= 10) return `${count} نقاط`;
+  return `${count} نقطة`;
+}
+
+const NAVY_BORDER = "border-[3px] border-[hsl(var(--brand-navy))]";
+const PILL =
+  "inline-flex min-h-[60px] items-center justify-center rounded-full px-7 font-display text-xl font-extrabold transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none";
+const GOLD_PILL = cn(
+  PILL,
+  NAVY_BORDER,
+  "bg-[hsl(var(--brand-gold))] text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+);
+const NAVY_PILL = cn(
+  PILL,
+  NAVY_BORDER,
+  "bg-[hsl(var(--brand-navy))] text-white shadow-[4px_5px_0_hsl(var(--brand-gold))]",
+);
+const CHOICE =
+  "flex flex-1 flex-col gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] p-[22px] text-start text-[hsl(var(--brand-navy))]";
+const PHONE_CHOICE =
+  "flex min-h-[104px] w-full flex-col items-center justify-center gap-1 rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] px-4 py-3 text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] disabled:shadow-none";
+
 /**
  * "الكومبو" — one panel for the shared screen and both teams' phones.
  *
@@ -48,10 +80,9 @@ export function ComboGameplayPanel({
   runtime: GameplayRuntimeSnapshot;
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
+  const context = useChallengeContext();
   const [answer, setAnswer] = useState("");
-  const [sending, setSending] = useState<
-    "answer" | "cash-out" | "continue" | "force" | undefined
-  >();
+  const [sending, setSending] = useState<Sending>();
   const round = runtime.activeRound;
   const view = useMemo(
     () => readComboView(runtime.modeState),
@@ -76,8 +107,10 @@ export function ComboGameplayPanel({
   const can = (action: string) =>
     runtime.availableActions.includes(`mode:${action}`);
 
+  const teams = snapshot?.teams ?? [];
   const teamName = (id: string) =>
-    snapshot?.teams.find((team) => team.id === id)?.name ?? "الفريق";
+    teams.find((team) => team.id === id)?.name ?? "الفريق";
+  const dotOf = (id: string) => teamIdentityOf(id, teams).dot;
 
   // One panel instance serves eight questions across two runs. A typed answer
   // must never survive into the next question, even when the server advances the
@@ -137,7 +170,6 @@ export function ComboGameplayPanel({
   if (phone) {
     return (
       <PhoneComboController
-        runtime={runtime}
         view={view}
         answer={answer}
         setAnswer={setAnswer}
@@ -155,75 +187,118 @@ export function ComboGameplayPanel({
     );
   }
 
-  return (
-    <ChallengeFrame
-      eyebrow={COMBO_CHALLENGE_NAME}
-      title={
-        view.phase === "completed"
-          ? "نتيجة التحدي"
-          : `الجولة ${comboRunNumber(view)} — السؤال ${view.questionNumber} من ${view.questionsPerRun}`
-      }
-      progressValue={comboProgressValue(view)}
-      aside={
-        remainingMs !== undefined && !terminal ? (
-          <ChallengeCountdown remainingMs={remainingMs} />
-        ) : null
-      }
-      className="mx-auto max-w-4xl"
-    >
-      <div className="space-y-5" dir="rtl">
-        {view.phase !== "completed" && (
-          <StreakMeter view={view} teamName={teamName} />
-        )}
+  const activeName = teamName(view.activeTeamId);
+  const opponentId = view.teamIds.find((id) => id !== view.activeTeamId);
+  const breaker = view.breakRevealedByTeamId
+    ? teamName(view.breakRevealedByTeamId)
+    : "الخصم";
 
-        {view.phase === "question" && (
-          <>
-            {view.forcedQuestion && (
-              <p
-                className="rounded-[var(--radius)] bg-destructive px-4 py-3 text-center font-black text-destructive-foreground"
-                data-testid="combo-forced-banner"
-              >
-                سؤال إجباري — لا يمكن السحب
-                {view.breakRevealedByTeamId
-                  ? ` · ${teamName(view.breakRevealedByTeamId)} كسر كومبوكم`
-                  : ""}
-              </p>
+  return (
+    <section
+      dir="rtl"
+      data-testid="combo-stage"
+      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+    >
+      <ChallengeContextStrip
+        {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
+        title={context.title ?? COMBO_CHALLENGE_NAME}
+        aside={
+          view.phase === "completed" ? null : (
+            <span className="inline-flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] px-[18px] text-lg font-extrabold text-[hsl(var(--brand-navy))]">
+              <TeamDot className={dotOf(view.activeTeamId)} />
+              جولة {activeName}
+            </span>
+          )
+        }
+      />
+
+      <div
+        className={cn(
+          "grid gap-6",
+          !terminal && "lg:grid-cols-[minmax(0,1fr)_360px]",
+        )}
+      >
+        {reveal ? (
+          <main
+            className={cn(
+              "flex min-h-[420px] flex-col justify-center rounded-[28px] bg-brand-lavender px-[34px] py-7 shadow-[7px_8px_0_hsl(var(--brand-navy))]",
+              NAVY_BORDER,
             )}
-            <h2
-              className="text-center text-[2rem] font-black leading-snug text-foreground sm:text-[2.5rem]"
-              data-testid="combo-prompt"
-            >
-              <BidiText>{comboPromptText(view)}</BidiText>
-            </h2>
-            {view.assignedParticipantId && (
-              <p
-                className="text-center text-base font-bold text-muted-foreground"
-                data-testid="combo-turn-holder"
-              >
-                الجوال مع <bdi>{holderName}</bdi>
-              </p>
+          >
+            <ComboAnswerReveal reveal={reveal} teamName={teamName} />
+          </main>
+        ) : view.phase === "question" ? (
+          <main
+            className={cn(
+              "flex min-h-[420px] flex-col gap-5 rounded-[28px] bg-brand-paper px-[34px] py-7 shadow-[7px_8px_0_hsl(var(--brand-navy))]",
+              NAVY_BORDER,
             )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {view.forcedQuestion ? (
+                <p
+                  className="inline-flex min-h-11 -rotate-2 items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 font-display text-xl font-black"
+                  data-testid="combo-forced-banner"
+                >
+                  سؤال إجباري · ما فيه تثبيت
+                  {view.breakRevealedByTeamId
+                    ? ` · ${breaker} كسر الكومبو`
+                    : ""}
+                </p>
+              ) : (
+                <span className="text-lg font-bold text-brand-slate">
+                  السؤال {view.questionNumber} من {view.questionsPerRun}
+                </span>
+              )}
+              {remainingMs !== undefined && (
+                <ChallengeCountdown remainingMs={remainingMs} />
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col justify-center gap-4">
+              <h2
+                className="font-display text-[2rem] font-black leading-snug lg:text-[52px] lg:leading-[1.4]"
+                data-testid="combo-prompt"
+              >
+                <BidiText>{comboPromptText(view)}</BidiText>
+              </h2>
+              {view.assignedParticipantId && (
+                <p
+                  className="text-lg font-bold text-brand-slate"
+                  data-testid="combo-turn-holder"
+                >
+                  الجوال مع <bdi>{holderName}</bdi>
+                </p>
+              )}
+            </div>
 
             {view.isActiveTeam ? (
               <div
-                className="mx-auto flex max-w-sm gap-2"
+                className="flex max-w-xl items-center gap-3"
                 data-testid="combo-answer-controls"
               >
-                <Input
+                <AnswerEntry
                   key={`${runtime.runtimeId}:${view.runIndex}:${view.questionNumber}`}
-                  autoComplete="off"
                   value={answer}
-                  onChange={(event) => setAnswer(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && submit()}
-                  placeholder="اكتب الإجابة"
+                  onChange={setAnswer}
+                  className="flex-1"
                 />
-                <Button disabled={!answer.trim() || !live} onClick={submit}>
+                <button
+                  type="button"
+                  disabled={!answer.trim() || !live}
+                  onClick={submit}
+                  onKeyDown={(event) => event.key === "Enter" && submit()}
+                  className={cn(
+                    GOLD_PILL,
+                    !answer.trim() && "bg-brand-lavender",
+                  )}
+                >
                   إرسال
-                </Button>
+                </button>
               </div>
             ) : (
-              <p className="rounded-[var(--radius)] bg-muted p-4 text-center font-bold text-muted-foreground">
-                {`${teamName(view.activeTeamId)} يجيب الآن…`}
+              <p className="text-lg font-bold text-brand-slate">
+                {`${activeName} يجاوبون الحين…`}
               </p>
             )}
 
@@ -231,122 +306,301 @@ export function ComboGameplayPanel({
                 one. It is never offered to the running team, and never a second
                 time — both of those are the server's determination, not ours. */}
             {view.canArmComboBreak && can("arm-combo-break") && (
-              <div className="text-center">
-                <Button
-                  variant="destructive"
-                  size="lg"
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
                   disabled={!live}
                   onClick={() => send("arm-combo-break")}
+                  className={NAVY_PILL}
                   data-testid="combo-arm-break"
                 >
-                  كسر الكومبو
-                </Button>
-                <p className="mt-2 text-sm font-bold text-muted-foreground">
-                  تُستخدم مرة واحدة — الفريق الآخر لن يعرف
+                  فعّل كسر الكومبو
+                </button>
+                <p className="text-base font-bold text-brand-slate">
+                  شحنة وحدة بس، وما يدرون إلا بعد ما يجاوبون.
                 </p>
               </div>
             )}
             {view.ownComboBreakArmed && (
               <p
-                className="rounded-[var(--radius)] border border-brand-navy bg-destructive-subtle p-4 text-center font-black text-foreground"
+                className="rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-4 py-3 text-lg font-bold"
                 data-testid="combo-armed-acknowledgement"
               >
-                كسرتم الكومبو — سيظهر لهم فقط إذا نجوا من هذا السؤال
+                فعّلتوا الكسر. يبان لهم بس لو جاوبوا هالسؤال صح.
               </p>
             )}
-          </>
-        )}
-
-        {reveal && <ComboAnswerReveal reveal={reveal} teamName={teamName} />}
-
-        {!reveal && view.phase === "decision" && (
-          <section
-            className="akwaan-rise space-y-4 text-center"
+          </main>
+        ) : view.phase === "decision" ? (
+          <main
+            className={cn(
+              "akwaan-rise flex min-h-[420px] flex-col justify-center gap-5 rounded-[28px] bg-brand-lavender px-[34px] py-7 shadow-[7px_8px_0_hsl(var(--brand-navy))]",
+              NAVY_BORDER,
+            )}
             data-testid="combo-decision"
           >
-            <p className="text-xl font-black text-foreground">إجابة صحيحة!</p>
-            {view.isActiveTeam ? (
-              <div className="flex flex-wrap justify-center gap-3">
-                {can("cash-out-combo") && (
-                  <Button
-                    size="lg"
-                    disabled={!live}
-                    onClick={() => send("cash-out-combo")}
-                    data-testid="combo-cash-out"
-                  >
-                    {`اسحب ${comboStreakPoints(view)}`}
-                  </Button>
+            <span className="inline-flex min-h-10 -rotate-3 items-center self-start rounded-[10px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-mint px-4 text-lg font-extrabold">
+              جاوبوا صح ·{" "}
+              <bdi dir="ltr" className="ms-1">
+                +{view.lastQuestionReveal?.earned ?? 1}
+              </bdi>
+            </span>
+            <h2 className="font-display text-[2.5rem] font-black leading-[1.4] lg:text-[64px]">
+              نوقف ولا نكمل؟
+            </h2>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <ComboChoice
+                title="ثبّت"
+                line={`تاخذون ${pointsLabel(comboStreakPoints(view))} مضمونة وتنتهي جولتكم.`}
+                gold
+                {...(view.isActiveTeam && can("cash-out-combo")
+                  ? {
+                      onPress: () => send("cash-out-combo"),
+                      disabled: !live,
+                      testId: "combo-cash-out",
+                    }
+                  : {})}
+              />
+              <ComboChoice
+                title="كمّل"
+                line="تلعبون السؤال الجاي. لو غلطتوا يروح الرصيد كله."
+                {...(view.isActiveTeam && can("continue-combo")
+                  ? {
+                      onPress: () => send("continue-combo"),
+                      disabled: !live,
+                      testId: "combo-continue",
+                    }
+                  : {})}
+              />
+            </div>
+            {!view.isActiveTeam && (
+              <p className="text-[17px] font-semibold text-brand-slate">
+                {view.assignedParticipantId ? (
+                  <>
+                    القرار عند <bdi>{holderName}</bdi>…
+                  </>
+                ) : (
+                  `القرار عند ${activeName}…`
                 )}
-                {can("continue-combo") && (
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    disabled={!live}
-                    onClick={() => send("continue-combo")}
-                    data-testid="combo-continue"
-                  >
-                    واصل الكومبو
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <p className="rounded-[var(--radius)] bg-muted p-4 font-bold text-muted-foreground">
-                {`${teamName(view.activeTeamId)} يقرر: يسحب أو يواصل…`}
               </p>
             )}
-          </section>
-        )}
-
-        {!reveal && view.phase === "break-reveal" && (
-          <section
-            className="akwaan-rise space-y-4 text-center"
+          </main>
+        ) : view.phase === "break-reveal" ? (
+          <main
+            className="akwaan-rise flex min-h-[420px] flex-col justify-center gap-[18px] rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-navy))] px-[34px] py-7 text-white shadow-[7px_8px_0_hsl(var(--brand-gold))]"
             data-testid="combo-break-reveal"
           >
-            <div className="rounded-[var(--radius)] bg-destructive px-5 py-4 text-destructive-foreground">
-              <p className="text-sm font-bold opacity-80">كسر الكومبو</p>
-              <p className="text-2xl font-black">
-                {view.breakRevealedByTeamId
-                  ? `${teamName(view.breakRevealedByTeamId)} كسر كومبوكم`
-                  : "تم كسر الكومبو"}
-              </p>
-            </div>
-            <p className="font-bold text-muted-foreground">
-              نجوتم من السؤال — لكن السؤال القادم إجباري ولا يمكنكم السحب.
+            <span className="inline-flex min-h-[52px] -rotate-3 items-center self-start rounded-full border-[3px] border-white bg-[hsl(var(--brand-gold))] px-6 font-display text-[28px] font-black text-[hsl(var(--brand-navy))]">
+              كسر الكومبو!
+            </span>
+            <h2 className="font-display text-[2.25rem] font-black leading-[1.4] lg:text-[52px]">
+              {breaker} قفّل عليكم التثبيت
+            </h2>
+            <p className="text-[21px] leading-[1.8] text-[#D9D5EC]">
+              جاوبتوا صح، بس ما فيه «ثبّت» هالمرة: سؤال إجباري. لو جاوبتوه صح
+              تاخذون <bdi dir="ltr">+2</bdi>، ولو غلط يروح الرصيد كله.
             </p>
             {view.isActiveTeam && can("continue-combo") ? (
-              <Button
-                size="lg"
+              <button
+                type="button"
                 disabled={!live}
                 onClick={() => send("continue-combo")}
+                className={cn(GOLD_PILL, "self-start border-white shadow-none")}
                 data-testid="combo-forced-continue"
               >
-                السؤال الإجباري
-              </Button>
+                يلا السؤال الإجباري
+              </button>
             ) : (
-              <p className="text-sm font-bold text-muted-foreground">
-                {`بانتظار ${teamName(view.activeTeamId)}…`}
+              <p className="text-[17px] font-semibold text-[#D9D5EC]">
+                {`ننتظر ${activeName} يبدأون السؤال الإجباري…`}
               </p>
             )}
-          </section>
+          </main>
+        ) : (
+          <RunRecap
+            view={view}
+            teamName={teamName}
+            dotOf={dotOf}
+            canAdvance={can("advance-combo-run")}
+            live={live}
+            onAdvance={() => send("advance-combo-run")}
+          />
         )}
 
-        {!reveal &&
-          (view.phase === "run-complete" || view.phase === "completed") && (
-            <RunRecap
-              view={view}
-              teamName={teamName}
-              canAdvance={can("advance-combo-run")}
-              live={live}
-              onAdvance={() => send("advance-combo-run")}
-            />
-          )}
+        {!terminal && (
+          <ComboLadder
+            view={view}
+            {...(opponentId
+              ? {
+                  opponent: {
+                    id: opponentId,
+                    dot: dotOf(opponentId),
+                  },
+                }
+              : {})}
+          />
+        )}
       </div>
-    </ChallengeFrame>
+    </section>
+  );
+}
+
+/** One of the two ways out of a decision: a card for the room, a button for a player. */
+function ComboChoice({
+  title,
+  line,
+  gold = false,
+  onPress,
+  disabled,
+  testId,
+}: {
+  title: string;
+  line: string;
+  gold?: boolean;
+  onPress?: () => void;
+  disabled?: boolean;
+  testId?: string;
+}) {
+  const body = (
+    <>
+      <span className="font-display text-4xl font-black">{title}</span>
+      <span className="text-lg leading-[1.7]">{line}</span>
+    </>
+  );
+  const className = cn(
+    CHOICE,
+    gold
+      ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+      : "bg-white",
+  );
+  if (!onPress) return <div className={className}>{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={disabled}
+      data-testid={testId}
+      className={cn(
+        className,
+        "transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none",
+      )}
+    >
+      {body}
+    </button>
+  );
+}
+
+/**
+ * The side column: what is at stake, where the run is on its four steps, and
+ * whether the other team still has its break.
+ *
+ * `unbankedPoints` is taken verbatim — the runtime already folded the survival
+ * bonus in when it paid the forced question, so adding anything here would
+ * double-count it. Whether the charge is spent is public; when it is armed is
+ * not, and nothing here says so.
+ */
+function ComboLadder({
+  view,
+  opponent,
+}: {
+  view: ComboView;
+  opponent?: { id: string; dot: string };
+}) {
+  // During a question the open step is the question itself. Once it is answered
+  // (the decision, or the break being shown) the open step is the one after it.
+  const answered = view.phase === "question" ? 0 : 1;
+  const done = view.questionNumber - 1 + answered;
+  const current = done + 1;
+  const forced =
+    view.phase === "break-reveal" ||
+    (view.phase === "question" && view.forcedQuestion);
+  const everyStepPaidOne = comboStreakPoints(view) === done;
+  const steps = Array.from(
+    { length: view.questionsPerRun },
+    (_, index) => view.questionsPerRun - index,
+  );
+
+  return (
+    <aside
+      className="flex flex-col gap-3 rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-[18px]"
+      data-testid="combo-streak"
+    >
+      <div className="flex items-center justify-between rounded-[18px] bg-[hsl(var(--brand-navy))] px-4 py-3 text-white">
+        <span className="flex flex-col">
+          <span className="text-sm font-semibold text-[hsl(var(--brand-gold))]">
+            رصيد على المحك
+          </span>
+          <span className="text-[13px]">يروح كله لو غلطتوا</span>
+        </span>
+        <span
+          className="akwaan-numeral text-[52px] font-bold leading-none"
+          data-testid="combo-streak-points"
+        >
+          {comboStreakPoints(view)}
+        </span>
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {steps.map((step) => {
+          const isDone = step <= done;
+          const isCurrent = step === current;
+          return (
+            <li
+              key={step}
+              data-step-state={isDone ? "done" : isCurrent ? "current" : "next"}
+              className={cn(
+                "flex min-h-[62px] items-center justify-between gap-2.5 rounded-2xl px-4",
+                isDone &&
+                  "border-[3px] border-[hsl(var(--brand-navy))] bg-brand-mint-tint",
+                isCurrent &&
+                  "border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+                !isDone &&
+                  !isCurrent &&
+                  "border-2 border-dashed border-brand-dash bg-white",
+              )}
+            >
+              <span className="font-display text-xl font-extrabold">
+                السؤال {step}
+              </span>
+              {isDone && (
+                <span dir="ltr" className="text-base font-extrabold">
+                  {everyStepPaidOne ? "+1 ✓" : "✓"}
+                </span>
+              )}
+              {isCurrent && (
+                <span className="text-sm font-extrabold">
+                  {forced ? (
+                    <>
+                      إجباري · <bdi dir="ltr">+2</bdi>
+                    </>
+                  ) : (
+                    "الحين"
+                  )}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {opponent && (
+        <div
+          className="mt-auto flex items-center justify-between gap-2 rounded-[14px] border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-3.5 py-2.5 text-sm font-bold"
+          data-testid={`combo-charge-${opponent.id}`}
+        >
+          <span className="inline-flex items-center gap-2">
+            <TeamDot className={opponent.dot} size={12} />
+            كسر الكومبو عند الخصم
+          </span>
+          <span>
+            {view.charges[opponent.id] === "spent" ? "انصرف" : "باقي"}
+          </span>
+        </div>
+      )}
+    </aside>
   );
 }
 
 function PhoneComboController({
-  runtime,
   view,
   answer,
   setAnswer,
@@ -361,11 +615,10 @@ function PhoneComboController({
   holderName,
   reveal,
 }: {
-  runtime: GameplayRuntimeSnapshot;
   view: ComboView;
   answer: string;
   setAnswer: (value: string) => void;
-  sending: "answer" | "cash-out" | "continue" | "force" | undefined;
+  sending: Sending;
   live: boolean;
   remainingMs?: number;
   can: (action: string) => boolean;
@@ -385,6 +638,7 @@ function PhoneComboController({
   // The question's holder answers and decides; the rest of the team coaches.
   const holds = view.isActiveTeam && view.isAssignedActor;
   const coaching = view.isActiveTeam && !view.isAssignedActor;
+  const running = view.phase !== "completed" && view.phase !== "run-complete";
 
   return (
     <ChallengeFrame
@@ -403,20 +657,32 @@ function PhoneComboController({
       className="flex min-h-0 flex-1 flex-col"
     >
       <div
-        className="flex min-h-0 flex-1 flex-col gap-3 text-center"
+        className="flex min-h-0 flex-1 flex-col gap-3.5 text-center text-[hsl(var(--brand-navy))]"
         dir="rtl"
         data-testid="combo-phone-controller"
       >
-        {view.phase !== "completed" && view.phase !== "run-complete" && (
-          <div className="shrink-0" data-testid="combo-phone-balance">
-            <p className="text-xs font-bold text-muted-foreground">
-              الرصيد غير المثبّت
+        {running &&
+          (view.isActiveTeam ? (
+            <div
+              className="flex shrink-0 items-center justify-between rounded-2xl bg-[hsl(var(--brand-navy))] px-4 py-3 text-white"
+              data-testid="combo-phone-balance"
+            >
+              <span className="text-sm font-bold text-[hsl(var(--brand-gold))]">
+                رصيدكم على المحك
+              </span>
+              <span className="akwaan-numeral text-4xl font-bold leading-none">
+                {comboStreakPoints(view)}
+              </span>
+            </div>
+          ) : (
+            <p
+              className="shrink-0 rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-3.5 py-3 text-[15px] font-bold leading-[1.7]"
+              data-testid="combo-phone-balance"
+            >
+              الخصم يلعب جولته · رصيدهم على المحك:{" "}
+              <span className="akwaan-numeral">{comboStreakPoints(view)}</span>
             </p>
-            <p className="akwaan-numeral text-3xl font-black text-foreground">
-              {comboStreakPoints(view)}
-            </p>
-          </div>
-        )}
+          ))}
 
         {view.phase === "question" && coaching && (
           <section
@@ -424,14 +690,14 @@ function PhoneComboController({
             data-testid="combo-phone-coaching"
             role="status"
           >
-            <p className="text-lg font-black text-foreground">
+            <p className="text-lg font-black">
               دوركم — الجوال مع <bdi>{holderName}</bdi>
             </p>
-            <h2 className="text-base font-black leading-relaxed text-foreground">
+            <h2 className="font-display text-xl font-black leading-relaxed">
               <BidiText>{comboPromptText(view)}</BidiText>
             </h2>
-            <p className="text-sm font-bold text-muted-foreground">
-              تشاوروا في الإجابة — الإرسال من الجوال المحدد.
+            <p className="text-sm font-bold text-brand-slate">
+              تشاوروا في الإجابة، والإرسال من جواله.
             </p>
           </section>
         )}
@@ -441,40 +707,46 @@ function PhoneComboController({
             className="flex min-h-0 flex-1 flex-col"
             data-testid="combo-phone-answer"
           >
-            <div className="flex flex-1 flex-col justify-center gap-3">
+            <div className="flex flex-1 flex-col justify-center gap-3.5">
               {view.forcedQuestion && (
                 <p
-                  className="font-black text-foreground"
+                  className="mx-auto inline-flex min-h-[34px] items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3.5 text-sm font-extrabold"
                   data-testid="combo-phone-forced"
                 >
-                  الخصم أجبركم تكملون
+                  سؤال إجباري · ما فيه تثبيت
                 </p>
               )}
-              <h2 className="text-base font-black leading-relaxed text-foreground">
+              <h2 className="font-display text-[22px] font-black leading-relaxed">
                 <BidiText>{comboPromptText(view)}</BidiText>
               </h2>
-              <Input
-                key={`${runtime.runtimeId}:${view.runIndex}:${view.questionNumber}`}
-                autoComplete="off"
-                enterKeyHint="send"
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && submit()}
-                placeholder="اكتب الإجابة"
-                className="h-16 text-center text-xl font-black"
-                data-testid="combo-answer-input"
-              />
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submit();
+                }}
+              >
+                <AnswerEntry
+                  key={`${view.runIndex}:${view.questionNumber}`}
+                  value={answer}
+                  onChange={setAnswer}
+                  inputTestId="combo-answer-input"
+                />
+              </form>
             </div>
             <MobileActionArea>
-              <Button
-                size="lg"
+              <button
+                type="button"
                 disabled={!answer.trim() || !live || Boolean(sending)}
                 onClick={submit}
-                className="h-14 w-full text-base font-black"
+                className={cn(
+                  GOLD_PILL,
+                  "min-h-[66px] w-full",
+                  !answer.trim() && !sending && "bg-brand-lavender",
+                )}
                 data-testid="combo-answer-submit"
               >
-                {sending === "answer" ? "جارٍ الإرسال…" : "إرسال الإجابة"}
-              </Button>
+                {sending === "answer" ? "نرسلها…" : "إرسال الإجابة"}
+              </button>
             </MobileActionArea>
           </section>
         )}
@@ -494,44 +766,59 @@ function PhoneComboController({
               </PhoneWaiting>
             ) : holds ? (
               <>
-                <div className="flex flex-1 flex-col items-center justify-center gap-1">
-                  <p className="text-2xl font-black text-foreground">
-                    وش تبون تسوون؟
+                <div className="flex flex-1 flex-col items-center justify-center gap-2">
+                  <p className="font-display text-3xl font-black">
+                    نوقف ولا نكمل؟
                   </p>
-                  <p className="text-sm font-bold text-muted-foreground">
-                    ثبّتوا {comboStreakPoints(view)} أو خاطروا بالرصيد كاملًا
-                  </p>
+                  {view.questionNumber < view.questionsPerRun && (
+                    <p className="text-sm text-brand-slate">
+                      السؤال الجاي: {view.questionNumber + 1} من{" "}
+                      {view.questionsPerRun}
+                    </p>
+                  )}
                 </div>
-                <MobileActionArea className="grid grid-cols-2">
+                <MobileActionArea className="gap-3.5">
                   {can("cash-out-combo") && (
-                    <Button
-                      size="lg"
-                      variant="outline"
+                    <button
+                      type="button"
                       disabled={!live || Boolean(sending)}
                       onClick={() => decide("cash-out")}
-                      className="h-16 w-full text-xl font-black"
+                      className={cn(
+                        PHONE_CHOICE,
+                        "bg-[hsl(var(--brand-gold))]",
+                      )}
                       data-testid="combo-phone-cash-out"
                     >
-                      {sending === "cash-out" ? "جارٍ التثبيت…" : "ثبّت"}
-                    </Button>
+                      <span className="font-display text-2xl font-black">
+                        {sending === "cash-out" ? "نثبّت…" : "ثبّت"}
+                      </span>
+                      <span className="text-sm leading-[1.6]">
+                        خذوا {pointsLabel(comboStreakPoints(view))} وانهوا
+                        جولتكم
+                      </span>
+                    </button>
                   )}
                   {can("continue-combo") && (
-                    <Button
-                      size="lg"
-                      variant="outline"
+                    <button
+                      type="button"
                       disabled={!live || Boolean(sending)}
                       onClick={() => decide("continue")}
-                      className="h-16 w-full text-xl font-black"
+                      className={cn(PHONE_CHOICE, "bg-white")}
                       data-testid="combo-phone-continue"
                     >
-                      {sending === "continue" ? "جارٍ المتابعة…" : "كمّل"}
-                    </Button>
+                      <span className="font-display text-2xl font-black">
+                        {sending === "continue" ? "نكمّل…" : "كمّل"}
+                      </span>
+                      <span className="text-sm leading-[1.6]">
+                        الرصيد كله على المحك
+                      </span>
+                    </button>
                   )}
                 </MobileActionArea>
               </>
             ) : (
               <PhoneWaiting>
-                {teamName(view.activeTeamId)} يقررون الآن…
+                {teamName(view.activeTeamId)} يقررون الحين…
               </PhoneWaiting>
             )}
           </section>
@@ -542,104 +829,130 @@ function PhoneComboController({
             className="flex min-h-0 flex-1 flex-col"
             data-testid="combo-phone-break-reveal"
           >
-            <div className="flex flex-1 flex-col items-center justify-center gap-2">
-              <p className="text-2xl font-black text-foreground">
-                الخصم أجبركم تكملون
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <span className="inline-flex min-h-[34px] -rotate-3 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3.5 text-sm font-extrabold">
+                كسر الكومبو!
+              </span>
+              <p className="font-display text-[26px] font-black leading-snug">
+                {view.isActiveTeam
+                  ? "الخصم قفّل عليكم التثبيت"
+                  : "قفّلتوا عليهم التثبيت"}
               </p>
-              <p className="text-sm font-bold text-muted-foreground">
-                ما تقدرون تثبّتون الآن
+              <p className="text-[15px] leading-[1.8] text-brand-slate">
+                {view.isActiveTeam ? (
+                  <>
+                    سؤال إجباري. لو جاوبتوه صح تاخذون <bdi dir="ltr">+2</bdi>،
+                    ولو غلط يروح الرصيد كله.
+                  </>
+                ) : (
+                  "لازم يلعبون سؤال زيادة، ولو غلطوا يروح رصيدهم كله."
+                )}
               </p>
             </div>
             {holds && can("continue-combo") ? (
               <MobileActionArea>
-                <Button
-                  size="lg"
+                <button
+                  type="button"
                   disabled={!live || Boolean(sending)}
                   onClick={() => decide("continue")}
-                  className="h-16 w-full text-lg font-black"
+                  className={cn(GOLD_PILL, "min-h-[66px] w-full")}
                   data-testid="combo-phone-forced-continue"
                 >
-                  {sending === "continue"
-                    ? "جارٍ المتابعة…"
-                    : "ابدأ السؤال الإجباري"}
-                </Button>
+                  {sending === "continue" ? "نبدأ…" : "ابدأ السؤال الإجباري"}
+                </button>
               </MobileActionArea>
             ) : (
-              <PhoneWaiting>بانتظار الفريق…</PhoneWaiting>
+              <p className="pb-2 text-sm font-bold text-brand-slate">
+                {view.isActiveTeam ? "ننتظر زميلكم يبدأ…" : "ننتظرهم يبدأون…"}
+              </p>
             )}
           </section>
         )}
 
         {view.phase === "question" && awaitingOpponent && (
           <section
-            className="flex min-h-0 flex-1 flex-col"
+            className="flex min-h-0 flex-1 flex-col gap-3.5"
             data-testid="combo-phone-opponent-run"
           >
-            <PhoneWaiting>
-              {teamName(view.activeTeamId)} يجيبون الآن…
-            </PhoneWaiting>
-            {view.canArmComboBreak && can("arm-combo-break") && (
-              <MobileActionArea>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  disabled={!live || Boolean(sending)}
-                  onClick={force}
-                  className="h-14 w-full border-brand-gold/70 text-base font-black"
-                  data-testid="combo-phone-force"
-                >
-                  {sending === "force" ? "جارٍ الإرسال…" : "كمّل غصب"}
-                </Button>
-                <p className="text-xs font-bold text-muted-foreground">
-                  إذا جاوبوا صح، ما يقدرون يثبّتون
-                </p>
-              </MobileActionArea>
+            {view.canArmComboBreak && can("arm-combo-break") ? (
+              <>
+                <div className="flex flex-1 flex-col items-center justify-center gap-3">
+                  <span className="inline-flex min-h-[34px] items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3.5 text-sm font-extrabold">
+                    عندكم شحنة وحدة
+                  </span>
+                  <p className="font-display text-[32px] font-black">
+                    كسر الكومبو
+                  </p>
+                  <p className="text-[15px] leading-[1.8] text-brand-slate">
+                    لو جاوبوا هالسؤال صح ينمنعون من التثبيت وينجبرون على سؤال
+                    زيادة. ما يدرون إنكم فعّلتوه إلا بعد ما يجاوبون.
+                  </p>
+                </div>
+                <MobileActionArea>
+                  <button
+                    type="button"
+                    disabled={!live || Boolean(sending)}
+                    onClick={force}
+                    className={cn(
+                      NAVY_PILL,
+                      "min-h-[66px] w-full shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+                    )}
+                    data-testid="combo-phone-force"
+                  >
+                    {sending === "force" ? "نفعّله…" : "فعّل الكسر على هالسؤال"}
+                  </button>
+                  <p className="text-[13px] text-brand-slate">
+                    تنصرف الشحنة حتى لو غلطوا من نفسهم.
+                  </p>
+                </MobileActionArea>
+              </>
+            ) : (
+              <PhoneWaiting>
+                {teamName(view.activeTeamId)} يجاوبون الحين…
+              </PhoneWaiting>
             )}
             {view.ownComboBreakArmed && (
               <p
-                className="mt-auto rounded-[var(--radius)] bg-muted p-4 font-black"
+                className="mt-auto rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender p-4 font-bold"
                 data-testid="combo-phone-force-sent"
               >
-                تم الإرسال سرًا — ننتظر إجابتهم
+                فعّلتوا الكسر. ننتظر إجابتهم…
               </p>
             )}
           </section>
         )}
 
-        {!reveal &&
-          (view.phase === "run-complete" || view.phase === "completed") && (
-            <section
-              className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2"
-              data-testid="combo-phone-run-result"
-            >
-              {broken ? (
-                <>
-                  <p className="text-3xl font-black text-foreground">
-                    انكسر الكومبو
-                  </p>
-                  <p className="font-bold text-muted-foreground">
-                    ضاع الرصيد غير المثبّت
-                  </p>
-                </>
-              ) : latestRun ? (
-                <>
-                  <p className="text-2xl font-black text-foreground">
-                    تم تثبيت الرصيد
-                  </p>
-                  <p className="akwaan-numeral text-4xl font-black text-brand-gold">
-                    {latestRun.bankedPoints}
-                  </p>
-                </>
-              ) : (
-                <p className="text-xl font-black">انتهى التحدي</p>
-              )}
-              <p className="text-sm font-bold text-muted-foreground">
-                {view.phase === "completed"
-                  ? "انتظروا نتيجة الشاشة"
-                  : "بانتظار الجولة التالية…"}
-              </p>
-            </section>
-          )}
+        {!reveal && !running && (
+          <section
+            className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2"
+            data-testid="combo-phone-run-result"
+          >
+            {broken ? (
+              <>
+                <p className="font-display text-3xl font-black">
+                  انكسر الكومبو
+                </p>
+                <p className="font-bold text-brand-slate">
+                  راح الرصيد اللي ما تثبّت
+                </p>
+              </>
+            ) : latestRun ? (
+              <>
+                <p className="font-display text-2xl font-black">انحفظ الرصيد</p>
+                <p className="akwaan-numeral inline-flex min-w-20 justify-center rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 py-2 text-4xl font-bold shadow-[4px_5px_0_hsl(var(--brand-navy))]">
+                  {latestRun.bankedPoints}
+                </p>
+              </>
+            ) : (
+              <p className="font-display text-xl font-black">انتهى التحدي</p>
+            )}
+            <p className="text-sm font-bold text-brand-slate">
+              {view.phase === "completed"
+                ? "شوفوا النتيجة على الشاشة"
+                : "ننتظر الجولة الجاية…"}
+            </p>
+          </section>
+        )}
       </div>
     </ChallengeFrame>
   );
@@ -647,77 +960,23 @@ function PhoneComboController({
 
 function PhoneWaiting({ children }: { children: React.ReactNode }) {
   return (
-    <p className="flex flex-1 items-center justify-center px-4 font-black text-muted-foreground">
+    <p className="flex flex-1 items-center justify-center px-4 text-lg font-bold text-brand-slate">
       {children}
     </p>
-  );
-}
-
-/**
- * The streak, and each side's charge.
- *
- * `unbankedPoints` is taken verbatim — the runtime already folded the survival
- * bonus in when it paid the forced question, so adding anything here would
- * double-count it.
- */
-function StreakMeter({
-  view,
-  teamName,
-}: {
-  view: ComboView;
-  teamName: (id: string) => string;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2" data-testid="combo-streak">
-      <div className="rounded-[var(--radius)] bg-primary px-5 py-4 text-center text-primary-foreground">
-        <p className="text-sm font-bold opacity-80">الكومبو الحالي</p>
-        <p
-          className="akwaan-numeral text-4xl font-black"
-          data-testid="combo-streak-points"
-        >
-          {comboStreakPoints(view)}
-        </p>
-        <p className="text-sm font-bold opacity-80">
-          {teamName(view.activeTeamId)}
-        </p>
-      </div>
-      <div className="grid gap-2">
-        {view.teamIds.map((teamId) => {
-          const identity = teamIdentityOf(teamId, []);
-          const spent = view.charges[teamId] === "spent";
-          return (
-            <div
-              key={teamId}
-              className={cn(
-                "flex items-center justify-between rounded-[var(--radius)] border px-4 py-2",
-                identity.surface,
-                identity.border,
-              )}
-              data-testid={`combo-charge-${teamId}`}
-            >
-              <span className={cn("font-black", identity.text)}>
-                {teamName(teamId)}
-              </span>
-              <span className="text-sm font-bold text-muted-foreground">
-                {spent ? "استُخدم الكسر" : "الكسر متاح"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
 function RunRecap({
   view,
   teamName,
+  dotOf,
   canAdvance,
   live,
   onAdvance,
 }: {
   view: ComboView;
   teamName: (id: string) => string;
+  dotOf: (id: string) => string;
   /**
    * Whether the server offered `mode:advance-combo-run` to *this* actor. The
    * action list is built per actor through the same authorization check the
@@ -731,34 +990,30 @@ function RunRecap({
   const finished = view.phase === "completed";
   return (
     <section
-      className="akwaan-rise space-y-4 text-center"
+      className="akwaan-rise flex min-h-[420px] flex-col justify-center gap-5 rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender px-[34px] py-7 text-center shadow-[7px_8px_0_hsl(var(--brand-navy))]"
       data-testid="combo-recap"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {view.teamIds.map((teamId) => {
-          const identity = teamIdentityOf(teamId, []);
           const run = comboRunOf(view, teamId);
           return (
             <div
               key={teamId}
-              className={cn(
-                "rounded-[var(--radius)] border p-4",
-                identity.surface,
-                identity.border,
-              )}
+              className="flex flex-col items-center gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] bg-white p-5"
               data-testid={`combo-recap-${teamId}`}
             >
-              <p className={cn("font-black", identity.text)}>
+              <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
+                <TeamDot className={dotOf(teamId)} />
                 {teamName(teamId)}
               </p>
-              <p className="akwaan-numeral mt-1 text-3xl font-black">
+              <p className="akwaan-numeral text-[56px] font-bold leading-none">
                 {run ? run.bankedPoints : "—"}
               </p>
-              <p className="text-sm font-bold text-muted-foreground">
-                {run ? describeComboRunEnd(run) : "لم تلعب بعد"}
+              <p className="text-base font-bold text-brand-slate">
+                {run ? describeComboRunEnd(run) : "ما لعبوا للحين"}
               </p>
               {run?.brokenByTeamId ? (
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-base font-bold">
                   {`على يد ${teamName(run.brokenByTeamId)}`}
                 </p>
               ) : null}
@@ -768,7 +1023,10 @@ function RunRecap({
       </div>
 
       {finished && view.result ? (
-        <p className="text-xl font-black" data-testid="combo-result">
+        <p
+          className="font-display text-3xl font-black"
+          data-testid="combo-result"
+        >
           {view.result.tie
             ? "تعادل!"
             : view.result.winnerTeamId
@@ -776,17 +1034,18 @@ function RunRecap({
               : "انتهى التحدي"}
         </p>
       ) : canAdvance ? (
-        <Button
-          size="lg"
+        <button
+          type="button"
           disabled={!live}
           onClick={onAdvance}
+          className={cn(GOLD_PILL, "self-center")}
           data-testid="combo-advance-run"
         >
           {comboIsFinalRun(view) ? "عرض نتيجة التحدي" : "دور الفريق الآخر"}
-        </Button>
+        </button>
       ) : (
-        <p className="text-sm font-bold text-muted-foreground">
-          بانتظار المضيف للمتابعة…
+        <p className="text-[17px] font-semibold text-brand-slate">
+          ننتظر المضيف يكمّل…
         </p>
       )}
     </section>
