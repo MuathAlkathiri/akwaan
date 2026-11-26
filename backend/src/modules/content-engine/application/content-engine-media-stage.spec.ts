@@ -271,3 +271,29 @@ describe('media planning stage', () => {
     ]);
   });
 });
+
+describe('the paid judge and items the engine drew', () => {
+  const mayJudge = (row: Record<string, unknown>): boolean =>
+    (
+      build([]).service as unknown as {
+        mayJudge: (row: Record<string, unknown>) => boolean;
+      }
+    ).mayJudge(row);
+  const survivor = {
+    status: 'screened_pass',
+    factVerification: { state: 'SUPPORTED' },
+  };
+
+  it('judges a written item that survived', () => {
+    expect(mayJudge({ ...survivor, authoring: { concept: 'c' } })).toBe(true);
+  });
+
+  it('never pays to judge a drawn item: its words are not the puzzle', () => {
+    expect(
+      mayJudge({
+        ...survivor,
+        authoring: { composedVisual: { familyKey: 'wire-trace-terminal' } },
+      }),
+    ).toBe(false);
+  });
+});
