@@ -2869,7 +2869,53 @@ export function ContentEngineReviewWorkspace() {
   );
 }
 
+/**
+ * The answer, and — when the engine drew the picture and no media contract
+ * shows it — the picture above it. Every answer mode can carry one: a typed
+ * «أول حرف» item is nothing without its row of drawings.
+ */
 function MechanicAnswerSummary({ candidate }: { candidate: ReviewCandidate }) {
+  const mode = (candidate.draft?.answerPayload as { mode?: string } | undefined)
+    ?.mode;
+  const draftMedia = candidate.draft?.media as
+    | { type?: string; assets?: Array<{ url?: string }> }
+    | undefined;
+  const pictureUrl =
+    draftMedia?.type === "image"
+      ? draftMedia.assets?.find((asset) => asset?.url?.trim())?.url
+      : undefined;
+  // مين أقرب shows its picture inside its own summary, and a governed picture
+  // is shown by the media panel: neither is drawn a second time here.
+  if (
+    !pictureUrl ||
+    mode === "closest" ||
+    candidate.reviewEligibility?.mediaReadiness?.governed
+  ) {
+    return <MechanicAnswerBody candidate={candidate} />;
+  }
+  return (
+    <div className="space-y-3">
+      <figure
+        className="overflow-hidden rounded-lg border bg-muted/20"
+        data-testid="draft-picture"
+      >
+        {/* Backend-hosted upload; next/image cannot optimize arbitrary origins. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={getMediaUrl(pictureUrl)}
+          alt="صورة السؤال كما سيراها اللاعبون"
+          className="mx-auto max-h-72 w-full object-contain"
+        />
+        <figcaption className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+          صورة السؤال — يراها اللاعبون على الشاشة المشتركة.
+        </figcaption>
+      </figure>
+      <MechanicAnswerBody candidate={candidate} />
+    </div>
+  );
+}
+
+function MechanicAnswerBody({ candidate }: { candidate: ReviewCandidate }) {
   const answerPayload = candidate.draft?.answerPayload as
     | {
         mode?: string;

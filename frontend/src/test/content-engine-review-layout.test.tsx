@@ -756,6 +756,27 @@ describe("Content Engine Review — Phase 1 workspace layout", () => {
     expect(src).toBe(getMediaUrl("/uploads/world-content/content-items/engine-abc.png"));
   });
 
+  it("shows the drawn picture of a typed or chosen item that no media contract governs", async () => {
+    const picture = { type: "image", assets: [{ url: "https://cdn.example/engine-letters.png" }] };
+    renderWorkspace([
+      mockCandidate("cid-1", "خذ آخر حرف من اسم كل رسمة، بالترتيب من اليمين. وش الكلمة؟", {
+        draft: { prompt: { ar: "خذ آخر حرف" }, answerPayload: { mode: "match", acceptedAnswers: ["ذهب"] }, media: picture } as never,
+      }),
+      mockCandidate("cid-2", "وش عكس الكرم؟", {
+        draft: { prompt: { ar: "وش عكس الكرم؟" }, answerPayload: { mode: "match", acceptedAnswers: ["البخل"] } } as never,
+      }),
+    ]);
+    await openReview(); fireEvent.click(screen.getByTestId("candidate-row-cid-1"));
+    const figure = await screen.findByTestId("draft-picture");
+    expect(figure.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/engine-letters.png");
+    expect(screen.getByTestId("match-answer-summary")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("candidate-row-cid-2"));
+    await waitFor(() => {
+      expect(screen.getByTestId("match-answer-summary")).toBeTruthy();
+      expect(screen.queryByTestId("draft-picture")).toBeNull();
+    });
+  });
+
   it("blocks approval when duplicate screening is blocking", async () => {
     renderWorkspace([mockCandidate("cid-1", "السؤال الأول", { findings: [{ code: "PROVEN_DUPLICATE_IN_SCOPE", severity: "blocking", message: "duplicate" }] })]);
     await openReview(); fireEvent.click(screen.getByTestId("candidate-row-cid-1"));

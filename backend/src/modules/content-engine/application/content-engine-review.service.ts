@@ -3728,7 +3728,13 @@ export class ContentEngineReviewService {
       if (accepted?.mode !== 'match' || !Array.isArray(accepted.acceptedAnswers) || accepted.acceptedAnswers.length === 0 || accepted.acceptedAnswers.some((entry) => typeof entry !== 'string' || !entry.trim())) reasons.push('الإجابات المقبولة غير مكتملة.');
     }
     const answer = draft?.answerPayload as { mode?: string; options?: Array<{ id?: string; label?: { ar?: string } }>; correctOptionId?: string; correctValue?: number } | undefined;
-    if ((job?.mechanicKey === 'read-your-opponent' || job?.mechanicKey === 'moving-xo') && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
+    // إكس أو takes a typed answer too: accepted answers stand in for options.
+    const typedXo = job?.mechanicKey === 'moving-xo' && answer?.mode === 'match';
+    if (typedXo) {
+      const accepted = (draft?.answerPayload as { acceptedAnswers?: unknown } | undefined)?.acceptedAnswers;
+      if (!Array.isArray(accepted) || accepted.length === 0 || accepted.some((entry) => typeof entry !== 'string' || !entry.trim())) reasons.push('الإجابات المقبولة غير مكتملة.');
+    }
+    if (!typedXo && (job?.mechanicKey === 'read-your-opponent' || job?.mechanicKey === 'moving-xo') && (answer?.mode !== 'multiple_choice' || !Array.isArray(answer.options) || answer.options.length < 2 || answer.options.some((option) => !option.id || !option.label?.ar?.trim()) || !answer.options.some((option) => option.id === answer.correctOptionId))) reasons.push('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
     if (job?.mechanicKey === 'closest') {
       const slider = (candidate.draft?.mechanicPayload as { closestSlider?: { min?: number; max?: number; step?: number } } | undefined)?.closestSlider;
       if (answer?.mode !== 'closest' || !Number.isFinite(answer.correctValue) || !slider || !Number.isFinite(slider.min) || !Number.isFinite(slider.max) || !Number.isFinite(slider.step)) reasons.push('الإجابة أو نطاق التقدير غير مكتمل.');
