@@ -1,0 +1,269 @@
+# Fluent Emoji folder name | key | Arabic name | definite form (blank = ال + name) | category
+Ant|ant|نملة||animal
+Bat|bat|خفاش||animal
+Bear|bear|دب||animal
+Bird|bird|عصفور||animal
+Butterfly|butterfly|فراشة||animal
+Camel|camel|جمل||animal
+Cat|cat|قطة||animal
+Chicken|chicken|دجاجة||animal
+Cow|cow|بقرة||animal
+Crocodile|crocodile|تمساح||animal
+Deer|deer|غزال||animal
+Dog|dog|كلب||animal
+Dolphin|dolphin|دولفين||animal
+Duck|duck|بطة||animal
+Eagle|eagle|نسر||animal
+Elephant|elephant|فيل||animal
+Ewe|sheep|خروف||animal
+Fish|fish|سمكة||animal
+Flamingo|flamingo|فلامنغو||animal
+Fox|fox|ثعلب||animal
+Frog|frog|ضفدع||animal
+Giraffe|giraffe|زرافة||animal
+Goat|goat|ماعز||animal
+Gorilla|gorilla|غوريلا||animal
+Hedgehog|hedgehog|قنفذ||animal
+Hippopotamus|hippo|فرس نهر|فرس النهر|animal
+Honeybee|bee|نحلة||animal
+Horse|horse|حصان||animal
+Kangaroo|kangaroo|كنغر||animal
+Koala|koala|كوالا||animal
+Lion|lion|أسد||animal
+Lizard|lizard|سحلية||animal
+Monkey|monkey|قرد||animal
+Mouse|mouse|فأر||animal
+Octopus|octopus|أخطبوط||animal
+Owl|owl|بومة||animal
+Panda|panda|باندا||animal
+Parrot|parrot|ببغاء||animal
+Peacock|peacock|طاووس||animal
+Penguin|penguin|بطريق||animal
+Rabbit|rabbit|أرنب||animal
+Rhinoceros|rhino|وحيد قرن|وحيد القرن|animal
+Rooster|rooster|ديك||animal
+Scorpion|scorpion|عقرب||animal
+Shark|shark|قرش||animal
+Snail|snail|حلزون||animal
+Snake|snake|ثعبان||animal
+Spider|spider|عنكبوت||animal
+Tiger|tiger|نمر||animal
+Turtle|turtle|سلحفاة||animal
+Whale|whale|حوت||animal
+Wolf|wolf|ذئب||animal
+Zebra|zebra|حمار وحشي|الحمار الوحشي|animal
+Crab|crab|سلطعون||animal
+Shrimp|shrimp|روبيان||animal
+Squid|squid|حبار||animal
+Jellyfish|jellyfish|قنديل بحر|قنديل البحر|animal
+Seal|seal|فقمة||animal
+T-rex|dinosaur|ديناصور||animal
+Beetle|beetle|خنفساء||animal
+Llama|llama|لاما||animal
+Banana|banana|موزة||food
+Avocado|avocado|أفوكادو||food
+Bread|bread|خبز||food
+Broccoli|broccoli|بروكلي||food
+Carrot|carrot|جزرة||food
+Cheese wedge|cheese|جبن||food
+Cherries|cherries|كرز||food
+Chocolate bar|chocolate|شوكولاتة||food
+Coconut|coconut|جوز هند|جوز الهند|food
+Cookie|cookie|بسكوتة||food
+Croissant|croissant|كرواسون||food
+Cucumber|cucumber|خيار||food
+Cupcake|cupcake|كب كيك|الكب كيك|food
+Doughnut|doughnut|دونات||food
+Ear of corn|corn|ذرة||food
+Egg|egg|بيضة||food
+Eggplant|eggplant|باذنجان||food
+French fries|fries|بطاطس مقلية|البطاطس المقلية|food
+Garlic|garlic|ثوم||food
+Grapes|grapes|عنب||food
+Hamburger|burger|برجر||food
+Honey pot|honey|عسل||food
+Hot beverage|coffee-cup|كوب قهوة|كوب القهوة|food
+Hot pepper|hot-pepper|فلفل حار|الفلفل الحار|food
+Soft ice cream|ice-cream|آيسكريم||food
+Kiwi fruit|kiwi|كيوي||food
+Lemon|lemon|ليمونة||food
+Lollipop|lollipop|مصاصة||food
+Mango|mango|مانجو||food
+Olive|olive|زيتون||food
+Onion|onion|بصلة||food
+Pancakes|pancakes|بان كيك|البان كيك|food
+Peach|peach|خوخة||food
+Pear|pear|كمثرى||food
+Pineapple|pineapple|أناناس||food
+Pizza|pizza|بيتزا||food
+Popcorn|popcorn|فشار||food
+Potato|potato|بطاطس||food
+Red apple|apple|تفاحة||food
+Sandwich|sandwich|ساندويتش||food
+Spaghetti|spaghetti|مكرونة||food
+Strawberry|strawberry|فراولة||food
+Taco|taco|تاكو||food
+Tangerine|orange|برتقالة||food
+Teapot|teapot|إبريق شاي|إبريق الشاي|food
+Tomato|tomato|طماطم||food
+Watermelon|watermelon|بطيخ||food
+Birthday cake|cake|كيكة||food
+Glass of milk|milk|كوب حليب|كوب الحليب|food
+Mushroom|mushroom|فطر||food
+Bell pepper|bell-pepper|فلفل رومي|الفلفل الرومي|food
+Poultry leg|chicken-leg|فخذ دجاج|فخذ الدجاج|food
+Waffle|waffle|وافل||food
+Axe|axe|فأس||object
+Backpack|backpack|شنطة ظهر|شنطة الظهر|object
+Balance scale|scale|ميزان||object
+Battery|battery|بطارية||object
+Bed|bed|سرير||object
+Bell|bell|جرس||object
+Billed cap|cap|كاب||object
+Books|books|كتب||object
+Broom|broom|مكنسة||object
+Bucket|bucket|سطل||object
+Camera|camera|كاميرا||object
+Candle|candle|شمعة||object
+Chair|chair|كرسي||object
+Computer mouse|computer-mouse|ماوس||object
+Crown|crown|تاج||object
+Desktop computer|computer|كمبيوتر||object
+Door|door|باب||object
+Dress|dress|فستان||object
+Drum|drum|طبل||object
+Electric plug|plug|فيش كهرباء|فيش الكهرباء|object
+Envelope|envelope|ظرف||object
+Flashlight|flashlight|كشاف||object
+Gear|gear|ترس||object
+Gem stone|gem|ألماسة||object
+Glasses|glasses|نظارة||object
+Gloves|gloves|قفازات||object
+Guitar|guitar|قيتار||object
+Hammer|hammer|مطرقة||object
+Headphone|headphones|سماعة راس|سماعة الراس|object
+Key|key|مفتاح||object
+Keyboard|keyboard|كيبورد||object
+Ladder|ladder|سلّم||object
+Laptop|laptop|لابتوب||object
+Light bulb|bulb|لمبة||object
+Magnet|magnet|مغناطيس||object
+Magnifying glass tilted left|magnifier|عدسة مكبرة|العدسة المكبرة|object
+Microphone|microphone|مايكروفون||object
+Microscope|microscope|مجهر||object
+Mobile phone|phone|جوال||object
+Necktie|tie|كرفتة||object
+Newspaper|newspaper|جريدة||object
+Package|box|كرتون||object
+Paintbrush|paintbrush|فرشاة رسم|فرشاة الرسم|object
+Pencil|pencil|قلم رصاص|قلم الرصاص|object
+Printer|printer|طابعة||object
+Radio|radio|راديو||object
+Ring|ring|خاتم||object
+Running shoe|shoe|جزمة رياضية|الجزمة الرياضية|object
+Scissors|scissors|مقص||object
+Screwdriver|screwdriver|مفك||object
+Shield|shield|درع||object
+Shopping cart|cart|عربة تسوق|عربة التسوق|object
+Soap|soap|صابونة||object
+Socks|socks|شراب||object
+Sunglasses|sunglasses|نظارة شمسية|النظارة الشمسية|object
+T-shirt|tshirt|تيشيرت||object
+Telephone|telephone|تلفون||object
+Telescope|telescope|تلسكوب||object
+Television|tv|تلفزيون||object
+Toothbrush|toothbrush|فرشاة أسنان|فرشاة الأسنان|object
+Top hat|hat|قبعة||object
+Trumpet|trumpet|بوق||object
+Wastebasket|bin|سلة مهملات|سلة المهملات|object
+Watch|watch|ساعة يد|ساعة اليد|object
+Wrench|wrench|مفتاح ربط|مفتاح الربط|object
+Jeans|jeans|بنطلون جينز|بنطلون الجينز|object
+Scarf|scarf|شال||object
+Coat|coat|معطف||object
+Toolbox|toolbox|صندوق عدة|صندوق العدة|object
+Stethoscope|stethoscope|سماعة طبيب|سماعة الطبيب|object
+Syringe|syringe|إبرة||object
+Thermometer|thermometer|ترمومتر||object
+Window|window|شباك||object
+Locked|lock|قفل||object
+Straight ruler|ruler|مسطرة||object
+Graduation cap|graduation-cap|قبعة تخرج|قبعة التخرج|object
+Saxophone|saxophone|ساكسفون||object
+Musical keyboard|piano|بيانو||object
+Bow and arrow|bow|قوس وسهم|القوس والسهم|object
+Fire extinguisher|extinguisher|طفاية حريق|طفاية الحريق|object
+Megaphone|megaphone|مكبر صوت|مكبر الصوت|object
+Compass|compass|بوصلة||object
+Hourglass done|hourglass|ساعة رملية|الساعة الرملية|object
+Alarm clock|alarm-clock|منبه||object
+Umbrella|umbrella|مظلة||object
+Luggage|luggage|شنطة سفر|شنطة السفر|object
+Anchor|anchor|مرساة||object
+Money bag|money-bag|كيس فلوس|كيس الفلوس|object
+Fire|fire|نار||nature
+Rainbow|rainbow|قوس قزح|قوس قزح|nature
+Snowman without snow|snowman|رجل ثلج|رجل الثلج|nature
+Sun|sun|شمس||nature
+Crescent moon|crescent|هلال||nature
+Cloud|cloud|غيمة||nature
+Mountain|mountain|جبل||nature
+Volcano|volcano|بركان||nature
+Droplet|droplet|قطرة ماء|قطرة الماء|nature
+Ringed planet|planet|كوكب||nature
+Globe showing europe-africa|globe|كرة أرضية|الكرة الأرضية|nature
+Cactus|cactus|صبار||nature
+Palm tree|palm|نخلة||nature
+Rose|rose|وردة||nature
+Sunflower|sunflower|دوار شمس|دوار الشمس|nature
+Deciduous tree|tree|شجرة||nature
+Feather|feather|ريشة||nature
+Rock|rock|صخرة||nature
+Tent|tent|خيمة||place
+House|house|بيت||place
+Castle|castle|قلعة||place
+Rocket|rocket|صاروخ||vehicle
+Airplane|airplane|طيارة||vehicle
+Helicopter|helicopter|هليكوبتر||vehicle
+Automobile|car|سيارة||vehicle
+Bus|bus|باص||vehicle
+Taxi|taxi|تاكسي||vehicle
+Ambulance|ambulance|إسعاف||vehicle
+Fire engine|fire-truck|سيارة مطافي|سيارة المطافي|vehicle
+Police car|police-car|سيارة شرطة|سيارة الشرطة|vehicle
+Delivery truck|truck|شاحنة||vehicle
+Tractor|tractor|تراكتور||vehicle
+Bicycle|bicycle|سيكل||vehicle
+Motorcycle|motorcycle|دباب||vehicle
+Kick scooter|scooter|سكوتر||vehicle
+Skateboard|skateboard|سكيت بورد|السكيت بورد|vehicle
+Sailboat|sailboat|قارب شراعي|القارب الشراعي|vehicle
+Ship|ship|سفينة||vehicle
+Locomotive|train|قطار||vehicle
+Parachute|parachute|باراشوت||vehicle
+Flying saucer|ufo|صحن طاير|الصحن الطاير|vehicle
+Satellite|satellite|قمر صناعي|القمر الصناعي|vehicle
+Soccer ball|football|كرة قدم|كرة القدم|play
+Basketball|basketball|كرة سلة|كرة السلة|play
+Volleyball|volleyball|كرة طائرة|الكرة الطائرة|play
+Tennis|tennis|مضرب تنس|مضرب التنس|play
+Bowling|bowling|بولينج||play
+Boxing glove|boxing-glove|قفاز ملاكمة|قفاز الملاكمة|play
+Chess pawn|chess-pawn|قطعة شطرنج|قطعة الشطرنج|play
+Game die|die|نرد||play
+Kite|kite|طيارة ورقية|الطيارة الورقية|play
+Puzzle piece|puzzle-piece|قطعة بزل|قطعة البزل|play
+Teddy bear|teddy|دبدوب||play
+Trophy|trophy|كاس||play
+Video game|gamepad|يد تحكم|يد التحكم|play
+Wrapped gift|gift|هدية||play
+Balloon|balloon|بالونة||play
+Yo-yo|yoyo|يويو||play
+Ping pong|ping-pong|مضرب طاولة|مضرب الطاولة|play
+Fishing pole|fishing-rod|سنارة||play
+Magic wand|wand|عصا سحرية|العصا السحرية|play
+Ticket|ticket|تذكرة||play
+1st place medal|medal|ميدالية||play
+Artist palette|palette|لوحة ألوان|لوحة الألوان|play
+Yarn|yarn|كرة صوف|كرة الصوف|play
+Diving mask|diving-mask|نظارة غوص|نظارة الغوص|play

@@ -51,6 +51,9 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=node:node /app/backend/package.json ./backend/package.json
 COPY --from=prod-deps --chown=node:node /app/backend/node_modules ./backend/node_modules
 COPY --from=build --chown=node:node /app/backend/dist ./backend/dist
+# What the composer draws with: its Arabic font and its library of drawn
+# things. Without them names render as empty boxes and puzzles stay plain.
+COPY --from=build --chown=node:node /app/backend/assets ./backend/assets
 COPY --from=build --chown=node:node /app/ai/.opencode ./ai/.opencode
 
 ENV ENGINE_AUTHORING_ROOT=/app

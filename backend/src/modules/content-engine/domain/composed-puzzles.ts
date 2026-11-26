@@ -1,4 +1,11 @@
 import { createHash } from 'crypto';
+import {
+  DRAWN_THING_CATEGORIES,
+  DrawnThing,
+  drawnThingsOf,
+  thingSvg,
+  toThe,
+} from './drawn-things';
 
 /**
  * Drawn puzzles answered by choosing — the second kind of composed item.
@@ -9,7 +16,10 @@ import { createHash } from 'crypto';
  * drawing was made from (which thread was routed to which end, which faces a
  * fold brings opposite, how many layers a punch went through).
  *
- * Pure, like `composed-visuals.ts`: strings in, a description out.
+ * Strings in, a description out, like `composed-visuals.ts`. The one thing
+ * read from outside is the library of drawn things (`drawn-things.ts`), which
+ * dresses the same puzzles in everyday objects; without it they are drawn
+ * plain.
  */
 export const COMPOSED_PUZZLE_FAMILIES = [
   'wire-trace-terminal',
@@ -328,18 +338,67 @@ export function threadCrossings(
   return crossings;
 }
 
+/** What sits at one end of a thread: a plain mark, or a drawn thing. */
+export interface ThreadStation {
+  key: string;
+  /** How an option names it: «الحمراء», «القطة». */
+  name: string;
+  /** How a question names it: «الدائرة الحمراء», «القطة». */
+  inQuestion: string;
+  /** «للنجمة», «للجزرة». */
+  to: string;
+  colour?: string;
+  thing?: DrawnThing;
+}
+
+const plainStart = (start: ThreadStart): ThreadStation => ({
+  key: start.key,
+  name: start.name,
+  inQuestion: `الدائرة ${start.name}`,
+  to: `للدائرة ${start.name}`,
+  colour: start.colour,
+});
+
+const plainEnd = (end: ThreadEnd): ThreadStation => ({
+  key: end.key,
+  name: end.name,
+  inQuestion: end.name,
+  to: end.to,
+});
+
+const thingStation = (thing: DrawnThing): ThreadStation => ({
+  key: thing.key,
+  name: thing.the,
+  inQuestion: thing.the,
+  to: toThe(thing.the),
+  thing,
+});
+
+/** A drawn thing on a white plate, so a thread visibly arrives at it. */
+function thingOnPlate(
+  thing: DrawnThing,
+  cx: number,
+  cy: number,
+  scale: number,
+): string {
+  return (
+    `<circle cx="${cx}" cy="${cy}" r="${round(70 * scale)}" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
+    thingSvg(thing, cx, cy, round(104 * scale))
+  );
+}
+
 export function threadsSvg(
   routing: ThreadRouting,
-  ends: ReadonlyArray<{ key: string }>,
+  ends: ReadonlyArray<ThreadStation>,
   drawing: {
     layout?: ThreadLayout;
-    starts?: ReadonlyArray<{ key: string; colour: string }>;
+    starts?: ReadonlyArray<ThreadStation>;
     /** A thread cut at one of its middle stations. */
     cut?: { thread: number; column: number };
   } = {},
 ): string {
   const layout = drawing.layout ?? THREAD_LAYOUTS[0];
-  const starts = drawing.starts ?? THREAD_STARTS;
+  const starts = drawing.starts ?? THREAD_STARTS.map(plainStart);
   // Mirrored, the run goes right to left and the ends sit on the left.
   const direction = layout.columns[4] > layout.columns[0] ? 1 : -1;
   const at = (lane: number, column: number, along = 0) => ({
@@ -370,12 +429,67 @@ export function threadsSvg(
     body += `<circle data-cut="${drawing.cut.thread}" cx="${x}" cy="${y}" r="${round(36 * layout.scale)}" fill="${PAPER}"/>`;
   }
   routing.lanes.forEach((_, thread) => {
-    const start = at(thread, 0);
-    body += `<circle data-start="${starts[thread].key}" cx="${start.x}" cy="${start.y}" r="${round(46 * layout.scale)}" fill="${starts[thread].colour}" stroke="${INK}" stroke-width="10"/>`;
-    const end = at(thread, 4, 20);
-    body += `<g data-end="${ends[thread].key}">${shapeAt(ends[thread].key, end.x, end.y, layout.scale)}</g>`;
+    const start = starts[thread];
+    const from = at(thread, 0);
+    body += `<g data-start="${start.key}" data-name="${start.name}">${
+      start.thing
+        ? thingOnPlate(start.thing, from.x, from.y, layout.scale)
+        : `<circle cx="${from.x}" cy="${from.y}" r="${round(46 * layout.scale)}" fill="${start.colour}" stroke="${INK}" stroke-width="10"/>`
+    }</g>`;
+    const end = ends[thread];
+    const to = at(thread, 4, 20);
+    body += `<g data-end="${end.key}" data-name="${end.name}" data-to="${end.to}">${
+      end.thing
+        ? thingOnPlate(end.thing, to.x, to.y, layout.scale)
+        : shapeAt(end.key, to.x, to.y, layout.scale)
+    }</g>`;
   });
   return frame(body);
+}
+
+/** Categories with enough drawings to fill one side of a thread puzzle. */
+const threadCategories = () =>
+  DRAWN_THING_CATEGORIES.filter(
+    (category) => drawnThingsOf(category).length >= 8,
+  );
+
+/**
+ * Who is at the two ends: coloured circles to shapes, or — two times in
+ * three, when the library is there — things of one kind to things of another.
+ */
+function threadCast(
+  count: number,
+  random: () => number,
+): {
+  skin: string;
+  starts: ThreadStation[];
+  ends: ThreadStation[];
+  /** «دائرة» is feminine and a thing is «واحد». */
+  whichStart: (to: string) => string;
+  whoseCut: string;
+} {
+  const categories = threadCategories();
+  if (categories.length >= 2 && random() < 2 / 3) {
+    const [from, to] = shuffled(categories, random);
+    return {
+      skin: `${from}-to-${to}`,
+      starts: shuffled(drawnThingsOf(from), random)
+        .slice(0, count)
+        .map(thingStation),
+      ends: shuffled(drawnThingsOf(to), random)
+        .slice(0, count)
+        .map(thingStation),
+      whichStart: (end) => `أي واحد خيطه يوصل ${end}؟`,
+      whoseCut: 'فيه خيط واحد مقطوع. خيط أي واحد؟',
+    };
+  }
+  return {
+    skin: 'plain',
+    starts: shuffled(THREAD_STARTS, random).slice(0, count).map(plainStart),
+    ends: shuffled(THREAD_ENDS, random).slice(0, count).map(plainEnd),
+    whichStart: (end) => `أي دائرة خيطها يوصل ${end}؟`,
+    whoseCut: 'فيه خيط واحد مقطوع. خيط أي دائرة؟',
+  };
 }
 
 const COUNT_WORDS = [
@@ -404,14 +518,8 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     random,
   );
   const routing = routeThreads(random, layout.threads);
-  const starts: ThreadStart[] = shuffled(THREAD_STARTS, random).slice(
-    0,
-    layout.threads,
-  );
-  const ends: ThreadEnd[] = shuffled(THREAD_ENDS, random).slice(
-    0,
-    layout.threads,
-  );
+  const cast = threadCast(layout.threads, random);
+  const { starts, ends } = cast;
   const threads = starts.map((_, index) => index);
   /** The right label against two of the others, in a seeded order. */
   const among = (labels: string[], correct: string) =>
@@ -429,7 +537,10 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
   const shared = {
     familyKey: 'wire-trace-terminal' as const,
     variantKey,
-    altText: `${layout.threads === 4 ? 'أربع' : 'ثلاث'} دوائر ملوّنة تخرج منها خيوط متشابكة إلى أشكال`,
+    altText:
+      cast.skin === 'plain'
+        ? `${layout.threads === 4 ? 'أربع' : 'ثلاث'} دوائر ملوّنة تخرج منها خيوط متشابكة إلى أشكال`
+        : `${layout.threads === 4 ? 'أربعة' : 'ثلاثة'} أشياء مرسومة تخرج منها خيوط متشابكة إلى أشياء ثانية`,
   };
   const reaches = (thread: number) => ends[routing.endOf[thread]];
 
@@ -441,8 +552,8 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     );
     return {
       ...shared,
-      variant: `${variantKey}:${layout.key}:${starts[asked].key}`,
-      prompt: `خيط الدائرة ${starts[asked].name} يوصل لوين؟`,
+      variant: `${variantKey}:${layout.key}:${cast.skin}:${starts[asked].key}`,
+      prompt: `خيط ${starts[asked].inQuestion} يوصل لوين؟`,
       options,
       correctOptionId,
       distractorRationale: options
@@ -471,8 +582,8 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     );
     return {
       ...shared,
-      variant: `${variantKey}:${layout.key}:${starts[asked].key}:${answer}`,
-      prompt: `خيط الدائرة ${starts[asked].name} كم مرة يتقاطع مع الخيوط الثانية؟`,
+      variant: `${variantKey}:${layout.key}:${cast.skin}:${starts[asked].key}:${answer}`,
+      prompt: `خيط ${starts[asked].inQuestion} كم مرة يتقاطع مع الخيوط الثانية؟`,
       options,
       correctOptionId,
       distractorRationale: options
@@ -499,8 +610,8 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     );
     return {
       ...shared,
-      variant: `${variantKey}:${layout.key}:${starts[cut.thread].key}`,
-      prompt: 'فيه خيط واحد مقطوع. خيط أي دائرة؟',
+      variant: `${variantKey}:${layout.key}:${cast.skin}:${starts[cut.thread].key}`,
+      prompt: cast.whoseCut,
       options,
       correctOptionId,
       distractorRationale: options
@@ -525,8 +636,8 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
   );
   return {
     ...shared,
-    variant: `${variantKey}:${layout.key}:${ends[askedEnd].key}`,
-    prompt: `أي دائرة خيطها يوصل ${ends[askedEnd].to}؟`,
+    variant: `${variantKey}:${layout.key}:${cast.skin}:${ends[askedEnd].key}`,
+    prompt: cast.whichStart(ends[askedEnd].to),
     options,
     correctOptionId,
     distractorRationale: options
@@ -694,6 +805,31 @@ export interface CubeFace {
   label: string;
   fill?: string;
   shape?: string;
+  thing?: DrawnThing;
+}
+
+/**
+ * Every set of faces a net can carry: the written, coloured and shaped ones
+ * above, and one of drawn things per kind the library has enough of.
+ */
+export function cubeThemes(): Array<{ key: string; faces: CubeFace[] }> {
+  return [
+    ...CUBE_THEMES.map((theme) => ({
+      key: theme.key,
+      faces: theme.labels.map((label, index) => ({
+        label,
+        ...(theme.fills ? { fill: theme.fills[index] } : {}),
+        ...(theme.shapes ? { shape: theme.shapes[index] } : {}),
+      })),
+    })),
+    ...DRAWN_THING_CATEGORIES.map((category) => ({
+      key: `drawn-${category}`,
+      faces: drawnThingsOf(category).map((thing) => ({
+        label: thing.ar,
+        thing,
+      })),
+    })).filter((theme) => theme.faces.length >= 12),
+  ];
 }
 
 export function cubeNetSvg(
@@ -716,11 +852,13 @@ export function cubeNetSvg(
         const x = originX + cx * size;
         const y = originY + cy * size;
         const face = faces[index];
-        const inside = face.shape
-          ? shapeAt(face.shape, x + size / 2, y + size / 2, round(size / 200))
-          : face.fill
-            ? ''
-            : `<text x="${x + size / 2}" y="${round(y + size / 2 + fontSize * 0.36)}" text-anchor="middle" font-family="${PUZZLE_FONT_FAMILY}" font-weight="700" font-size="${fontSize}" fill="${INK}">${face.label}</text>`;
+        const inside = face.thing
+          ? thingSvg(face.thing, x + size / 2, y + size / 2, round(size * 0.66))
+          : face.shape
+            ? shapeAt(face.shape, x + size / 2, y + size / 2, round(size / 200))
+            : face.fill
+              ? ''
+              : `<text x="${x + size / 2}" y="${round(y + size / 2 + fontSize * 0.36)}" text-anchor="middle" font-family="${PUZZLE_FONT_FAMILY}" font-weight="700" font-size="${fontSize}" fill="${INK}">${face.label}</text>`;
         return (
           `<g data-face="${index}" data-label="${face.label}">` +
           `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${face.fill ?? '#FFFFFF'}" stroke="${INK}" stroke-width="10" stroke-linejoin="round"/>` +
@@ -734,15 +872,8 @@ export function cubeNetSvg(
 function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
   const random = seededRandom(`opposite-cube-faces:${variantKey}:${seed}`);
   const net = pick(CUBE_NETS, random);
-  const theme = pick(CUBE_THEMES, random);
-  const faces: CubeFace[] = shuffled(
-    theme.labels.map((label, index) => ({
-      label,
-      ...(theme.fills ? { fill: theme.fills[index] } : {}),
-      ...(theme.shapes ? { shape: theme.shapes[index] } : {}),
-    })),
-    random,
-  );
+  const theme = pick(cubeThemes(), random);
+  const faces: CubeFace[] = shuffled(theme.faces, random).slice(0, 6);
   const labels = faces.map((face) => face.label);
   const opposites = cubeNetOpposites(net.cells);
   /** How far apart two faces lie on the flat net, in steps. */
@@ -753,10 +884,10 @@ function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
     familyKey: 'opposite-cube-faces' as const,
     variantKey,
     variant: `${net.key}:${theme.key}:${variantKey}`,
-    altText: theme.fills
+    altText: faces[0].fill
       ? 'شبكة من ستة مربعات ملوّنة، تنطوي لتصير مكعبًا'
-      : theme.shapes
-        ? 'شبكة من ستة مربعات على كل واحد شكل، تنطوي لتصير مكعبًا'
+      : faces[0].shape || faces[0].thing
+        ? 'شبكة من ستة مربعات على كل واحد رسمة، تنطوي لتصير مكعبًا'
         : 'شبكة من ستة مربعات عليها أسماء، تنطوي لتصير مكعبًا',
     svg: cubeNetSvg(net.cells, faces),
   };

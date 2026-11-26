@@ -4,14 +4,12 @@ import {
   COMPOSED_PUZZLE_FAMILIES,
   COMPOSED_PUZZLE_VARIANTS,
   CUBE_NETS,
-  CUBE_THEMES,
   FOLD_CASES,
-  THREAD_ENDS,
   THREAD_LAYOUTS,
-  THREAD_STARTS,
   composePuzzle,
   cubeNetNormals,
   cubeNetOpposites,
+  cubeThemes,
   holesAfterUnfolding,
   routeThreads,
   seededRandom,
@@ -19,6 +17,7 @@ import {
   unfoldedHoles,
 } from './composed-puzzles';
 import { isComposedFamily } from './composed-visuals';
+import { drawnThings } from './drawn-things';
 
 const seeds = Array.from({ length: 200 }, (_, index) => `job:${index}`);
 
@@ -201,45 +200,77 @@ describe('composed puzzles answered by choosing', () => {
       );
     });
 
+    /** The two ends of every thread as drawn, read back from the picture. */
+    const stations = (svg: string) => ({
+      starts: [
+        ...svg.matchAll(/data-start="([^"]+)" data-name="([^"]+)"/g),
+      ].map((match) => ({ key: match[1], name: match[2] })),
+      ends: [
+        ...svg.matchAll(
+          /data-end="([^"]+)" data-name="([^"]+)" data-to="([^"]+)"/g,
+        ),
+      ].map((match) => ({ key: match[1], name: match[2], to: match[3] })),
+    });
+
     it('answers with the start whose thread was routed to the asked end', () => {
       for (const seed of seeds.slice(0, 80)) {
         const item = composePuzzle('wire-trace-terminal', seed, 'which-start');
-        const start = THREAD_STARTS.find(
-          (entry) => entry.name === answerOf(item),
-        )!;
-        const end = THREAD_ENDS.find((entry) =>
-          item.prompt.includes(entry.to),
-        )!;
-        expect(item.factualClaim).toBe(
-          `The ${start.key} thread was routed to the ${end.key}.`,
-        );
+        const { starts, ends } = stations(item.svg);
         // Only starts that are drawn are offered.
+        const start = starts.find((entry) => entry.name === answerOf(item))!;
         for (const option of item.options) {
-          const offered = THREAD_STARTS.find(
-            (entry) => entry.name === option.label,
-          )!;
-          expect(item.svg).toContain(`data-start="${offered.key}"`);
+          expect(starts.map((entry) => entry.name)).toContain(option.label);
         }
+        const asked = ends.filter((entry) => item.prompt.includes(entry.to));
+        expect(asked).toHaveLength(1);
+        expect(item.factualClaim).toBe(
+          `The ${start.key} thread was routed to the ${asked[0].key}.`,
+        );
       }
     });
 
     it('answers with the shape a named thread was routed to', () => {
       for (const seed of seeds.slice(0, 80)) {
         const item = composePuzzle('wire-trace-terminal', seed, 'which-end');
-        const start = THREAD_STARTS.find((entry) =>
-          item.prompt.includes(entry.name),
-        )!;
-        const end = THREAD_ENDS.find((entry) => entry.name === answerOf(item))!;
-        expect(item.factualClaim).toBe(
-          `The ${start.key} thread was routed to the ${end.key}.`,
-        );
+        const { starts, ends } = stations(item.svg);
+        const end = ends.find((entry) => entry.name === answerOf(item))!;
         for (const option of item.options) {
-          const offered = THREAD_ENDS.find(
-            (entry) => entry.name === option.label,
-          )!;
-          expect(item.svg).toContain(`data-end="${offered.key}"`);
+          expect(ends.map((entry) => entry.name)).toContain(option.label);
+        }
+        const asked = starts.filter((entry) =>
+          item.prompt.includes(` ${entry.name} `),
+        );
+        expect(asked).toHaveLength(1);
+        expect(item.factualClaim).toBe(
+          `The ${asked[0].key} thread was routed to the ${end.key}.`,
+        );
+      }
+    });
+
+    it('dresses the ends in drawn things of two different kinds, or leaves them plain', () => {
+      const things = new Map(drawnThings().map((thing) => [thing.key, thing]));
+      const skins = new Set<string>();
+      for (const seed of seeds) {
+        const item = composePuzzle('wire-trace-terminal', seed, 'which-start');
+        const skin = item.variant.split(':')[2];
+        skins.add(skin === 'plain' ? 'plain' : 'things');
+        const { starts, ends } = stations(item.svg);
+        // No thing appears twice in one picture.
+        expect(
+          new Set([...starts, ...ends].map((entry) => entry.key)).size,
+        ).toBe(starts.length + ends.length);
+        if (skin === 'plain') continue;
+        const [from, to] = skin.split('-to-');
+        expect(from).not.toBe(to);
+        for (const start of starts) {
+          expect(things.get(start.key)!.category).toBe(from);
+          expect(start.name).toBe(things.get(start.key)!.the);
+        }
+        for (const end of ends) {
+          expect(things.get(end.key)!.category).toBe(to);
         }
       }
+      expect([...skins].sort()).toEqual(['plain', 'things']);
     });
 
     it('counts the crossings of one thread, on three threads only', () => {
@@ -262,7 +293,7 @@ describe('composed puzzles answered by choosing', () => {
           seed,
           'count-crossings',
         );
-        const [, layoutKey, , count] = item.variant.split(':');
+        const [, layoutKey, , , count] = item.variant.split(':');
         expect(layoutKey.startsWith('three-')).toBe(true);
         expect(Number(count)).toBeGreaterThanOrEqual(1);
         expect(item.factualClaim).toContain(`${count} time(s)`);
@@ -278,7 +309,7 @@ describe('composed puzzles answered by choosing', () => {
           'broken-thread',
         );
         expect(item.svg.match(/data-cut=/g)).toHaveLength(1);
-        const start = THREAD_STARTS.find(
+        const start = stations(item.svg).starts.find(
           (entry) => entry.name === answerOf(item),
         )!;
         expect(item.factualClaim).toContain(`The ${start.key} thread was cut`);
@@ -345,11 +376,15 @@ describe('composed puzzles answered by choosing', () => {
     const drawn = (item: ReturnType<typeof composePuzzle>) => {
       const [netKey, themeKey] = item.variant.split(':');
       const net = CUBE_NETS.find((entry) => entry.key === netKey)!;
-      const theme = CUBE_THEMES.find((entry) => entry.key === themeKey)!;
+      const theme = cubeThemes().find((entry) => entry.key === themeKey)!;
       const faces = [
         ...item.svg.matchAll(/data-face="(\d)" data-label="([^"]+)"/g),
       ].map((match) => match[2]);
-      expect([...faces].sort()).toEqual([...theme.labels].sort());
+      // Six different faces, all from the theme.
+      expect(new Set(faces).size).toBe(6);
+      for (const face of faces) {
+        expect(theme.faces.map((entry) => entry.label)).toContain(face);
+      }
       return { net, theme, faces, opposites: cubeNetOpposites(net.cells) };
     };
 
@@ -379,9 +414,15 @@ describe('composed puzzles answered by choosing', () => {
         );
         const { faces, opposites } = drawn(item);
         const isOpposite = (label: string) => {
-          const pair = faces.filter((face) => label.split(' و').includes(face));
-          expect(pair).toHaveLength(2);
-          return faces[opposites[faces.indexOf(pair[0])]] === pair[1];
+          // A face's own name may hold « و», so the pair is matched whole.
+          const first = faces.filter((face) =>
+            faces.some((other) => label === `${face} و${other}`),
+          );
+          expect(first).toHaveLength(1);
+          const second = faces.find(
+            (other) => label === `${first[0]} و${other}`,
+          )!;
+          return faces[opposites[faces.indexOf(first[0])]] === second;
         };
         for (const option of item.options) {
           expect(isOpposite(option.label)).toBe(
@@ -391,21 +432,28 @@ describe('composed puzzles answered by choosing', () => {
       }
     });
 
-    it('writes names, paints colours or draws shapes on the faces', () => {
+    it('writes names, paints colours, or draws shapes and things on the faces', () => {
       const kinds = new Set<string>();
       for (const seed of seeds) {
         const item = composePuzzle('opposite-cube-faces', seed, 'opposite');
-        const { theme } = drawn(item);
-        const kind = theme.fills
+        const face = drawn(item).theme.faces[0];
+        const kind = face.fill
           ? 'colours'
-          : theme.shapes
+          : face.shape
             ? 'shapes'
-            : 'names';
+            : face.thing
+              ? 'things'
+              : 'names';
         kinds.add(kind);
-        // Names are written; colours and shapes carry no text to read.
+        // Names are written; the rest carry no text to read.
         expect(item.svg.includes('<text')).toBe(kind === 'names');
       }
-      expect([...kinds].sort()).toEqual(['colours', 'names', 'shapes']);
+      expect([...kinds].sort()).toEqual([
+        'colours',
+        'names',
+        'shapes',
+        'things',
+      ]);
     });
   });
 
