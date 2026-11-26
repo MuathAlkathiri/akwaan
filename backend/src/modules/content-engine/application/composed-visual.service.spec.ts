@@ -311,7 +311,9 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
           scopeKey:
             familyKey === 'wire-trace-terminal'
               ? 'paths-motion'
-              : 'assembly-rotation',
+              : ['opposite-cube-faces', 'fold-and-punch'].includes(familyKey)
+                ? 'assembly-rotation'
+                : 'observation-illusions',
         },
         variantKey,
       );

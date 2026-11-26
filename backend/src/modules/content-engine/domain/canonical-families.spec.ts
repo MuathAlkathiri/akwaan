@@ -500,7 +500,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         }
       });
 
-      it('the two visual Scopes draw only what the composer can draw, and only for إكس أو المتحرك', () => {
+      it('the three visual Scopes draw only what the composer can draw, and only for إكس أو المتحرك', () => {
         expect(drawable('assembly-rotation', 'moving-xo')).toEqual([
           'fold-and-punch',
           'opposite-cube-faces',
@@ -508,7 +508,16 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         expect(drawable('paths-motion', 'moving-xo')).toEqual([
           'wire-trace-terminal',
         ]);
-        for (const scopeKey of ['assembly-rotation', 'paths-motion']) {
+        expect(drawable('observation-illusions', 'moving-xo')).toEqual([
+          'spot-the-difference',
+          'visual-closure-fragment',
+          'visual-match-scan',
+        ]);
+        for (const scopeKey of [
+          'assembly-rotation',
+          'paths-motion',
+          'observation-illusions',
+        ]) {
           for (const mechanicKey of ['read-your-opponent', 'bomb', 'closest']) {
             expect(drawable(scopeKey, mechanicKey)).toEqual([]);
           }

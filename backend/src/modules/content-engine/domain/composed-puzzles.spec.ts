@@ -108,7 +108,11 @@ describe('composed puzzles answered by choosing', () => {
       __dirname,
       '../../../../../ai/.opencode/skills/worlds/puzzles/scopes',
     );
-    const catalog = ['assembly-rotation', 'paths-motion'].flatMap((scope) => {
+    const catalog = [
+      'assembly-rotation',
+      'paths-motion',
+      'observation-illusions',
+    ].flatMap((scope) => {
       const text = readFileSync(join(skills, scope, 'KNOWLEDGE.md'), 'utf8');
       const block = /```akwaan-families\n([\s\S]*?)\n```/.exec(text)![1];
       return (
@@ -126,6 +130,147 @@ describe('composed puzzles answered by choosing', () => {
         ...COMPOSED_PUZZLE_VARIANTS[familyKey],
       ]);
     }
+  });
+
+  describe('قوة الملاحظة', () => {
+    const things = new Map(drawnThings().map((thing) => [thing.key, thing]));
+    const named = (label: string) =>
+      drawnThings().find((thing) => thing.ar === label)!;
+
+    it.each(['shadow', 'close-up', 'half-hidden'])(
+      'fragment / %s: answers with the thing drawn, against two of its own kind',
+      (variantKey) => {
+        for (const seed of seeds.slice(0, 80)) {
+          const item = composePuzzle(
+            'visual-closure-fragment',
+            seed,
+            variantKey,
+          );
+          const key = /data-thing="([^"]+)"/.exec(item.svg)![1];
+          const thing = things.get(key)!;
+          expect(answerOf(item)).toBe(thing.ar);
+          for (const option of item.options) {
+            expect(named(option.label).category).toBe(thing.category);
+          }
+        }
+      },
+    );
+
+    it('a shadow is one colour, never of a thing with a common shadow, and no option is its twin', () => {
+      for (const seed of seeds) {
+        const item = composePuzzle('visual-closure-fragment', seed, 'shadow');
+        const thing = things.get(/data-thing="([^"]+)"/.exec(item.svg)![1])!;
+        expect(thing.twins.length).toBeLessThanOrEqual(2);
+        for (const option of item.options) {
+          expect(thing.twins).not.toContain(named(option.label).key);
+        }
+        // Paper, card and ink only: no colour of the drawing survives.
+        const fills = new Set(
+          [...item.svg.matchAll(/ fill="(#[0-9A-Fa-f]{6})"/g)].map((match) =>
+            match[1].toUpperCase(),
+          ),
+        );
+        expect([...fills].sort()).toEqual(['#1B1F3B', '#F6F1E7', '#FFFFFF']);
+      }
+    });
+
+    /** What is on each of the two boards, by key. */
+    const boards = (svg: string) =>
+      ['1', '2'].map((number) => {
+        const board = new RegExp(
+          `<g data-board="${number}">([\\s\\S]*?)</text></g>`,
+        ).exec(svg)![1];
+        return [...board.matchAll(/data-thing="([^"]+)"/g)].map(
+          (match) => match[1],
+        );
+      });
+
+    it('difference / vanished: one thing of the first board is not on the second', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('spot-the-difference', seed, 'vanished');
+        const [first, second] = boards(item.svg);
+        expect(first).toHaveLength(9);
+        expect(second).toHaveLength(8);
+        const gone = first.filter((key) => !second.includes(key));
+        expect(gone.map((key) => things.get(key)!.ar)).toEqual([
+          answerOf(item),
+        ]);
+        for (const option of item.options) {
+          expect(first).toContain(named(option.label).key);
+        }
+      }
+    });
+
+    it('difference / appeared: one thing of the second board is not on the first', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('spot-the-difference', seed, 'appeared');
+        const [first, second] = boards(item.svg);
+        expect(first).toHaveLength(8);
+        expect(second).toHaveLength(9);
+        const added = second.filter((key) => !first.includes(key));
+        expect(added.map((key) => things.get(key)!.ar)).toEqual([
+          answerOf(item),
+        ]);
+      }
+    });
+
+    it('difference / replaced: nothing moves, one thing gives its place, and the newcomer is offered as the trap', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('spot-the-difference', seed, 'replaced');
+        const [first, second] = boards(item.svg);
+        const changed = first
+          .map((key, index) => [key, second[index]])
+          .filter(([before, after]) => before !== after);
+        expect(changed).toHaveLength(1);
+        expect(things.get(changed[0][0])!.ar).toBe(answerOf(item));
+        expect(item.options.map((option) => option.label)).toContain(
+          things.get(changed[0][1])!.ar,
+        );
+      }
+    });
+
+    const counts = (svg: string) => {
+      const seen = new Map<string, number>();
+      for (const match of svg.matchAll(/data-thing="([^"]+)"/g)) {
+        seen.set(match[1], (seen.get(match[1]) ?? 0) + 1);
+      }
+      return seen;
+    };
+
+    it('scan / duplicate: exactly one thing is drawn twice', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('visual-match-scan', seed, 'duplicate');
+        const seen = counts(item.svg);
+        const twice = [...seen].filter(([, count]) => count === 2);
+        expect(seen.size).toBe(14);
+        expect(twice).toHaveLength(1);
+        expect(things.get(twice[0][0])!.ar).toBe(answerOf(item));
+      }
+    });
+
+    it('scan / no-twin: exactly one thing is drawn once', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('visual-match-scan', seed, 'no-twin');
+        const seen = counts(item.svg);
+        const once = [...seen].filter(([, count]) => count === 1);
+        expect(seen.size).toBe(8);
+        expect(once).toHaveLength(1);
+        expect(things.get(once[0][0])!.ar).toBe(answerOf(item));
+      }
+    });
+
+    it('scan / absent: the answer is the only option not on the board', () => {
+      for (const seed of seeds.slice(0, 80)) {
+        const item = composePuzzle('visual-match-scan', seed, 'absent');
+        const seen = counts(item.svg);
+        expect(seen.size).toBe(15);
+        for (const option of item.options) {
+          expect(seen.has(named(option.label).key)).toBe(
+            option.id !== item.correctOptionId,
+          );
+        }
+      }
+    });
   });
 
   describe('تتبّع الخيط', () => {

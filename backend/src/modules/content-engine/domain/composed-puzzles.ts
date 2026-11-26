@@ -2,7 +2,9 @@ import { createHash } from 'crypto';
 import {
   DRAWN_THING_CATEGORIES,
   DrawnThing,
+  drawnThings,
   drawnThingsOf,
+  thingSilhouetteSvg,
   thingSvg,
   toThe,
 } from './drawn-things';
@@ -25,6 +27,9 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'wire-trace-terminal',
   'opposite-cube-faces',
   'fold-and-punch',
+  'visual-closure-fragment',
+  'spot-the-difference',
+  'visual-match-scan',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
@@ -52,6 +57,9 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   ],
   'opposite-cube-faces': ['opposite', 'opposite-pair', 'not-touching'],
   'fold-and-punch': ['count-holes', 'count-folds'],
+  'visual-closure-fragment': ['shadow', 'close-up', 'half-hidden'],
+  'spot-the-difference': ['vanished', 'appeared', 'replaced'],
+  'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
 export interface ComposedPuzzle {
@@ -1224,6 +1232,310 @@ function composeFold(seed: string, variantKey: string): ComposedPuzzle {
   };
 }
 
+// ---------------------------------------------------------------------------
+// قوة الملاحظة — three families drawn from the library of things
+// ---------------------------------------------------------------------------
+
+/** A drawing that casts a shadow like too many others cannot be asked by it. */
+const SHADOW_MAX_TWINS = 2;
+
+/**
+ * The right thing against two others of its own kind — never a twin of it,
+ * so that no two options cast one shadow.
+ */
+function thingAmongItsKind(
+  answer: DrawnThing,
+  random: () => number,
+): { options: Array<{ id: string; label: string }>; correctOptionId: string } {
+  const others = shuffled(
+    drawnThingsOf(answer.category).filter(
+      (thing) => thing.key !== answer.key && !answer.twins.includes(thing.key),
+    ),
+    random,
+  ).slice(0, 2);
+  return asOptions(
+    [answer.ar, ...others.map((thing) => thing.ar)],
+    answer.ar,
+    random,
+  );
+}
+
+export function fragmentSvg(
+  thing: DrawnThing,
+  variantKey: string,
+  detail: number,
+): string {
+  const size = 440;
+  const cx = W / 2;
+  const cy = H / 2;
+  const x = cx - size / 2;
+  const y = cy - size / 2;
+  const card = (inside: string) =>
+    `<rect x="${x - 30}" y="${y - 30}" width="${size + 60}" height="${size + 60}" rx="36" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>${inside}`;
+  if (variantKey === 'shadow') {
+    return frame(
+      card(
+        `<g data-thing="${thing.key}">${thingSilhouetteSvg(thing, cx, cy, size, INK)}</g>`,
+      ),
+    );
+  }
+  if (variantKey === 'close-up') {
+    // A window half the drawing wide, somewhere around its middle.
+    const windows = [
+      [8, 8],
+      [5, 7],
+      [11, 7],
+      [7, 11],
+      [10, 10],
+    ];
+    const [left, top] = windows[detail % windows.length];
+    return frame(
+      card(
+        `<svg data-thing="${thing.key}" x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${left} ${top} 16 16" fill="none">${thing.body}</svg>`,
+      ),
+    );
+  }
+  // Half of it behind a wall: left, right, top or bottom.
+  const side = detail % 4;
+  const wall =
+    side === 0
+      ? [x - 30, y - 30, size / 2 + 30, size + 60]
+      : side === 1
+        ? [cx, y - 30, size / 2 + 30, size + 60]
+        : side === 2
+          ? [x - 30, y - 30, size + 60, size / 2 + 30]
+          : [x - 30, cy, size + 60, size / 2 + 30];
+  return frame(
+    card(
+      `<g data-thing="${thing.key}">${thingSvg(thing, cx, cy, size)}</g>` +
+        `<rect data-wall="${side}" x="${wall[0]}" y="${wall[1]}" width="${wall[2]}" height="${wall[3]}" rx="36" fill="${INK}"/>`,
+    ),
+  );
+}
+
+function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
+  const random = seededRandom(`visual-closure-fragment:${variantKey}:${seed}`);
+  const thing = pick(
+    drawnThings().filter(
+      (entry) =>
+        entry.category !== 'place' &&
+        (variantKey !== 'shadow' || entry.twins.length <= SHADOW_MAX_TWINS),
+    ),
+    random,
+  );
+  const detail = Math.floor(random() * 20);
+  const { options, correctOptionId } = thingAmongItsKind(thing, random);
+  return {
+    familyKey: 'visual-closure-fragment',
+    variantKey,
+    variant: `${variantKey}:${thing.key}:${detail}`,
+    prompt:
+      variantKey === 'shadow'
+        ? 'هذا ظل وش؟'
+        : variantKey === 'close-up'
+          ? 'هذي صورة مقرّبة من وش؟'
+          : 'نصّه مغطّى. وش هو؟',
+    options,
+    correctOptionId,
+    distractorRationale: options
+      .filter((option) => option.id !== correctOptionId)
+      .map((option) => ({
+        optionId: option.id,
+        why: 'A thing of the same kind, so it is a fair guess from a glance — but its outline and details are not the ones shown.',
+      })),
+    altText:
+      variantKey === 'shadow'
+        ? 'ظل أسود لشيء معروف'
+        : variantKey === 'close-up'
+          ? 'جزء مقرّب من رسمة شيء معروف'
+          : 'رسمة شيء معروف نصفها مغطّى',
+    concept:
+      'Recognise an everyday thing from part of what would normally identify it.',
+    factualClaim: `The drawing shown is "${thing.key}" («${thing.ar}»).`,
+    svg: fragmentSvg(thing, variantKey, detail),
+  };
+}
+
+/** Things laid on a grid of cells; `null` leaves a cell empty. */
+function thingGridSvg(
+  cells: ReadonlyArray<DrawnThing | null>,
+  columns: number,
+  box: { x: number; y: number; cell: number; thing: number },
+): string {
+  return cells
+    .map((thing, index) =>
+      thing
+        ? `<g data-cell="${index}" data-thing="${thing.key}">${thingSvg(
+            thing,
+            box.x + (index % columns) * box.cell + box.cell / 2,
+            box.y + Math.floor(index / columns) * box.cell + box.cell / 2,
+            box.thing,
+          )}</g>`
+        : '',
+    )
+    .join('');
+}
+
+/** Distinct things for one picture, of every kind mixed. */
+const castOfThings = (count: number, random: () => number): DrawnThing[] =>
+  shuffled(
+    drawnThings().filter((thing) => thing.category !== 'place'),
+    random,
+  ).slice(0, count);
+
+/**
+ * Two pictures side by side — the first on the right, as Arabic reads — each
+ * a 3×3 board, numbered so the question can name the second.
+ */
+export function twoBoardsSvg(
+  first: ReadonlyArray<DrawnThing | null>,
+  second: ReadonlyArray<DrawnThing | null>,
+): string {
+  const board = (x: number, number: string, cells: typeof first) =>
+    `<g data-board="${number}">` +
+    `<rect x="${x}" y="100" width="510" height="510" rx="32" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
+    thingGridSvg(cells, 3, { x, y: 100, cell: 170, thing: 124 }) +
+    `<circle cx="${x + 255}" cy="52" r="36" fill="${GOLD}" stroke="${INK}" stroke-width="8"/>` +
+    `<text x="${x + 255}" y="67" text-anchor="middle" font-family="${PUZZLE_FONT_FAMILY}" font-weight="700" font-size="42" fill="${INK}">${number}</text>` +
+    `</g>`;
+  return frame(board(640, '1', first) + board(50, '2', second));
+}
+
+function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
+  const random = seededRandom(`spot-the-difference:${variantKey}:${seed}`);
+  const cast = castOfThings(10, random);
+  const kept = cast.slice(0, 8);
+  const [, , , , , , , , odd, newcomer] = cast;
+  let first: Array<DrawnThing | null>;
+  let second: Array<DrawnThing | null>;
+  let answer: DrawnThing;
+  let tempting: DrawnThing[];
+  let prompt: string;
+  let rationale: string;
+  let claim: string;
+  if (variantKey === 'appeared') {
+    // Eight things, then the same eight moved around with a ninth among them.
+    first = shuffled([...kept, null], random);
+    second = shuffled([...kept, odd], random);
+    answer = odd;
+    tempting = shuffled(kept, random).slice(0, 2);
+    prompt = 'وش الشي الجديد اللي انضاف في الصورة 2؟';
+    rationale = 'It is in both pictures; it only moved to another place.';
+    claim = `"${odd.key}" is in picture 2 and not in picture 1.`;
+  } else if (variantKey === 'replaced') {
+    // Nothing moves; one thing gives its place to another.
+    first = shuffled([...kept, odd], random);
+    second = first.map((thing) => (thing === odd ? newcomer : thing));
+    answer = odd;
+    tempting = [newcomer, pick(kept, random)];
+    prompt = 'أي واحد من الصورة 1 انبدل بشي ثاني في الصورة 2؟';
+    rationale =
+      'Either the thing that took the place — it is what arrived, not what left — or one that is unchanged in both pictures.';
+    claim = `"${odd.key}" in picture 1 was replaced by "${newcomer.key}" in picture 2.`;
+  } else {
+    // Nine things, then eight of them moved around: one is gone.
+    first = shuffled([...kept, odd], random);
+    second = shuffled([...kept, null], random);
+    answer = odd;
+    tempting = shuffled(kept, random).slice(0, 2);
+    prompt = 'وش اللي اختفى في الصورة 2؟';
+    rationale = 'It is still in picture 2; it only moved to another place.';
+    claim = `"${odd.key}" is in picture 1 and not in picture 2.`;
+  }
+  const { options, correctOptionId } = asOptions(
+    [answer.ar, ...tempting.map((thing) => thing.ar)],
+    answer.ar,
+    random,
+  );
+  return {
+    familyKey: 'spot-the-difference',
+    variantKey,
+    variant: `${variantKey}:${answer.key}`,
+    prompt,
+    options,
+    correctOptionId,
+    distractorRationale: options
+      .filter((option) => option.id !== correctOptionId)
+      .map((option) => ({ optionId: option.id, why: rationale })),
+    altText:
+      'صورتان مرقّمتان في كل واحدة مجموعة أشياء مرسومة، وبينهما فرق واحد',
+    concept:
+      'Compare two boards of drawn things and name the one thing that differs.',
+    factualClaim: claim,
+    svg: twoBoardsSvg(first, second),
+  };
+}
+
+export function scanBoardSvg(cells: ReadonlyArray<DrawnThing | null>): string {
+  return frame(
+    `<rect x="70" y="27" width="1060" height="621" rx="36" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
+      thingGridSvg(cells, 5, { x: 100, y: 37, cell: 200, thing: 140 }),
+  );
+}
+
+function composeScan(seed: string, variantKey: string): ComposedPuzzle {
+  const random = seededRandom(`visual-match-scan:${variantKey}:${seed}`);
+  let cells: DrawnThing[];
+  let answer: DrawnThing;
+  let tempting: DrawnThing[];
+  let prompt: string;
+  let rationale: string;
+  let claim: string;
+  if (variantKey === 'absent') {
+    // Fifteen things on the board; the answer is one of its kind that is not.
+    const cast = castOfThings(15, random);
+    const [like] = cast;
+    answer = pick(
+      drawnThingsOf(like.category).filter((thing) => !cast.includes(thing)),
+      random,
+    );
+    cells = shuffled(cast, random);
+    tempting = [like, cast[1]];
+    prompt = 'أي واحد من هذول مو موجود في الصورة؟';
+    rationale = 'It is on the board, among the other things.';
+    claim = `"${answer.key}" is not on the board; the other two options are.`;
+  } else if (variantKey === 'no-twin') {
+    // Seven pairs and one thing on its own.
+    const cast = castOfThings(8, random);
+    answer = cast[0];
+    cells = shuffled([...cast, ...cast.slice(1)], random);
+    tempting = cast.slice(1, 3);
+    prompt = 'كل رسمة لها توأم إلا وحدة. أي وحدة؟';
+    rationale = 'It appears twice on the board; its twin is farther away.';
+    claim = `"${answer.key}" appears once; every other drawing appears twice.`;
+  } else {
+    // Fourteen different things and one of them a second time.
+    const cast = castOfThings(14, random);
+    answer = cast[0];
+    cells = shuffled([...cast, answer], random);
+    tempting = cast.slice(1, 3);
+    prompt = 'أي رسمة تكررت مرتين في الصورة؟';
+    rationale = 'It appears once only.';
+    claim = `"${answer.key}" appears twice; every other drawing appears once.`;
+  }
+  const { options, correctOptionId } = asOptions(
+    [answer.ar, ...tempting.map((thing) => thing.ar)],
+    answer.ar,
+    random,
+  );
+  return {
+    familyKey: 'visual-match-scan',
+    variantKey,
+    variant: `${variantKey}:${answer.key}`,
+    prompt,
+    options,
+    correctOptionId,
+    distractorRationale: options
+      .filter((option) => option.id !== correctOptionId)
+      .map((option) => ({ optionId: option.id, why: rationale })),
+    altText: 'لوحة فيها خمس عشرة رسمة لأشياء معروفة',
+    concept:
+      'Scan a board of drawn things for the one that repeats, stands alone, or is missing.',
+    factualClaim: claim,
+    svg: scanBoardSvg(cells),
+  };
+}
+
 export const isComposedPuzzleFamily = (
   familyKey: string | null | undefined,
 ): familyKey is ComposedPuzzleFamily =>
@@ -1241,5 +1553,12 @@ export function composePuzzle(
   const variant = chooseVariant(familyKey, seed, variantKey);
   if (familyKey === 'wire-trace-terminal') return composeThreads(seed, variant);
   if (familyKey === 'opposite-cube-faces') return composeCubeNet(seed, variant);
-  return composeFold(seed, variant);
+  if (familyKey === 'fold-and-punch') return composeFold(seed, variant);
+  if (familyKey === 'visual-closure-fragment') {
+    return composeFragment(seed, variant);
+  }
+  if (familyKey === 'spot-the-difference') {
+    return composeDifference(seed, variant);
+  }
+  return composeScan(seed, variant);
 }

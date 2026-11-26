@@ -997,3 +997,379 @@ The Puzzle Family Library is an authoring contract. It evolves through deliberat
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## Composed families — مركّب الصور (owner decision 2026-11-26)
+
+The families of this Scope need a picture. The engine **draws** the ones
+listed here itself (`visual-closure-fragment`, `spot-the-difference`,
+`visual-match-scan`): the picture, the question, the three options and the
+right answer are all made from one seed, so the answer is correct by
+construction. No model writes them and no model is paid for them.
+
+All three are built on the library of drawn everyday things
+(`backend/assets/drawn-things` — an animal, a fruit, a tool, each with its
+Arabic name). «ظل مين» — the owner's approved angle — is the `shadow` template
+of `visual-closure-fragment`. A drawing whose shadow is nearly the same as
+several others' (a ball, a biscuit) is never asked by its shadow, and no two
+options of a shadow question cast one shadow.
+
+Each drawn family asks its picture in more than one way — its **templates**
+(`variants` below). The keys must match the composer's own list
+(`COMPOSED_PUZZLE_VARIANTS`); a test holds the two together.
+
+They are generated for إكس أو المتحرك only. Every other family of the library
+stays in it with its ratings and is **paused** until the composer can draw it:
+nothing is deleted, and a family returns by removing its `status` below.
+
+## Machine-Readable Family Catalog
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.observation-illusions",
+  "families": [
+    {
+      "familyKey": "hidden-detail",
+      "name": "التفصيلة المخفية والتمويه",
+      "description": "التفصيلة المخفية والتمويه",
+      "playerSolve": "التفصيلة المخفية والتمويه",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "GOOD",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "LIMITED",
+        "closest": "LIMITED"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "figure-ground-reversal",
+      "name": "انعكاس الشكل والأرضية والفضاء السلبي",
+      "description": "انعكاس الشكل والأرضية والفضاء السلبي",
+      "playerSolve": "انعكاس الشكل والأرضية والفضاء السلبي",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "match"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "illusory-contour",
+      "name": "الحدود والأشكال الوهمية",
+      "description": "الحدود والأشكال الوهمية",
+      "playerSolve": "الحدود والأشكال الوهمية",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "EXCELLENT",
+        "closest": "LIMITED"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "match"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "size-distortion-illusion",
+      "name": "خداع الحجم والأبعاد",
+      "description": "خداع الحجم والأبعاد",
+      "playerSolve": "خداع الحجم والأبعاد",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "color-contrast-illusion",
+      "name": "خداع اللون والسطوع",
+      "description": "خداع اللون والسطوع",
+      "playerSolve": "خداع اللون والسطوع",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "match"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "perspective-depth-trap",
+      "name": "فخ المنظور والعمق",
+      "description": "فخ المنظور والعمق",
+      "playerSolve": "فخ المنظور والعمق",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "impossible-object-perception",
+      "name": "المجسمات والتراكيب المستحيلة",
+      "description": "المجسمات والتراكيب المستحيلة",
+      "playerSolve": "المجسمات والتراكيب المستحيلة",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "count-in-clutter",
+      "name": "العدّ البصري في الزحام",
+      "description": "العدّ البصري في الزحام",
+      "playerSolve": "العدّ البصري في الزحام",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "LIMITED",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "spot-the-difference",
+      "name": "الفروقات بين المشهدين",
+      "description": "صورتان مرقّمتان في كل واحدة مجموعة أشياء مرسومة، وبينهما فرق واحد: شي اختفى، أو انضاف، أو انبدل. المحرك يرسم الصورتين ويعرف الفرق.",
+      "playerSolve": "مقارنة صورتين وتسمية الشيء المختلف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "LIMITED"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "vanished",
+          "name": "وش اللي اختفى",
+          "brief": "Nine things, then eight of them moved around; name the one that is gone."
+        },
+        {
+          "key": "appeared",
+          "name": "وش الجديد",
+          "brief": "Eight things, then the same eight moved around with a ninth; name the newcomer."
+        },
+        {
+          "key": "replaced",
+          "name": "وش اللي انبدل",
+          "brief": "Nothing moves; one thing gives its place to another; name the one that left."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "visual-match-scan",
+      "name": "المطابقة البصرية الدقيقة",
+      "description": "لوحة فيها خمس عشرة رسمة لأشياء معروفة، والمطلوب مسحها بالعين: أي رسمة تكررت، أو أي وحدة ما لها توأم، أو أي شي مو موجود. المحرك يرتّب اللوحة ويعرف الجواب.",
+      "playerSolve": "مسح اللوحة بالعين والمطابقة بين الرسمات.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "duplicate",
+          "name": "تكررت مرتين",
+          "brief": "Fourteen different things and one of them a second time; name it."
+        },
+        {
+          "key": "absent",
+          "name": "مو موجود",
+          "brief": "Fifteen things; of three named, one is not on the board."
+        },
+        {
+          "key": "no-twin",
+          "name": "ما لها توأم",
+          "brief": "Seven pairs and one thing on its own; name it."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
+    },
+    {
+      "familyKey": "reflection-fidelity",
+      "name": "انعكاس المرآة والمسطحات",
+      "description": "انعكاس المرآة والمسطحات",
+      "playerSolve": "انعكاس المرآة والمسطحات",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "match",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "overlapping-boundary-trace",
+      "name": "تداخل الأشكال والمسارات المغلقة",
+      "description": "تداخل الأشكال والمسارات المغلقة",
+      "playerSolve": "تداخل الأشكال والمسارات المغلقة",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "visual-closure-fragment",
+      "name": "التعرف عبر الاكتمال البصري",
+      "description": "رسمة لشيء معروف من حياتنا يظهر منها ما يكفي بالكاد: ظلها الأسود، أو لقطة مقرّبة منها، أو نصفها والنصف الثاني مغطّى. المحرك يأخذ الرسمة من مكتبته ويعرف اسمها.",
+      "playerSolve": "التعرّف على الشيء من جزء منه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "shadow",
+          "name": "ظل مين",
+          "brief": "The thing's black shadow only; which thing is it."
+        },
+        {
+          "key": "close-up",
+          "name": "صورة مقرّبة",
+          "brief": "A close-up window on the middle of the thing; which thing is it."
+        },
+        {
+          "key": "half-hidden",
+          "name": "نصّه مغطّى",
+          "brief": "Half of the thing behind a wall; which thing is it."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
+    },
+    {
+      "familyKey": "visual-asymmetry-detection",
+      "name": "ملاحظة كسر التناظر",
+      "description": "ملاحظة كسر التناظر",
+      "playerSolve": "ملاحظة كسر التناظر",
+      "modality": "visual-perceptual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    }
+  ]
+}
+```
