@@ -131,7 +131,7 @@ export function ParticipantWaiting({
           <p className="mt-2 w-full max-w-xs border-t-2 border-brand-mist pt-3 text-sm leading-6 text-brand-slate">
             بانتظار التحدي القادم…
             <br />
-            سنفتح التحدي القادم هنا. أبقِ جوالك معك.
+            التحدي الجاي بيفتح هنا، خلّوا الجوال معكم.
           </p>
         </>
       ) : (
