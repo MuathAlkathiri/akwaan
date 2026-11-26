@@ -376,7 +376,7 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
   it('tells two drawings apart even when the question and the answer read the same', async () => {
     const service = contentAddressed();
     const items = await Promise.all(
-      Array.from({ length: 120 }, (_, index) =>
+      Array.from({ length: 400 }, (_, index) =>
         service.compose(
           'wire-trace-terminal',
           `job-9:${index}`,
@@ -398,7 +398,17 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
     };
     const sameWords = (a: (typeof items)[number], b: (typeof items)[number]) =>
       said(a) === said(b);
-    const first = items[0];
+    // Some pair among them says the same words over two different drawings.
+    const first = items.find((item) =>
+      items.some(
+        (other) =>
+          other !== item &&
+          sameWords(other, item) &&
+          JSON.stringify(other.draft.media) !==
+            JSON.stringify(item.draft.media),
+      ),
+    )!;
+    expect(first).toBeDefined();
     const twin = items.find(
       (item) =>
         item !== first &&

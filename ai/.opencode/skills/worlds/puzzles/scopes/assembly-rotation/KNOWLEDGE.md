@@ -469,6 +469,12 @@ templates, and the composer draws the one a slot was given. The keys below
 must match the composer's own list (`COMPOSED_PUZZLE_VARIANTS`); a test holds
 the two together.
 
+The same pictures are also **dressed**: instead of plain circles, shapes or
+written names, the composer may place drawn everyday things from its library
+(`backend/assets/drawn-things` — an animal, a fruit, a tool, each with its
+Arabic name) at the ends of a thread or on the faces of a cube. The puzzle
+and its answer are unchanged; only what the player is looking at differs.
+
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
