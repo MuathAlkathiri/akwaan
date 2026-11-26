@@ -457,7 +457,7 @@ When generating or reviewing an authored batch for `assembly-rotation`:
 ## Composed families — مركّب الصور (owner decision 2026-11-26)
 
 The families of this Scope need a picture, and until now nothing could make
-one. The engine now **draws** the ones listed here itself (`opposite-cube-faces`، `fold-and-punch`): the
+one. The engine now **draws** the ones listed here itself (`mental-rotation-2d`, `cube-net-fold`, `opposite-cube-faces`, `orthographic-projection`, `spatial-cube-count`, `missing-puzzle-piece`, `fold-and-punch`, `mirror-vs-rotation-discrim`): the
 picture, the question, the three options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
@@ -489,9 +489,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "mental-rotation-2d",
       "name": "التدوير الذهني للأشكال ثنائية الأبعاد",
-      "description": "التدوير الذهني للأشكال ثنائية الأبعاد",
-      "playerSolve": "التدوير الذهني للأشكال ثنائية الأبعاد",
-      "modality": "visual-spatial",
+      "description": "شكل من مربعات اسمه «الأصل» وجنبه ثلاثة أشكال بحروف: بعضها الأصل نفسه مدوّر، وبعضها صورته في المراية أو شكل ثاني. المحرك يبني الأشكال ويعرف كل واحد وش هو.",
+      "playerSolve": "تدوير الشكل في الذهن ومطابقته.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -502,15 +502,30 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "which-same",
+          "name": "نفس الأصل بعد التدوير",
+          "brief": "One candidate is the original turned; the others are its mirror image and another shape."
+        },
+        {
+          "key": "which-different",
+          "name": "مو نفس الأصل",
+          "brief": "Two candidates are the original turned; one is another shape."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "cube-net-fold",
       "name": "طي مخطط المكعب",
-      "description": "طي مخطط المكعب",
-      "playerSolve": "طي مخطط المكعب",
-      "modality": "visual-spatial",
+      "description": "ثلاثة أشكال بحروف كل واحد من ستة مربعات، بعضها ينطوي ويصير مكعب وبعضها لا. المحرك يطوي كل شكل ويعرف.",
+      "playerSolve": "طيّ الشكل في الذهن.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -521,8 +536,23 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "folds",
+          "name": "أي شكل يصير مكعب",
+          "brief": "One of the three folds into a closed cube."
+        },
+        {
+          "key": "does-not-fold",
+          "name": "أي شكل ما يصير مكعب",
+          "brief": "Two of the three fold into a cube; one does not."
+        }
+      ],
+      "capacity": 150,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "opposite-cube-faces",
@@ -566,9 +596,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "orthographic-projection",
       "name": "المساقط الهندسية للمجسم",
-      "description": "المساقط الهندسية للمجسم",
-      "playerSolve": "المساقط الهندسية للمجسم",
-      "modality": "visual-spatial",
+      "description": "مكعبات مرصوصة فوق بعض مرسومة بمنظور، والمطلوب تخيّلها من جهة ثانية. المحرك يبني الرصّة ويحسب المنظر.",
+      "playerSolve": "تخيّل الشكل من فوق أو من قدّام.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -579,15 +609,30 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "top-view",
+          "name": "من فوق",
+          "brief": "How many squares the stack shows from straight above."
+        },
+        {
+          "key": "front-view",
+          "name": "من قدّام",
+          "brief": "How many squares the stack shows from the front, the side an arrow marks."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "spatial-cube-count",
       "name": "عد المكعبات المخفية في المجسم",
-      "description": "عد المكعبات المخفية في المجسم",
-      "playerSolve": "عد المكعبات المخفية في المجسم",
-      "modality": "visual-spatial",
+      "description": "مكعبات مرصوصة فوق بعض على أرضية ثلاثة في ثلاثة، مرسومة بمنظور. المحرك يبني الرصّة ويعدّ.",
+      "playerSolve": "عدّ المكعبات مع المخفي منها.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -599,15 +644,31 @@ nothing is deleted, and a family returns by removing its `status` below.
         "multiple_choice",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "count-all",
+          "name": "كم مكعب بالمجموع",
+          "brief": "Every cube in the stack, hidden ones included."
+        },
+        {
+          "key": "count-top-layer",
+          "name": "كم مكعب في أعلى مستوى",
+          "brief": "How many cubes reach the stack's greatest height."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     },
     {
       "familyKey": "missing-puzzle-piece",
       "name": "القطعة المفقودة لإكمال الشكل",
-      "description": "القطعة المفقودة لإكمال الشكل",
-      "playerSolve": "القطعة المفقودة لإكمال الشكل",
-      "modality": "visual-spatial",
+      "description": "لوحة مربعات فيها فراغ، وجنبها ثلاث قطع بحروف: وحدة بشكل الفراغ بالضبط، ووحدة صورتها في المراية، ووحدة شكل ثاني. المحرك يبني اللوحة والقطع.",
+      "playerSolve": "مطابقة شكل الفراغ مع القطعة.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -618,8 +679,23 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "fits",
+          "name": "تسدّ الفراغ زي ما هي",
+          "brief": "The right piece is shown the way it fits; no turning."
+        },
+        {
+          "key": "fits-turned",
+          "name": "تسدّ الفراغ بعد التدوير",
+          "brief": "Every piece is shown turned; the right one fits once turned back, never flipped."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "cross-section-slice",
@@ -715,9 +791,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "mirror-vs-rotation-discrim",
       "name": "التمييز بين التدوير والانعكاس",
-      "description": "التمييز بين التدوير والانعكاس",
-      "playerSolve": "التمييز بين التدوير والانعكاس",
-      "modality": "visual-spatial",
+      "description": "شكل من مربعات اسمه «الأصل» وجنبه ثلاثة أشكال بحروف، والمطلوب التفريق بين المدوّر والمعكوس مثل المراية. المحرك يبني الأشكال ويعرف كل واحد وش هو.",
+      "playerSolve": "التفريق بين التدوير والقلب.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -728,8 +804,23 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "which-mirrored",
+          "name": "أي واحد معكوس",
+          "brief": "Two candidates are the original turned; one is its mirror image."
+        },
+        {
+          "key": "which-turned-only",
+          "name": "أي واحد مدوّر بس",
+          "brief": "One candidate is the original turned; two are its mirror image, turned."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "unfolded-surface-net",
