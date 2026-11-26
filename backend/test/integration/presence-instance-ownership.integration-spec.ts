@@ -93,7 +93,6 @@ describe('presence instance ownership (multi-instance integration)', () => {
     const session = LiveGameSession.create({
       controllerActorId: `host-${rnd()}`,
       controllerDisplayName: 'Host',
-      teamNames: ['One', 'Two'],
       reconnectTokenHash: 'hash',
       rules: options.bomb ? BOMB_TIMED_TURNS_MODE : CORE_TIMED_TURNS_MODE,
       now: NOW,

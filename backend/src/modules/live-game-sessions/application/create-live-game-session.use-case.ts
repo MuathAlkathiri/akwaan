@@ -8,6 +8,7 @@ import {
   LiveGameSessionRepository,
 } from '../domain/live-game-session.repository';
 import { LIVE_SESSION_CLOCK, LiveSessionClock } from './live-session-clock';
+import { TEAM_NAMES } from '../domain/team-names';
 import {
   LiveGameSessionSnapshot,
   LiveGameSessionSnapshotMapper,
@@ -16,7 +17,6 @@ import {
 export interface CreateLiveGameSessionInput {
   modeKey: string;
   modeVersion: number;
-  teamNames: string[];
   teamColorIds?: string[];
   actor: AuthenticatedUser;
 }
@@ -56,7 +56,7 @@ export class CreateLiveGameSession {
       id: randomUUID(),
       controllerActorId: input.actor.id,
       controllerDisplayName: input.actor.fullName,
-      teamNames: input.teamNames,
+      teamNames: [...TEAM_NAMES],
       teamColorIds: input.teamColorIds,
       reconnectTokenHash: hashReconnectToken(reconnectToken),
       rules,

@@ -71,7 +71,6 @@ describe('participant presence ownership integration', () => {
     const session = LiveGameSession.create({
       controllerActorId: `host-${Math.random().toString(16).slice(2)}`,
       controllerDisplayName: 'Host',
-      teamNames: ['One', 'Two'],
       reconnectTokenHash: 'hash',
       rules: CORE_TIMED_TURNS_MODE,
       now: NOW,

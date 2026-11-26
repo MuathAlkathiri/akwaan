@@ -1,5 +1,5 @@
 import { createLiveSession } from "@/features/live-game-session/api/live-session-api";
-import { TEAM_COLORS, TEAM_NAMES } from "@/lib/team-palette";
+import { TEAM_COLORS } from "@/lib/team-palette";
 import type { LiveSessionSnapshot } from "@/features/live-game-session/model";
 import { createUnifiedMatch } from "./unified-match.api";
 import type { MatchSetupError } from "../errors/match-setup-errors";
@@ -64,7 +64,6 @@ export async function createConfiguredMatch(
     // decided on each client, which is what keeps one team one colour on the
     // shared screen and in every hand.
     created = await dependencies.createSession({
-      teamNames: [...TEAM_NAMES],
       teamColorIds: TEAM_COLORS.map((color) => color.id),
     });
   } catch (cause) {

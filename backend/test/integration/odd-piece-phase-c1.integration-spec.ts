@@ -186,7 +186,6 @@ describe('Odd Piece Phase C.1 local multiplayer verification', () => {
         .send({
           modeKey: 'core-timed-turns',
           modeVersion: 1,
-          teamNames: ['Team 1', 'Team 2'],
         })
         .expect(201),
     ).snapshot;

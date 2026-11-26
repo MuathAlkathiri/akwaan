@@ -286,7 +286,6 @@ describe('اكشفني lifecycle integration', () => {
         .send({
           modeKey: 'core-timed-turns',
           modeVersion: 1,
-          teamNames: ['ألفا', 'بيتا'],
         })
         .expect(201),
     ).snapshot;

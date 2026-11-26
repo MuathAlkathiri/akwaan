@@ -37,7 +37,7 @@ export function TeamStatusCard({
       {...rest}
       data-team-state={done ? "done" : "pending"}
       className={cn(
-        "flex flex-1 items-center justify-between gap-3.5 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper px-5 py-4 text-[hsl(var(--brand-navy))]",
+        "flex flex-1 flex-wrap items-center justify-between gap-x-3.5 gap-y-2 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper px-5 py-4 text-[hsl(var(--brand-navy))]",
         className,
       )}
     >
@@ -55,7 +55,7 @@ export function TeamStatusCard({
               dotClass,
             )}
           />
-          <span className="truncate">{name}</span>
+          <span className="break-words">{name}</span>
         </span>
       </div>
       {done ? (
