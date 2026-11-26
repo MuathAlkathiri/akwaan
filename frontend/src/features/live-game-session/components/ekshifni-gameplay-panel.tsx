@@ -240,12 +240,15 @@ export function EkshifniGameplayPanel({
   );
 
   const recap = view.phase === "completed" && view.result && (
-    <section className="grid gap-4 sm:grid-cols-2" data-testid="ekshifni-recap">
+    <section
+      className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2"
+      data-testid="ekshifni-recap"
+    >
       {Object.entries(view.result.points).map(([teamId, points]) => (
         <div
           key={teamId}
           className={cn(
-            "flex flex-col items-center gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] p-5 text-center",
+            "flex flex-col items-center justify-center gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] p-5 text-center",
             view.result?.winnerTeamId === teamId
               ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
               : "bg-white",

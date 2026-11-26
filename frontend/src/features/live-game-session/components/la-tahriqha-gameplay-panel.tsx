@@ -113,7 +113,7 @@ function IngredientCard({
   const shell = cn(
     "grid w-full place-items-center rounded-2xl px-3 font-display font-extrabold text-[hsl(var(--brand-navy))]",
     NAVY,
-    compact ? "min-h-[64px] text-base" : "min-h-[92px] text-xl",
+    compact ? "min-h-[52px] text-[15px]" : "min-h-[92px] text-xl",
     truth === "right" && "bg-brand-mint-tint",
     truth === "wrong" && "bg-brand-coral-tint",
     !truth &&
@@ -515,7 +515,12 @@ export function LaTahriqhaGameplayPanel({
       className={cn(
         "grid gap-2.5",
         phone
-          ? "min-h-0 flex-1 grid-cols-2 content-start overflow-y-auto"
+          ? // Eight cards fit a phone without scrolling while the team is
+            // choosing. Once revealed the verdict follows them, so the whole
+            // screen scrolls instead of squeezing the cards behind it.
+            revealed
+            ? "shrink-0 grid-cols-2 gap-2"
+            : "min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-y-auto"
           : "grid-cols-2 xl:grid-cols-4",
       )}
       data-testid="la-tahriqha-cards"
@@ -559,7 +564,7 @@ export function LaTahriqhaGameplayPanel({
 
   const recap = view.phase === "completed" && view.result && (
     <section
-      className="grid gap-4 sm:grid-cols-2"
+      className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2"
       data-testid="la-tahriqha-recap"
     >
       {view.teamIds.map((teamId) => (
@@ -567,7 +572,7 @@ export function LaTahriqhaGameplayPanel({
           key={teamId}
           data-testid={`la-tahriqha-recap-${teamId}`}
           className={cn(
-            "flex flex-col items-center gap-1.5 rounded-3xl p-5 text-center",
+            "flex flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-center",
             NAVY,
             view.result?.winnerTeamId === teamId
               ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
@@ -749,7 +754,10 @@ export function LaTahriqhaGameplayPanel({
       className="flex min-h-0 flex-1 flex-col"
     >
       <div
-        className="flex min-h-0 flex-1 flex-col gap-3 text-[hsl(var(--brand-navy))]"
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-2.5 text-[hsl(var(--brand-navy))]",
+          revealed && "overflow-y-auto",
+        )}
         dir="rtl"
         data-testid="la-tahriqha-panel"
         data-phase={view.phase}

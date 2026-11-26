@@ -80,7 +80,18 @@ export function mobilePhaseOf(snapshot?: LiveSessionSnapshot): MobilePhase {
   if (stage === "preflight") return "ready";
   // A challenge with no runtime yet is still a wait: the server has not handed
   // this phone anything to do.
-  if (stage === "challenge") return snapshot?.gameplay ? "action" : "waiting";
+  if (stage === "challenge") {
+    const gameplay = snapshot?.gameplay;
+    if (!gameplay) return "waiting";
+    // The server lists what this phone may do right now. An empty list is its
+    // word that the phone has nothing to press — the other team's turn, or a
+    // teammate holding the decision — so the shell does not claim «دوركم».
+    // Which action, and why, stays the mechanic's business.
+    return Array.isArray(gameplay.availableActions) &&
+      gameplay.availableActions.length === 0
+      ? "waiting"
+      : "action";
+  }
   if (stage === "challenge_result" || stage === "match_complete") {
     return "complete";
   }

@@ -256,14 +256,14 @@ export function FirstNoteGameplayPanel({
 
   const recap = view.phase === "completed" && view.result && (
     <section
-      className="grid gap-4 sm:grid-cols-2"
+      className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2"
       data-testid="first-note-recap"
     >
       {Object.entries(view.result.points).map(([id, points]) => (
         <div
           key={id}
           className={cn(
-            "flex flex-col items-center gap-1.5 rounded-3xl p-5 text-center",
+            "flex flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-center",
             NAVY,
             view.result?.winnerTeamId === id
               ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
