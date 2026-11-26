@@ -282,7 +282,7 @@ export function Top5Explainer({
                           "rounded-xl border-2 text-center transition-colors",
                           compact || embedded ? "p-3" : "p-4",
                           isOwnership
-                            ? "border-sem-success/40 bg-sem-success/10"
+                            ? "border-brand-navy bg-success-subtle"
                             : "border-brand-gold/55 bg-brand-gold/15",
                         )}
                         data-testid="top5-current-card"
@@ -305,7 +305,7 @@ export function Top5Explainer({
                         </p>
                         {isOwnership ? (
                           <p
-                            className="mt-2 text-sm font-black text-sem-success"
+                            className="mt-2 text-sm font-black text-foreground"
                             data-testid="top5-current-owner"
                           >
                             {actionCopy(action)} ← انتقلت إلى {displayTeamNames[owner]}
@@ -438,10 +438,10 @@ function FinalResultScene({
     >
       <div
         data-testid="top5-outcome"
-        className="rounded-xl border-2 border-sem-success/30 bg-sem-success/10 p-3 sm:p-4"
+        className="rounded-xl border-2 border-brand-navy bg-success-subtle p-3 sm:p-4"
       >
         <Trophy
-          className="mx-auto size-7 text-sem-success sm:size-8"
+          className="mx-auto size-7 text-foreground sm:size-8"
           aria-hidden
         />
         <p className="mt-1 text-xs font-black text-muted-foreground">
@@ -733,7 +733,7 @@ function Top5Phone({
             أفضل 5
           </p>
           {isReveal ? (
-            <div className="rounded-lg bg-sem-success/10 p-2">
+            <div className="rounded-lg bg-success-subtle p-2">
               <p className="text-xs font-black">انكشف الترتيب والملكية</p>
               <p className="mt-1 text-[0.7rem] font-bold">
                 راجعوا ما كسبه كل فريق
@@ -751,10 +751,10 @@ function Top5Phone({
             </div>
           ) : phase === "ownership" && isOwner ? (
             <div
-              className="rounded-lg bg-sem-success/10 p-2"
+              className="rounded-lg bg-success-subtle p-2"
               data-top5-ownership-confirmed
             >
-              <Check className="mx-auto size-4 text-sem-success" aria-hidden />
+              <Check className="mx-auto size-4 text-foreground" aria-hidden />
               <p className="mt-1 text-xs font-black">وصلت البطاقة لفريقكم</p>
               <p className="mt-1 text-[0.65rem] font-bold">{card.label}</p>
             </div>
@@ -779,7 +779,7 @@ function Top5Phone({
                   className={cn(
                     "h-8 gap-1 px-1 text-[0.65rem] font-black disabled:opacity-100",
                     selected && action === "keep"
-                      ? "bg-sem-success text-white"
+                      ? "bg-sem-success text-sem-reveal-foreground"
                       : "bg-brand-navy text-white",
                   )}
                 >

@@ -39,7 +39,7 @@ export function ReadinessPanel({
       {blockers.map((issue) => (
         <p
           key={`${issue.code}-${issue.message}`}
-          className="flex items-start gap-1.5 text-sm text-destructive"
+          className="flex items-start gap-1.5 text-sm text-foreground"
         >
           <XCircle className="mt-0.5 size-4 shrink-0" />
           <span>{localizeReadinessIssue(issue)}</span>

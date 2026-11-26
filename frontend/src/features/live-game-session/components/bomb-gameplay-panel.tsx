@@ -211,7 +211,7 @@ function BombItemAudio({ url }: { url: string }) {
       </div>
 
       {hasError && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-foreground">
           تعذر تشغيل المقطع الصوتي. يمكنك كتابة الإجابة أو تخطي السؤال.
         </p>
       )}
@@ -666,7 +666,7 @@ export function BombGameplayPanel({
                   <p
                     role="status"
                     data-testid="bomb-phone-answer-notice"
-                    className="text-center text-sm font-black text-destructive"
+                    className="text-center text-sm font-black text-foreground"
                   >
                     {ANSWER_NOTICES[notice]}
                   </p>
@@ -686,7 +686,7 @@ export function BombGameplayPanel({
                     className={cn(
                       "text-xs font-bold",
                       voice.state === "listening"
-                        ? "text-destructive"
+                        ? "text-foreground"
                         : "text-muted-foreground",
                     )}
                   >
@@ -894,7 +894,7 @@ export function BombGameplayPanel({
                 </Button>
                 {voice.state === "listening" && (
                   <span
-                    className="inline-flex items-center gap-2 font-medium text-destructive"
+                    className="inline-flex items-center gap-2 font-medium text-foreground"
                     role="status"
                   >
                     <span className="size-3 animate-pulse rounded-full bg-destructive" />
@@ -962,6 +962,6 @@ export function BombGameplayPanel({
 const BOMB_CLOCK_TONE = {
   calm: "border-[hsl(var(--brand-gold))] bg-card text-foreground",
   warning: "border-warning bg-warning-subtle text-foreground",
-  critical: "border-white bg-sem-error text-white",
-  expired: "border-brand-dash bg-brand-wash text-sem-error",
+  critical: "border-[hsl(var(--brand-navy))] bg-sem-error text-sem-reveal-foreground",
+  expired: "border-brand-dash bg-brand-wash text-foreground",
 } as const;

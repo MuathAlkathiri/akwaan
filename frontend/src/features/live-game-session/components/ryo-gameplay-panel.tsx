@@ -858,8 +858,8 @@ export function RyoGameplayPanel({
                   className={cn(
                     "mt-3 rounded-[var(--radius)] border-2 px-3 py-2 text-base font-black",
                     interaction.outcome.payload.correct
-                      ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
-                      : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
+                      ? "border-brand-navy bg-sem-success text-sem-reveal-foreground"
+                      : "border-brand-navy bg-sem-error text-sem-reveal-foreground",
                   )}
                 >
                   {interaction.outcome.payload.correct
@@ -891,8 +891,8 @@ export function RyoGameplayPanel({
                     className={cn(
                       "mt-3 rounded-[var(--radius)] border-2 px-3 py-2 text-base font-black",
                       interaction.outcome.payload.readMatchedOutcome
-                        ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
-                        : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
+                        ? "border-brand-navy bg-sem-success text-sem-reveal-foreground"
+                        : "border-brand-navy bg-sem-error text-sem-reveal-foreground",
                     )}
                   >
                     {interaction.outcome.payload.readMatchedOutcome
@@ -1205,7 +1205,7 @@ function PhoneRyoController({
                     <span className="text-xs font-black text-muted-foreground">
                       اختيارك
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[hsl(var(--sem-success))] px-2.5 py-1 text-xs font-black text-[hsl(var(--sem-success))]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-brand-navy bg-[hsl(var(--brand-gold))] px-2.5 py-1 text-xs font-black text-foreground">
                       <Lock className="size-3.5" aria-hidden />
                       مقفول
                     </span>
@@ -1264,19 +1264,16 @@ function PhoneRyoRevealCard({
     <div
       data-testid={`ryo-phone-reveal-${tone ? "answer" : "read"}`}
       data-tone={tone}
-      className="flex flex-col gap-2 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center"
+      className={cn(
+        "flex flex-col gap-2 rounded-[18px] border-[3px] border-brand-navy p-4 text-center text-foreground",
+        // The tint is only the background; the headline says the verdict.
+        tone === "right" && "bg-success-subtle",
+        tone === "wrong" && "bg-destructive-subtle",
+        !tone && "bg-card",
+      )}
     >
-      <p className="text-xs font-black text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "text-xl font-black",
-          tone === "right" && "text-[hsl(var(--sem-success))]",
-          tone === "wrong" && "text-[hsl(var(--sem-error))]",
-          !tone && "text-foreground",
-        )}
-      >
-        {headline}
-      </p>
+      <p className="text-xs font-black text-brand-slate">{label}</p>
+      <p className="text-xl font-black">{headline}</p>
     </div>
   );
 }

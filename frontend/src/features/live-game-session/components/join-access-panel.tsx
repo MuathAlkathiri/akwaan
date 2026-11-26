@@ -155,7 +155,7 @@ export function JoinAccessPanel({
           </>
         )}
         {(access.error || create.error || regenerate.error || revoke.error) && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-foreground">
             Unable to update player pairing. Try again.
           </p>
         )}

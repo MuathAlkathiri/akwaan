@@ -76,7 +76,7 @@ export function OccurrenceScopesStep({
             className={cn(
               "rounded-full border px-3 py-1.5 text-sm font-black akwaan-numeral",
               complete
-                ? "border-success/25 bg-success-subtle text-success"
+                ? "border-brand-navy bg-success-subtle text-foreground"
                 : "border-primary/15 bg-primary/[0.07] text-primary",
             )}
           >
@@ -139,7 +139,7 @@ export function OccurrenceScopesStep({
         )}
 
         {issue && (
-          <p role="alert" className="text-sm font-bold text-destructive">
+          <p role="alert" className="text-sm font-bold text-foreground">
             {issue}
           </p>
         )}
@@ -217,7 +217,7 @@ function ScopeChoiceCard({
           </span>
         )}
         <span className="mt-auto flex flex-wrap gap-3 pt-1 text-xs font-bold text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 text-success">
+          <span className="inline-flex items-center gap-1.5 text-foreground">
             <Layers className="h-4 w-4" aria-hidden />
             <span className="akwaan-numeral">
               {scope.readyContentItemCount}

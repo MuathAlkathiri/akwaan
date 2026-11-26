@@ -135,7 +135,7 @@ export function OneClueExplainer({
               data-testid="one-clue-item-reveal"
               className="flex h-full min-h-[19rem] flex-col items-center justify-center gap-4 text-center"
             >
-              <Check className="size-12 text-success" />
+              <Check className="size-12 text-foreground" />
               <p className="text-sm font-black text-muted-foreground">
                 الإجابة الصحيحة
               </p>
@@ -229,7 +229,7 @@ export function OneClueExplainer({
               </>
             ) : firstWrong ? (
               <>
-                <X className="mx-auto size-10 text-destructive" />
+                <X className="mx-auto size-10 text-foreground" />
                 <p className="font-black">إجابة غير صحيحة</p>
                 <p className="text-sm text-muted-foreground">
                   خرجتم من هذا السؤال
@@ -293,7 +293,7 @@ function TeamState({
     <div
       className={cn(
         "rounded-xl border p-2 text-center sm:p-3",
-        wrong && "border-destructive/50 bg-destructive/5",
+        wrong && "border-brand-navy bg-destructive-subtle",
       )}
     >
       <p className="font-black">{name}</p>

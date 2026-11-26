@@ -338,7 +338,7 @@ export function PlayerJoinPage({ joinCode }: { joinCode: string }) {
                         errorCode(join.error) === "AVATAR_TAKEN") && (
                         <p
                           role="alert"
-                          className="text-sm font-bold text-destructive"
+                          className="text-sm font-bold text-foreground"
                         >
                           أحد سبقك عليها، فاخترنا لك غيرها.
                         </p>

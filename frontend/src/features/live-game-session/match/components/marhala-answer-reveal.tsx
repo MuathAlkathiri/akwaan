@@ -24,7 +24,10 @@ export function MarhalaAnswerReveal({
 }) {
   const timedOut = turn.resolvedBy === "timeout";
   return (
-    <div data-testid="marhala-answer-reveal" data-correct={String(turn.correct)}>
+    <div
+      data-testid="marhala-answer-reveal"
+      data-correct={String(turn.correct)}
+    >
       <ResolutionReveal title={teamName(turn.teamId)} compact={compact}>
         <ResolutionAnswerRow label="إجابتكم">
           {/* Never invented: a timeout submitted nothing, and says so. */}

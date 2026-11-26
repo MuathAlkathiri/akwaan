@@ -143,7 +143,7 @@ export function OddPieceHotspotEditor({
         <div
           ref={frameRef}
           className={`relative mx-auto w-full max-w-3xl overflow-hidden rounded-xl border bg-muted ${
-            imageError ? "border-destructive" : ""
+            imageError ? "border-brand-navy" : ""
           }`}
           data-testid="odd-piece-hotspot-frame"
           style={{
@@ -239,7 +239,7 @@ export function OddPieceHotspotEditor({
             </svg>
           )}
           {imageError && (
-            <div className="absolute inset-0 grid place-items-center bg-background/90 p-4 text-center text-sm text-destructive">
+            <div className="absolute inset-0 grid place-items-center bg-background/90 p-4 text-center text-sm text-foreground">
               تعذر تحميل الصورة؛ لم يتم إنشاء أي نقطة.
             </div>
           )}
@@ -251,14 +251,14 @@ export function OddPieceHotspotEditor({
           className={`flex items-center gap-2 rounded-lg border p-2 text-sm ${
             testAccepted
               ? "border-emerald-500/40 bg-emerald-500/10"
-              : "border-destructive/40 bg-destructive/10"
+              : "border-brand-navy bg-destructive-subtle"
           }`}
           data-testid="odd-piece-hotspot-test-result"
         >
           {testAccepted ? (
             <Check className="size-4 text-emerald-600" aria-hidden />
           ) : (
-            <X className="size-4 text-destructive" aria-hidden />
+            <X className="size-4 text-foreground" aria-hidden />
           )}
           {testAccepted
             ? "النقرة مقبولة داخل منطقة الإجابة."
@@ -353,7 +353,7 @@ export function OddPieceHotspotEditor({
         </div>
       )}
       {!!toleranceProblems.length && (
-        <p className="text-xs text-destructive">{toleranceProblems[0]}</p>
+        <p className="text-xs text-foreground">{toleranceProblems[0]}</p>
       )}
       <p className="text-xs text-muted-foreground">
         الإحداثيات تُحفظ كنسب من الصورة (0 إلى 1)، لذلك تبقى صحيحة مع التكبير

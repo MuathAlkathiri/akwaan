@@ -106,7 +106,7 @@ export function LaTahriqhaFields({
           <span
             className={cn(
               "text-xs font-bold",
-              balanced ? "text-emerald-600" : "text-destructive",
+              balanced ? "text-emerald-600" : "text-foreground",
             )}
             data-testid="la-tahriqha-balance"
           >

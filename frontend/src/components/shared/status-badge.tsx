@@ -13,7 +13,7 @@ const tones: Record<StatusTone, string> = {
   warning:
     "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   danger:
-    "border-transparent bg-destructive/10 text-destructive",
+    "border-transparent bg-destructive-subtle text-foreground",
   neutral: "border-transparent bg-muted text-muted-foreground",
 };
 

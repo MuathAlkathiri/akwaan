@@ -123,7 +123,7 @@ export function ParticipantLobby() {
           </ul>
         )}
         {(assign.error || remove.error) && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
+          <p role="alert" className="mt-3 text-sm text-foreground">
             Unable to update this player. Refresh and try again.
           </p>
         )}

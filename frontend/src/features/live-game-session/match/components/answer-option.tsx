@@ -44,7 +44,8 @@ export function AnswerOption({
         "h-auto min-h-[3.25rem] whitespace-normal rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white py-3 text-base font-bold text-[hsl(var(--brand-navy))] shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform duration-fast ease-akwaan hover:bg-brand-lavender active:translate-y-0.5",
         // Gold: this is the one you picked. Still not a verdict — the
         // correctness colours stay out of here until the reveal.
-        selected && "bg-[hsl(var(--brand-gold))] hover:bg-[hsl(var(--brand-gold))]",
+        selected &&
+          "bg-[hsl(var(--brand-gold))] hover:bg-[hsl(var(--brand-gold))]",
         className,
       )}
     >

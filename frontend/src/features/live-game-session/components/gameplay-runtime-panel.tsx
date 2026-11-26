@@ -228,7 +228,7 @@ function CreateRuntimeCard({
           Create gameplay runtime
         </Button>
         {create.error && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
+          <p role="alert" className="mt-3 text-sm text-foreground">
             Unable to create the gameplay runtime.
           </p>
         )}

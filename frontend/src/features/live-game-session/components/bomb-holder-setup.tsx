@@ -218,7 +218,7 @@ export function BombHolderSetup({
                     className={cn(
                       "shrink-0 rounded-full border px-2.5 py-1 text-xs font-black lg:text-sm",
                       ready
-                        ? "border-success/40 bg-success/10 text-success"
+                        ? "border-brand-navy bg-success-subtle text-foreground"
                         : "border-border bg-muted text-muted-foreground",
                     )}
                   >

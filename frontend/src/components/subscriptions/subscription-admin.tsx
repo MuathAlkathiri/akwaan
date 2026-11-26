@@ -71,7 +71,7 @@ export function SubscriptionAdmin() {
               <label className="block text-sm font-medium mb-2">User ID</label>
               <Input {...register("userId")} />
               {errors.userId && (
-                <p className="text-sm text-destructive mt-1">
+                <p className="text-sm text-foreground mt-1">
                   {errors.userId.message}
                 </p>
               )}

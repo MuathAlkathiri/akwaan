@@ -34,7 +34,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         warning: (
           <AlertTriangle className="size-4 text-[hsl(var(--brand-gold))]" />
         ),
-        error: <XOctagon className="size-4 text-[hsl(var(--sem-error))]" />,
+        error: <XOctagon className="size-4 text-foreground" />,
         loading: (
           <Loader2 className="size-4 animate-spin text-[hsl(var(--brand-gold))]" />
         ),

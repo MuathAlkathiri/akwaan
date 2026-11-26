@@ -58,7 +58,9 @@ export function ChallengeProgress({
       <span
         className={cn(
           "whitespace-nowrap font-bold",
-          compact ? "font-display text-lg font-extrabold" : "text-lg lg:text-xl",
+          compact
+            ? "font-display text-lg font-extrabold"
+            : "text-lg lg:text-xl",
         )}
       >
         {label}
@@ -186,7 +188,9 @@ export function ChallengeFrame({
               )
             )}
           </div>
-          {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
+          {aside && (
+            <div className="flex shrink-0 items-center gap-2">{aside}</div>
+          )}
         </header>
         {progressLabel && title && (
           <h1 className="text-center font-display text-lg font-extrabold leading-relaxed [text-wrap:pretty] line-clamp-3">

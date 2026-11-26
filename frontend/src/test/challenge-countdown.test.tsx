@@ -70,15 +70,15 @@ describe("ChallengeCountdown urgency presentation", () => {
     chip.view.unmount();
   });
 
-  it("keeps the error red for the last three seconds", () => {
-    // The round chip fills with the error red; the plain numeral wears it.
-    for (const [variant, tone] of [
-      ["chip", /\bbg-sem-error\b/],
-      ["prominent", /\btext-sem-error\b/],
-    ] as const) {
-      const { view, timer } = at(2, variant);
-      expect(timer.className).toMatch(tone);
-      view.unmount();
-    }
+  it("fills the round chip with coral for the last three seconds, and never colours text", () => {
+    const chip = at(2, "chip");
+    expect(chip.timer.className).toMatch(/\bbg-sem-error\b/);
+    expect(chip.timer.className).toMatch(/\btext-sem-reveal-foreground\b/);
+    chip.view.unmount();
+    // The plain numeral has no fill to wear, so it stays navy: red is never a
+    // text colour. Its beat and its icon carry the urgency.
+    const plain = at(2, "prominent");
+    expect(plain.timer.className).not.toMatch(/text-sem-error|text-destructive/);
+    plain.view.unmount();
   });
 });

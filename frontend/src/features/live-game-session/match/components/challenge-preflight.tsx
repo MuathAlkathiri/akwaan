@@ -661,7 +661,7 @@ function TeamReadinessStatus({
         data-testid={`preflight-team-status-${team.teamId}`}
         className={cn(
           "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold",
-          "bg-success-subtle text-success",
+          "bg-success-subtle text-foreground",
         )}
       >
         <Check className="size-3.5 shrink-0" aria-hidden />

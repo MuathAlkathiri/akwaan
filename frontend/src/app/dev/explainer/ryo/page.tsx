@@ -197,7 +197,7 @@ export default function RyoPreflightPreview() {
                       <span
                         className={
                           team.ready
-                            ? "text-xs font-black text-sem-success"
+                            ? "text-xs font-black text-foreground"
                             : "text-xs font-black text-muted-foreground"
                         }
                       >

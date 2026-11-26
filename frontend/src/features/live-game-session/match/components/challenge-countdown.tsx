@@ -220,7 +220,9 @@ export function ChallengeCountdown({
         )}
       </span>
       {urgency !== "expired" && (
-        <span className="mt-1 text-xs font-bold text-muted-foreground">ثانية</span>
+        <span className="mt-1 text-xs font-bold text-muted-foreground">
+          ثانية
+        </span>
       )}
     </div>
   );
@@ -234,22 +236,24 @@ export function ChallengeCountdown({
 const STAGE_TONE: Record<CountdownUrgency, string> = {
   calm: "border-[hsl(var(--brand-gold))] bg-card text-foreground",
   warning: "border-warning bg-warning-subtle text-foreground",
-  critical: "border-white bg-sem-error text-white",
-  expired: "border-brand-dash bg-brand-wash text-sem-error",
+  critical:
+    "border-[hsl(var(--brand-navy))] bg-sem-error text-sem-reveal-foreground",
+  expired: "border-brand-dash bg-brand-wash text-foreground",
 };
 
 const CHIP_TONE: Record<CountdownUrgency, string> = {
   calm: "border-[6px] border-[hsl(var(--brand-gold))] bg-card text-foreground",
   warning: "border-[6px] border-warning bg-warning-subtle text-foreground",
-  critical: "border-[6px] border-white bg-sem-error text-white",
-  expired: "border-[6px] border-brand-dash bg-brand-wash text-sem-error",
+  critical:
+    "border-[6px] border-[hsl(var(--brand-navy))] bg-sem-error text-sem-reveal-foreground",
+  expired: "border-[6px] border-brand-dash bg-brand-wash text-foreground",
 };
 
 const PROMINENT_TONE: Record<CountdownUrgency, string> = {
   calm: "text-foreground",
   warning: "text-warning",
-  critical: "text-sem-error",
-  expired: "text-sem-error",
+  critical: "text-foreground",
+  expired: "text-foreground",
 };
 
 function CountdownStar({ className }: { className?: string }) {

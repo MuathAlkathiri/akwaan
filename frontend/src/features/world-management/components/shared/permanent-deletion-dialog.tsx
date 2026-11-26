@@ -236,14 +236,14 @@ function PermanentDeletionDialogBody({
             </div>
           ) : (
             <div
-              className="flex gap-2 rounded-[var(--radius)] border border-destructive bg-destructive/10 p-3"
+              className="flex gap-2 rounded-[var(--radius)] border border-brand-navy bg-destructive-subtle p-3"
               data-testid="deletion-operation-copy"
             >
               <AlertTriangle
-                className="mt-0.5 size-4 shrink-0 text-destructive"
+                className="mt-0.5 size-4 shrink-0 text-foreground"
                 aria-hidden
               />
-              <p className="text-sm font-bold text-destructive">
+              <p className="text-sm font-bold text-foreground">
                 سيُحذف هذا السجل وكل ما يتبعه أدناه نهائيًا. لا يمكن التراجع عن
                 هذا الإجراء.
               </p>
@@ -252,7 +252,7 @@ function PermanentDeletionDialogBody({
 
           {preview.isError ? (
             <div className="space-y-2" data-testid="deletion-preview-error">
-              <p className="text-sm font-bold text-destructive">
+              <p className="text-sm font-bold text-foreground">
                 {getApiErrorMessage(preview.error, "تعذر حساب أثر العملية.")}
               </p>
               <Button
@@ -342,7 +342,7 @@ function PermanentDeletionDialogBody({
           {failure && (
             <p
               role="alert"
-              className="rounded-[var(--radius)] border border-destructive bg-destructive/10 p-3 text-sm font-bold text-destructive"
+              className="rounded-[var(--radius)] border border-brand-navy bg-destructive-subtle p-3 text-sm font-bold text-foreground"
               data-testid="deletion-failure"
             >
               {failure}
@@ -481,7 +481,7 @@ function PreviewDetails({ preview }: { preview: DeletionPreview }) {
                   className={
                     blocker.clearedByHistoryPurge
                       ? "font-bold text-amber-700 dark:text-amber-400"
-                      : "font-bold text-destructive"
+                      : "font-bold text-foreground"
                   }
                 >
                   {blockerMessage(blocker)}
@@ -511,7 +511,7 @@ function PreviewDetails({ preview }: { preview: DeletionPreview }) {
             ? "text-sm font-bold text-green-700 dark:text-green-500"
             : availability === "requires_purge"
               ? "text-sm font-bold text-amber-700 dark:text-amber-400"
-              : "text-sm font-bold text-destructive"
+              : "text-sm font-bold text-foreground"
         }
         data-testid="deletion-availability"
       >

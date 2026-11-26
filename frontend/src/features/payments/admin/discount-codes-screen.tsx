@@ -46,7 +46,7 @@ export function DiscountCodesScreen() {
       {codes.isPending ? (
         <p className="text-muted-foreground">جاري التحميل…</p>
       ) : codes.isError ? (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-foreground">
           ما قدرنا نجيب الأكواد. حدّث الصفحة.
         </p>
       ) : codes.data?.length === 0 ? (
@@ -302,7 +302,7 @@ function CreateCodeForm() {
           {create.isPending ? "جاري الحفظ…" : "سوِّ الكود"}
         </Button>
         {create.isError ? (
-          <span role="alert" className="text-sm text-destructive">
+          <span role="alert" className="text-sm text-foreground">
             ما انحفظ — يمكن الكود موجود من قبل.
           </span>
         ) : create.isSuccess ? (

@@ -48,7 +48,7 @@ export function SetupProgress({
                 active
                   ? "border-primary/40 bg-primary/[0.08] text-primary"
                   : complete
-                    ? "border-success/30 bg-success-subtle text-success hover:border-success/50"
+                    ? "border-brand-navy bg-success-subtle text-foreground hover:border-brand-navy"
                     : "border-black/[0.08] bg-card text-disabled-foreground",
               )}
             >

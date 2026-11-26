@@ -1587,7 +1587,7 @@ export function ContentEngineReviewWorkspace() {
               );
             })}
             {list.isLoading && <p role="status">جارٍ تحميل المرشحين…</p>}
-            {list.isError && <div role="alert" className="space-y-2 text-sm text-destructive"><p>تعذر تحميل المرشحين. تحقق من الاتصال وأعد المحاولة.</p><Button type="button" variant="outline" onClick={() => void list.refetch()}>إعادة المحاولة</Button></div>}
+            {list.isError && <div role="alert" className="space-y-2 text-sm text-foreground"><p>تعذر تحميل المرشحين. تحقق من الاتصال وأعد المحاولة.</p><Button type="button" variant="outline" onClick={() => void list.refetch()}>إعادة المحاولة</Button></div>}
             {!list.isLoading && !list.isError && !list.data?.length && (
               <p className="text-sm text-muted-foreground">
                 لا توجد مرشحات مطابقة.
@@ -1720,7 +1720,7 @@ export function ContentEngineReviewWorkspace() {
             <div
               role="alert"
               data-testid="candidate-detail-error"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-navy bg-destructive-subtle p-4 text-sm text-foreground"
             >
               <span>تعذّر تحميل هذا المرشح.</span>
               <Button
@@ -1931,7 +1931,7 @@ export function ContentEngineReviewWorkspace() {
               <div
                 role="alert"
                 data-testid="candidate-target-error"
-                className="flex items-start gap-2 rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive"
+                className="flex items-start gap-2 rounded-xl border border-brand-navy bg-destructive-subtle p-3 text-xs text-foreground"
               >
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                 <div>
@@ -2161,7 +2161,7 @@ export function ContentEngineReviewWorkspace() {
                   className="flex gap-2 rounded-lg border p-3 text-sm"
                 >
                   {finding.severity === "blocking" && (
-                    <AlertTriangle className="size-4 shrink-0 text-destructive" />
+                    <AlertTriangle className="size-4 shrink-0 text-foreground" />
                   )}
                   <span className="min-w-0 [overflow-wrap:anywhere]">
                     <strong>{finding.code}</strong> — {finding.message}
@@ -2361,7 +2361,7 @@ export function ContentEngineReviewWorkspace() {
               <div
                 role="alert"
                 data-testid="review-action-error"
-                className="rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive"
+                className="rounded-xl border border-brand-navy bg-destructive-subtle p-3 text-xs text-foreground"
               >
                 {actionError}
               </div>
@@ -2808,7 +2808,7 @@ export function ContentEngineReviewWorkspace() {
                     <p
                       role="alert"
                       data-testid="edit-modal-error"
-                      className="text-xs font-medium text-destructive"
+                      className="text-xs font-medium text-foreground"
                     >
                       {editModalError}
                     </p>

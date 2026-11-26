@@ -102,7 +102,8 @@ function StageTrail({ run }: { run: ComboRunDetail }) {
             className={cn(
               "grid size-4 place-items-center rounded-full border text-[0.6rem] font-black leading-none",
               mark === "cleared" && "border-current bg-current/20",
-              mark === "lost" && "border-destructive text-destructive",
+              mark === "lost" &&
+                "border-brand-navy bg-sem-error text-sem-reveal-foreground",
               mark === "unplayed" && "border-current opacity-35",
             )}
           >
@@ -166,8 +167,8 @@ export function ComboResultRecap({
                     return (
                       <p
                         className={cn(
-                          "flex items-center gap-1.5 text-sm font-bold",
-                          outcome.lost ? "text-destructive" : "text-foreground",
+                          "inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-brand-navy px-2.5 py-0.5 text-sm font-bold text-sem-reveal-foreground",
+                          outcome.lost ? "bg-sem-error" : "bg-sem-success",
                         )}
                         data-testid={`combo-outcome-${team.id}`}
                       >

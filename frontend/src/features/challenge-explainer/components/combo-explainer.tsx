@@ -321,7 +321,7 @@ function ComboDecision({
       >
         <div
           className={cn(
-            "rounded-lg border border-sem-success/40 bg-sem-success/10",
+            "rounded-lg border border-brand-navy bg-success-subtle",
             compact ? "p-1.5" : "p-2",
           )}
         >
@@ -382,26 +382,26 @@ function ComboOutcome({
 }) {
   return (
     <section
-      className="rounded-xl border-2 border-sem-error/25 bg-sem-error/10 p-4 text-center"
+      className="rounded-xl border-2 border-brand-navy bg-destructive-subtle p-4 text-center"
       data-testid="combo-tutorial-outcome"
     >
-      <AlertTriangle className="mx-auto size-7 text-sem-error" aria-hidden />
+      <AlertTriangle className="mx-auto size-7 text-foreground" aria-hidden />
       <p className="mt-1 text-xl font-black">انكسر الكومبو</p>
-      <p className="mt-1 text-sm font-black text-sem-error">0 نقاط مثبتة</p>
+      <p className="mt-1 text-sm font-black text-foreground">0 نقاط مثبتة</p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-right">
-        <div className="rounded-lg border border-sem-error/30 bg-background/70 p-2">
+        <div className="rounded-lg border border-brand-navy bg-background/70 p-2">
           <p className="text-[0.6rem] font-bold text-muted-foreground">
             غير المثبّت
           </p>
-          <p className="akwaan-numeral text-lg font-black text-sem-error">
+          <p className="akwaan-numeral text-lg font-black text-foreground">
             {unbankedPoints} → 0
           </p>
         </div>
-        <div className="rounded-lg border border-sem-success/30 bg-background/70 p-2">
+        <div className="rounded-lg border border-brand-navy bg-background/70 p-2">
           <p className="text-[0.6rem] font-bold text-muted-foreground">
             المثبت محفوظ
           </p>
-          <p className="akwaan-numeral text-lg font-black text-sem-success">
+          <p className="akwaan-numeral text-lg font-black text-foreground">
             0
           </p>
         </div>
@@ -505,14 +505,14 @@ function ComboPhone({
               <p className="text-[0.62rem] font-bold text-muted-foreground">
                 شحنة واحدة للتحدي · لا يمكن تثبيت الرصيد
               </p>
-              <p className="text-[0.62rem] font-black text-sem-error">
+              <p className="text-[0.62rem] font-black text-foreground">
                 الفريق الأول أُجبر على الاستمرار
               </p>
             </>
           ) : (
             <>
               {forced && (
-                <p className="text-xs font-black text-sem-error">
+                <p className="text-xs font-black text-foreground">
                   ابدأ السؤال الإجباري
                 </p>
               )}
@@ -542,7 +542,7 @@ function ComboPhone({
                 )}
               </Button>
               {wrong && (
-                <p className="text-[0.62rem] font-bold text-sem-error">
+                <p className="text-[0.62rem] font-bold text-foreground">
                   الخطأ يكسر الرصيد كاملًا
                 </p>
               )}

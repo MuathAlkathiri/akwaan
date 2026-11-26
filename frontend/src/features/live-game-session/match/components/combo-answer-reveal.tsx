@@ -24,7 +24,10 @@ export function ComboAnswerReveal({
 }) {
   const timedOut = reveal.resolvedBy === "timeout";
   return (
-    <div data-testid="combo-answer-reveal" data-correct={String(reveal.correct)}>
+    <div
+      data-testid="combo-answer-reveal"
+      data-correct={String(reveal.correct)}
+    >
       <ResolutionReveal title={teamName(reveal.teamId)} compact={compact}>
         <ResolutionAnswerRow label="إجابتكم">
           {timedOut || !reveal.submittedAnswer

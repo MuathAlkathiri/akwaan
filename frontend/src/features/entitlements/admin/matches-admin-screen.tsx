@@ -111,7 +111,7 @@ function GrantCard() {
         </Button>
       </form>
       {lookup.isError ? (
-        <p role="alert" className="text-sm font-bold text-destructive">
+        <p role="alert" className="text-sm font-bold text-foreground">
           {getApiErrorMessage(lookup.error, "ما قدرنا ندوّر على الحساب.")}
         </p>
       ) : null}
@@ -196,7 +196,7 @@ function GrantCard() {
             </p>
           ) : null}
           {grant.isError ? (
-            <p role="alert" className="text-sm font-bold text-destructive">
+            <p role="alert" className="text-sm font-bold text-foreground">
               {getApiErrorMessage(grant.error, "ما قدرنا نضيف المباريات.")}
             </p>
           ) : null}
@@ -244,7 +244,7 @@ function WeeklyLimitCard() {
       {settings.isPending ? (
         <p className="text-muted-foreground">جاري التحميل…</p>
       ) : settings.isError ? (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-foreground">
           ما قدرنا نجيب إعدادات الحملة. حدّث الصفحة.
         </p>
       ) : (
@@ -289,7 +289,7 @@ function WeeklyLimitCard() {
             كثر الطلب. يتجدد كل خميس وما يتجمع.
           </p>
           {save.isError ? (
-            <p role="alert" className="text-sm font-bold text-destructive">
+            <p role="alert" className="text-sm font-bold text-foreground">
               {getApiErrorMessage(save.error, "ما انحفظ. جرّب مرة ثانية.")}
             </p>
           ) : null}
@@ -402,7 +402,7 @@ function GiftCodesCard() {
         </Button>
       </form>
       {create.isError ? (
-        <p role="alert" className="text-sm font-bold text-destructive">
+        <p role="alert" className="text-sm font-bold text-foreground">
           {getApiErrorMessage(create.error, "ما قدرنا نسوّي الكود.")}
         </p>
       ) : null}
@@ -410,7 +410,7 @@ function GiftCodesCard() {
       {codes.isPending ? (
         <p className="text-muted-foreground">جاري التحميل…</p>
       ) : codes.isError ? (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-foreground">
           ما قدرنا نجيب الأكواد. حدّث الصفحة.
         </p>
       ) : codes.data.length === 0 ? (

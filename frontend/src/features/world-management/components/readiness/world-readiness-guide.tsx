@@ -104,7 +104,7 @@ export function WorldReadinessGuide({
                     {item.complete ? (
                       <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-green-600" />
                     ) : (
-                      <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                      <XCircle className="mt-0.5 size-5 shrink-0 text-foreground" />
                     )}
                     <div>
                       <p className="text-sm font-semibold">

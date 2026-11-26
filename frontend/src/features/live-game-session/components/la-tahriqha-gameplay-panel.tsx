@@ -68,7 +68,7 @@ function IngredientCard({
     "grid w-full place-items-center rounded-[var(--radius)] border-2 px-2 font-black transition-colors",
     compact ? "min-h-[3.25rem] text-sm" : "min-h-20 text-lg",
     state === "correct" && "border-emerald-500 bg-emerald-500/15 text-foreground",
-    state === "burn" && "border-destructive bg-destructive/15 text-foreground",
+    state === "burn" && "border-brand-navy bg-destructive-subtle text-foreground",
     state === "missed" && "border-border/50 bg-muted/40 text-muted-foreground",
     !state && chosen && "border-brand-gold bg-brand-gold/20 text-foreground",
     !state && !chosen && "border-border bg-card text-foreground",
@@ -295,7 +295,7 @@ function DishReveal({
             data-perfect={String(team.perfect)}
             className={cn(
               "space-y-1 rounded-[var(--radius)] border p-3",
-              team.burned && "border-destructive/60 bg-destructive/10",
+              team.burned && "border-brand-navy bg-destructive-subtle",
               team.perfect && "border-brand-gold bg-brand-gold/10",
               !team.burned && !team.perfect && "border-border",
             )}
@@ -321,7 +321,7 @@ function DishReveal({
                     className={cn(
                       "me-2 inline-block",
                       team.wrongIds.includes(id)
-                        ? "text-destructive line-through"
+                        ? "text-foreground line-through"
                         : "text-emerald-600 dark:text-emerald-400",
                     )}
                   >
@@ -333,7 +333,7 @@ function DishReveal({
             <p className="flex items-center gap-2 text-base font-black">
               {team.burned && (
                 <span
-                  className="flex items-center gap-1 text-destructive"
+                  className="flex items-center gap-1 text-foreground"
                   data-testid={`la-tahriqha-burn-${team.teamId}`}
                 >
                   <Flame className="size-5" aria-hidden />

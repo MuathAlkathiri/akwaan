@@ -43,8 +43,8 @@ describe("challenge explainer colour", () => {
 
   it("states a team's outcome with the semantic tokens", () => {
     const source = read("odd-piece-explainer.tsx");
-    expect(source).toMatch(/lost && "text-destructive"/);
-    expect(source).toMatch(/winner && "text-success\b/);
+    // Never as coloured text: red and green are fills, or they are not used.
+    expect(source).not.toMatch(/text-destructive|text-success\b|text-sem-/);
   });
 
   it("keeps Combo's tinted risk and outcome copy at body contrast", () => {

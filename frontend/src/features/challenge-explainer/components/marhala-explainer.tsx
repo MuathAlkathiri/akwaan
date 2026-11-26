@@ -459,7 +459,7 @@ function MarhalaStagePanel({
                     special &&
                       (kind === "boost"
                         ? "border-brand-gold bg-brand-gold/15"
-                        : "border-destructive/40 bg-destructive/10"),
+                        : "border-brand-navy bg-destructive-subtle"),
                   )}
                 >
                   <span dir="ltr">{position}</span>
@@ -576,7 +576,7 @@ function MarhalaLegend({
       </p>
       <div className="flex justify-center gap-2 text-[0.62rem] font-black">
         <span className="rounded-full bg-brand-gold/15 px-2 py-1">دفعة</span>
-        <span className="rounded-full bg-destructive/10 px-2 py-1">فخ</span>
+        <span className="rounded-full bg-destructive-subtle px-2 py-1">فخ</span>
       </div>
     </div>
   );
@@ -610,7 +610,7 @@ function MarhalaFinalOutcome({
         </div>
         <div className="rounded-lg border border-border bg-muted/40 p-1.5 text-center sm:p-2.5">
           <AlertTriangle
-            className="mx-auto mb-1 size-3.5 text-destructive sm:size-4"
+            className="mx-auto mb-1 size-3.5 text-foreground sm:size-4"
             aria-hidden
           />
           <p className="text-[0.55rem] font-black sm:text-[0.65rem]">

@@ -92,7 +92,7 @@ export function MechanicTutorialDialog({
           </Button>
         </DialogTrigger>
         {isError && (
-          <span className="max-w-44 text-[0.68rem] font-bold leading-4 text-destructive">
+          <span className="max-w-44 text-[0.68rem] font-bold leading-4 text-foreground">
             تعذّر تحميل شرح هذا التحدي
           </span>
         )}

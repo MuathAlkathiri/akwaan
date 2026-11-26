@@ -27,10 +27,10 @@ export function JourneyError({
     <div
       role="alert"
       data-testid="journey-error"
-      className="rounded-3xl border border-destructive/20 bg-card p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]"
+      className="rounded-3xl border border-brand-navy bg-card p-10 text-center shadow-[0_10px_30px_rgba(24,16,54,.05)]"
     >
       <AlertTriangle
-        className="mx-auto h-8 w-8 text-destructive"
+        className="mx-auto h-8 w-8 text-foreground"
         aria-hidden="true"
       />
       <p className="mt-4 text-lg font-black text-foreground">{title}</p>

@@ -327,7 +327,11 @@ interface DrawnRoute {
   n: Point;
 }
 
-function routeProps(route: DrawnRoute, object: "ladder" | "slide", active: boolean) {
+function routeProps(
+  route: DrawnRoute,
+  object: "ladder" | "slide",
+  active: boolean,
+) {
   return {
     "data-testid": `marhala-route-${route.from}-${route.to}`,
     "data-route-kind": route.kind,
@@ -430,8 +434,20 @@ function Slide({ route, active }: { route: DrawnRoute; active: boolean }) {
           strokeLinecap="round"
         />
       )}
-      <path d={d} fill="none" stroke={NAVY} strokeWidth={38} strokeLinecap="round" />
-      <path d={d} fill="none" stroke={SLIDE} strokeWidth={30} strokeLinecap="round" />
+      <path
+        d={d}
+        fill="none"
+        stroke={NAVY}
+        strokeWidth={38}
+        strokeLinecap="round"
+      />
+      <path
+        d={d}
+        fill="none"
+        stroke={SLIDE}
+        strokeWidth={30}
+        strokeLinecap="round"
+      />
       <path
         d={d}
         fill="none"
@@ -640,8 +656,18 @@ function Token({
         {team.avatarKey ? (
           <PlayerCharacterIcon characterKey={team.avatarKey} size={50} />
         ) : (
-          <svg viewBox="0 0 40 40" className="drop-shadow-[3px_4px_0_hsl(var(--brand-navy))]">
-            <circle cx="20" cy="20" r="16" fill="#F6F3FC" stroke={NAVY} strokeWidth="3.5" />
+          <svg
+            viewBox="0 0 40 40"
+            className="drop-shadow-[3px_4px_0_hsl(var(--brand-navy))]"
+          >
+            <circle
+              cx="20"
+              cy="20"
+              r="16"
+              fill="#F6F3FC"
+              stroke={NAVY}
+              strokeWidth="3.5"
+            />
             <ellipse cx="15" cy="18.5" rx="2.3" ry="3.4" fill={NAVY} />
             <ellipse cx="25" cy="18.5" rx="2.3" ry="3.4" fill={NAVY} />
             <path
@@ -670,8 +696,24 @@ export function MarhalaBoardLegend({ className }: { className?: string }) {
     >
       <li className="inline-flex items-center gap-2">
         <svg aria-hidden viewBox="0 0 40 60" width="24" height="36">
-          <line x1="20" y1="8" x2="20" y2="52" stroke={NAVY} strokeWidth="30" strokeLinecap="round" />
-          <line x1="20" y1="8" x2="20" y2="52" stroke={PURPLE} strokeWidth="24" strokeLinecap="round" />
+          <line
+            x1="20"
+            y1="8"
+            x2="20"
+            y2="52"
+            stroke={NAVY}
+            strokeWidth="30"
+            strokeLinecap="round"
+          />
+          <line
+            x1="20"
+            y1="8"
+            x2="20"
+            y2="52"
+            stroke={PURPLE}
+            strokeWidth="24"
+            strokeLinecap="round"
+          />
           <line x1="12" y1="18" x2="28" y2="18" stroke="#fff" strokeWidth="4" />
           <line x1="12" y1="30" x2="28" y2="30" stroke="#fff" strokeWidth="4" />
           <line x1="12" y1="42" x2="28" y2="42" stroke="#fff" strokeWidth="4" />
@@ -682,9 +724,27 @@ export function MarhalaBoardLegend({ className }: { className?: string }) {
       </li>
       <li className="inline-flex items-center gap-2">
         <svg aria-hidden viewBox="0 0 60 40" width="40" height="27">
-          <path d="M8 10 Q30 40 46 26" fill="none" stroke={NAVY} strokeWidth="16" strokeLinecap="round" />
-          <path d="M8 10 Q30 40 46 26" fill="none" stroke={SLIDE} strokeWidth="10" strokeLinecap="round" />
-          <polygon points="58,22 44,16 46,34" fill={SLIDE} stroke={NAVY} strokeWidth="2.5" strokeLinejoin="round" />
+          <path
+            d="M8 10 Q30 40 46 26"
+            fill="none"
+            stroke={NAVY}
+            strokeWidth="16"
+            strokeLinecap="round"
+          />
+          <path
+            d="M8 10 Q30 40 46 26"
+            fill="none"
+            stroke={SLIDE}
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <polygon
+            points="58,22 44,16 46,34"
+            fill={SLIDE}
+            stroke={NAVY}
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
         </svg>
         <span>
           <strong className="font-extrabold">الزحليقة</strong> تنزّلك لآخر نقطة

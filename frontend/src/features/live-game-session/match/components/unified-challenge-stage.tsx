@@ -119,10 +119,11 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
           data-testid="challenge-restoring"
           className="flex flex-col items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
         >
-          <RefreshCw className="size-6 animate-spin text-disabled-foreground" aria-hidden />
-          <p className="text-sm text-muted-foreground">
-            جارٍ استعادة التحدي…
-          </p>
+          <RefreshCw
+            className="size-6 animate-spin text-disabled-foreground"
+            aria-hidden
+          />
+          <p className="text-sm text-muted-foreground">جارٍ استعادة التحدي…</p>
           <button
             type="button"
             onClick={() => resync?.()}
@@ -150,7 +151,7 @@ export function UnifiedChallengeStage({ actor }: { actor: MatchActor }) {
             {aborting ? "نلغي التحدي…" : "العودة إلى اللوحة"}
           </Button>
           {abortError && (
-            <p role="alert" className="text-sm font-bold text-destructive">
+            <p role="alert" className="text-sm font-bold text-foreground">
               {abortError}
             </p>
           )}

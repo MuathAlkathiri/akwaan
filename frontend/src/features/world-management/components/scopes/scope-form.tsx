@@ -148,7 +148,7 @@ export function ScopeForm({ worldId, scope, onSuccess }: ScopeFormProps) {
         <p
           className={
             belowMinimum
-              ? "text-sm font-medium text-destructive"
+              ? "text-sm font-medium text-foreground"
               : "text-sm text-muted-foreground"
           }
         >

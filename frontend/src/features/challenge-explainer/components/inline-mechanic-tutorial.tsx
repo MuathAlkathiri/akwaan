@@ -993,7 +993,7 @@ function V6RyoIntegratedStage({
                       className={cn(
                         "relative grid size-[54px] shrink-0 place-items-center font-display text-xl font-bold sm:size-[61px] sm:text-[23px]",
                         timerUrgent
-                          ? "text-destructive motion-safe:animate-pulse"
+                          ? "text-foreground motion-safe:animate-pulse"
                           : "text-brand-navy",
                       )}
                       aria-label={`مثال عداد: ${illustrativeSeconds} ثوانٍ`}
@@ -1086,13 +1086,13 @@ function V6RyoIntegratedStage({
                   data-testid="explainer-reveal"
                   className="flex flex-col items-center gap-2.5"
                 >
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-4 py-1.5 font-display text-base font-bold text-success sm:text-xl">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-4 py-1.5 font-display text-base font-bold text-foreground sm:text-xl">
                     ✓ انكشفت النتيجة!
                   </div>
                   <p className="font-display text-base font-bold text-brand-navy sm:text-xl">
                     الإجابة الصحيحة: {correctChoice?.label ?? "—"}
                   </p>
-                  <div className="rounded-xl bg-success-subtle px-3 py-1.5 text-[11px] font-bold text-success sm:text-xs">
+                  <div className="rounded-xl bg-success-subtle px-3 py-1.5 text-[11px] font-bold text-foreground sm:text-xs">
                     {outcomeSummary}
                   </div>
                 </div>
@@ -1381,14 +1381,14 @@ function PhoneOutcomeBox({
       className={cn(
         "flex min-h-[88px] w-full flex-col items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center",
         won
-          ? "bg-success-subtle text-success"
+          ? "bg-success-subtle text-foreground"
           : "bg-muted text-foreground",
       )}
     >
       <span
         className={cn(
           "grid size-8 place-items-center rounded-xl",
-          won ? "bg-success/15 text-success" : "bg-background text-foreground",
+          won ? "bg-success-subtle text-foreground" : "bg-background text-foreground",
         )}
       >
         <Check className="size-4" aria-hidden />

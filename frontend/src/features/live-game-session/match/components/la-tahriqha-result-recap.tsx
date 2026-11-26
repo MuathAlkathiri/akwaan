@@ -81,7 +81,7 @@ export function LaTahriqhaResultRecap({
               {dish.teams?.map((team) => (
                 <span key={team.teamId} className="flex items-center gap-1">
                   {team.burned && (
-                    <Flame className="size-4 text-destructive" aria-hidden />
+                    <Flame className="size-4 text-foreground" aria-hidden />
                   )}
                   {team.perfect && (
                     <Star className="size-4 text-brand-gold" aria-hidden />

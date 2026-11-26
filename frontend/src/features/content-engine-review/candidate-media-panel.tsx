@@ -181,7 +181,7 @@ export function CandidateMediaPanel({
 
       {!readiness.ready && (
         <ul
-          className="mb-3 list-disc space-y-1 ps-5 text-sm text-destructive"
+          className="mb-3 list-disc space-y-1 ps-5 text-sm text-foreground"
           data-testid="media-blockers"
         >
           {readiness.blockers.map((finding) => (
@@ -496,7 +496,7 @@ function MediaSlotCard({
       {rightsStatus === "BLOCKED" && (
         <p
           role="alert"
-          className="mt-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"
+          className="mt-2 rounded-md bg-destructive-subtle p-2 text-sm text-foreground"
           data-testid="media-rights-blocked"
         >
           الحقوق محظورة: مانع صارم للاعتماد. استبدل الوسائط أو صحّح سجل الحقوق
@@ -519,7 +519,7 @@ function MediaSlotCard({
       {error && (
         <p
           role="alert"
-          className="mt-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"
+          className="mt-2 rounded-md bg-destructive-subtle p-2 text-sm text-foreground"
           data-testid="media-action-error"
         >
           {error.message}

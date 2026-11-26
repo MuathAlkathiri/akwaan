@@ -359,7 +359,7 @@ export function ClosestExplainer({
                       finished &&
                         !scenario.outcome.tie &&
                         scenario.outcome.winnerTeam === "team-a"
-                        ? "border-sem-success/50 bg-sem-success/10 text-brand-navy"
+                        ? "border-brand-navy bg-success-subtle text-brand-navy"
                         : "border-border bg-background/70 text-foreground",
                     )}
                   >
@@ -372,7 +372,7 @@ export function ClosestExplainer({
                       finished &&
                         !scenario.outcome.tie &&
                         scenario.outcome.winnerTeam === "team-b"
-                        ? "border-sem-success/50 bg-sem-success/10 text-brand-navy"
+                        ? "border-brand-navy bg-success-subtle text-brand-navy"
                         : "border-border bg-background/70 text-foreground",
                     )}
                   >
@@ -384,10 +384,10 @@ export function ClosestExplainer({
                   <div
                     data-testid="closest-tutorial-outcome"
                     data-winner-payoff
-                    className="rounded-xl border border-sem-success/20 bg-sem-success/15 p-2 font-black sm:p-3"
+                    className="rounded-xl border border-brand-navy bg-success-subtle p-2 font-black sm:p-3"
                   >
                     <Trophy
-                      className="mx-auto mb-1 size-5 text-sem-success"
+                      className="mx-auto mb-1 size-5 text-foreground"
                       aria-hidden
                     />
                     <p className="text-base">
@@ -464,13 +464,13 @@ function LockState({
       className={cn(
         "rounded-xl border p-2 transition-colors",
         locked
-          ? "border-sem-success/40 bg-sem-success/10"
+          ? "border-brand-navy bg-success-subtle"
           : "border-border bg-background/80",
       )}
     >
       <p className="text-xs font-bold text-foreground">{name}</p>
       <p className="mt-0.5 flex items-center justify-center gap-1 font-black text-foreground">
-        {locked && <Lock className="size-3.5 text-sem-success" aria-hidden />}
+        {locked && <Lock className="size-3.5 text-foreground" aria-hidden />}
         {locked ? "تم التثبيت" : "يفكر…"}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -570,7 +570,7 @@ function EstimatePhone({
           className={cn(
             "h-8 w-full gap-1 px-1 text-[0.68rem] font-black disabled:opacity-100",
             estimate.confirmed
-              ? "bg-sem-success text-white"
+              ? "bg-sem-success text-sem-reveal-foreground"
               : "bg-brand-navy text-white",
           )}
         >

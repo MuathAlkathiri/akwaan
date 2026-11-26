@@ -44,7 +44,7 @@ export function LiveSessionCreator() {
       </CardHeader>
       <CardContent className="space-y-4">
         {submitError && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-foreground">
             {submitError}
           </p>
         )}

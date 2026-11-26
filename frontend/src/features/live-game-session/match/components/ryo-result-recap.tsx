@@ -106,7 +106,9 @@ export function RyoResultRecap({
                   person(item.answererParticipantId) ||
                   teamName(snapshot, item.answeringTeamId)
                 }`,
-                value: <BidiText>{String(item.selectedAnswer ?? "—")}</BidiText>,
+                value: (
+                  <BidiText>{String(item.selectedAnswer ?? "—")}</BidiText>
+                ),
               },
               {
                 label: "الإجابة الصحيحة",

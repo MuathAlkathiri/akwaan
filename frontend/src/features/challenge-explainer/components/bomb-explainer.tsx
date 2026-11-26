@@ -188,7 +188,7 @@ export function BombExplainer({
                     "grid size-12 place-items-center rounded-full border-4 shadow-xl sm:size-14",
                     expired
                       ? "border-muted bg-muted text-muted-foreground"
-                      : "border-destructive/50 bg-destructive text-destructive-foreground",
+                      : "border-brand-navy bg-destructive text-destructive-foreground",
                   )}
                 >
                   <Bomb className="size-6 sm:size-7" aria-hidden />
@@ -198,9 +198,9 @@ export function BombExplainer({
                   className={cn(
                     "akwaan-numeral text-4xl font-black tracking-tight tabular-nums sm:text-5xl lg:text-6xl",
                     urgentClock
-                      ? "text-destructive"
+                      ? "text-foreground"
                       : clockPaused
-                        ? "text-sem-success"
+                        ? "text-foreground"
                         : "text-brand-navy",
                   )}
                   aria-label={`${seconds} ثانية`}
@@ -228,7 +228,7 @@ export function BombExplainer({
                   {expired ? `انتهى وقت ${activeName}` : `القنبلة مع ${activeName}`}
                 </span>
                 {clockPaused && (
-                  <span className="inline-flex items-center rounded-full border border-sem-success/40 bg-sem-success/15 px-2.5 py-0.5 text-[11px] font-black text-brand-navy">
+                  <span className="inline-flex items-center rounded-full border border-brand-navy bg-success-subtle px-2.5 py-0.5 text-[11px] font-black text-brand-navy">
                     الساعة متوقفة
                   </span>
                 )}
@@ -269,7 +269,7 @@ export function BombExplainer({
               </p>
             </div>
             {incorrect && (
-              <div className="flex items-center gap-2 rounded-full bg-destructive/12 px-3.5 py-1.5 text-xs font-black text-destructive sm:text-sm">
+              <div className="flex items-center gap-2 rounded-full bg-destructive-subtle px-3.5 py-1.5 text-xs font-black text-foreground sm:text-sm">
                 <XCircle className="size-4 sm:size-5" />
                 إجابة خاطئة — الدور مستمر
               </div>
@@ -358,14 +358,14 @@ export function BombExplainer({
                 <div
                   className={cn(
                     "w-full space-y-1.5 px-1 py-1 text-center",
-                    team.active && "rounded-xl bg-destructive/5",
+                    team.active && "rounded-xl bg-destructive-subtle",
                   )}
                 >
                   <p
                     className={cn(
                       "akwaan-numeral text-2xl font-black tabular-nums sm:text-3xl",
                       team.active && team.time <= 10
-                        ? "text-destructive"
+                        ? "text-foreground"
                         : "text-foreground",
                     )}
                   >
@@ -375,7 +375,7 @@ export function BombExplainer({
                   </p>
                   {((team.id === "team-a" && correct) ||
                     (team.id === "team-b" && opponentCorrect)) && (
-                    <p className="inline-block rounded-full bg-sem-success/15 px-2 py-0.5 text-[10px] font-black text-brand-navy">
+                    <p className="inline-block rounded-full bg-success-subtle px-2 py-0.5 text-[10px] font-black text-brand-navy">
                       الساعة متوقفة
                     </p>
                   )}
