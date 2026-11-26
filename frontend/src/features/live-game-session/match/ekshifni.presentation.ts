@@ -49,6 +49,14 @@ export interface EkshifniView {
   hasInitiative: boolean;
   canReveal: boolean;
   canAnswer: boolean;
+  /** Whether this phone holds its team's reveal turn; true when the server says nothing. */
+  isAssignedRevealer: boolean;
+  /** Whether this phone holds its team's answer; true when the server says nothing. */
+  isAssignedAnswerer: boolean;
+  /** Whose phone answers for this team, for a teammate's read-only screen. */
+  assignedParticipantId?: string;
+  /** When a teammate may act instead of a holder who has gone quiet. */
+  standInAt?: string;
   reveal?: EkshifniRevealView;
   result?: {
     winnerTeamId: string | null;
@@ -96,6 +104,14 @@ export function readEkshifniView(
     hasInitiative: state.hasInitiative === true,
     canReveal: state.canReveal === true,
     canAnswer: state.canAnswer === true,
+    isAssignedRevealer: state.isAssignedRevealer !== false,
+    isAssignedAnswerer: state.isAssignedAnswerer !== false,
+    ...(typeof state.assignedParticipantId === "string"
+      ? { assignedParticipantId: state.assignedParticipantId }
+      : {}),
+    ...(typeof state.standInAt === "string"
+      ? { standInAt: state.standInAt }
+      : {}),
     ...(state.revealJson
       ? { reveal: json<EkshifniRevealView>(state.revealJson, undefined!) }
       : {}),

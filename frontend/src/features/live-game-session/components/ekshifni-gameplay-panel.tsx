@@ -18,6 +18,7 @@ import {
   ResolutionReveal,
 } from "../match/components/resolution-reveal";
 import { useLiveSession } from "../hooks/live-session-context";
+import { useTeamActionHold } from "../hooks/use-team-action-hold";
 import type { GameplayRuntimeSnapshot } from "../model";
 import type { MatchActor } from "../match/types";
 import {
@@ -190,6 +191,13 @@ export function EkshifniGameplayPanel({
   };
 
   const playing = view.phase === "playing";
+  // Each right is one phone's: the captain, or the rotation.
+  const mayReveal = useTeamActionHold(view.isAssignedRevealer, view.standInAt);
+  const mayAnswer = useTeamActionHold(view.isAssignedAnswerer, view.standInAt);
+  const holderName =
+    snapshot?.participants?.find(
+      (person) => person.id === view.assignedParticipantId,
+    )?.displayName ?? "زميلكم";
   const step = `الصورة ${view.imageNumber} من ${view.imageCount}`;
 
   const reveal = view.phase === "resolved" && view.reveal && (
@@ -296,7 +304,9 @@ export function EkshifniGameplayPanel({
               data-testid="ekshifni-controller"
             >
               <div className="flex flex-col gap-2">
-                {view.canReveal && can("reveal-ekshifni-region") ? (
+                {view.canReveal &&
+                mayReveal &&
+                can("reveal-ekshifni-region") ? (
                   <>
                     <p className="font-display text-lg font-extrabold">
                       اكشف منطقة{" "}
@@ -319,7 +329,13 @@ export function EkshifniGameplayPanel({
                       className="font-display text-lg font-extrabold"
                       data-testid="ekshifni-no-initiative"
                     >
-                      الخصم يختار المنطقة الجاية
+                      {view.canReveal ? (
+                        <>
+                          <bdi>{holderName}</bdi> يختار المنطقة عنكم
+                        </>
+                      ) : (
+                        "الخصم يختار المنطقة الجاية"
+                      )}
                     </p>
                     <RegionNumbers regions={view.regions} />
                   </>
@@ -329,7 +345,14 @@ export function EkshifniGameplayPanel({
                 </p>
               </div>
 
-              {view.canAnswer && can("submit-ekshifni") ? (
+              {view.canAnswer && !mayAnswer ? (
+                <p
+                  className="mt-auto rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender p-4 text-center text-base font-bold"
+                  data-testid="ekshifni-answer-teammate"
+                >
+                  الإجابة من جوال <bdi>{holderName}</bdi>. عرفتوه؟ قولوا له.
+                </p>
+              ) : view.canAnswer && can("submit-ekshifni") ? (
                 <form
                   className="flex min-h-0 flex-1 flex-col gap-2.5"
                   onSubmit={(event) => {

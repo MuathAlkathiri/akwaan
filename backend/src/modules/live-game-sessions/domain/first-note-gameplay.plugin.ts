@@ -25,6 +25,7 @@ import {
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
+  projectTeamActionHolder,
   serializeTeamActionAssignments,
   teamActionClock,
   teamActionStandInWindow,
@@ -425,9 +426,27 @@ function publicState(
   const teamId = actor.teamId;
   const phoneSafe = { ...shared };
   delete phoneSafe.audioJson;
+  // The turn — a bid, a pass or the answer — is one phone's: the captain if
+  // the team chose one, otherwise whoever the rotation landed on. Only told to
+  // the team that holds the turn; the other team has nothing to hold.
+  const holder =
+    firstNoteActingTeamId(valid) === teamId
+      ? projectTeamActionHolder(
+          valid.teamActionJson,
+          FIRST_NOTE_TURN_ACTION,
+          actor.participantId,
+        )
+      : { held: true };
   return {
     ...phoneSafe,
     actorTeamId: teamId,
+    isAssignedActor: holder.held,
+    ...('holderParticipantId' in holder && holder.holderParticipantId
+      ? { assignedParticipantId: holder.holderParticipantId }
+      : {}),
+    ...('standInAt' in holder && holder.standInAt
+      ? { standInAt: holder.standInAt }
+      : {}),
     canBid: phase === 'auction' && valid.biddingTeamId === teamId,
     canPass:
       phase === 'auction' &&

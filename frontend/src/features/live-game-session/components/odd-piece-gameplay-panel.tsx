@@ -32,6 +32,7 @@ const ODD_PIECE_ANSWER_THRESHOLDS = countdownThresholdsForWindow(5);
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
+import { useTeamActionHold } from "../hooks/use-team-action-hold";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot, LiveSessionSnapshot } from "../model";
 import type { MatchActor } from "../match/types";
@@ -158,6 +159,11 @@ function OddPieceHotspotGameplayPanel({
         remainingMs={remainingMs}
         teamName={teamName}
         dotOf={dotOf}
+        holderName={
+          snapshot?.participants?.find(
+            (person) => person.id === view.assignedParticipantId,
+          )?.displayName ?? "زميلكم"
+        }
         send={send}
       />
     );
@@ -379,6 +385,7 @@ function OddPieceHotspotPhoneController({
   remainingMs,
   teamName,
   dotOf,
+  holderName,
   send,
 }: {
   view: HotspotView;
@@ -388,11 +395,15 @@ function OddPieceHotspotPhoneController({
   remainingMs?: number;
   teamName: (teamId?: string) => string;
   dotOf: (teamId: string) => string;
+  /** Who holds this team's decision, for a teammate's read-only screen. */
+  holderName: string;
   send: (
     commandType: string,
     payload?: Record<string, string | number | boolean | null>,
   ) => void;
 }) {
+  // One phone per team presses «جاوب» and taps: the captain, or the rotation.
+  const mayAct = useTeamActionHold(view.isAssignedActor, view.standInAt);
   const [pending, setPending] = useState<"claim" | "answer">();
   const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 });
   useEffect(() => {
@@ -402,16 +413,16 @@ function OddPieceHotspotPhoneController({
     setZoom({ scale: 1, x: 0, y: 0 });
   }, [view.puzzleIndex]);
   const claim = () => {
-    if (!live || pending || !view.canClaim) return;
+    if (!live || pending || !view.canClaim || !mayAct) return;
     setPending("claim");
     send("claim-odd-piece-hotspot");
   };
   const answer = (point: { x: number; y: number }) => {
-    if (!live || pending || !view.canAnswer) return;
+    if (!live || pending || !view.canAnswer || !mayAct) return;
     setPending("answer");
     send("submit-odd-piece-hotspot", point);
   };
-  const tapping = view.phase === "answering" && view.canAnswer;
+  const tapping = view.phase === "answering" && view.canAnswer && mayAct;
   const seconds =
     remainingMs !== undefined ? Math.max(0, Math.ceil(remainingMs / 1000)) : 0;
   return (
@@ -481,26 +492,40 @@ function OddPieceHotspotPhoneController({
         {view.phase === "open" && (
           <>
             <p className="text-sm leading-[1.7] text-brand-slate">
-              {view.canClaim
-                ? "لقيتوها؟ اضغط «جاوب» قبل الخصم. بعدها عندك 5 ثواني تلمس فيها القطعة."
-                : "راحت فرصتكم في هالصورة."}
+              {!view.canClaim ? (
+                "راحت فرصتكم في هالصورة."
+              ) : mayAct ? (
+                "لقيتوها؟ اضغط «جاوب» قبل الخصم. بعدها عندك 5 ثواني تلمس فيها القطعة."
+              ) : (
+                <span data-testid="odd-piece-v2-phone-teammate">
+                  «جاوب» من جوال <bdi>{holderName}</bdi>. لقيتوها؟ قولوا له.
+                </span>
+              )}
             </p>
-            <MobileActionArea>
-              <button
-                type="button"
-                className={cn(GOLD_ACTION, "min-h-[84px] w-full text-[30px]")}
-                disabled={!live || !view.canClaim || Boolean(pending)}
-                onClick={claim}
-                data-testid="odd-piece-v2-phone-claim"
-              >
-                {pending === "claim" ? "نحجزها…" : "جاوب"}
-              </button>
-            </MobileActionArea>
+            {mayAct && (
+              <MobileActionArea>
+                <button
+                  type="button"
+                  className={cn(GOLD_ACTION, "min-h-[84px] w-full text-[30px]")}
+                  disabled={!live || !view.canClaim || Boolean(pending)}
+                  onClick={claim}
+                  data-testid="odd-piece-v2-phone-claim"
+                >
+                  {pending === "claim" ? "نحجزها…" : "جاوب"}
+                </button>
+              </MobileActionArea>
+            )}
           </>
         )}
-        {view.phase === "answering" && !view.canAnswer && (
+        {view.phase === "answering" && !tapping && (
           <PhoneStatus testId="odd-piece-v2-phone-waiting">
-            {teamName(view.answerOwnerTeamId)} يلمسون الحين…
+            {view.canAnswer ? (
+              <span>
+                <bdi>{holderName}</bdi> يلمس الحين عن فريقكم…
+              </span>
+            ) : (
+              `${teamName(view.answerOwnerTeamId)} يلمسون الحين…`
+            )}
           </PhoneStatus>
         )}
         {(view.phase === "revealed" || view.phase === "completed") &&

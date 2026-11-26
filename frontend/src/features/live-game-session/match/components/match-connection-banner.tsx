@@ -25,7 +25,7 @@ export function MatchConnectionBanner() {
   // A race the client already recovered from is not something the room needs
   // to read about; see `matchErrorIsRecoverable`.
   if (matchErrorIsRecoverable(error.code)) return null;
-  const message = matchErrorMessage(error.code) ?? "تعذر تنفيذ آخر إجراء.";
+  const message = matchErrorMessage(error.code) ?? "ما قدرنا ننفّذ آخر حركة. المباراة محفوظة.";
   return (
     <aside
       role="status"
@@ -45,7 +45,7 @@ export function MatchConnectionBanner() {
         onClick={() => resync?.()}
         className="rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] font-extrabold text-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-gold))]"
       >
-        حدِّث الآن
+        حدّث الحين
       </Button>
     </aside>
   );

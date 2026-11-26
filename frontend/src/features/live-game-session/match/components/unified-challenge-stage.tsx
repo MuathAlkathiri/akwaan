@@ -22,6 +22,7 @@ const SELF_FRAMED_MODES: ReadonlySet<string> = new Set([
   "odd-piece",
   "ekshifni",
   "la-tahriqha",
+  "first-note",
 ]);
 
 /**

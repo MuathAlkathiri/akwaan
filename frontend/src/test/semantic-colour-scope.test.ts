@@ -156,7 +156,7 @@ describe("a persistent status may still be legible", () => {
     expect(shell).not.toContain("ConnectionPill");
     expect(banner).toContain("text-warning");
     expect(banner).toContain("AlertTriangle");
-    expect(banner).toContain("حدِّث الآن");
+    expect(banner).toContain("حدّث الحين");
   });
 
   it("lets the countdown redden as it runs out", () => {

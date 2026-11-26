@@ -28,6 +28,16 @@ export interface FirstNoteView {
   canBid: boolean;
   canPass: boolean;
   canAnswer: boolean;
+  /**
+   * Whether this phone holds its team's decision: the captain if the team
+   * chose one, otherwise the rotation. True when the server says nothing, as
+   * an older Run does: there the whole team may act.
+   */
+  isAssignedActor: boolean;
+  /** Whose phone holds it, for a teammate's read-only screen. */
+  assignedParticipantId?: string;
+  /** When a teammate may act instead of a holder who has gone quiet. */
+  standInAt?: string;
   audio?: { type: string; assets: Array<{ url: string; altText?: string }> };
   reveal?: {
     answers?: Record<string, string | null>;
@@ -78,6 +88,13 @@ export function readFirstNoteView(
     canBid: state.canBid === true,
     canPass: state.canPass === true,
     canAnswer: state.canAnswer === true,
+    isAssignedActor: state.isAssignedActor !== false,
+    ...(typeof state.assignedParticipantId === "string"
+      ? { assignedParticipantId: state.assignedParticipantId }
+      : {}),
+    ...(typeof state.standInAt === "string"
+      ? { standInAt: state.standInAt }
+      : {}),
     ...(state.audioJson ? { audio: json(state.audioJson, undefined) } : {}),
     ...(state.revealJson ? { reveal: json(state.revealJson, undefined) } : {}),
     ...(state.resultJson ? { result: json(state.resultJson, undefined) } : {}),

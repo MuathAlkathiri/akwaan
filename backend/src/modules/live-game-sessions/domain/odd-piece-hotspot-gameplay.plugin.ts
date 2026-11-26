@@ -12,6 +12,17 @@ import {
   GameplayPluginContext,
 } from './gameplay-mode.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+import {
+  assertTeamActionAuthorized,
+  assignNextTeamActionOrHold,
+  assignmentFor,
+  clearTeamAction,
+  parseTeamActionAssignments,
+  serializeTeamActionAssignments,
+  projectTeamActionHolder,
+  teamActionClock,
+  teamActionStandInWindow,
+} from './team-action-assignment';
 
 /** The mechanic's one mode key. There is one القطعة الدخيلة: this one. */
 export const ODD_PIECE_MODE_KEY = 'odd-piece';
@@ -211,6 +222,72 @@ function validateState(state: GameplayModeState): GameplayModeState {
     );
   puzzles.forEach(validateOddPieceHotspotPuzzle);
   return state;
+}
+
+/**
+ * One phone per team presses «جاوب» and makes the tap.
+ *
+ * Both are the same decision — claiming is committing to the tap that follows —
+ * so a team carries one action for the whole picture rather than two that
+ * could land on different phones. The race between the two teams is untouched:
+ * each team has its own action, and the two holders still race each other.
+ */
+export const oddPieceAction = (teamId: string) => `odd-piece.act.${teamId}`;
+
+function assertHoldsOddPiece(
+  context: GameplayPluginContext,
+  state: GameplayModeState,
+  teamId: string,
+): void {
+  // A runtime started before this mechanic assigned its action keeps the old
+  // team-wide rule, so a Match in flight is not broken by this landing.
+  if (typeof state.teamActionJson !== 'string') return;
+  const assignments = parseTeamActionAssignments(state.teamActionJson);
+  const action = oddPieceAction(teamId);
+  if (!assignmentFor(assignments, action)) return;
+  assertTeamActionAuthorized(assignments, {
+    ...teamActionStandInWindow(context),
+    action,
+    teamId,
+    participantId: context.submitterParticipantId,
+  });
+}
+
+/** Keeps each team's action open while a picture is live, and moves it per picture. */
+function syncOddPieceActions(
+  before: GameplayModeState,
+  after: GameplayModeState,
+  context: GameplayPluginContext,
+): GameplayModeState {
+  if (typeof after.teamActionJson !== 'string') return after;
+  let assignments = parseTeamActionAssignments(after.teamActionJson);
+  const teams = teamsOf(after);
+  const phase = String(after.phase);
+  if (phase === 'revealed' || phase === 'completed') {
+    // Nothing is owed between pictures or once the challenge is over.
+    for (const teamId of teams)
+      assignments = clearTeamAction(assignments, oddPieceAction(teamId));
+  } else {
+    // A new picture is a new turn for each team, so a team without a captain
+    // rotates here. Within one picture the holder is left alone: whoever
+    // pressed «جاوب» is the one who taps.
+    const newPicture = after.currentPuzzleIndex !== before.currentPuzzleIndex;
+    for (const teamId of teams) {
+      const action = oddPieceAction(teamId);
+      if (newPicture || !assignmentFor(assignments, action)) {
+        assignments = assignNextTeamActionOrHold(assignments, {
+          teamId,
+          action,
+          participants: context.eligibleParticipants ?? [],
+          now: teamActionClock(context),
+        }).state;
+      }
+    }
+  }
+  return {
+    ...after,
+    teamActionJson: serializeTeamActionAssignments(assignments),
+  };
 }
 
 function actorTeam(context: GameplayPluginContext, teams: string[]): string {
@@ -425,6 +502,60 @@ export const ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       ),
     }),
   handleCommand: (context, command) => {
+    const outcome = reduceOddPieceHotspot(context, command);
+    return {
+      ...outcome,
+      runtimeState: syncOddPieceActions(
+        command.runtimeState,
+        outcome.runtimeState,
+        context,
+      ),
+    };
+  },
+  projectRuntimeState: projectHotspotRuntimeState,
+  projectRuntimeStateForActor: (state, actor) => {
+    const projected = projectHotspotRuntimeState(state);
+    const teamId = actor.teamId;
+    if (!teamId) return projected;
+    const attempted = new Set(
+      attemptsOf(state).map((attempt) => attempt.teamId),
+    );
+    // Whose phone acts for this team. A runtime that predates the assignment
+    // has none, and there the whole team may act as before.
+    const holder = projectTeamActionHolder(
+      state.teamActionJson,
+      oddPieceAction(teamId),
+      actor.participantId,
+    );
+    return {
+      ...projected,
+      actorTeamId: teamId,
+      canClaim: state.phase === 'open' && !attempted.has(teamId),
+      canSelect:
+        state.phase === 'answering' &&
+        state.answerOwnerTeamId === teamId &&
+        !attempted.has(teamId),
+      attemptUsed: attempted.has(teamId),
+      isAssignedActor: holder.held,
+      ...(holder.holderParticipantId
+        ? { assignedParticipantId: holder.holderParticipantId }
+        : {}),
+      // When a teammate may act instead, should the holder stay silent.
+      ...(holder.standInAt ? { standInAt: holder.standInAt } : {}),
+    };
+  },
+  projectRoundState: (state) => state,
+  presentedContentItemIds: ({ runtimeState }) =>
+    puzzlesOf(runtimeState)
+      .slice(0, Number(runtimeState.currentPuzzleIndex) + 1)
+      .map((puzzle) => puzzle.id),
+};
+
+function reduceOddPieceHotspot(
+  context: GameplayPluginContext,
+  command: Parameters<GameplayModePlugin['handleCommand']>[1],
+): GameplayCommandResult {
+  {
     const state = validateState(command.runtimeState);
     const teams = teamsOf(state);
     const now = context.now ?? new Date();
@@ -434,6 +565,7 @@ export const ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     if (command.type === 'claim-odd-piece-hotspot') {
       assertAcknowledgedParticipant(context, state);
       const teamId = actorTeam(context, teams);
+      assertHoldsOddPiece(context, state, teamId);
       if (state.phase !== 'open' || deadlineIsPast(state, now))
         throw new LiveSessionDomainError(
           'ODD_PIECE_DISCUSSION_CLOSED',
@@ -459,6 +591,7 @@ export const ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN: GameplayModePlugin = {
     if (command.type === 'submit-odd-piece-hotspot') {
       assertAcknowledgedParticipant(context, state);
       const teamId = actorTeam(context, teams);
+      assertHoldsOddPiece(context, state, teamId);
       if (state.phase !== 'answering' || state.answerOwnerTeamId !== teamId)
         throw new LiveSessionDomainError(
           'ODD_PIECE_ANSWER_FORBIDDEN',
@@ -630,32 +763,8 @@ export const ODD_PIECE_HOTSPOT_GAMEPLAY_PLUGIN: GameplayModePlugin = {
       'ODD_PIECE_COMMAND_UNKNOWN',
       'Unsupported Odd Piece V2 command',
     );
-  },
-  projectRuntimeState: projectHotspotRuntimeState,
-  projectRuntimeStateForActor: (state, actor) => {
-    const projected = projectHotspotRuntimeState(state);
-    const teamId = actor.teamId;
-    if (!teamId) return projected;
-    const attempted = new Set(
-      attemptsOf(state).map((attempt) => attempt.teamId),
-    );
-    return {
-      ...projected,
-      actorTeamId: teamId,
-      canClaim: state.phase === 'open' && !attempted.has(teamId),
-      canSelect:
-        state.phase === 'answering' &&
-        state.answerOwnerTeamId === teamId &&
-        !attempted.has(teamId),
-      attemptUsed: attempted.has(teamId),
-    };
-  },
-  projectRoundState: (state) => state,
-  presentedContentItemIds: ({ runtimeState }) =>
-    puzzlesOf(runtimeState)
-      .slice(0, Number(runtimeState.currentPuzzleIndex) + 1)
-      .map((puzzle) => puzzle.id),
-};
+  }
+}
 
 function projectHotspotRuntimeState(
   state: GameplayModeState,
