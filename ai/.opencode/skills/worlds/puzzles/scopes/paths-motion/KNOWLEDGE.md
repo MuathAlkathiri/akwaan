@@ -445,7 +445,7 @@ When generating or reviewing an authored batch for `paths-motion`:
 ## Composed families — مركّب الصور (owner decision 2026-11-26)
 
 The families of this Scope need a picture, and until now nothing could make
-one. The engine now **draws** the ones listed here itself (`wire-trace-terminal`): the
+one. The engine now **draws** the ones listed here itself (`gear-train-direction`, `electrical-switch-circuit`, `maze-exit-route`, `domino-cascade-chain`, `one-way-traffic-flow`, `shortest-path-grid`, `wire-trace-terminal`): the
 picture, the question, the three options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
@@ -477,9 +477,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "gear-train-direction",
       "name": "اتجاه دوران التروس المتشابكة",
-      "description": "اتجاه دوران التروس المتشابكة",
-      "playerSolve": "اتجاه دوران التروس المتشابكة",
-      "modality": "visual-spatial",
+      "description": "صف من التروس المتشابكة بألوان مختلفة، وسهم يبيّن اتجاه دوران الأول. المحرك يرسم التروس ويعرف اتجاه كل واحد.",
+      "playerSolve": "كل ترس يعكس اتجاه اللي قبله.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -490,8 +490,28 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "last-direction",
+          "name": "الترس الأخير",
+          "brief": "The first gear's turn is given; which way the last gear turns."
+        },
+        {
+          "key": "same-as-first",
+          "name": "يدور مثل الأول",
+          "brief": "Which of three coloured gears turns the same way as the first."
+        },
+        {
+          "key": "count-direction",
+          "name": "كم ترس بنفس الاتجاه",
+          "brief": "How many gears in the row turn the way the first does."
+        }
+      ],
+      "capacity": 200,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "pulley-rope-system",
@@ -535,9 +555,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "electrical-switch-circuit",
       "name": "مسارات الدوائر الكهربائية",
-      "description": "مسارات الدوائر الكهربائية",
-      "playerSolve": "مسارات الدوائر الكهربائية",
-      "modality": "visual-spatial",
+      "description": "بطارية وثلاث لمبات بحروف، كل لمبة على سلك فيه مفتاح أو مفتاحين مفتوحة أو مقفلة. المحرك يعرف أي لمبة يوصلها التيار.",
+      "playerSolve": "اللمبة تشتغل إذا كل مفاتيح سلكها مقفلة.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -548,15 +568,30 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "which-lights",
+          "name": "أي لمبة تشتغل",
+          "brief": "Exactly one lamp has every switch closed; which."
+        },
+        {
+          "key": "which-stays-off",
+          "name": "أي لمبة ما تشتغل",
+          "brief": "Exactly one lamp has an open switch; which."
+        }
+      ],
+      "capacity": 150,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "maze-exit-route",
       "name": "مسار الخروج من المتاهة",
-      "description": "مسار الخروج من المتاهة",
-      "playerSolve": "مسار الخروج من المتاهة",
-      "modality": "visual-spatial",
+      "description": "متاهة فيها أربعة أشياء مرسومة: واحد لحاله وثلاثة غيره، وواحد فقط من الثلاثة له طريق مفتوح إلى الأول. المحرك يبني المتاهة ويعرف أي طريق مفتوح.",
+      "playerSolve": "تتبّع الطريق المفتوح بالعين.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -567,15 +602,30 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "to-which",
+          "name": "يوصل لأي واحد",
+          "brief": "Starting from the thing on its own, which of the three can be reached."
+        },
+        {
+          "key": "from-which",
+          "name": "مين يوصل له",
+          "brief": "Which of the three has an open way to the thing on its own."
+        }
+      ],
+      "capacity": 400,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "domino-cascade-chain",
       "name": "تساقط الدومينو وسلاسل الأثر",
-      "description": "تساقط الدومينو وسلاسل الأثر",
-      "playerSolve": "تساقط الدومينو وسلاسل الأثر",
-      "modality": "visual-spatial",
+      "description": "صف من قطع الدومينو المرقّمة، قصيرة وطويلة وبمسافات مختلفة، وسهم يدفع الأولى. المحرك يحسب وين تتوقف السلسلة.",
+      "playerSolve": "القطعة توصل لمسافة بطولها.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -586,8 +636,23 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "last-to-fall",
+          "name": "آخر قطعة تطيح",
+          "brief": "Which numbered piece is the last to fall."
+        },
+        {
+          "key": "count-standing",
+          "name": "كم تبقى واقفة",
+          "brief": "How many pieces are left standing."
+        }
+      ],
+      "capacity": 200,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "ball-marble-track",
@@ -630,9 +695,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "one-way-traffic-flow",
       "name": "مسارات الاتجاه الواحد",
-      "description": "مسارات الاتجاه الواحد",
-      "playerSolve": "مسارات الاتجاه الواحد",
-      "modality": "visual-spatial",
+      "description": "شبكة طرق صغيرة كل طريق فيها باتجاه واحد، سيارة داخلة من اليسار وثلاثة مواقف بحروف على اليمين. المحرك يعرف وين توصل السيارة.",
+      "playerSolve": "تتبّع الأسهم من السيارة إلى الموقف.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -643,8 +708,23 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "reachable",
+          "name": "توصل لأي موقف",
+          "brief": "Exactly one lot can be reached following the arrows; which."
+        },
+        {
+          "key": "unreachable",
+          "name": "أي موقف ما توصله",
+          "brief": "Exactly one lot cannot be reached; which."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
     },
     {
       "familyKey": "cam-linkage-motion",
@@ -668,9 +748,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "shortest-path-grid",
       "name": "أقصر مسار حركي في الشبكة",
-      "description": "أقصر مسار حركي في الشبكة",
-      "playerSolve": "أقصر مسار حركي في الشبكة",
-      "modality": "visual-spatial",
+      "description": "ثلاثة حبال ملوّنة متعرّجة جنب بعض بنفس الارتفاع، وأطوالها الحقيقية مختلفة. المحرك يرسمها ويعرف طول كل واحد.",
+      "playerSolve": "تقدير الطول الحقيقي من عدد اللفات وعرضها.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -682,8 +762,24 @@ nothing is deleted, and a family returns by removing its `status` below.
         "multiple_choice",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "longest",
+          "name": "الأطول",
+          "brief": "Which of the three ropes is longest when pulled straight."
+        },
+        {
+          "key": "shortest",
+          "name": "الأقصر",
+          "brief": "Which of the three ropes is shortest when pulled straight."
+        }
+      ],
+      "capacity": 200,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     },
     {
       "familyKey": "wire-trace-terminal",

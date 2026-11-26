@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import {
   DRAWN_THING_CATEGORIES,
   DrawnThing,
@@ -30,18 +29,59 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'visual-closure-fragment',
   'spot-the-difference',
   'visual-match-scan',
+  'gear-train-direction',
+  'maze-exit-route',
+  'shortest-path-grid',
+  'domino-cascade-chain',
+  'one-way-traffic-flow',
+  'electrical-switch-circuit',
+  'mental-rotation-2d',
+  'mirror-vs-rotation-discrim',
+  'missing-puzzle-piece',
+  'cube-net-fold',
+  'spatial-cube-count',
+  'orthographic-projection',
+  'visual-asymmetry-detection',
+  'reflection-fidelity',
+  'overlapping-boundary-trace',
+  'size-distortion-illusion',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
 
-export const PUZZLE_FONT_FAMILY = 'Noto Kufi Arabic';
+import {
+  ComposedPuzzleDrawing,
+  GOLD,
+  H,
+  INK,
+  PAPER,
+  PUZZLE_FONT_FAMILY,
+  RED,
+  W,
+  asOptions,
+  frame,
+  pick,
+  round,
+  seededRandom,
+  shuffled,
+} from './composed-kit';
 
-const W = 1200;
-const H = 675;
-const INK = '#1B1F3B';
-const PAPER = '#F6F1E7';
-const GOLD = '#E8B33A';
-const RED = '#D8493F';
+import {
+  ASSEMBLY_VARIANTS,
+  AssemblyFamily,
+  composeAssembly,
+} from './composed-assembly';
+import {
+  OBSERVATION_VARIANTS,
+  ObservationFamily,
+  composeObservation,
+} from './composed-observation';
+import { PATHS_VARIANTS, PathsFamily, composePaths } from './composed-paths';
+import { CUBE_NETS, Cell, cubeNetNormals, cubeNetOpposites } from './cube-nets';
+
+export { CUBE_NETS, cubeNetNormals, cubeNetOpposites };
+
+export { PUZZLE_FONT_FAMILY, seededRandom };
 
 /**
  * The kinds of question each family can ask of its drawing. These are the
@@ -60,74 +100,13 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   'visual-closure-fragment': ['shadow', 'close-up', 'half-hidden'],
   'spot-the-difference': ['vanished', 'appeared', 'replaced'],
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
+  ...PATHS_VARIANTS,
+  ...ASSEMBLY_VARIANTS,
+  ...OBSERVATION_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
-export interface ComposedPuzzle {
+export interface ComposedPuzzle extends ComposedPuzzleDrawing {
   familyKey: ComposedPuzzleFamily;
-  /** The question asked of the drawing: one of the family's templates. */
-  variantKey: string;
-  /** The template plus what was drawn, for the reviewer and the tests. */
-  variant: string;
-  prompt: string;
-  options: Array<{ id: string; label: string }>;
-  correctOptionId: string;
-  /** Why each wrong option is wrong, for the reviewer. */
-  distractorRationale: Array<{ optionId: string; why: string }>;
-  altText: string;
-  concept: string;
-  factualClaim: string;
-  svg: string;
-}
-
-const frame = (body: string): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${PAPER}"/>${body}</svg>`;
-
-const round = (value: number): number => Math.round(value * 10) / 10;
-
-/** A small deterministic generator: the same seed, the same puzzle. */
-export function seededRandom(seed: string): () => number {
-  let counter = 0;
-  let pool = Buffer.alloc(0);
-  let offset = 0;
-  return () => {
-    if (offset + 4 > pool.length) {
-      pool = createHash('sha256').update(`${seed}:${counter++}`).digest();
-      offset = 0;
-    }
-    const value = pool.readUInt32BE(offset) / 0x100000000;
-    offset += 4;
-    return value;
-  };
-}
-
-function shuffled<T>(items: readonly T[], random: () => number): T[] {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const other = Math.floor(random() * (index + 1));
-    [result[index], result[other]] = [result[other], result[index]];
-  }
-  return result;
-}
-
-const pick = <T>(items: readonly T[], random: () => number): T =>
-  items[Math.floor(random() * items.length) % items.length];
-
-/** Three options in a seeded order, ids a/b/c by position. */
-function asOptions(
-  labels: readonly string[],
-  correctLabel: string,
-  random: () => number,
-): { options: Array<{ id: string; label: string }>; correctOptionId: string } {
-  const order = shuffled(labels, random);
-  const options = order.map((label, index) => ({
-    id: ['a', 'b', 'c', 'd'][index],
-    label,
-  }));
-  return {
-    options,
-    correctOptionId: options.find((option) => option.label === correctLabel)!
-      .id,
-  };
 }
 
 /** The template asked for, or one chosen by the seed when none was. */
@@ -666,118 +645,6 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
 // ---------------------------------------------------------------------------
 // المكعب المطوي
 // ---------------------------------------------------------------------------
-
-type Cell = readonly [number, number];
-type Vector = readonly [number, number, number];
-
-/**
- * Cube nets that are neither a cross nor a T (owner rule: a net must never
- * read as a cross). Each is six unit cells; `cubeNetNormals` proves each
- * folds into a cube.
- */
-export const CUBE_NETS: ReadonlyArray<{ key: string; cells: readonly Cell[] }> =
-  [
-    {
-      key: 'staircase',
-      cells: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-        [2, 1],
-        [2, 2],
-        [3, 2],
-      ],
-    },
-    {
-      key: 'two-rows',
-      cells: [
-        [0, 0],
-        [1, 0],
-        [2, 0],
-        [2, 1],
-        [3, 1],
-        [4, 1],
-      ],
-    },
-    {
-      key: 'step-and-tail',
-      cells: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-        [2, 1],
-        [3, 1],
-        [3, 2],
-      ],
-    },
-    {
-      key: 'tail-and-step',
-      cells: [
-        [0, 0],
-        [0, 1],
-        [1, 1],
-        [2, 1],
-        [2, 2],
-        [3, 2],
-      ],
-    },
-    {
-      key: 'long-z',
-      cells: [
-        [0, 0],
-        [0, 1],
-        [1, 1],
-        [2, 1],
-        [3, 1],
-        [3, 2],
-      ],
-    },
-  ];
-
-const negate = (v: Vector): Vector => [-v[0], -v[1], -v[2]];
-
-/**
- * Fold a net: the outward normal each cell ends up with on the cube. Two
- * cells are opposite faces exactly when their normals are opposite.
- */
-export function cubeNetNormals(cells: readonly Cell[]): Vector[] {
-  const key = (cell: Cell) => `${cell[0]},${cell[1]}`;
-  const index = new Map(cells.map((cell, i) => [key(cell), i]));
-  const frames = new Map<
-    number,
-    { normal: Vector; right: Vector; down: Vector }
-  >();
-  frames.set(0, { normal: [0, 0, -1], right: [1, 0, 0], down: [0, 1, 0] });
-  const queue = [0];
-  while (queue.length) {
-    const current = queue.shift()!;
-    const { normal, right, down } = frames.get(current)!;
-    const [x, y] = cells[current];
-    const steps: Array<
-      [Cell, { normal: Vector; right: Vector; down: Vector }]
-    > = [
-      [[x + 1, y], { normal: right, right: negate(normal), down }],
-      [[x - 1, y], { normal: negate(right), right: normal, down }],
-      [[x, y + 1], { normal: down, right, down: negate(normal) }],
-      [[x, y - 1], { normal: negate(down), right, down: normal }],
-    ];
-    for (const [cell, next] of steps) {
-      const neighbour = index.get(key(cell));
-      if (neighbour === undefined || frames.has(neighbour)) continue;
-      frames.set(neighbour, next);
-      queue.push(neighbour);
-    }
-  }
-  return cells.map((_, i) => frames.get(i)!.normal);
-}
-
-/** `opposite[i]` — the cell that ends up facing cell `i`. */
-export function cubeNetOpposites(cells: readonly Cell[]): number[] {
-  const normals = cubeNetNormals(cells);
-  return normals.map((normal) =>
-    normals.findIndex((other) => other.join() === negate(normal).join()),
-  );
-}
 
 /**
  * What is written or drawn on the six faces: everyday names (never a brand),
@@ -1551,6 +1418,27 @@ export function composePuzzle(
   variantKey?: string,
 ): ComposedPuzzle {
   const variant = chooseVariant(familyKey, seed, variantKey);
+  if (familyKey in PATHS_VARIANTS) {
+    return composePaths(
+      familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in OBSERVATION_VARIANTS) {
+    return composeObservation(
+      familyKey as ObservationFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in ASSEMBLY_VARIANTS) {
+    return composeAssembly(
+      familyKey as AssemblyFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
   if (familyKey === 'wire-trace-terminal') return composeThreads(seed, variant);
   if (familyKey === 'opposite-cube-faces') return composeCubeNet(seed, variant);
   if (familyKey === 'fold-and-punch') return composeFold(seed, variant);

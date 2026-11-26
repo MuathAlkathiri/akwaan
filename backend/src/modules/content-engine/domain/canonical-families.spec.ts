@@ -502,14 +502,30 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
 
       it('the three visual Scopes draw only what the composer can draw, and only for إكس أو المتحرك', () => {
         expect(drawable('assembly-rotation', 'moving-xo')).toEqual([
+          'cube-net-fold',
           'fold-and-punch',
+          'mental-rotation-2d',
+          'mirror-vs-rotation-discrim',
+          'missing-puzzle-piece',
           'opposite-cube-faces',
+          'orthographic-projection',
+          'spatial-cube-count',
         ]);
         expect(drawable('paths-motion', 'moving-xo')).toEqual([
+          'domino-cascade-chain',
+          'electrical-switch-circuit',
+          'gear-train-direction',
+          'maze-exit-route',
+          'one-way-traffic-flow',
+          'shortest-path-grid',
           'wire-trace-terminal',
         ]);
         expect(drawable('observation-illusions', 'moving-xo')).toEqual([
+          'overlapping-boundary-trace',
+          'reflection-fidelity',
+          'size-distortion-illusion',
           'spot-the-difference',
+          'visual-asymmetry-detection',
           'visual-closure-fragment',
           'visual-match-scan',
         ]);
