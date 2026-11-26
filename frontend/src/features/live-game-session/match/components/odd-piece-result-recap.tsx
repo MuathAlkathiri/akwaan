@@ -1,6 +1,23 @@
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
+import { teamName } from "../presentation";
+import {
+  ChallengeWinnerBanner,
+  ResultRoundCard,
+} from "./challenge-result-banner";
 
+interface OddPieceDetails {
+  points?: Record<string, number>;
+  puzzles?: Array<{ puzzleIndex: number; winnerTeamId: string | null }>;
+}
+
+/**
+ * Who found the odd piece, picture by picture.
+ *
+ * One card a picture, on the same result shell as every other challenge. The
+ * pictures' own points and the one Match point are separate numbers, and the
+ * banner keeps them apart.
+ */
 export function OddPieceResultRecap({
   result,
   snapshot,
@@ -8,34 +25,37 @@ export function OddPieceResultRecap({
   result: MatchChallengeResult;
   snapshot: LiveSessionSnapshot;
 }) {
-  const details = result.details as {
-    points?: Record<string, number>;
-    puzzles?: Array<{ puzzleIndex: number; winnerTeamId: string | null }>;
-  };
-  const teamName = (teamId: string) =>
-    snapshot.teams.find((team) => team.id === teamId)?.name ?? "الفريق";
+  const details = (result.details ?? {}) as OddPieceDetails;
   return (
-    <div className="space-y-4" data-testid="odd-piece-challenge-result">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {Object.entries(details.points ?? {}).map(([teamId, points]) => (
-          <div
-            key={teamId}
-            className="rounded-[var(--radius)] border p-5 text-center"
-          >
-            <p className="font-bold">{teamName(teamId)}</p>
-            <p className="text-3xl font-black">{points} / 3</p>
-          </div>
+    <div className="space-y-5" data-testid="odd-piece-challenge-result">
+      <ol className="grid list-none gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {details.puzzles?.map((puzzle, index) => (
+          <ResultRoundCard
+            key={puzzle.puzzleIndex}
+            data-testid={`odd-piece-result-puzzle-${index}`}
+            round={index + 1}
+            snapshot={snapshot}
+            facts={[
+              {
+                label: "اللي لمس القطعة صح",
+                value: puzzle.winnerTeamId
+                  ? teamName(snapshot, puzzle.winnerTeamId)
+                  : "ما أحد لمسها صح",
+              },
+            ]}
+            points={
+              puzzle.winnerTeamId
+                ? [{ teamId: puzzle.winnerTeamId, points: 1 }]
+                : []
+            }
+          />
         ))}
-      </div>
-      <p className="text-center text-xl font-black">
-        {result.winnerTeamId
-          ? `فوز ${teamName(result.winnerTeamId)} بالتحدي`
-          : "انتهى التحدي بالتعادل"}
-      </p>
-      <p className="text-center text-sm font-bold text-muted-foreground">
-        نقاط الألغاز أعلاه هي نتيجة الآلية؛ نقطة المباراة تُمنح لفائز التحدي مرة
-        واحدة.
-      </p>
+      </ol>
+      <ChallengeWinnerBanner
+        result={result}
+        snapshot={snapshot}
+        {...(details.points ? { totals: details.points } : {})}
+      />
     </div>
   );
 }
