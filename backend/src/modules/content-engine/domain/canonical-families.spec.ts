@@ -506,6 +506,12 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'opposite-cube-faces',
         ]);
         expect(drawable('paths-motion', 'moving-xo')).toEqual([
+          'domino-cascade-chain',
+          'electrical-switch-circuit',
+          'gear-train-direction',
+          'maze-exit-route',
+          'one-way-traffic-flow',
+          'shortest-path-grid',
           'wire-trace-terminal',
         ]);
         expect(drawable('observation-illusions', 'moving-xo')).toEqual([

@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import {
   DRAWN_THING_CATEGORIES,
   DrawnThing,
@@ -30,18 +29,36 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'visual-closure-fragment',
   'spot-the-difference',
   'visual-match-scan',
+  'gear-train-direction',
+  'maze-exit-route',
+  'shortest-path-grid',
+  'domino-cascade-chain',
+  'one-way-traffic-flow',
+  'electrical-switch-circuit',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
 
-export const PUZZLE_FONT_FAMILY = 'Noto Kufi Arabic';
+import {
+  ComposedPuzzleDrawing,
+  GOLD,
+  H,
+  INK,
+  PAPER,
+  PUZZLE_FONT_FAMILY,
+  RED,
+  W,
+  asOptions,
+  frame,
+  pick,
+  round,
+  seededRandom,
+  shuffled,
+} from './composed-kit';
 
-const W = 1200;
-const H = 675;
-const INK = '#1B1F3B';
-const PAPER = '#F6F1E7';
-const GOLD = '#E8B33A';
-const RED = '#D8493F';
+import { PATHS_VARIANTS, PathsFamily, composePaths } from './composed-paths';
+
+export { PUZZLE_FONT_FAMILY, seededRandom };
 
 /**
  * The kinds of question each family can ask of its drawing. These are the
@@ -60,74 +77,11 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   'visual-closure-fragment': ['shadow', 'close-up', 'half-hidden'],
   'spot-the-difference': ['vanished', 'appeared', 'replaced'],
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
+  ...PATHS_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
-export interface ComposedPuzzle {
+export interface ComposedPuzzle extends ComposedPuzzleDrawing {
   familyKey: ComposedPuzzleFamily;
-  /** The question asked of the drawing: one of the family's templates. */
-  variantKey: string;
-  /** The template plus what was drawn, for the reviewer and the tests. */
-  variant: string;
-  prompt: string;
-  options: Array<{ id: string; label: string }>;
-  correctOptionId: string;
-  /** Why each wrong option is wrong, for the reviewer. */
-  distractorRationale: Array<{ optionId: string; why: string }>;
-  altText: string;
-  concept: string;
-  factualClaim: string;
-  svg: string;
-}
-
-const frame = (body: string): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${PAPER}"/>${body}</svg>`;
-
-const round = (value: number): number => Math.round(value * 10) / 10;
-
-/** A small deterministic generator: the same seed, the same puzzle. */
-export function seededRandom(seed: string): () => number {
-  let counter = 0;
-  let pool = Buffer.alloc(0);
-  let offset = 0;
-  return () => {
-    if (offset + 4 > pool.length) {
-      pool = createHash('sha256').update(`${seed}:${counter++}`).digest();
-      offset = 0;
-    }
-    const value = pool.readUInt32BE(offset) / 0x100000000;
-    offset += 4;
-    return value;
-  };
-}
-
-function shuffled<T>(items: readonly T[], random: () => number): T[] {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const other = Math.floor(random() * (index + 1));
-    [result[index], result[other]] = [result[other], result[index]];
-  }
-  return result;
-}
-
-const pick = <T>(items: readonly T[], random: () => number): T =>
-  items[Math.floor(random() * items.length) % items.length];
-
-/** Three options in a seeded order, ids a/b/c by position. */
-function asOptions(
-  labels: readonly string[],
-  correctLabel: string,
-  random: () => number,
-): { options: Array<{ id: string; label: string }>; correctOptionId: string } {
-  const order = shuffled(labels, random);
-  const options = order.map((label, index) => ({
-    id: ['a', 'b', 'c', 'd'][index],
-    label,
-  }));
-  return {
-    options,
-    correctOptionId: options.find((option) => option.label === correctLabel)!
-      .id,
-  };
 }
 
 /** The template asked for, or one chosen by the seed when none was. */
@@ -1551,6 +1505,13 @@ export function composePuzzle(
   variantKey?: string,
 ): ComposedPuzzle {
   const variant = chooseVariant(familyKey, seed, variantKey);
+  if (familyKey in PATHS_VARIANTS) {
+    return composePaths(
+      familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
   if (familyKey === 'wire-trace-terminal') return composeThreads(seed, variant);
   if (familyKey === 'opposite-cube-faces') return composeCubeNet(seed, variant);
   if (familyKey === 'fold-and-punch') return composeFold(seed, variant);
