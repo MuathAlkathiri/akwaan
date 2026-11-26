@@ -98,7 +98,10 @@ function ClearWindow({
           ? isNewest
             ? "ring-2 ring-inset ring-brand-gold"
             : "ring-1 ring-inset ring-brand-gold/80"
-          : isNewest && "ring-2 ring-brand-gold",
+          : cn(
+              "rounded-[14px] ring-[3px] ring-inset ring-[hsl(var(--brand-gold))]",
+              isNewest && "ring-[5px]",
+            ),
       )}
       style={{
         left: percent(x),
@@ -176,7 +179,12 @@ export function EkshifniBoard({
   return (
     <div className="flex justify-center">
       <div
-        className="relative inline-block min-h-40 max-w-full overflow-hidden rounded-[var(--radius)] border border-border/70 bg-muted shadow-sm"
+        className={cn(
+          "relative inline-block min-h-40 max-w-full overflow-hidden bg-muted",
+          tutorialPresentation
+            ? "rounded-[var(--radius)] border border-border/70 shadow-sm"
+            : "rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))]",
+        )}
         data-testid="ekshifni-board"
         data-unmasked={String(unmasked)}
         data-withheld={String(withheld)}
@@ -233,7 +241,7 @@ export function EkshifniBoard({
             role="status"
           >
             <p className="text-base font-black text-muted-foreground">
-              تعذّر عرض الصورة الآن
+              ما قدرنا نعرض الصورة الحين
             </p>
           </div>
         )}
@@ -263,7 +271,11 @@ export function EkshifniBoard({
                 key={region.id}
                 data-testid={`ekshifni-marker-${region.number}`}
                 className={cn(
-                  "absolute grid place-items-center rounded-md border-2 border-primary-foreground/50 bg-primary/25 ring-1 ring-inset ring-primary/40",
+                  "absolute grid place-items-center",
+                  !tutorialPresentation &&
+                    "rounded-[14px] border-[3px] border-dashed border-white bg-[hsl(var(--brand-navy)/.25)]",
+                  tutorialPresentation &&
+                    "rounded-md border-2 ring-1 ring-inset ring-primary/40",
                   tutorialPresentation &&
                     "border-primary-foreground/80 bg-primary/10 ring-2 ring-inset ring-brand-gold/70",
                 )}
@@ -305,7 +317,7 @@ export function EkshifniBoard({
                     </span>
                   )
                 ) : (
-                  <span className="akwaan-numeral text-2xl font-black text-primary-foreground drop-shadow sm:text-3xl">
+                  <span className="akwaan-numeral text-2xl font-bold text-white drop-shadow sm:text-[40px]">
                     {region.number}
                   </span>
                 )}

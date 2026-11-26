@@ -330,7 +330,7 @@ describe("the اكشفني board on the shared screen", () => {
       }),
     );
     expect(screen.getByTestId("resolution-reveal")).toHaveTextContent(
-      "انتهت الصورة بدون إجابة صحيحة",
+      "خلصت الصورة وما أحد عرفه",
     );
   });
 
@@ -363,7 +363,7 @@ describe("the اكشفني board on the shared screen", () => {
     const board = screen.getByTestId("ekshifni-board");
     expect(board).toHaveAttribute("data-withheld", "true");
     expect(screen.queryByTestId("ekshifni-marker-1")).toBeNull();
-    expect(board).toHaveTextContent("تعذّر عرض الصورة الآن");
+    expect(board).toHaveTextContent("ما قدرنا نعرض الصورة الحين");
   });
 });
 
@@ -391,7 +391,7 @@ describe("اكشفني on a player's phone", () => {
     );
     expect(screen.queryByTestId("ekshifni-pick-3")).toBeNull();
     expect(screen.getByTestId("ekshifni-no-initiative")).toHaveTextContent(
-      "الفريق الثاني يختار الجزء التالي",
+      "الخصم يختار المنطقة الجاية",
     );
   });
 
@@ -417,7 +417,7 @@ describe("اكشفني on a player's phone", () => {
     expect(screen.queryByTestId("ekshifni-answer-input")).toBeNull();
     const locked = screen.getByTestId("ekshifni-answer-locked");
     // Temporary, and worded as temporary — never as elimination.
-    expect(locked).toHaveTextContent("ترجع لكم الإجابة بعد حركة الفريق الثاني");
+    expect(locked).toHaveTextContent("ترجع لكم الإجابة بعد ما يتحرك الخصم");
     expect(locked).not.toHaveTextContent("خسرتم");
   });
 
@@ -457,7 +457,7 @@ describe("اكشفني on a player's phone", () => {
   it("uses the compact frame and never repeats the challenge name", () => {
     renderPhone();
     const frame = screen.getByTestId("challenge-frame");
-    expect(frame).toHaveTextContent("المشهور 1 من 3");
+    expect(frame).toHaveTextContent("الصورة 1 من 3");
     expect(frame).not.toHaveTextContent("اكشفني");
   });
 });
