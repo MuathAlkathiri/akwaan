@@ -1,6 +1,15 @@
 import { batterySvg } from '../domain/composed-visuals';
 import { inspectImageBytes } from '../../../infrastructure/media/image-bytes.inspector';
-import { SvgRasterizationError, SvgRasterizer } from './svg-rasterizer';
+import { existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import {
+  COMPOSER_FONT_FILE,
+  SvgRasterizationError,
+  SvgRasterizer,
+  findComposerFontDirectory,
+  prepareComposerFonts,
+} from './svg-rasterizer';
 
 // The image library ships one native binary per platform. A machine without
 // the one for its own platform cannot run this, and says so by skipping.
@@ -13,6 +22,32 @@ const nativeAvailable = (() => {
     return false;
   }
 })();
+
+describe('the composer font', () => {
+  it('ships beside the backend and is found from the source tree', () => {
+    const directory = findComposerFontDirectory();
+    expect(directory).not.toBeNull();
+    expect(existsSync(join(directory!, COMPOSER_FONT_FILE))).toBe(true);
+    // The licence travels with the font.
+    expect(existsSync(join(directory!, 'OFL.txt'))).toBe(true);
+  });
+
+  it('is found from a build output directory too, and reported missing elsewhere', () => {
+    const directory = findComposerFontDirectory()!;
+    const backend = join(directory, '..', '..');
+    expect(
+      findComposerFontDirectory(
+        join(backend, 'dist', 'modules', 'content-engine', 'infrastructure'),
+      ),
+    ).toBe(directory);
+    expect(findComposerFontDirectory(tmpdir())).toBeNull();
+  });
+
+  it('points fontconfig at it without throwing', () => {
+    expect(prepareComposerFonts()).toBe(true);
+    expect(process.env.FONTCONFIG_FILE).toMatch(/akwaan-composer-fonts\.conf$/);
+  });
+});
 
 describe('SvgRasterizer', () => {
   (nativeAvailable ? it : it.skip)(

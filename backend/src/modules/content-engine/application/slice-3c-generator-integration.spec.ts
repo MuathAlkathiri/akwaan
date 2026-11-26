@@ -932,7 +932,7 @@ describe('Slice 3C — Generator Integration, Pinned Plans & Family Compliance',
       const plan = {
         ...createDummyPlan([
           dummySlot(0, 'occurrence-count'),
-          dummySlot(1, 'battery-level'),
+          { ...dummySlot(1, 'battery-level'), variantKey: 'some-template' },
         ]),
       };
       const closestPlan = (() => {
@@ -1015,9 +1015,15 @@ describe('Slice 3C — Generator Integration, Pinned Plans & Family Compliance',
         generationPlan: closestPlan as GenerationPlan,
       });
 
-      // Only the composed slot is composed, seeded by job and ordinal.
+      // Only the composed slot is composed, seeded by job and ordinal, in
+      // the template the slot was given.
       expect(compose).toHaveBeenCalledTimes(1);
-      expect(compose).toHaveBeenCalledWith('battery-level', 'job-composed-1:1');
+      expect(compose).toHaveBeenCalledWith(
+        'battery-level',
+        'job-composed-1:1',
+        { mechanicKey: 'closest', scopeKey: 'numbers-estimation' },
+        'some-template',
+      );
       const saved = (
         updateOne.mock.calls as unknown as Array<
           [{ ordinal: number }, { $set: Record<string, any> }]

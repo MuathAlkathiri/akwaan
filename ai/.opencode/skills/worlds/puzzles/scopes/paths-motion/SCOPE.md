@@ -34,7 +34,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 |---|---|---|---|---|
 | 1 | `gear-train-direction` | اتجاه دوران التروس المتشابكة | 2D Vector Gears | `multiple_choice` |
 | 2 | `pulley-rope-system` | حركة البكرات والأحمال | 2D Vector Pulleys | `multiple_choice` |
-| 3 | `pipe-valve-flow` | تدفق السوائل والصمامات | 2D Hydraulic Schematic | `multiple_choice \| closest` |
+| 3 | `pipe-valve-flow` | تدفق السوائل والصمامات | 2D Hydraulic Schematic | `multiple_choice, closest` |
 | 4 | `electrical-switch-circuit` | مسارات الدوائر الكهربائية | 2D Circuit Schematic | `multiple_choice` |
 | 5 | `maze-exit-route` | مسار الخروج من المتاهة | 2D Vector Maze | `multiple_choice` |
 | 6 | `domino-cascade-chain` | تساقط الدومينو وسلاسل الأثر | 2D Kinetic Cascade | `multiple_choice` |
@@ -42,7 +42,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 8 | `conveyor-sorter-route` | سيور النقل ومسارات الفرز | 2D Conveyor Vector | `multiple_choice` |
 | 9 | `one-way-traffic-flow` | مسارات الاتجاه الواحد | 2D Street Grid | `multiple_choice` |
 | 10 | `cam-linkage-motion` | حركة الكامات والأذرع | 2D Linkage Vector | `multiple_choice` |
-| 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | 2D Grid Vector | `multiple_choice \| closest` |
+| 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | 2D Grid Vector | `multiple_choice, closest` |
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | 2D Cable Vector | `multiple_choice` |
 
 ---

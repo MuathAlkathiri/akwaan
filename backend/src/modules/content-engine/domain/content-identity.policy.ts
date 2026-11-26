@@ -731,6 +731,9 @@ export function extractContentIdentity(
  * 2. Cognitive Task
  * 3. Mechanic Payload
  */
+/** How the composer marks an item's `metadata.entityId`. */
+export const COMPOSED_ENTITY_PREFIX = 'composed:';
+
 export function compareContentIdentities(
   a: ContentIdentity,
   b: ContentIdentity,
@@ -974,6 +977,30 @@ export function compareContentIdentities(
   };
 
   // 4. Decision Synthesis
+
+  // 4.0 Two different drawings by the engine are two different puzzles.
+  // A composed item is identified by its drawing: «أي دائرة خيطها يوصل
+  // للنجمة؟ — الحمراء» is asked of every thread picture whose red thread
+  // ends at the star, and each of them is traced afresh. Only the composer
+  // writes this prefix, so nothing else is exempted from the checks below.
+  const composedA = a.metadata?.entityId;
+  const composedB = b.metadata?.entityId;
+  if (
+    typeof composedA === 'string' &&
+    typeof composedB === 'string' &&
+    composedA.startsWith(COMPOSED_ENTITY_PREFIX) &&
+    composedB.startsWith(COMPOSED_ENTITY_PREFIX) &&
+    composedA !== composedB
+  ) {
+    return {
+      result: 'DISTINCT',
+      reasonCode: 'DISTINCT_COMPOSED_DRAWING',
+      explanation:
+        'Both items are drawn by the engine and their drawings differ; the same words over a different picture is a different puzzle.',
+      dimensions,
+      isCrossScope,
+    };
+  }
 
   // 4.1 Distinct Cognitive Tasks / Different Factual Relationships
   if (taskMatch === 'MISMATCH') {

@@ -1,4 +1,8 @@
 import { createHash } from 'crypto';
+import {
+  ComposedPuzzleFamily,
+  isComposedPuzzleFamily,
+} from './composed-puzzles';
 
 /**
  * Pictures the engine draws itself (roadmap: "مركّب الصور").
@@ -24,6 +28,14 @@ export const isComposedVisualFamily = (
   familyKey: string | null | undefined,
 ): familyKey is ComposedVisualFamily =>
   (COMPOSED_VISUAL_FAMILIES as readonly string[]).includes(familyKey ?? '');
+
+/** Every family the engine draws, whichever way it is answered. */
+export type ComposedFamily = ComposedVisualFamily | ComposedPuzzleFamily;
+
+export const isComposedFamily = (
+  familyKey: string | null | undefined,
+): familyKey is ComposedFamily =>
+  isComposedVisualFamily(familyKey) || isComposedPuzzleFamily(familyKey);
 
 export const COMPOSED_VISUAL_WIDTH = 1200;
 export const COMPOSED_VISUAL_HEIGHT = 675;

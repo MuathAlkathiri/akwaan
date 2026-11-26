@@ -451,3 +451,318 @@ When generating or reviewing an authored batch for `assembly-rotation`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## Composed families — مركّب الصور (owner decision 2026-11-26)
+
+The families of this Scope need a picture, and until now nothing could make
+one. The engine now **draws** the ones listed here itself (`opposite-cube-faces`، `fold-and-punch`): the
+picture, the question, the three options and the right answer are all made
+from one seed, so the answer is correct by construction. No model writes them
+and no model is paid for them.
+
+Each drawn family asks its drawing in more than one way — its **templates**
+(`variants` below): a different question of the same kind of picture, on a
+different arrangement of it. The allocator rotates them like any family's
+templates, and the composer draws the one a slot was given. The keys below
+must match the composer's own list (`COMPOSED_PUZZLE_VARIANTS`); a test holds
+the two together.
+
+They are generated for إكس أو المتحرك only. Every other family of the library
+stays in it with its ratings and is **paused** until the composer can draw it:
+nothing is deleted, and a family returns by removing its `status` below.
+
+## Machine-Readable Family Catalog
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.assembly-rotation",
+  "families": [
+    {
+      "familyKey": "mental-rotation-2d",
+      "name": "التدوير الذهني للأشكال ثنائية الأبعاد",
+      "description": "التدوير الذهني للأشكال ثنائية الأبعاد",
+      "playerSolve": "التدوير الذهني للأشكال ثنائية الأبعاد",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "cube-net-fold",
+      "name": "طي مخطط المكعب",
+      "description": "طي مخطط المكعب",
+      "playerSolve": "طي مخطط المكعب",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "opposite-cube-faces",
+      "name": "الأوجه المتقابلة في المكعب",
+      "description": "شبكة مكعب على أوجهها الستة أسماء أو ألوان أو أشكال، والمطلوب ما يحدث للأوجه بعد الطي. المحرك يرسم الشبكة ويحدد الجواب بنفسه.",
+      "playerSolve": "طيّ الشبكة ذهنيًا وتحديد الوجه المقابل.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "opposite",
+          "name": "الوجه المقابل",
+          "brief": "Which face ends up opposite a named one."
+        },
+        {
+          "key": "opposite-pair",
+          "name": "وجهين متقابلين",
+          "brief": "Which of three pairs of faces ends up opposite each other."
+        },
+        {
+          "key": "not-touching",
+          "name": "ما يلمسه أبدًا",
+          "brief": "Which face never touches a named one; the wrong ones lie far from it on paper yet meet it once folded."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
+    },
+    {
+      "familyKey": "orthographic-projection",
+      "name": "المساقط الهندسية للمجسم",
+      "description": "المساقط الهندسية للمجسم",
+      "playerSolve": "المساقط الهندسية للمجسم",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "spatial-cube-count",
+      "name": "عد المكعبات المخفية في المجسم",
+      "description": "عد المكعبات المخفية في المجسم",
+      "playerSolve": "عد المكعبات المخفية في المجسم",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "missing-puzzle-piece",
+      "name": "القطعة المفقودة لإكمال الشكل",
+      "description": "القطعة المفقودة لإكمال الشكل",
+      "playerSolve": "القطعة المفقودة لإكمال الشكل",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "cross-section-slice",
+      "name": "المقطع العرضي للشكل المقطوع",
+      "description": "المقطع العرضي للشكل المقطوع",
+      "playerSolve": "المقطع العرضي للشكل المقطوع",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "fold-and-punch",
+      "name": "طي الورق وتخريم الثقوب",
+      "description": "ورقة مربعة تُطوى ثم تُخرم. إما تُعرض الخطوات والمطلوب عدد الخروم بعد فتحها، أو تُعرض مفتوحة والمطلوب كم مرة انطوت. المحرك يرسم ويحسب الجواب بنفسه.",
+      "playerSolve": "تتبّع عدد الطبقات التي يخترقها كل خرم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "GOOD",
+        "bomb": "LIMITED",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "count-holes",
+          "name": "كم خرم بعد الفتح",
+          "brief": "The folding steps and the punches are shown; how many holes the opened sheet has."
+        },
+        {
+          "key": "count-folds",
+          "name": "كم مرة انطوت",
+          "brief": "The opened sheet and its holes are shown, the number of punches is stated; how many times it was folded."
+        }
+      ],
+      "capacity": 28,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
+    },
+    {
+      "familyKey": "tangram-silhouette-fit",
+      "name": "تركيب قطع التانغرام في الظل",
+      "description": "تركيب قطع التانغرام في الظل",
+      "playerSolve": "تركيب قطع التانغرام في الظل",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "exploded-view-assembly",
+      "name": "المجسم المجمع من المفككات",
+      "description": "المجسم المجمع من المفككات",
+      "playerSolve": "المجسم المجمع من المفككات",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "mirror-vs-rotation-discrim",
+      "name": "التمييز بين التدوير والانعكاس",
+      "description": "التمييز بين التدوير والانعكاس",
+      "playerSolve": "التمييز بين التدوير والانعكاس",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "unfolded-surface-net",
+      "name": "مخطط المجسمات غير المكعبة",
+      "description": "مخطط المجسمات غير المكعبة",
+      "playerSolve": "مخطط المجسمات غير المكعبة",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "spatial-reconstruction",
+      "name": "إعادة بناء النمط المنقسم",
+      "description": "إعادة بناء النمط المنقسم",
+      "playerSolve": "إعادة بناء النمط المنقسم",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    }
+  ]
+}
+```
