@@ -211,7 +211,7 @@ describe("steal", () => {
     expect(el().getAttribute("src")).toBe(answeringSrc);
     expect(el()).toHaveAttribute("data-clip-seconds", "3");
     expect(screen.getByTestId("first-note-answer-phase")).toHaveTextContent(
-      "مدة المقطع: 3 ثانية",
+      "مدة المقطع: 3 ثواني",
     );
 
     // Same authorisation, so the steal must not re-trigger a fresh play.

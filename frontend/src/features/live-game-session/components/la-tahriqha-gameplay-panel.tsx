@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Flame, Lock, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, Flame, Lock, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
+import {
+  ChallengeContextStrip,
+  TeamDot,
+  useChallengeContext,
+} from "../match/components/challenge-context-strip";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
-import {
-  ResolutionOutcome,
-  ResolutionReveal,
-} from "../match/components/resolution-reveal";
 import { useInteractionDeadline } from "../hooks/use-interaction-deadline";
 import { useLiveSession } from "../hooks/live-session-context";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -41,37 +41,85 @@ import {
  * is the team's actual contribution and it cannot happen over a blank phone.
  */
 
+const NAVY = "border-[3px] border-[hsl(var(--brand-navy))]";
+const GOLD_ACTION =
+  "inline-flex min-h-[62px] items-center justify-center gap-2 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-7 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] disabled:shadow-none";
+
+/** 3 right pays 3, 4 pays 4, and all 5 pays 7. */
+function dishPoints(count: number) {
+  return count >= 5 ? 7 : count;
+}
+
+/** «نقطة», «نقطتين», «3 نقاط» — never «2 نقاط». */
+function pointsLabel(count: number) {
+  if (count === 1) return "نقطة";
+  if (count === 2) return "نقطتين";
+  if (count >= 3 && count <= 10) return `${count} نقاط`;
+  return `${count} نقطة`;
+}
+
 /** One card. Interactive only where the server said this actor may act. */
 function IngredientCard({
   card,
   chosen,
   state,
+  truth,
+  pickedBy = [],
   onToggle,
   disabled,
   compact,
 }: {
   card: LaTahriqhaCardView;
   chosen: boolean;
-  /** Post-reveal truth. `undefined` while the dish is still live. */
+  /** What this card was to the viewing team. `undefined` while the dish is live. */
   state?: "correct" | "missed" | "burn";
+  /** Post-reveal truth for the room: in the recipe, or a distractor. */
+  truth?: "right" | "wrong";
+  /** Dot classes of every team that put this card in its dish. */
+  pickedBy?: string[];
   onToggle?: () => void;
   disabled?: boolean;
   compact: boolean;
 }) {
   const body = (
-    <span className="flex w-full items-center justify-center gap-1.5 text-center leading-tight">
-      {state === "burn" && <Flame className="size-4 shrink-0" aria-hidden />}
-      <span className="min-w-0 break-words">{card.label}</span>
+    <span className="flex w-full items-center justify-between gap-2">
+      {truth && (
+        <span
+          aria-hidden
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-full border-2 border-[hsl(var(--brand-navy))]",
+            truth === "right" ? "bg-brand-mint" : "bg-brand-coral",
+          )}
+        >
+          {truth === "right" ? (
+            <Check className="size-4" strokeWidth={3} />
+          ) : (
+            <X className="size-4" strokeWidth={3} />
+          )}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 break-words text-center leading-tight">
+        {card.label}
+      </span>
+      {pickedBy.length > 0 && (
+        <span className="flex shrink-0 gap-1">
+          {pickedBy.map((dot, index) => (
+            <TeamDot key={index} className={dot} size={14} />
+          ))}
+        </span>
+      )}
     </span>
   );
   const shell = cn(
-    "grid w-full place-items-center rounded-[var(--radius)] border-2 px-2 font-black transition-colors",
-    compact ? "min-h-[3.25rem] text-sm" : "min-h-20 text-lg",
-    state === "correct" && "border-emerald-500 bg-emerald-500/15 text-foreground",
-    state === "burn" && "border-brand-navy bg-destructive-subtle text-foreground",
-    state === "missed" && "border-border/50 bg-muted/40 text-muted-foreground",
-    !state && chosen && "border-brand-gold bg-brand-gold/20 text-foreground",
-    !state && !chosen && "border-border bg-card text-foreground",
+    "grid w-full place-items-center rounded-2xl px-3 font-display font-extrabold text-[hsl(var(--brand-navy))]",
+    NAVY,
+    compact ? "min-h-[64px] text-base" : "min-h-[92px] text-xl",
+    truth === "right" && "bg-brand-mint-tint",
+    truth === "wrong" && "bg-brand-coral-tint",
+    !truth &&
+      chosen &&
+      "bg-[hsl(var(--brand-gold))] shadow-[3px_4px_0_hsl(var(--brand-navy))]",
+    !truth && !chosen && "bg-white",
   );
   if (!onToggle) {
     return (
@@ -105,64 +153,32 @@ function IngredientCard({
 }
 
 /**
- * The pressure strip: what each team is doing, and never what it chose.
+ * What each team is doing, and never what it chose.
  *
- * "لسّه يختارون" and "ثبّتوا 4 مكوّنات" are the two things a team is allowed to
- * know about the other side before the reveal. The second one is the interesting
- * one — four says the opponent reached past the safe three without saying which
- * way — and it is exactly as far as this may go.
+ * «يختار…» and «ثبّتوا 4 مكوّنات» are the two things a team is allowed to know
+ * about the other side before the reveal. The second one is the interesting one
+ * — four says the opponent reached past the safe three without saying which way
+ * — and it is exactly as far as this may go.
  */
 function TeamPressure({
   view,
   teamName,
   playerName,
+  dotOf,
   compact,
 }: {
   view: LaTahriqhaView;
   teamName: (teamId: string) => string;
   playerName: (participantId: string) => string;
+  dotOf: (teamId: string) => string;
   compact: boolean;
 }) {
-  const { teams } = useLiveSession().snapshot ?? { teams: [] };
-  if (compact) {
-    return (
-      <ul
-        className="flex items-center justify-center gap-2 text-xs"
-        data-testid="la-tahriqha-pressure"
-      >
-        {view.teamIds.map((teamId) => {
-          const identity = teamIdentityOf(teamId, teams ?? []);
-          const status = view.teamStatus[teamId];
-          return (
-            <li
-              key={teamId}
-              data-testid={`la-tahriqha-status-${teamId}`}
-              data-locked={String(Boolean(status?.locked))}
-              className={cn(
-                "min-w-0 flex-1 truncate rounded-full border px-2 py-1 text-center font-bold",
-                identity.surface,
-                identity.border,
-              )}
-            >
-              <span className={identity.text}>{teamName(teamId)}</span>
-              <span className="text-muted-foreground">
-                {status?.locked
-                  ? ` · ثبّتوا ${status.committedCount}`
-                  : " · يختارون"}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  }
   return (
     <ul
-      className={cn("grid gap-2", compact ? "grid-cols-2" : "sm:grid-cols-2")}
+      className={cn("flex gap-2.5", compact ? "flex-row" : "flex-col gap-3.5")}
       data-testid="la-tahriqha-pressure"
     >
       {view.teamIds.map((teamId) => {
-        const identity = teamIdentityOf(teamId, teams ?? []);
         const status = view.teamStatus[teamId];
         const captain = view.captainParticipantIds[teamId];
         return (
@@ -171,36 +187,42 @@ function TeamPressure({
             data-testid={`la-tahriqha-status-${teamId}`}
             data-locked={String(Boolean(status?.locked))}
             className={cn(
-              "rounded-[var(--radius)] border p-3 text-center",
-              identity.surface,
-              identity.border,
+              "flex min-w-0 flex-1 justify-between rounded-[18px] bg-white",
+              compact
+                ? "flex-col items-center gap-0.5 border-2 border-[hsl(var(--brand-navy))] px-2.5 py-1.5 text-xs"
+                : cn(NAVY, "items-center gap-2 px-4 py-3"),
             )}
           >
-            <p
-              className={cn(
-                "font-black",
-                identity.text,
-                compact ? "text-xs" : "text-base",
+            <span className="flex min-w-0 flex-col">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-2 font-display font-extrabold",
+                  compact ? "text-xs" : "text-[19px]",
+                )}
+              >
+                <TeamDot className={dotOf(teamId)} size={compact ? 10 : 16} />
+                <span className="truncate">{teamName(teamId)}</span>
+              </span>
+              {captain && !compact && (
+                <span className="text-sm text-brand-slate">
+                  قائد الطبق: {playerName(captain)}
+                </span>
               )}
-            >
-              {teamName(teamId)}
-            </p>
-            {captain && (
-              <p className="mt-0.5 text-xs font-bold text-muted-foreground">
-                قائد الطبق: {playerName(captain)}
-              </p>
-            )}
-            <p
+            </span>
+            <span
               className={cn(
-                "mt-1 font-bold",
+                "shrink-0 font-bold",
                 compact ? "text-xs" : "text-sm",
-                status?.locked ? "text-brand-gold" : "text-muted-foreground",
+                status?.locked &&
+                  "rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-2.5 py-0.5",
               )}
             >
               {status?.locked
-                ? `ثبّتوا ${status.committedCount} مكوّنات`
-                : "لسّه يختارون…"}
-            </p>
+                ? compact
+                  ? `ثبّتوا ${status.committedCount}`
+                  : `ثبّتوا ${status.committedCount} مكوّنات`
+                : "يختارون…"}
+            </span>
           </li>
         );
       })}
@@ -208,41 +230,30 @@ function TeamPressure({
   );
 }
 
-/** The internal Signature standing. Never a Match score. */
+/** The challenge's own standing. Never a Match score. */
 function RunningTotals({
   view,
   teamName,
-  compact,
+  dotOf,
 }: {
   view: LaTahriqhaView;
   teamName: (teamId: string) => string;
-  compact: boolean;
+  dotOf: (teamId: string) => string;
 }) {
   return (
     <ul
-      className="flex items-center justify-center gap-3"
+      className="flex flex-wrap items-center justify-center gap-2"
       data-testid="la-tahriqha-totals"
     >
       {view.teamIds.map((teamId) => (
         <li
           key={teamId}
-          className="flex items-center gap-1.5"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-3 py-1 text-sm font-bold"
           data-testid={`la-tahriqha-total-${teamId}`}
         >
-          <span
-            className={cn(
-              "font-bold text-muted-foreground",
-              compact ? "text-xs" : "text-sm",
-            )}
-          >
-            {teamName(teamId)}
-          </span>
-          <span
-            className={cn(
-              "akwaan-numeral font-black text-foreground",
-              compact ? "text-base" : "text-2xl",
-            )}
-          >
+          <TeamDot className={dotOf(teamId)} size={12} />
+          {teamName(teamId)}
+          <span className="akwaan-numeral text-lg font-bold">
             {view.totals[teamId] ?? 0}
           </span>
         </li>
@@ -254,39 +265,44 @@ function RunningTotals({
 /**
  * The reveal, which is the payoff rather than a receipt.
  *
- * Every dish shows the same four things in the same order: the recipe that was
- * actually right, what each team committed, what that cost or paid, and where
- * the Signature now stands. A burn is named as a burn and a perfect dish is
- * named as one, because "0" and "7" on their own do not tell a room what
- * happened to it.
+ * The eight cards above already show the recipe. Here each team gets its
+ * verdict: gold for what it earned, the coral tint for a burned dish with the
+ * ingredient that burned it named, because «0» on its own does not tell a room
+ * what happened.
  */
 function DishReveal({
   reveal,
   view,
   teamName,
   playerName,
-  compact,
+  dotOf,
 }: {
   reveal: LaTahriqhaRevealView;
   view: LaTahriqhaView;
   teamName: (teamId: string) => string;
   playerName: (participantId: string) => string;
-  compact: boolean;
+  dotOf: (teamId: string) => string;
 }) {
   const labelOf = (localId: string) =>
     view.dish?.ingredients.find((card) => card.localId === localId)?.label ??
     localId;
   return (
-    <ResolutionReveal title={reveal.dishName} compact={compact}>
-      <div className="space-y-1" data-testid="la-tahriqha-correct-recipe">
-        <p className="text-sm font-bold text-muted-foreground">
-          مكوّنات الطبق الصحيحة
+    <div className="flex flex-col gap-3.5">
+      <div
+        className={cn(
+          "flex flex-col gap-1 rounded-[20px] bg-brand-lavender px-4 py-3 text-start",
+          NAVY,
+        )}
+        data-testid="la-tahriqha-correct-recipe"
+      >
+        <p className="text-sm font-bold text-brand-slate">
+          {reveal.dishName} · المكوّنات الصح
         </p>
-        <p className="break-words text-base font-black [overflow-wrap:anywhere] sm:text-xl">
+        <p className="break-words font-display text-lg font-extrabold [overflow-wrap:anywhere]">
           {reveal.correctIngredientIds.map(labelOf).join(" · ")}
         </p>
       </div>
-      <ul className="space-y-3">
+      <ul className="flex flex-col gap-3">
         {reveal.teams.map((team) => (
           <li
             key={team.teamId}
@@ -294,74 +310,89 @@ function DishReveal({
             data-burned={String(team.burned)}
             data-perfect={String(team.perfect)}
             className={cn(
-              "space-y-1 rounded-[var(--radius)] border p-3",
-              team.burned && "border-brand-navy bg-destructive-subtle",
-              team.perfect && "border-brand-gold bg-brand-gold/10",
-              !team.burned && !team.perfect && "border-border",
+              "flex flex-col gap-1.5 rounded-[20px] px-4 py-3 text-start",
+              NAVY,
+              team.burned && "bg-brand-coral-tint",
+              !team.burned &&
+                !team.understaffed &&
+                "bg-[hsl(var(--brand-gold))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
+              team.understaffed && "bg-white",
             )}
           >
-            <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted-foreground">
-              <span className="font-black text-foreground">
+            <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+              <span className="inline-flex items-center gap-2 font-display text-[19px] font-extrabold">
+                <TeamDot className={dotOf(team.teamId)} />
                 {teamName(team.teamId)}
               </span>
               {team.captainParticipantId && (
-                <span>قائد الطبق: {playerName(team.captainParticipantId)}</span>
+                <span className="text-sm">
+                  قائد الطبق: {playerName(team.captainParticipantId)}
+                </span>
               )}
-              {team.lockReason === "deadline" && <span>ثُبّت مع نهاية الوقت</span>}
+              {team.lockReason === "deadline" && (
+                <span className="text-sm">تثبّت مع نهاية الوقت</span>
+              )}
             </p>
             {team.understaffed ? (
-              <p className="text-base font-black text-foreground">
-                ما وصلوا لثلاثة مكوّنات — الطبق ما احتُسب.
+              <p className="text-base font-bold">
+                ما وصلوا 3 مكوّنات، فالطبق ما انحسب.
+              </p>
+            ) : team.burned ? (
+              <p
+                className="flex flex-wrap items-center gap-2 font-display text-xl font-black"
+                data-testid={`la-tahriqha-burn-${team.teamId}`}
+              >
+                <Flame className="size-5" aria-hidden />
+                انحرق الطبق · <span className="akwaan-numeral">0</span>
+                <span className="font-sans text-sm font-bold">
+                  بسبب {team.wrongIds.map(labelOf).join(" و")}
+                </span>
               </p>
             ) : (
-              <p className="break-words text-base font-black [overflow-wrap:anywhere]">
-                {team.selected.map((id) => (
+              <p className="flex flex-wrap items-center gap-2 font-display text-xl font-black">
+                <span>
+                  <span className="akwaan-numeral">
+                    {team.correctIds.length}
+                  </span>{" "}
+                  صح ·{" "}
+                  <bdi dir="ltr" className="akwaan-numeral">
+                    +{team.points}
+                  </bdi>
+                </span>
+                {team.perfect && (
                   <span
-                    key={id}
-                    className={cn(
-                      "me-2 inline-block",
-                      team.wrongIds.includes(id)
-                        ? "text-foreground line-through"
-                        : "text-emerald-600 dark:text-emerald-400",
-                    )}
+                    className="inline-flex items-center gap-1 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-2.5 py-0.5 font-sans text-sm font-bold"
+                    data-testid={`la-tahriqha-perfect-${team.teamId}`}
                   >
-                    {labelOf(id)}
+                    <Star className="size-4" aria-hidden />
+                    طبق كامل
                   </span>
-                ))}
+                )}
               </p>
             )}
-            <p className="flex items-center gap-2 text-base font-black">
-              {team.burned && (
-                <span
-                  className="flex items-center gap-1 text-foreground"
-                  data-testid={`la-tahriqha-burn-${team.teamId}`}
-                >
-                  <Flame className="size-5" aria-hidden />
-                  احترقت
-                </span>
-              )}
-              {team.perfect && (
-                <span
-                  className="flex items-center gap-1 text-brand-gold"
-                  data-testid={`la-tahriqha-perfect-${team.teamId}`}
-                >
-                  <Star className="size-5" aria-hidden />
-                  طبق مثالي
-                </span>
-              )}
-              <span className="akwaan-numeral text-xl text-foreground">
-                +{team.points}
-              </span>
-            </p>
+            {!team.understaffed && (
+              <p className="break-words text-sm [overflow-wrap:anywhere]">
+                {team.selected.map(labelOf).join(" · ")}
+              </p>
+            )}
           </li>
         ))}
       </ul>
-      <ResolutionOutcome>
-        {view.teamIds
-          .map((teamId) => `${teamName(teamId)} ${reveal.totalsAfter[teamId] ?? 0}`)
-          .join("  ·  ")}
-      </ResolutionOutcome>
-    </ResolutionReveal>
+      <p className="flex flex-wrap items-center justify-center gap-2 text-sm font-bold">
+        المجموع للحين
+        {view.teamIds.map((teamId) => (
+          <span
+            key={teamId}
+            className="inline-flex items-center gap-1.5 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-3 py-0.5"
+          >
+            <TeamDot className={dotOf(teamId)} size={12} />
+            <span className="akwaan-numeral text-base">
+              {reveal.totalsAfter[teamId] ?? 0}
+            </span>
+          </span>
+        ))}
+      </p>
+    </div>
   );
 }
 
@@ -372,6 +403,7 @@ export function LaTahriqhaGameplayPanel({
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
   const phone = useMobileSurface();
+  const context = useChallengeContext();
   const view = useMemo(
     () => readLaTahriqhaView(runtime.modeState),
     [runtime.modeState],
@@ -462,155 +494,322 @@ export function LaTahriqhaGameplayPanel({
     return "missed";
   };
 
+  const dotOf = (teamId: string) =>
+    teamIdentityOf(teamId, snapshot?.teams ?? []).dot;
+  const step = `الطبق ${view.dishNumber} من ${view.dishCount}`;
+  const pickedBy = (localId: string) =>
+    revealed && view.reveal
+      ? view.reveal.teams
+          .filter((team) => team.selected.includes(localId))
+          .map((team) => dotOf(team.teamId))
+      : [];
+  const truthOf = (localId: string) =>
+    revealed && view.reveal
+      ? view.reveal.correctIngredientIds.includes(localId)
+        ? ("right" as const)
+        : ("wrong" as const)
+      : undefined;
+
+  const cards = view.dish && (
+    <ul
+      className={cn(
+        "grid gap-2.5",
+        phone
+          ? "min-h-0 flex-1 grid-cols-2 content-start overflow-y-auto"
+          : "grid-cols-2 xl:grid-cols-4",
+      )}
+      data-testid="la-tahriqha-cards"
+    >
+      {view.dish.ingredients.map((card) => (
+        <IngredientCard
+          key={card.localId}
+          card={card}
+          chosen={chosen.has(card.localId)}
+          compact={phone}
+          pickedBy={pickedBy(card.localId)}
+          {...(truthOf(card.localId) ? { truth: truthOf(card.localId) } : {})}
+          {...(cardState(card.localId)
+            ? { state: cardState(card.localId) }
+            : {})}
+          {...(canChoose
+            ? {
+                onToggle: () => toggle(card.localId),
+                disabled:
+                  Boolean(pending) ||
+                  (!chosen.has(card.localId) &&
+                    view.ownSelected.length >= view.maxSelection),
+              }
+            : {})}
+        />
+      ))}
+    </ul>
+  );
+
+  const advance = can("advance-la-tahriqha") && (
+    <button
+      type="button"
+      onClick={() => send("advance-la-tahriqha")}
+      disabled={!live}
+      className={cn(GOLD_ACTION, "self-center")}
+      data-testid="la-tahriqha-advance"
+    >
+      {view.dishNumber === view.dishCount ? "نشوف النتيجة" : "الطبق الجاي"}
+    </button>
+  );
+
+  const recap = view.phase === "completed" && view.result && (
+    <section
+      className="grid gap-4 sm:grid-cols-2"
+      data-testid="la-tahriqha-recap"
+    >
+      {view.teamIds.map((teamId) => (
+        <div
+          key={teamId}
+          data-testid={`la-tahriqha-recap-${teamId}`}
+          className={cn(
+            "flex flex-col items-center gap-1.5 rounded-3xl p-5 text-center",
+            NAVY,
+            view.result?.winnerTeamId === teamId
+              ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+              : "bg-white",
+          )}
+        >
+          <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
+            <TeamDot className={dotOf(teamId)} />
+            {teamName(teamId)}
+          </p>
+          <p className="akwaan-numeral text-[56px] font-bold leading-none">
+            {view.result?.totals[teamId] ?? 0}
+          </p>
+        </div>
+      ))}
+      {view.result.tie && (
+        <p
+          className="col-span-full text-center font-display text-xl font-extrabold"
+          data-testid="la-tahriqha-tie"
+        >
+          تعادل! الفريقين خلصوا بنفس المجموع.
+        </p>
+      )}
+    </section>
+  );
+
+  const preparing = view.phase === "preparing" && (
+    <p
+      className="py-8 text-center text-lg font-bold text-brand-slate"
+      data-testid="la-tahriqha-preparing"
+    >
+      نجهّز الطبق…
+    </p>
+  );
+
+  if (!phone) {
+    const media = view.dish?.media;
+    return (
+      <section
+        dir="rtl"
+        data-testid="la-tahriqha-panel"
+        data-phase={view.phase}
+        className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      >
+        <ChallengeContextStrip
+          {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
+          title={context.title ?? LA_TAHRIQHA_CHALLENGE_NAME}
+          aside={
+            <span className="inline-flex min-h-9 items-center whitespace-nowrap rounded-full bg-white px-4 text-[15px] font-bold text-[hsl(var(--brand-navy))]">
+              {view.phase === "completed"
+                ? "نتيجة التحدي"
+                : revealed
+                  ? `الكشف · ${step}`
+                  : step}
+            </span>
+          }
+        />
+        {preparing}
+        {view.phase === "completed" && !view.reveal && recap}
+        {view.dish && view.phase !== "preparing" && (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <main
+              className={cn(
+                "flex flex-col gap-4 rounded-[28px] bg-brand-paper p-5 shadow-[7px_8px_0_hsl(var(--brand-navy))]",
+                NAVY,
+              )}
+            >
+              {!revealed && (
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* The dish photograph is optional content, so its absence is
+                      a plainer board and never an error. */}
+                  {media?.type === "image" && media.url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={media.url}
+                      alt={media.altText ?? view.dish.dishName}
+                      data-testid="la-tahriqha-dish-image"
+                      className="h-32 w-44 rounded-2xl border-[3px] border-[hsl(var(--brand-navy))] object-cover"
+                    />
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h2
+                      className="font-display text-[2rem] font-black leading-snug lg:text-[44px]"
+                      data-testid="la-tahriqha-dish-name"
+                    >
+                      {view.dish.dishName}
+                    </h2>
+                    {view.dish.dishNote && (
+                      <p className="text-lg text-brand-slate">
+                        {view.dish.dishNote}
+                      </p>
+                    )}
+                  </div>
+                  {remainingMs !== undefined && view.phase === "selecting" && (
+                    <ChallengeCountdown remainingMs={remainingMs} />
+                  )}
+                </div>
+              )}
+              {cards}
+              {view.phase === "selecting" && (
+                <div className="flex flex-wrap items-center justify-center gap-2 text-sm font-bold">
+                  {[3, 4, 5].map((count) => (
+                    <span
+                      key={count}
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-3 py-1"
+                    >
+                      <span className="akwaan-numeral">{count}</span> صح ={" "}
+                      {pointsLabel(dishPoints(count))}
+                    </span>
+                  ))}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-coral-tint px-3 py-1">
+                    <Flame className="size-4" aria-hidden />
+                    وحدة غلط تحرق الطبق
+                  </span>
+                </div>
+              )}
+            </main>
+
+            <aside className="flex flex-col gap-3.5">
+              {view.phase === "selecting" && (
+                <>
+                  <TeamPressure
+                    view={view}
+                    teamName={teamName}
+                    playerName={playerName}
+                    dotOf={dotOf}
+                    compact={false}
+                  />
+                  <p className="text-center text-sm leading-[1.7] text-brand-slate">
+                    قائد الطبق يختار من {view.minSelection} إلى{" "}
+                    {view.maxSelection} مكوّنات من جواله، والاختيار سرّي لين
+                    الكشف.
+                  </p>
+                  <RunningTotals
+                    view={view}
+                    teamName={teamName}
+                    dotOf={dotOf}
+                  />
+                </>
+              )}
+              {revealed && view.reveal && (
+                <section
+                  className="akwaan-rise flex flex-col gap-3.5"
+                  data-testid="la-tahriqha-reveal"
+                >
+                  <DishReveal
+                    reveal={view.reveal}
+                    view={view}
+                    teamName={teamName}
+                    playerName={playerName}
+                    dotOf={dotOf}
+                  />
+                  {advance}
+                </section>
+              )}
+              {view.reveal && recap}
+            </aside>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  const ownCount = view.ownSelected.length;
   return (
     <ChallengeFrame
-      {...(phone ? {} : { eyebrow: LA_TAHRIQHA_CHALLENGE_NAME })}
-      title={
-        view.phase === "completed"
-          ? "نتيجة التحدي"
-          : `الطبق ${view.dishNumber} من ${view.dishCount}`
-      }
+      title={view.phase === "completed" ? "نتيجة التحدي" : step}
       progressValue={
         view.phase === "completed"
           ? 100
           : (view.dishIndex / view.dishCount) * 100
       }
-      compact={phone}
+      compact
       aside={
         remainingMs !== undefined && view.phase === "selecting" ? (
           <ChallengeCountdown remainingMs={remainingMs} />
         ) : null
       }
-      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}
+      className="flex min-h-0 flex-1 flex-col"
     >
       <div
-        className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
+        className="flex min-h-0 flex-1 flex-col gap-3 text-[hsl(var(--brand-navy))]"
         dir="rtl"
         data-testid="la-tahriqha-panel"
         data-phase={view.phase}
       >
-        {view.phase === "preparing" && (
-          <p
-            className="py-8 text-center text-base font-black text-muted-foreground"
-            data-testid="la-tahriqha-preparing"
-          >
-            جارٍ تجهيز الطبق…
-          </p>
-        )}
+        {preparing}
 
         {view.dish && view.phase !== "preparing" && (
           <>
             {!revealed && (
-            <div className={cn("space-y-1 text-center", phone && "shrink-0")}>
-              <h2
-                className={cn(
-                  "font-black leading-snug text-foreground",
-                  phone ? "text-lg" : "text-[2rem] sm:text-[2.5rem]",
-                )}
-                data-testid="la-tahriqha-dish-name"
-              >
-                {view.dish.dishName}
-              </h2>
-              {view.dish.dishNote && (
-                <p
-                  className={cn(
-                    "font-bold text-muted-foreground",
-                    phone ? "text-xs" : "text-base",
-                  )}
+              <div className="shrink-0 text-center">
+                <h2
+                  className="font-display text-xl font-black leading-snug"
+                  data-testid="la-tahriqha-dish-name"
                 >
-                  {view.dish.dishNote}
-                </p>
-              )}
-            </div>
+                  {view.dish.dishName}
+                </h2>
+                {view.dish.dishNote && (
+                  <p className="text-xs text-brand-slate">
+                    {view.dish.dishNote}
+                  </p>
+                )}
+              </div>
             )}
-
-            {/* The dish photograph belongs to the room's screen. It is optional
-                content, so its absence is a plainer board and never an error. */}
-            {!phone &&
-              view.dish.media?.type === "image" &&
-              view.dish.media.url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={view.dish.media.url}
-                  alt={view.dish.media.altText ?? view.dish.dishName}
-                  data-testid="la-tahriqha-dish-image"
-                  className="mx-auto max-h-48 rounded-[var(--radius)] object-contain"
-                />
-              )}
 
             {/* Whose hands are on the cards, said on the phone that is not the
                 captain's — that is the phone at risk of tapping and wondering
                 why nothing happened. */}
-            {phone && view.phase === "selecting" && (
+            {view.phase === "selecting" && (
               <p
-                className="shrink-0 text-center text-sm font-black"
+                className="shrink-0 text-center text-sm font-bold"
                 data-testid="la-tahriqha-captain-line"
               >
                 {view.isDishCaptain ? (
-                  <span className="text-brand-gold">
-                    أنت قائد الطبق — اختر من {view.minSelection} إلى{" "}
+                  <>
+                    أنت قائد الطبق. اختر من {view.minSelection} إلى{" "}
                     {view.maxSelection} مكوّنات
-                  </span>
+                  </>
                 ) : (
-                  <span className="text-muted-foreground">
+                  <span className="text-brand-slate">
                     {playerName(
                       view.captainParticipantIds[view.actorTeamId ?? ""] ?? "",
                     )}{" "}
-                    قائد هذا الطبق — ناقشوه قبل ما يثبّت
+                    قائد هالطبق. تناقشوا معه قبل ما يثبّت
                   </span>
                 )}
               </p>
             )}
 
-            <ul
-              className={cn(
-                "grid gap-2",
-                phone
-                  ? "min-h-0 flex-1 grid-cols-2 content-start overflow-y-auto"
-                  : "grid-cols-4",
-              )}
-              data-testid="la-tahriqha-cards"
-            >
-              {view.dish.ingredients.map((card) => (
-                <IngredientCard
-                  key={card.localId}
-                  card={card}
-                  chosen={chosen.has(card.localId)}
-                  compact={phone || revealed}
-                  {...(cardState(card.localId)
-                    ? { state: cardState(card.localId) }
-                    : {})}
-                  {...(canChoose
-                    ? {
-                        onToggle: () => toggle(card.localId),
-                        disabled:
-                          Boolean(pending) ||
-                          (!chosen.has(card.localId) &&
-                            view.ownSelected.length >= view.maxSelection),
-                      }
-                    : {})}
-                />
-              ))}
-            </ul>
+            {cards}
 
             {view.phase === "selecting" && view.actorTeamId && (
               <p
-                className="shrink-0 text-center text-sm font-black"
+                className="shrink-0 rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-3 py-2 text-center text-sm font-bold"
                 data-testid="la-tahriqha-selection-count"
               >
-                <span className="akwaan-numeral text-foreground">
-                  {view.ownSelected.length}
-                </span>
-                <span className="text-muted-foreground"> من </span>
-                <span className="akwaan-numeral text-foreground">
-                  {view.maxSelection}
-                </span>
-                {view.ownSelected.length < view.minSelection && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — الحد الأدنى {view.minSelection}
-                  </span>
-                )}
+                اخترت <span className="akwaan-numeral">{ownCount}</span> من{" "}
+                <span className="akwaan-numeral">{view.maxSelection}</span>
+                {ownCount < view.minSelection
+                  ? ` · أقل شي ${view.minSelection}`
+                  : ` · لو كلها صح تاخذون ${dishPoints(ownCount)} · وحدة غلط = صفر`}
               </p>
             )}
 
@@ -619,7 +818,8 @@ export function LaTahriqhaGameplayPanel({
                 view={view}
                 teamName={teamName}
                 playerName={playerName}
-                compact={phone}
+                dotOf={dotOf}
+                compact
               />
             )}
 
@@ -627,93 +827,53 @@ export function LaTahriqhaGameplayPanel({
                 lost turn: the team did the thing the dish asked for. */}
             {view.phase === "selecting" && ownLocked && (
               <p
-                className="rounded-[var(--radius)] border border-border bg-muted/50 p-3 text-center text-sm font-bold text-muted-foreground"
+                className="rounded-2xl border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender p-3 text-center text-sm font-bold"
                 data-testid="la-tahriqha-committed"
               >
-                ثبّتّم طبقكم. ننتظر الفريق الثاني…
+                ثبّتوا طبقكم. ننتظر الخصم…
               </p>
             )}
 
             {canChoose && (
               <MobileActionArea>
-                <Button
-                  size="lg"
+                <button
+                  type="button"
                   onClick={commit}
                   disabled={!canCommit || Boolean(pending)}
                   data-testid="la-tahriqha-commit"
-                  className="h-14 w-full gap-2 text-base font-black"
+                  className={cn(
+                    GOLD_ACTION,
+                    "w-full",
+                    ownCount < view.minSelection && "bg-brand-lavender text-lg",
+                  )}
                 >
                   <Lock className="size-5" aria-hidden />
-                  {view.ownSelected.length < view.minSelection
-                    ? `اختاروا ${view.minSelection} مكوّنات على الأقل`
-                    : "ثبّتوا الطبق"}
-                </Button>
+                  {ownCount < view.minSelection
+                    ? `اختر ${view.minSelection} مكوّنات على الأقل`
+                    : "ثبّت الطبق"}
+                </button>
               </MobileActionArea>
             )}
           </>
         )}
 
         {revealed && view.reveal && (
-          <section className="akwaan-rise space-y-3" data-testid="la-tahriqha-reveal">
+          <section
+            className="akwaan-rise flex flex-col gap-3"
+            data-testid="la-tahriqha-reveal"
+          >
             <DishReveal
               reveal={view.reveal}
               view={view}
               teamName={teamName}
               playerName={playerName}
-              compact={phone}
+              dotOf={dotOf}
             />
-            {can("advance-la-tahriqha") && (
-              <div className="text-center">
-                <Button
-                  size="lg"
-                  onClick={() => send("advance-la-tahriqha")}
-                  disabled={!live}
-                  data-testid="la-tahriqha-advance"
-                >
-                  {view.dishNumber === view.dishCount
-                    ? "عرض النتيجة"
-                    : "الطبق التالي"}
-                </Button>
-              </div>
-            )}
+            {advance}
           </section>
         )}
 
-        {!phone && view.phase === "selecting" && (
-          <RunningTotals view={view} teamName={teamName} compact={phone} />
-        )}
-
-        {view.phase === "completed" && view.result && (
-          <section
-            className="grid gap-3 sm:grid-cols-2"
-            data-testid="la-tahriqha-recap"
-          >
-            {view.teamIds.map((teamId) => (
-              <div
-                key={teamId}
-                data-testid={`la-tahriqha-recap-${teamId}`}
-                className={cn(
-                  "rounded-[var(--radius)] border p-5 text-center",
-                  view.result?.winnerTeamId === teamId &&
-                    "border-4 border-brand-gold",
-                )}
-              >
-                <p className="font-bold">{teamName(teamId)}</p>
-                <p className="akwaan-numeral text-3xl font-black">
-                  {view.result?.totals[teamId] ?? 0}
-                </p>
-              </div>
-            ))}
-            {view.result.tie && (
-              <p
-                className="col-span-full text-center text-base font-black text-muted-foreground"
-                data-testid="la-tahriqha-tie"
-              >
-                تعادل — الطبقان الثلاثة انتهوا بنفس المجموع.
-              </p>
-            )}
-          </section>
-        )}
+        {recap}
       </div>
     </ChallengeFrame>
   );

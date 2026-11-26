@@ -1,11 +1,10 @@
 "use client";
 
+import { STATE_ACTION, StateCard } from "@/components/akwaan/state-card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AlertTriangle } from "lucide-react";
 import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { MATCH_SETUP_ROUTE } from "@/features/match-setup/routes";
 import { RyoGameplayPanel } from "../components/ryo-gameplay-panel";
@@ -79,14 +78,11 @@ export function MatchStageRouter({
 
   if (!snapshot) {
     return (
-      <div
-        className="space-y-4"
-        aria-label="جارٍ تحميل المباراة"
-        data-testid="match-loading"
-        dir="rtl"
-      >
-        <Skeleton className="h-20 w-full rounded-[var(--radius)]" />
-        <Skeleton className="h-72 w-full rounded-[var(--radius)]" />
+      <div data-testid="match-loading" dir="rtl">
+        <AkwaanLoader
+          label={actor === "participant" ? "نجهّز شاشتك" : "نجهّز مباراتكم"}
+          line="ثواني ونبدأ"
+        />
       </div>
     );
   }
@@ -119,7 +115,9 @@ export function MatchStageRouter({
       <WaitingRoom />
     );
   } else if (!isMatchStageKey(stage)) {
-    content = <UnsupportedStage stage={stage} onResync={resync} />;
+    content = (
+      <UnsupportedStage stage={stage} actor={actor} onResync={resync} />
+    );
   } else if (stage === "board") {
     // The board is the host's screen. A phone between challenges waits instead,
     // on the page it joined on, with its socket open.
@@ -134,7 +132,7 @@ export function MatchStageRouter({
     // The preflight is entirely server state; without it there is nothing to show
     // and nothing to launch.
     content = !match.unified.preflight ? (
-      <UnsupportedStage stage={stage} onResync={resync} />
+      <UnsupportedStage stage={stage} actor={actor} onResync={resync} />
     ) : isPhone && !match.unified.preflight.requiresPhones ? (
       // Being gathered for a challenge that does not want phones would be a lie.
       <ParticipantWaiting
@@ -191,7 +189,7 @@ export function MatchStageRouter({
       <MatchConnectionBanner />
       {error && actor !== "controller" && (
         <p className="sr-only" role="alert">
-          تعذر تحديث المباراة. ستتم إعادة المحاولة تلقائيًا.
+          ما قدرنا نحدّث المباراة. نحاول مرة ثانية من عندنا.
         </p>
       )}
       {content}
@@ -207,38 +205,36 @@ export function MatchStageRouter({
  */
 function UnsupportedStage({
   stage,
+  actor,
   onResync,
 }: {
   stage: string;
+  actor: MatchActor;
   onResync?: () => void;
 }) {
+  const phone = actor === "participant";
   return (
-    <section
+    <StateCard
       role="alert"
-      dir="rtl"
       data-testid="match-stage-recovery"
-      className="space-y-4 rounded-[var(--radius)] border border-warning/35 bg-warning-subtle p-6 text-center"
-    >
-      <AlertTriangle className="mx-auto size-8 text-warning" aria-hidden />
-      <h1 className="text-xl font-black text-foreground">
-        تعذر عرض المرحلة الحالية
-      </h1>
-      <p className="text-sm leading-6 text-muted-foreground">
-        هذه المرحلة غير مفهومة لهذا الإصدار. نتائج المباراة محفوظة ولم يتغيّر
-        شيء.
-      </p>
-      <p className="text-xs font-bold text-muted-foreground">
-        المرحلة المُستلمة: <span dir="ltr">{stage || "—"}</span>
-      </p>
-      <Button
-        type="button"
-        onClick={() => onResync?.()}
-        className="rounded-[var(--radius)] font-black"
-      >
-        <RefreshCw className="ml-1.5 size-4" aria-hidden />
-        تحديث المباراة
-      </Button>
-    </section>
+      {...(phone ? {} : { size: "screen" as const })}
+      title={phone ? "ما قدرنا نعرض شاشتك" : "ما قدرنا نعرض هالمرحلة"}
+      line={
+        phone
+          ? "مكانك في الفريق محفوظ. جرّب مرة ثانية."
+          : "المباراة محفوظة وما تغيّر فيها شي. جرّبوا مرة ثانية."
+      }
+      actions={
+        <button
+          type="button"
+          onClick={() => onResync?.()}
+          className={STATE_ACTION.primary}
+        >
+          حاول مرة ثانية
+        </button>
+      }
+      detail={`stage: ${stage || "—"}`}
+    />
   );
 }
 
@@ -251,35 +247,29 @@ function UnsupportedStage({
 function MatchAbsent({ actor }: { actor: MatchActor }) {
   if (actor !== "controller") {
     return (
-      <section
-        dir="rtl"
+      <StateCard
         data-testid="match-absent"
-        className="mx-auto max-w-xl space-y-2 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
-      >
-        <h1 className="text-2xl font-black text-foreground">
-          المباراة لم تبدأ بعد
-        </h1>
-        <p className="text-sm text-muted-foreground">بانتظار المتحكّم.</p>
-      </section>
+        title="المباراة ما بدأت للحين"
+        line="ننتظر صاحب المباراة يبدأها. خلّوا الصفحة مفتوحة."
+      />
     );
   }
   return (
-    <section
-      dir="rtl"
+    <StateCard
       data-testid="match-absent"
-      className="mx-auto max-w-xl space-y-4 rounded-[var(--radius)] border border-border bg-card p-10 text-center"
-    >
-      <h1 className="text-2xl font-black text-foreground">
-        لا توجد مباراة في هذه الجلسة
-      </h1>
-      <p className="text-sm leading-6 text-muted-foreground">
-        تُجهَّز المباراة بالكامل قبل أن تبدأ: ثلاث محطات عوالم وأربعة نطاقات لكل
-        محطة.
-      </p>
-      <Button asChild className="rounded-[var(--radius)] font-black">
-        <Link href={MATCH_SETUP_ROUTE}>ابدأ إعداد مباراة جديدة</Link>
-      </Button>
-    </section>
+      title="ما لقينا هالمباراة"
+      line="الرابط ما يودّي لمباراة عندنا. ممكن انتهت، أو الرابط ناقص."
+      actions={
+        <>
+          <Link href="/matches" className={STATE_ACTION.primary}>
+            مبارياتي
+          </Link>
+          <Link href={MATCH_SETUP_ROUTE} className={STATE_ACTION.secondary}>
+            مباراة جديدة
+          </Link>
+        </>
+      }
+    />
   );
 }
 

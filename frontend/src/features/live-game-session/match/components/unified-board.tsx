@@ -1,11 +1,10 @@
 "use client";
 
+import { STATE_ACTION, StateCard } from "@/components/akwaan/state-card";
 import { createPortal } from "react-dom";
 import { useTurnSlot } from "./turn-slot";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   occurrenceLabel,
   prepareUnifiedChallenge,
@@ -299,20 +298,29 @@ export function UnifiedBoard({ actor }: { actor: MatchActor }) {
  */
 function EmptyBoard({ onResync }: { onResync: () => void }) {
   return (
-    <Alert role="alert" data-testid="board-empty" className="text-center">
-      <AlertTriangle className="mx-auto size-7 text-warning" aria-hidden />
-      <AlertTitle className="text-base font-black">
-        لم تصل أي خانات لهذه المباراة
-      </AlertTitle>
-      <AlertDescription className="space-y-3">
-        <p className="text-sm">
-          حدِّث اللوحة؛ إذا استمر الأمر فإعداد هذه المباراة غير مكتمل.
-        </p>
-        <Button type="button" onClick={onResync} className="font-black">
-          <RefreshCw className="size-4" aria-hidden />
-          تحديث اللوحة
-        </Button>
-      </AlertDescription>
-    </Alert>
+    <StateCard
+      role="alert"
+      data-testid="board-empty"
+      size="screen"
+      title="هالمباراة ما وصلتها تحديات"
+      line="ما انحسب عليكم شي. حدّثوا اللوحة، ولو تكررت كلمونا."
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={onResync}
+            className={STATE_ACTION.primary}
+          >
+            حدّث اللوحة
+          </button>
+          <a
+            href="mailto:support@playakwaan.com"
+            className={STATE_ACTION.secondary}
+          >
+            كلمنا
+          </a>
+        </>
+      }
+    />
   );
 }

@@ -174,7 +174,7 @@ describe("the لا تحرقها dish on the shared screen", () => {
   it("shows that a team is still choosing, and never what it chose", () => {
     renderScreen();
     expect(screen.getByTestId(`la-tahriqha-status-${A}`)).toHaveTextContent(
-      "لسّه يختارون",
+      "يختارون…",
     );
     expect(screen.getByTestId(`la-tahriqha-status-${A}`)).toHaveAttribute(
       "data-locked",
@@ -240,7 +240,7 @@ describe("the captain's phone", () => {
     renderPhone(captainState({ ownSelectedJson: JSON.stringify(["c1", "c2"]) }));
     expect(screen.getByTestId("la-tahriqha-commit")).toBeDisabled();
     expect(screen.getByTestId("la-tahriqha-commit")).toHaveTextContent(
-      "اختاروا 3 مكوّنات على الأقل",
+      "اختر 3 مكوّنات على الأقل",
     );
   });
 
@@ -291,7 +291,7 @@ describe("the captain's phone", () => {
       }),
     );
     expect(screen.getByTestId("la-tahriqha-committed")).toHaveTextContent(
-      "ننتظر الفريق الثاني",
+      "ننتظر الخصم",
     );
     expect(screen.queryByTestId("la-tahriqha-commit")).toBeNull();
     expect(screen.getByTestId("la-tahriqha-card-c1")).toHaveAttribute(
@@ -392,20 +392,20 @@ describe("the dish reveal", () => {
   it("calls a burn a burn and a perfect dish a perfect dish", () => {
     renderScreen(revealedState());
     expect(screen.getByTestId(`la-tahriqha-burn-${A}`)).toHaveTextContent(
-      "احترقت",
+      "انحرق الطبق",
     );
     expect(screen.getByTestId(`la-tahriqha-reveal-${A}`)).toHaveAttribute(
       "data-burned",
       "true",
     );
     expect(screen.getByTestId(`la-tahriqha-perfect-${B}`)).toHaveTextContent(
-      "طبق مثالي",
+      "طبق كامل",
     );
     expect(screen.getByTestId(`la-tahriqha-reveal-${B}`)).toHaveTextContent(
       "+7",
     );
     expect(screen.getByTestId(`la-tahriqha-reveal-${A}`)).toHaveTextContent(
-      "+0",
+      "انحرق الطبق · 0",
     );
   });
 
@@ -438,7 +438,7 @@ describe("the dish reveal", () => {
       }),
     );
     expect(screen.getByTestId(`la-tahriqha-reveal-${A}`)).toHaveTextContent(
-      "ثُبّت مع نهاية الوقت",
+      "تثبّت مع نهاية الوقت",
     );
   });
 
@@ -463,7 +463,7 @@ describe("the dish reveal", () => {
       }),
     );
     expect(screen.getByTestId(`la-tahriqha-reveal-${A}`)).toHaveTextContent(
-      "ما وصلوا لثلاثة مكوّنات",
+      "ما وصلوا 3 مكوّنات",
     );
   });
 
@@ -478,7 +478,7 @@ describe("the dish reveal", () => {
       </LiveSessionContext.Provider>,
     );
     expect(screen.getByTestId("la-tahriqha-advance")).toHaveTextContent(
-      "الطبق التالي",
+      "الطبق الجاي",
     );
   });
 });

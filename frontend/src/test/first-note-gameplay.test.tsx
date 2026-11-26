@@ -65,11 +65,13 @@ describe("من أول نغمة", () => {
       "أغنية خليجية من التسعينات",
     );
     expect(screen.getByTestId("first-note-auction")).toHaveTextContent(
-      "9 ثانية",
+      "9 ثواني",
     );
     // The floor is 9, so the phone offers 1..8 and nothing at or above it.
-    expect(screen.queryByTestId("first-note-bid-9")).toBeNull();
-    await userEvent.click(screen.getByTestId("first-note-bid-8"));
+    expect(screen.getByTestId("first-note-bid-slider")).toHaveAttribute(
+      "max",
+      "8",
+    );
     await userEvent.click(screen.getByTestId("first-note-submit-bid"));
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {
       roundId: "round",
@@ -200,7 +202,7 @@ describe("من أول نغمة", () => {
       />,
     );
     expect(screen.getByTestId("first-note-answer-phase")).toHaveTextContent(
-      "مدة المقطع: 3 ثانية",
+      "مدة المقطع: 3 ثواني",
     );
   });
 
@@ -241,6 +243,6 @@ describe("من أول نغمة", () => {
         actor="shared-screen"
       />,
     );
-    expect(screen.getByTestId("first-note-recap")).toHaveTextContent("ألفا: 5");
+    expect(screen.getByTestId("first-note-recap")).toHaveTextContent("ألفا5");
   });
 });

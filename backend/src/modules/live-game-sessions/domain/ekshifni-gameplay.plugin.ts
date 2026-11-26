@@ -31,6 +31,7 @@ import {
   assignmentFor,
   clearTeamAction,
   parseTeamActionAssignments,
+  projectTeamActionHolder,
   serializeTeamActionAssignments,
   teamActionClock,
   teamActionStandInWindow,
@@ -530,6 +531,32 @@ function publicState(
       valid.initiativeTeamId === teamId &&
       revealed.length < EKSHIFNI_REGION_COUNT,
     canAnswer: phase === 'playing' && valid.answerPenaltyTeamId !== teamId,
+    // Each right is one phone's: the captain if the team chose one, otherwise
+    // whoever the rotation landed on. The two rights are told separately
+    // because they are assigned separately.
+    ...(() => {
+      const reveal =
+        valid.initiativeTeamId === teamId
+          ? projectTeamActionHolder(
+              valid.teamActionJson,
+              EKSHIFNI_REVEAL_ACTION,
+              actor?.participantId,
+            )
+          : { held: true };
+      const answer = projectTeamActionHolder(
+        valid.teamActionJson,
+        ekshifniAnswerAction(teamId),
+        actor?.participantId,
+      );
+      return {
+        isAssignedRevealer: reveal.held,
+        isAssignedAnswerer: answer.held,
+        ...(answer.holderParticipantId
+          ? { assignedParticipantId: answer.holderParticipantId }
+          : {}),
+        ...(answer.standInAt ? { standInAt: answer.standInAt } : {}),
+      };
+    })(),
   };
 }
 

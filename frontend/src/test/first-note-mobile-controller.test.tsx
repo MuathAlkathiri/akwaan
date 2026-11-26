@@ -47,7 +47,8 @@ const phoneState = (over: Record<string, unknown> = {}) => ({
 
 /** What the shared screen gets: the same state plus the Master audio. */
 const screenState = (over: Record<string, unknown> = {}) => {
-  const { canBid, canPass, canAnswer, actorTeamId, ...shared } = phoneState(over);
+  const { canBid, canPass, canAnswer, actorTeamId, ...shared } =
+    phoneState(over);
   void canBid;
   void canPass;
   void canAnswer;
@@ -88,7 +89,12 @@ const context = (gameplayCommand = vi.fn()) =>
       serverTimestamp: "2026-01-01T00:00:10.000Z",
       teams: TEAMS,
       participants: [
-        { id: "p-1", displayName: "مُعاذ", teamId: "team-alpha", role: "player" },
+        {
+          id: "p-1",
+          displayName: "مُعاذ",
+          teamId: "team-alpha",
+          role: "player",
+        },
       ],
       availableActions: [],
     },
@@ -97,7 +103,10 @@ const context = (gameplayCommand = vi.fn()) =>
     resync: vi.fn(),
   }) as never;
 
-const phoneTree = (runtime: GameplayRuntimeSnapshot, cmd: ReturnType<typeof vi.fn>) => (
+const phoneTree = (
+  runtime: GameplayRuntimeSnapshot,
+  cmd: ReturnType<typeof vi.fn>,
+) => (
   <LiveSessionContext.Provider value={context(cmd)}>
     <MobileGameplayShell participantId="p-1">
       <FirstNoteGameplayPanel runtime={runtime} actor="participant" />
@@ -117,7 +126,10 @@ const renderPhone = (
 const renderHost = (modeState = screenState(), cmd = vi.fn()) => {
   render(
     <LiveSessionContext.Provider value={context(cmd)}>
-      <FirstNoteGameplayPanel runtime={runtimeOf(modeState)} actor="shared-screen" />
+      <FirstNoteGameplayPanel
+        runtime={runtimeOf(modeState)}
+        actor="shared-screen"
+      />
     </LiveSessionContext.Provider>,
   );
   return { cmd };
@@ -127,28 +139,26 @@ describe("the auction controller", () => {
   it("offers only the seconds the current floor allows", () => {
     // The floor is 8, so 1..7 are legal and 8 is not.
     renderPhone();
-    const options = screen.getByTestId("first-note-bid-options");
-    expect(within(options).getAllByRole("listitem")).toHaveLength(7);
-    expect(screen.getByTestId("first-note-bid-7")).toBeInTheDocument();
-    expect(screen.queryByTestId("first-note-bid-8")).toBeNull();
+    const slider = screen.getByTestId("first-note-bid-slider");
+    expect(slider).toHaveAttribute("min", "1");
+    expect(slider).toHaveAttribute("max", "7");
   });
 
   it("re-derives the legal set when the floor moves", () => {
     renderPhone(phoneState({ currentBidSeconds: 3 }));
-    expect(
-      within(screen.getByTestId("first-note-bid-options")).getAllByRole(
-        "listitem",
-      ),
-    ).toHaveLength(2);
-    expect(screen.queryByTestId("first-note-bid-3")).toBeNull();
+    expect(screen.getByTestId("first-note-bid-slider")).toHaveAttribute(
+      "max",
+      "2",
+    );
   });
 
   it("picks then confirms, and sends the mechanic's exact command", () => {
     const { cmd } = renderPhone();
-    fireEvent.click(screen.getByTestId("first-note-bid-5"));
-    expect(screen.getByTestId("first-note-bid-5")).toHaveAttribute(
-      "data-selected",
-      "true",
+    fireEvent.change(screen.getByTestId("first-note-bid-slider"), {
+      target: { value: "5" },
+    });
+    expect(screen.getByTestId("first-note-bid-value")).toHaveTextContent(
+      "5 ثواني",
     );
     fireEvent.click(screen.getByTestId("first-note-submit-bid"));
     expect(cmd).toHaveBeenCalledWith("gameplay-command", {
@@ -158,26 +168,43 @@ describe("the auction controller", () => {
     });
   });
 
-  it("cannot bid before a value is chosen", () => {
+  it("rests on the highest legal bid until the holder moves it", () => {
     renderPhone();
-    expect(screen.getByTestId("first-note-submit-bid")).toBeDisabled();
+    expect(screen.getByTestId("first-note-bid-slider")).toHaveValue("7");
+    expect(screen.getByTestId("first-note-submit-bid")).toHaveTextContent(
+      "زايد بـ 7 ثواني",
+    );
+  });
+
+  it("gives a teammate the bid to watch, and nothing to press", () => {
+    renderPhone(phoneState({ isAssignedActor: false }));
+    expect(screen.getByTestId("first-note-auction-teammate")).toHaveTextContent(
+      "المزايدة عند",
+    );
+    expect(screen.queryByTestId("first-note-bid-slider")).toBeNull();
+    expect(screen.queryByTestId("first-note-submit-bid")).toBeNull();
+    expect(screen.queryByTestId("first-note-pass")).toBeNull();
   });
 
   it("prevents a duplicate bid in one window", () => {
     const { cmd } = renderPhone();
-    fireEvent.click(screen.getByTestId("first-note-bid-5"));
+    fireEvent.change(screen.getByTestId("first-note-bid-slider"), {
+      target: { value: "5" },
+    });
     fireEvent.click(screen.getByTestId("first-note-submit-bid"));
     fireEvent.click(screen.getByTestId("first-note-submit-bid"));
     expect(cmd).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("first-note-submit-bid")).toHaveTextContent(
-      "جارٍ الإرسال…",
+      "نرسلها…",
     );
   });
 
   it("never claims the bid won: a competing snapshot simply takes over", () => {
     const cmd = vi.fn();
     const { rerender } = renderPhone(phoneState(), undefined, cmd);
-    fireEvent.click(screen.getByTestId("first-note-bid-5"));
+    fireEvent.change(screen.getByTestId("first-note-bid-slider"), {
+      target: { value: "5" },
+    });
     fireEvent.click(screen.getByTestId("first-note-submit-bid"));
     // The opponent got there first: the floor is now 4 and it is their bid.
     rerender(
@@ -189,15 +216,18 @@ describe("the auction controller", () => {
       ),
     );
     // Server truth wins: a new legal set, no stale selection, guard released.
-    expect(screen.queryByTestId("first-note-bid-5")).toBeNull();
+    expect(screen.getByTestId("first-note-bid-slider")).toHaveAttribute(
+      "max",
+      "3",
+    );
     expect(screen.getByTestId("first-note-submit-bid")).toHaveTextContent(
-      "اختاروا عدد الثواني",
+      "زايد بـ 3 ثواني",
     );
   });
 
   it("gives a team the server did not authorize no controls at all", () => {
     renderPhone(phoneState({ canBid: false, canPass: false }));
-    expect(screen.queryByTestId("first-note-bid-options")).toBeNull();
+    expect(screen.queryByTestId("first-note-bid-slider")).toBeNull();
     expect(screen.queryByTestId("first-note-submit-bid")).toBeNull();
     expect(screen.getByTestId("first-note-auction-waiting")).toHaveTextContent(
       "ننتظر",
@@ -227,7 +257,7 @@ describe("the auction → answer transition happens in place", () => {
     const cmd = vi.fn();
     const { rerender } = renderPhone(phoneState(), undefined, cmd);
     const panelNode = screen.getByTestId("first-note-panel");
-    expect(screen.getByTestId("first-note-bid-options")).toBeInTheDocument();
+    expect(screen.getByTestId("first-note-bid-slider")).toBeInTheDocument();
 
     rerender(
       phoneTree(
@@ -251,7 +281,7 @@ describe("the auction → answer transition happens in place", () => {
     // whole auction section goes, not just its controls: a phase the server has
     // left must not linger because the actor merely lacks permission in it.
     expect(screen.queryByTestId("first-note-auction")).toBeNull();
-    expect(screen.queryByTestId("first-note-bid-options")).toBeNull();
+    expect(screen.queryByTestId("first-note-bid-slider")).toBeNull();
     expect(screen.getByTestId("first-note-answer-input")).toBeInTheDocument();
   });
 
@@ -284,7 +314,7 @@ describe("the auction → answer transition happens in place", () => {
     );
     expect(screen.queryByTestId("first-note-answer-input")).toBeNull();
     expect(screen.getByTestId("first-note-answer-waiting")).toHaveTextContent(
-      "فرصة السرقة مع الفريق الآخر",
+      "فرصة السرقة مع الخصم",
     );
   });
 });
@@ -304,10 +334,12 @@ describe("the answer controller", () => {
   it("gives the eligible team a large answer field and one CTA", () => {
     renderPhone(answering());
     expect(screen.getByTestId("first-note-answer-input").className).toContain(
-      "h-16",
+      "min-h-[60px]",
     );
     const area = screen.getByTestId("mobile-action-area");
-    expect(within(area).getByTestId("first-note-submit-answer")).toBeInTheDocument();
+    expect(
+      within(area).getByTestId("first-note-submit-answer"),
+    ).toBeInTheDocument();
   });
 
   it("sends the mechanic's exact answer command", () => {
@@ -332,15 +364,17 @@ describe("the answer controller", () => {
     fireEvent.click(screen.getByTestId("first-note-submit-answer"));
     expect(cmd).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("first-note-submit-answer")).toHaveTextContent(
-      "جارٍ الإرسال…",
+      "نرسلها…",
     );
   });
 
   it("gives an unauthorized team no answer form", () => {
-    renderPhone(answering({ canAnswer: false, answerOwnerTeamId: "team-beta" }));
+    renderPhone(
+      answering({ canAnswer: false, answerOwnerTeamId: "team-beta" }),
+    );
     expect(screen.queryByTestId("first-note-answer-input")).toBeNull();
     expect(screen.getByTestId("first-note-answer-waiting")).toHaveTextContent(
-      "بانتظار الفريق المجيب",
+      "ننتظر الفريق اللي يجاوب",
     );
   });
 });
@@ -395,9 +429,7 @@ describe("Master audio is the room's, never the hand's", () => {
 
 describe("the host keeps its production-verified Master path", () => {
   it("still renders the bounded Master player during answering", () => {
-    renderHost(
-      screenState({ phase: "answering", finalBidSeconds: 5 }),
-    );
+    renderHost(screenState({ phase: "answering", finalBidSeconds: 5 }));
     const audio = screen.getByTestId("first-note-audio");
     expect(audio).toHaveAttribute("data-clip-seconds", "5");
     expect(audio.getAttribute("src")).toContain("master-clip");
@@ -410,11 +442,7 @@ describe("the host keeps its production-verified Master path", () => {
 
   it("keeps its non-compact frame, its eyebrow and its clip duration", () => {
     renderHost(screenState({ phase: "answering", finalBidSeconds: 5 }));
-    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
-      "data-frame-surface",
-      "screen",
-    );
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
+    expect(screen.getByTestId("challenge-context-strip")).toHaveTextContent(
       "من أول نغمة",
     );
     expect(document.body.textContent).toContain("مدة المقطع");

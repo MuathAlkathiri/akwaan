@@ -22,10 +22,19 @@ import {
 } from '../domain/live-game-session.repository';
 import { LiveSessionDomainError } from '../domain/live-session.errors';
 import {
+  assignNextTeamActionOrHold,
+  buildTeamRotations,
+  createTeamActionAssignmentState,
+  serializeTeamActionAssignments,
+  TeamActionAssignmentState,
+} from '../domain/team-action-assignment';
+import { eligibleParticipantsOf, teamCaptainsOf } from './start-top5.use-case';
+import {
   ODD_PIECE_HOTSPOT_DEFAULT_ANSWER_SECONDS,
   ODD_PIECE_HOTSPOT_DEFAULT_DISCUSSION_SECONDS,
   ODD_PIECE_HOTSPOT_VERSION,
   ODD_PIECE_MODE_KEY,
+  oddPieceAction,
 } from '../domain/odd-piece-hotspot-gameplay.plugin';
 import {
   CreateGameplayRuntime,
@@ -183,6 +192,32 @@ export class StartOddPieceGameplay {
         // whichever eligible teammate is actually connected may ack the
         // shared image. A reconnect never inherits a stale phone's slot.
         requiredPresentationTeamIdsJson: JSON.stringify(teams),
+        // One phone per team presses «جاوب» and taps: the captain if the team
+        // chose one, otherwise the turn rotates per picture. Opened here so the
+        // very first picture already names its phones.
+        teamActionJson: serializeTeamActionAssignments(
+          (() => {
+            const participants = eligibleParticipantsOf(sessionState);
+            let assignments: TeamActionAssignmentState =
+              createTeamActionAssignmentState(
+                buildTeamRotations({
+                  teams,
+                  participants,
+                  randomIndex: () => 0,
+                  captains: teamCaptainsOf(sessionState),
+                }),
+              );
+            const now = new Date();
+            for (const teamId of teams)
+              assignments = assignNextTeamActionOrHold(assignments, {
+                teamId,
+                action: oddPieceAction(teamId),
+                participants,
+                now,
+              }).state;
+            return assignments;
+          })(),
+        ),
       },
     });
     let runtime = (await this.runtimes.findBySessionId(input.sessionId))!;

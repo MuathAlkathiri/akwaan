@@ -19,6 +19,16 @@ export interface OddPieceHotspotView {
   canClaim: boolean;
   canAnswer: boolean;
   attemptUsed: boolean;
+  /**
+   * Whether this phone holds its team's decision: the captain if the team
+   * chose one, otherwise the rotation. True when the server says nothing, as
+   * an older Run does: there the whole team may act.
+   */
+  isAssignedActor: boolean;
+  /** Whose phone holds it, for a teammate's read-only screen. */
+  assignedParticipantId?: string;
+  /** When a teammate may act instead of a holder who has gone quiet. */
+  standInAt?: string;
   deadlineAt?: string;
   attempts: Array<{
     teamId: string;
@@ -55,7 +65,7 @@ export function readOddPieceHotspotView(
     phase: String(state.phase ?? "preparing") as OddPieceHotspotView["phase"],
     puzzleIndex: Number(state.currentPuzzleIndex ?? 0),
     puzzleCount: Number(state.puzzleCount ?? 3),
-    prompt: String(state.prompt ?? "أين القطعة الدخيلة؟"),
+    prompt: String(state.prompt ?? "وين القطعة الدخيلة؟"),
     ...(state.modifiedImageJson
       ? {
           modifiedImage: json<OddPieceHotspotImage | undefined>(
@@ -73,6 +83,13 @@ export function readOddPieceHotspotView(
     canClaim: state.canClaim === true,
     canAnswer: state.canSelect === true,
     attemptUsed: state.attemptUsed === true,
+    isAssignedActor: state.isAssignedActor !== false,
+    ...(typeof state.assignedParticipantId === "string"
+      ? { assignedParticipantId: state.assignedParticipantId }
+      : {}),
+    ...(typeof state.standInAt === "string"
+      ? { standInAt: state.standInAt }
+      : {}),
     attempts: json<OddPieceHotspotView["attempts"]>(state.attemptsJson, []),
     ...(typeof state.deadlineAt === "string"
       ? { deadlineAt: state.deadlineAt }

@@ -626,3 +626,36 @@ export function projectTeamActionAssignment(
     assignmentSequence: assignment?.sequence ?? null,
   };
 }
+
+/**
+ * What one phone needs to know about its own team's action: whether it is the
+ * one holding it, who is if not, and when a teammate may act instead.
+ *
+ * `held` is true when there is nothing to hold — a runtime that predates the
+ * assignment, or an action that is not open — because there the mechanic's own
+ * team-wide rule is the whole answer and this must not narrow it.
+ */
+export function projectTeamActionHolder(
+  teamActionJson: unknown,
+  action: string,
+  participantId: string | undefined,
+): { held: boolean; holderParticipantId?: string; standInAt?: string } {
+  if (typeof teamActionJson !== 'string') return { held: true };
+  const assignment = assignmentFor(
+    parseTeamActionAssignments(teamActionJson),
+    action,
+  );
+  if (!assignment) return { held: true };
+  const openedAt = Date.parse(assignment.openedAt);
+  return {
+    held: assignment.participantId === participantId,
+    holderParticipantId: assignment.participantId,
+    ...(Number.isNaN(openedAt)
+      ? {}
+      : {
+          standInAt: new Date(
+            openedAt + TEAM_ACTION_STALE_GRACE_MS,
+          ).toISOString(),
+        }),
+  };
+}

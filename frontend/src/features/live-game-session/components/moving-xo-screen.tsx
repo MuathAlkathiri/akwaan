@@ -134,7 +134,7 @@ export function MovingXoScreen({
               className="inline-flex min-h-[44px] items-center gap-2.5 rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] px-[18px] text-lg font-extrabold text-[hsl(var(--brand-navy))]"
             >
               <TeamDot className={activeIdentity.dot} />
-              دور {activeName}
+              {view.decisivePhase ? "الحسم · " : ""}دور {activeName}
               {activeSymbol && (
                 <MovingXoMark symbol={activeSymbol} className="size-[22px]" />
               )}
@@ -187,10 +187,18 @@ export function MovingXoScreen({
               <p
                 role="status"
                 data-testid="moving-xo-decisive"
-                className="inline-flex min-h-[34px] items-center gap-2 self-start rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3.5 text-base font-extrabold"
+                className="flex flex-col items-start gap-2"
               >
-                الحسم
-                <span className="text-sm font-semibold">كل علامة تبقى</span>
+                <span className="inline-flex min-h-11 -rotate-2 items-center rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 font-display text-2xl font-black shadow-[4px_5px_0_hsl(var(--brand-navy))]">
+                  الحسم!
+                </span>
+                <span className="font-display text-xl font-extrabold">
+                  العلامات ما عاد تنتقل
+                </span>
+                <span className="max-w-xl text-base leading-relaxed text-brand-slate">
+                  من الحين كل علامة تنحط تبقى في مكانها، وتقدرون تحطون أكثر من
+                  3. أول فريق يصف 3 في خط واحد يفوز.
+                </span>
               </p>
             )}
 
@@ -265,9 +273,12 @@ export function MovingXoScreen({
 
             {terminal && view.outcome === "draw" && (
               <div data-testid="moving-xo-draw" className="text-center">
-                <p className="font-display text-4xl font-black">تعادل</p>
-                <p className="mt-2 text-lg font-semibold text-brand-slate">
-                  امتلت اللوحة وما أحد كمّل 3 في صف.
+                <p className="font-display text-5xl font-black">تعادل!</p>
+                <p className="mt-3 text-xl font-semibold text-brand-slate">
+                  امتلت اللوحة وما أحد كمّلها.
+                </p>
+                <p className="mx-auto mt-4 inline-flex min-h-10 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-brand-lavender px-4 text-base font-bold">
+                  ما فيه نقطة لأي فريق
                 </p>
               </div>
             )}

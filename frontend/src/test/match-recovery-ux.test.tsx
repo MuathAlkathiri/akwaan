@@ -43,8 +43,8 @@ describe("Match recovery UX", () => {
       error: { code: "LOAD_FAILED", message: "Unable to restore snapshot" },
     });
     expect(screen.getByTestId("match-connection-banner")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "حدِّث الآن" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "حدِّث الآن" }));
+    expect(screen.getByRole("button", { name: "حدّث الحين" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "حدّث الحين" }));
     expect(resync).toHaveBeenCalledTimes(1);
   });
 });

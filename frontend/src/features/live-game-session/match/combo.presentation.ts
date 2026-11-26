@@ -224,8 +224,8 @@ export function comboRunOf(
 
 /** Why a run ended, in the product's words. */
 export function describeComboRunEnd(run: ComboRunResult): string {
-  if (run.endedBy === "combo-break") return "كُسر الكومبو";
-  if (run.endedBy === "cash-out") return "سحبوا النقاط";
-  if (run.endedBy === "timeout") return "انتهى الوقت";
-  return "أكملوا كل الأسئلة";
+  if (run.endedBy === "combo-break") return "انكسر الكومبو";
+  if (run.endedBy === "cash-out") return "ثبّتوا رصيدهم";
+  if (run.endedBy === "timeout") return "خلص الوقت";
+  return "كمّلوا الأسئلة كلها";
 }

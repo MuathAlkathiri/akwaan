@@ -174,11 +174,14 @@ describe("the acting phone", () => {
     expect(screen.getByTestId("bomb-phone-prompt")).toHaveTextContent(PROMPT);
   });
 
-  it("never renders the item image, even when the item has one", () => {
+  it("shows the holder the question's picture above its wording", () => {
+    // The approved phone carries the picture: the holder answers from the
+    // phone in their hand, not by looking up at the wall.
     renderPhone(withImage());
-    expect(document.querySelector("img")).toBeNull();
-    expect(document.body.innerHTML).not.toContain("tokyo.jpg");
-    // …but the wording still reaches the answerer.
+    expect(screen.getByTestId("bomb-phone-image")).toHaveAttribute(
+      "src",
+      expect.stringContaining("tokyo.jpg"),
+    );
     expect(screen.getByTestId("bomb-phone-prompt")).toHaveTextContent(PROMPT);
   });
 
@@ -194,7 +197,7 @@ describe("the acting phone", () => {
 
   it("shows the compact authoritative clock", () => {
     renderPhone();
-    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("0:18");
+    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("18");
   });
 
   it("marks the clock urgent at low time without changing any rule", () => {
@@ -209,9 +212,9 @@ describe("the acting phone", () => {
     renderPhone();
     const answer = screen.getByTestId("bomb-phone-answer");
     const mic = screen.getByTestId("bomb-phone-voice");
-    expect(answer.className).toContain("h-16");
-    // Secondary: a round icon button, never the centrepiece the old panel had.
-    expect(mic.className).toContain("size-14");
+    expect(answer.className).toContain("min-h-[60px]");
+    // Secondary: a round button the height of the field, never the centrepiece.
+    expect(mic.className).toContain("size-[60px]");
     expect(mic.className).not.toContain("size-20");
   });
 
@@ -237,7 +240,7 @@ describe("the acting phone", () => {
       payload: {},
     }, expect.anything());
     // The clock is untouched by the client: only the server takes the 5 seconds.
-    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("0:18");
+    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("18");
   });
 
   it("lets one answer window produce exactly one command, however it arrives", () => {
@@ -646,7 +649,7 @@ describe("ownership follows the server, never a team comparison", () => {
     const { rerender } = renderPhone(runtimeOf(), cmd);
     const shellNode = screen.getByTestId("mobile-shell-main");
     expect(screen.getByTestId("bomb-phone-answer")).toBeInTheDocument();
-    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("0:18");
+    expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("18");
 
     // p-1 drops; the runtime reassigns the owner to p-2, so this phone's
     // actions disappear from `availableActions`.
@@ -695,8 +698,8 @@ describe("ownership follows the server, never a team comparison", () => {
     expect(screen.getByTestId("bomb-phone-answer")).toBeInTheDocument();
     expect(screen.getByTestId("bomb-phone-skip")).toBeInTheDocument();
     const clock = screen.getByTestId("bomb-phone-clock");
-    expect(clock).toHaveTextContent("0:18");
-    expect(clock).not.toHaveTextContent("0:30");
+    expect(clock).toHaveTextContent("18");
+    expect(clock).not.toHaveTextContent("30");
   });
 
   it("hands off to the other team on a correct answer without remounting", () => {
@@ -741,12 +744,10 @@ describe("the shared screen keeps the room's Bomb", () => {
     expect(screen.queryByTestId("bomb-phone-voice")).toBeNull();
     expect(screen.queryByTestId("bomb-phone-skip")).toBeNull();
     expect(screen.queryByTestId("mobile-action-area")).toBeNull();
-    // The room wears the shared frame now, in its screen form, never the
-    // phone's compact one.
-    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
-      "data-frame-surface",
-      "screen",
-    );
+    // The room has its own layout: both players at the sides, each with
+    // their team's clock.
+    expect(screen.queryByTestId("challenge-frame")).toBeNull();
+    expect(screen.getAllByTestId(/^bomb-side-/)).toHaveLength(2);
   });
 
   it("keeps the historical audio item playing on the room's screen", () => {

@@ -4,6 +4,7 @@ import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { rememberPostAuthDestination } from "@/features/auth/navigation/post-auth-destination";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -17,8 +18,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  if (isLoading)
-    return <div className="text-center py-10">جاري التحقق من الدخول...</div>;
+  if (isLoading) return <AkwaanLoader label="نتأكد من دخولك" line="ثواني بس" />;
   if (!isAuthenticated) return null;
 
   return <>{children}</>;

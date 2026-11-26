@@ -1,8 +1,13 @@
 "use client";
 import { ResolutionSubmissions } from "../match/components/resolution-submissions";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { teamIdentityOf } from "@/lib/team-identity";
+import { AnswerEntry } from "../match/components/answer-entry";
+import {
+  ChallengeContextStrip,
+  TeamDot,
+  useChallengeContext,
+} from "../match/components/challenge-context-strip";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { ChallengeCountdown } from "../match/components/challenge-countdown";
 import { MobileActionArea } from "../match/components/mobile-action-area";
@@ -12,12 +17,61 @@ import { getMediaUrl } from "@/lib/api/media-url";
 import { FIRST_NOTE_OPENING_MIN_BID } from "../match/first-note.presentation";
 import { useLiveSession } from "../hooks/live-session-context";
 import { useBoundedAudio } from "../hooks/use-bounded-audio";
+import { useTeamActionHold } from "../hooks/use-team-action-hold";
 import type { GameplayRuntimeSnapshot } from "../model";
 import type { MatchActor } from "../match/types";
 import {
   FIRST_NOTE_NAME,
   readFirstNoteView,
 } from "../match/first-note.presentation";
+
+const NAVY = "border-[3px] border-[hsl(var(--brand-navy))]";
+const GOLD_ACTION =
+  "inline-flex min-h-[62px] items-center justify-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-7 font-display text-xl font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] disabled:shadow-none";
+const WHITE_ACTION =
+  "inline-flex min-h-[54px] items-center justify-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white px-6 text-base font-bold text-[hsl(var(--brand-navy))]";
+const STEP_BUTTON =
+  "grid size-12 flex-none place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-white text-2xl font-bold text-[hsl(var(--brand-navy))] active:bg-brand-lavender disabled:opacity-50";
+const CHIP =
+  "inline-flex min-h-9 items-center gap-2 whitespace-nowrap rounded-full bg-white px-4 text-[15px] font-bold text-[hsl(var(--brand-navy))]";
+
+/** A correct answer pays 16 minus the seconds asked for. */
+const rewardFor = (seconds: number) => 16 - seconds;
+
+/** «ثانية», «ثانيتين», «5 ثواني». */
+function secondsLabel(count: number) {
+  if (count === 1) return "ثانية";
+  if (count === 2) return "ثانيتين";
+  if (count >= 3 && count <= 10) return `${count} ثواني`;
+  return `${count} ثانية`;
+}
+
+/** «نقطة», «نقطتين», «3 نقاط» — never «2 نقاط». */
+function pointsLabel(count: number) {
+  if (count === 1) return "نقطة";
+  if (count === 2) return "نقطتين";
+  if (count >= 3 && count <= 10) return `${count} نقاط`;
+  return `${count} نقطة`;
+}
+
+/** Decoration for a clip that is playing: the room hears it, this only says so. */
+function Waveform() {
+  const bars = [
+    30, 55, 80, 45, 95, 60, 35, 75, 100, 50, 70, 40, 85, 55, 30, 65, 90, 45, 60,
+    35,
+  ];
+  return (
+    <div aria-hidden className="flex h-24 items-center justify-center gap-1.5">
+      {bars.map((height, index) => (
+        <span
+          key={index}
+          style={{ height: `${height}%` }}
+          className="w-2.5 rounded-full bg-[hsl(var(--brand-navy))]"
+        />
+      ))}
+    </div>
+  );
+}
 
 export function FirstNoteGameplayPanel({
   runtime,
@@ -27,6 +81,7 @@ export function FirstNoteGameplayPanel({
   actor: MatchActor;
 }) {
   const { snapshot, gameplayCommand, connection } = useLiveSession();
+  const context = useChallengeContext();
   const view = useMemo(
     () => readFirstNoteView(runtime.modeState),
     [runtime.modeState],
@@ -64,7 +119,9 @@ export function FirstNoteGameplayPanel({
   // each side hears the duration it asked for, which is what stops an
   // ignorant undercut from denying an opponent the song.
   const clipSeconds =
-    view.phase === "steal" ? (view.stealSeconds ?? view.finalBidSeconds) : view.finalBidSeconds;
+    view.phase === "steal"
+      ? (view.stealSeconds ?? view.finalBidSeconds)
+      : view.finalBidSeconds;
   const audioRef = useBoundedAudio({
     src: masterUrl || undefined,
     seconds: clipSeconds,
@@ -106,301 +163,549 @@ export function FirstNoteGameplayPanel({
     setSending(key);
     send(commandType, payload);
   };
+  // The turn — a bid, a pass or the answer — is one phone's: the captain if
+  // the team chose one, otherwise the rotation. Teammates watch it read-only.
+  const mayAct = useTeamActionHold(view.isAssignedActor, view.standInAt);
+  const holderName =
+    snapshot?.participants?.find(
+      (person) => person.id === view.assignedParticipantId,
+    )?.displayName ?? "زميلكم";
+  // The slider always rests on a legal value: the highest one, which is the
+  // safest bid, until the holder moves it.
+  const chosen = bid ? Number(bid) : max;
+  const dotOf = (id: string) => teamIdentityOf(id, snapshot?.teams ?? []).dot;
+  const step = `الأغنية ${view.songIndex + 1} من ${view.songCount}`;
+
+  const clue = view.phase !== "preparing" && view.phase !== "completed" && (
+    <section
+      className={cn(
+        "flex flex-col gap-1 bg-brand-lavender text-start",
+        phone
+          ? "shrink-0 rounded-2xl border-2 border-[hsl(var(--brand-navy))] px-3.5 py-2.5"
+          : cn("rounded-[22px] px-5 py-4", NAVY),
+      )}
+      data-testid="first-note-clue"
+    >
+      <p className="text-sm font-bold text-brand-slate">
+        {view.clueLabel?.ar ?? "التلميح"}
+      </p>
+      <p
+        className={cn(
+          "font-display font-extrabold",
+          phone ? "text-lg" : "text-2xl",
+        )}
+      >
+        {view.clue.ar}
+      </p>
+    </section>
+  );
+
+  const reveal = view.phase === "resolved" && view.reveal && (
+    <section
+      className="akwaan-rise flex flex-col items-center gap-3 text-center"
+      data-testid="first-note-reveal"
+    >
+      <p className="text-sm font-bold text-brand-slate">الأغنية</p>
+      <h2
+        className={cn(
+          "font-display font-black",
+          phone ? "text-2xl" : "text-[44px] leading-tight",
+        )}
+      >
+        {view.reveal.title}
+      </h2>
+      <ResolutionSubmissions answers={view.reveal.answers} teamName={team} />
+      <p className="text-base text-brand-slate">
+        آخر مزايدة: {secondsLabel(view.reveal.finalBidSeconds)}
+      </p>
+      <p
+        className={cn(
+          "inline-flex items-center gap-2.5 rounded-2xl px-5 py-2.5 font-display text-xl font-extrabold",
+          NAVY,
+          view.reveal.winnerTeamId
+            ? "bg-[hsl(var(--brand-gold))] shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+            : "bg-white",
+        )}
+      >
+        {view.reveal.winnerTeamId ? (
+          <>
+            <TeamDot className={dotOf(view.reveal.winnerTeamId)} />
+            {team(view.reveal.winnerTeamId)}
+            {view.reveal.stolen ? " سرقوها" : ""} ·{" "}
+            <bdi dir="ltr" className="akwaan-numeral">
+              +{view.reveal.points[view.reveal.winnerTeamId]}
+            </bdi>
+          </>
+        ) : (
+          "ما أحد عرفها"
+        )}
+      </p>
+      {actor === "controller" && can("advance-first-note") && (
+        <button
+          type="button"
+          className={GOLD_ACTION}
+          onClick={() => send("advance-first-note")}
+        >
+          {view.songIndex + 1 === view.songCount
+            ? "نشوف النتيجة"
+            : "الأغنية الجاية"}
+        </button>
+      )}
+    </section>
+  );
+
+  const recap = view.phase === "completed" && view.result && (
+    <section
+      className="grid gap-4 sm:grid-cols-2"
+      data-testid="first-note-recap"
+    >
+      {Object.entries(view.result.points).map(([id, points]) => (
+        <div
+          key={id}
+          className={cn(
+            "flex flex-col items-center gap-1.5 rounded-3xl p-5 text-center",
+            NAVY,
+            view.result?.winnerTeamId === id
+              ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+              : "bg-white",
+          )}
+        >
+          <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
+            <TeamDot className={dotOf(id)} />
+            {team(id)}
+          </p>
+          <p className="akwaan-numeral text-[56px] font-bold leading-none">
+            {points}
+          </p>
+        </div>
+      ))}
+    </section>
+  );
+
+  if (!phone) {
+    const playing = view.phase === "answering" || view.phase === "steal";
+    const answering =
+      view.phase === "steal"
+        ? (snapshot?.teams ?? []).find(
+            (candidate) =>
+              candidate.id !== view.answerOwnerTeamId &&
+              candidate.active !== false,
+          )?.id
+        : view.answerOwnerTeamId;
+    return (
+      <section
+        dir="rtl"
+        data-testid="first-note-panel"
+        className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      >
+        <ChallengeContextStrip
+          {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
+          title={context.title ?? FIRST_NOTE_NAME}
+          aside={
+            view.phase === "auction" && view.biddingTeamId ? (
+              <span className="inline-flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] px-[18px] text-lg font-extrabold text-[hsl(var(--brand-navy))]">
+                <TeamDot className={dotOf(view.biddingTeamId)} />
+                الدور على {team(view.biddingTeamId)}
+              </span>
+            ) : (
+              <span className={CHIP}>
+                {view.phase === "completed" ? "نتيجة التحدي" : step}
+              </span>
+            )
+          }
+        />
+
+        {view.phase === "preparing" && (
+          <p className="py-8 text-center text-lg font-bold text-brand-slate">
+            نجهّز المقطع…
+          </p>
+        )}
+        {recap}
+
+        {view.phase !== "preparing" && view.phase !== "completed" && (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <main
+              className={cn(
+                "flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-[28px] bg-brand-paper px-[34px] py-7 text-center shadow-[7px_8px_0_hsl(var(--brand-navy))]",
+                NAVY,
+              )}
+            >
+              {view.phase === "auction" && (
+                <section
+                  className="flex flex-col items-center gap-3"
+                  data-testid="first-note-auction"
+                >
+                  {masterUrl && (
+                    <audio
+                      className="hidden"
+                      preload="auto"
+                      src={masterUrl}
+                      data-testid="first-note-audio-preload"
+                    />
+                  )}
+                  <p className="text-lg font-bold text-brand-slate">
+                    أقل مزايدة
+                  </p>
+                  {view.currentBidSeconds ? (
+                    <>
+                      <p className="font-display text-[4.5rem] font-black leading-none lg:text-[112px]">
+                        {secondsLabel(view.currentBidSeconds)}
+                      </p>
+                      <p className="inline-flex items-center gap-2.5 font-display text-2xl font-extrabold">
+                        <TeamDot
+                          className={dotOf(view.currentBidTeamId ?? "")}
+                        />
+                        {team(view.currentBidTeamId)}
+                      </p>
+                      <p className="inline-flex min-h-11 items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-5 text-lg font-extrabold">
+                        لو جاوبوا صح:{" "}
+                        {pointsLabel(rewardFor(view.currentBidSeconds))}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-display text-[3rem] font-black leading-tight lg:text-[64px]">
+                      ما بدت المزايدة
+                    </p>
+                  )}
+                  <p className="text-base text-brand-slate">
+                    {team(view.biddingTeamId)} يزايدون من {min} إلى{" "}
+                    {secondsLabel(max)}، أو ينسحبون.
+                  </p>
+                  {view.canPass && can("pass-first-note-bid") && (
+                    <button
+                      type="button"
+                      disabled={!live}
+                      onClick={() => send("pass-first-note-bid")}
+                      className={WHITE_ACTION}
+                      data-testid="first-note-pass"
+                    >
+                      ننسحب، خلهم يجاوبون
+                    </button>
+                  )}
+                </section>
+              )}
+
+              {playing && (
+                <section
+                  className="flex w-full flex-col items-center gap-4"
+                  data-testid="first-note-answer-phase"
+                >
+                  <span className="inline-flex min-h-[52px] -rotate-2 items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 font-display text-2xl font-black">
+                    المقطع شغّال · مدة المقطع: {secondsLabel(clipSeconds ?? 0)}
+                  </span>
+                  <Waveform />
+                  <p className="font-display text-2xl font-extrabold lg:text-[32px]">
+                    {view.phase === "steal"
+                      ? `فرصة سرقة وحدة بمزايدتهم: ${secondsLabel(clipSeconds ?? 0)}`
+                      : `${team(view.answerOwnerTeamId)} قالوا يعرفونها من ${secondsLabel(view.finalBidSeconds ?? 0)}`}
+                  </p>
+                  {masterUrl && (
+                    <audio
+                      ref={audioRef}
+                      controls
+                      preload="auto"
+                      // One canonical Master, identical for every bid and for
+                      // the steal. Only how far it is allowed to run changes.
+                      src={masterUrl}
+                      data-clip-seconds={clipSeconds}
+                      data-testid="first-note-audio"
+                      className="w-full max-w-md"
+                    />
+                  )}
+                </section>
+              )}
+
+              {reveal}
+            </main>
+
+            <aside className="flex flex-col gap-3.5">
+              {clue}
+              {playing && answering && (
+                <div
+                  className={cn(
+                    "flex items-center justify-between gap-2.5 rounded-[18px] bg-white px-4 py-3",
+                    NAVY,
+                  )}
+                >
+                  <span className="inline-flex items-center gap-2 font-display text-[19px] font-extrabold">
+                    <TeamDot className={dotOf(answering)} />
+                    {team(answering)}
+                  </span>
+                  <span className="text-sm font-bold">
+                    {view.phase === "steal"
+                      ? "يحاولون يسرقونها"
+                      : "يجاوبون أول"}
+                    {clipSeconds
+                      ? ` · ${pointsLabel(rewardFor(clipSeconds))}`
+                      : ""}
+                  </span>
+                </div>
+              )}
+              <p className="text-center text-sm leading-[1.7] text-brand-slate">
+                {view.phase === "auction"
+                  ? "كل ما قلّت الثواني زادت النقاط. صاحب أقل مزايدة يسمع المقطع ويجاوب أول."
+                  : view.phase === "answering"
+                    ? "لو غلطوا، الخصم له محاولة سرقة وحدة بمزايدته هو."
+                    : view.phase === "steal"
+                      ? "محاولة وحدة بس، والإجابة من الجوال."
+                      : ""}
+              </p>
+            </aside>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <ChallengeFrame
-      {...(phone ? {} : { eyebrow: FIRST_NOTE_NAME })}
-      compact={phone}
+      compact
       aside={
-        phone && remainingMs !== undefined ? (
+        remainingMs !== undefined ? (
           <ChallengeCountdown remainingMs={remainingMs} sound={false} />
         ) : null
       }
-      title={
-        view.phase === "completed"
-          ? "نتيجة التحدي"
-          : `الأغنية ${view.songIndex + 1} من ${view.songCount}`
-      }
+      title={view.phase === "completed" ? "نتيجة التحدي" : step}
       progressValue={
         view.phase === "completed"
           ? 100
           : ((view.songIndex + 1) / view.songCount) * 100
       }
-      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-4xl"}
+      className="flex min-h-0 flex-1 flex-col"
     >
       <div
         dir="rtl"
-        className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
+        className="flex min-h-0 flex-1 flex-col gap-3 text-[hsl(var(--brand-navy))]"
         data-testid="first-note-panel"
       >
         {view.phase === "preparing" && (
-          <p className="text-center font-bold">جارٍ تجهيز المقطع…</p>
+          <p className="text-center font-bold text-brand-slate">
+            نجهّز المقطع…
+          </p>
         )}
-        {view.phase !== "preparing" && view.phase !== "completed" && (
-          <section
-            className={
-              phone
-                ? "shrink-0 text-center"
-                : "rounded-[var(--radius)] border bg-card p-5 text-center"
-            }
-            data-testid="first-note-clue"
-          >
-            {view.clueLabel?.ar && (
-              <p className="text-xs text-muted-foreground">
-                {view.clueLabel.ar}
-              </p>
-            )}
-            <p className={phone ? "text-lg font-black" : "text-2xl font-black"}>
-              {view.clue.ar}
-            </p>
-          </section>
-        )}
+        {clue}
         {view.phase === "auction" && (
           <section
-            className={
-              phone
-                ? "flex min-h-0 flex-1 flex-col gap-2 text-center"
-                : "space-y-4 text-center"
-            }
+            className="flex min-h-0 flex-1 flex-col gap-2.5 text-center"
             data-testid="first-note-auction"
           >
-            {!phone && masterUrl && (
-              <audio
-                className="hidden"
-                preload="auto"
-                src={masterUrl}
-                data-testid="first-note-audio-preload"
-              />
-            )}
-            <p className="text-lg font-bold">
-              أقل مزايدة:{" "}
-              <strong>
-                {view.currentBidSeconds
-                  ? `${view.currentBidSeconds} ثانية · ${team(view.currentBidTeamId)}`
-                  : "لم تبدأ"}
-              </strong>
+            <p className="text-sm font-bold text-brand-slate">
+              {view.currentBidSeconds ? (
+                <>
+                  أقل مزايدة: {secondsLabel(view.currentBidSeconds)} ·{" "}
+                  {team(view.currentBidTeamId)}
+                </>
+              ) : (
+                "ما بدت المزايدة"
+              )}
             </p>
-            <p>
-              {team(view.biddingTeamId)} عليه الدور · المسموح {min}–{max} ثانية
-            </p>
-            {phone && view.canBid && can("submit-first-note-bid") ? (
-              <MobileActionArea>
-                {/* Only the seconds the current floor actually allows — the same
-                    1..max the panel has always computed from `currentBidSeconds`.
-                    Picking then confirming, rather than bidding on first tap: an
-                    auction is latency-sensitive and a mis-tap is unrecoverable. */}
-                <ol
-                  className="grid list-none grid-cols-5 gap-1.5"
-                  data-testid="first-note-bid-options"
-                  dir="ltr"
-                >
-                  {Array.from(
-                    { length: Math.max(max - min + 1, 0) },
-                    (_u, i) => max - i,
-                  ).map((seconds) => (
-                    <li key={seconds}>
-                      <button
-                        type="button"
-                        disabled={!live || Boolean(sending)}
-                        onClick={() => setBid(String(seconds))}
-                        data-testid={`first-note-bid-${seconds}`}
-                        data-selected={
-                          Number(bid) === seconds ? "true" : undefined
-                        }
-                        className={cn(
-                          "akwaan-numeral h-12 w-full rounded-[var(--radius)] border-2 text-base font-black transition-colors duration-fast ease-akwaan disabled:opacity-40",
-                          Number(bid) === seconds
-                            ? "border-brand-gold bg-brand-gold/15 text-foreground"
-                            : "border-border bg-card text-muted-foreground",
-                        )}
-                      >
-                        {seconds}
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-                <Button
-                  size="lg"
-                  disabled={
-                    !live ||
-                    Boolean(sending) ||
-                    !Number.isInteger(Number(bid)) ||
-                    Number(bid) < 1 ||
-                    Number(bid) > max
-                  }
-                  onClick={() =>
-                    dispatch("bid", "submit-first-note-bid", {
-                      seconds: Number(bid),
-                    })
-                  }
-                  data-testid="first-note-submit-bid"
-                  className="h-14 w-full text-base font-black"
-                >
-                  {sending === "bid"
-                    ? "جارٍ الإرسال…"
-                    : bid
-                      ? `زايد بـ ${bid} ثانية`
-                      : "اختاروا عدد الثواني"}
-                </Button>
-                {view.canPass && can("pass-first-note-bid") && (
-                  <Button
-                    variant="outline"
-                    disabled={!live || Boolean(sending)}
-                    onClick={() => dispatch("pass", "pass-first-note-bid")}
-                    data-testid="first-note-pass"
-                    className="h-12 w-full font-black"
+            {view.canBid && can("submit-first-note-bid") && !mayAct ? (
+              <section
+                className="flex flex-1 flex-col justify-center gap-3"
+                data-testid="first-note-auction-teammate"
+              >
+                <div className="flex flex-col gap-2 rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] bg-white p-4 text-center">
+                  <p className="text-sm font-bold text-brand-slate">
+                    المزايدة عند
+                  </p>
+                  <p className="font-display text-2xl font-extrabold">
+                    <bdi>{holderName}</bdi>
+                  </p>
+                  <p className="text-sm leading-relaxed text-brand-slate">
+                    تشاوروا معه: في كم ثانية تعرفونها؟
+                  </p>
+                </div>
+              </section>
+            ) : view.canBid && can("submit-first-note-bid") ? (
+              <>
+                <div className="flex flex-1 flex-col items-center justify-center gap-1">
+                  <p className="text-sm font-bold text-brand-slate">مزايدتكم</p>
+                  <p
+                    className="font-display text-[52px] font-black leading-none"
+                    data-testid="first-note-bid-value"
                   >
-                    {sending === "pass" ? "جارٍ…" : "توقف عن المزايدة"}
-                  </Button>
-                )}
-              </MobileActionArea>
-            ) : phone ? (
+                    {secondsLabel(chosen)}
+                  </p>
+                  <p className="inline-flex min-h-9 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-3.5 text-sm font-extrabold">
+                    لو جاوبتوا صح: {pointsLabel(rewardFor(chosen))}
+                  </p>
+                </div>
+                <MobileActionArea>
+                  {/* Only the seconds the current floor allows. Sliding picks,
+                      the button sends: an auction is latency-sensitive and a
+                      mis-touch on the slider must not be a bid. */}
+                  {/* The same control as «مين أقرب»: a step button each side
+                      of the gold track. */}
+                  <div dir="ltr" className="flex w-full items-center gap-2.5">
+                    <button
+                      type="button"
+                      aria-label="نقّص ثانية"
+                      data-testid="first-note-bid-down"
+                      disabled={!live || Boolean(sending) || chosen <= min}
+                      onClick={() => setBid(String(Math.max(min, chosen - 1)))}
+                      className={STEP_BUTTON}
+                    >
+                      −
+                    </button>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <input
+                        type="range"
+                        dir="ltr"
+                        min={min}
+                        max={max}
+                        step={1}
+                        value={chosen}
+                        disabled={!live || Boolean(sending) || max <= min}
+                        onChange={(event) => setBid(event.target.value)}
+                        aria-label="عدد الثواني"
+                        aria-valuetext={secondsLabel(chosen)}
+                        data-testid="first-note-bid-slider"
+                        style={
+                          {
+                            "--closest-progress": `${max > min ? ((chosen - min) / (max - min)) * 100 : 100}%`,
+                          } as React.CSSProperties
+                        }
+                        className="closest-slider h-11 w-full cursor-pointer"
+                      />
+                      <div className="akwaan-numeral flex justify-between px-1 text-sm font-bold text-brand-slate">
+                        <span>{min}</span>
+                        <span>{max}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="زوّد ثانية"
+                      data-testid="first-note-bid-up"
+                      disabled={!live || Boolean(sending) || chosen >= max}
+                      onClick={() => setBid(String(Math.min(max, chosen + 1)))}
+                      className={STEP_BUTTON}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      !live ||
+                      Boolean(sending) ||
+                      !Number.isInteger(chosen) ||
+                      chosen < min ||
+                      chosen > max
+                    }
+                    onClick={() =>
+                      dispatch("bid", "submit-first-note-bid", {
+                        seconds: chosen,
+                      })
+                    }
+                    data-testid="first-note-submit-bid"
+                    className={cn(GOLD_ACTION, "w-full")}
+                  >
+                    {sending === "bid"
+                      ? "نرسلها…"
+                      : `زايد بـ ${secondsLabel(chosen)}`}
+                  </button>
+                  {view.canPass && can("pass-first-note-bid") && (
+                    <button
+                      type="button"
+                      disabled={!live || Boolean(sending)}
+                      onClick={() => dispatch("pass", "pass-first-note-bid")}
+                      data-testid="first-note-pass"
+                      className={cn(WHITE_ACTION, "w-full")}
+                    >
+                      {sending === "pass" ? "ننسحب…" : "ننسحب، خلهم يجاوبون"}
+                    </button>
+                  )}
+                </MobileActionArea>
+              </>
+            ) : (
               // Waiting still means nothing to do — but "the other team" is
-              // nobody. Naming who holds the bid, what their two moves are,
-              // and where the bid stands turns an empty screen into a thing
-              // worth watching. No player is named: this auction's turn
-              // belongs to a team, not to an assigned actor.
+              // nobody. Naming who holds the bid and what their two moves are
+              // turns an empty screen into a thing worth watching.
               <section
                 className="flex flex-1 flex-col justify-center gap-3"
                 data-testid="first-note-auction-waiting"
               >
-                <div className="flex flex-col gap-2 rounded-[var(--radius)] border-2 border-border bg-card p-4 text-center">
-                  <p className="text-xs font-black text-muted-foreground">
-                    ننتظر
-                  </p>
-                  <p className="text-xl font-black text-foreground">
+                <div className="flex flex-col gap-2 rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] bg-white p-4 text-center">
+                  <p className="text-sm font-bold text-brand-slate">ننتظر</p>
+                  <p className="font-display text-2xl font-extrabold">
                     {team(view.biddingTeamId)}
                   </p>
-                  <p className="text-sm font-bold leading-relaxed text-muted-foreground">
-                    يزايد أو يتوقف. لو توقف، المقطع يروح لصاحب آخر مزايدة.
+                  <p className="text-sm leading-relaxed text-brand-slate">
+                    يزايدون أو ينسحبون. لو انسحبوا، المقطع يروح لصاحب آخر
+                    مزايدة.
                   </p>
                 </div>
-                {view.currentBidSeconds ? (
-                  <p className="text-center text-sm font-bold text-muted-foreground">
-                    آخر مزايدة{" "}
-                    <span className="akwaan-numeral font-black text-foreground">
-                      {view.currentBidSeconds}
-                    </span>{" "}
-                    ثانية · {team(view.currentBidTeamId)}
-                  </p>
-                ) : (
-                  <p className="text-center text-sm font-bold text-muted-foreground">
-                    ما في مزايدة بعد.
-                  </p>
-                )}
               </section>
-            ) : null}
-            {!phone && view.canPass && can("pass-first-note-bid") && (
-              <Button
-                variant="outline"
-                disabled={!live}
-                onClick={() => send("pass-first-note-bid")}
-                data-testid="first-note-pass"
-              >
-                توقف عن المزايدة
-              </Button>
             )}
           </section>
         )}
         {(view.phase === "answering" || view.phase === "steal") && (
           <section
-            className={
-              phone
-                ? "flex min-h-0 flex-1 flex-col gap-2 text-center"
-                : "space-y-4 text-center"
-            }
+            className="flex min-h-0 flex-1 flex-col gap-2.5 text-center"
             data-testid="first-note-answer-phase"
           >
-            <p
-              className={phone ? "text-base font-black" : "text-xl font-black"}
-            >
+            <p className="font-display text-lg font-extrabold">
               {view.phase === "steal"
-                ? `فرصة سرقة واحدة — بمزايدتكم ${clipSeconds} ثانية`
-                : `${team(view.answerOwnerTeamId)} قال يقدر يعرفها من ${view.finalBidSeconds} ثانية`}
+                ? `فرصة سرقة وحدة بمزايدتكم: ${secondsLabel(clipSeconds ?? 0)}`
+                : `${team(view.answerOwnerTeamId)} قالوا يعرفونها من ${secondsLabel(view.finalBidSeconds ?? 0)}`}
             </p>
-            {masterUrl && !phone && (
-              <audio
-                ref={audioRef}
-                controls
-                preload="auto"
-                // One canonical Master, identical for every bid and for the
-                // steal. Only how far it is allowed to run changes.
-                src={masterUrl}
-                data-clip-seconds={clipSeconds}
-                data-testid="first-note-audio"
-              />
-            )}
-            {!phone && <p>مدة المقطع: {clipSeconds} ثانية</p>}
-            {phone && view.canAnswer && can("submit-first-note-answer") ? (
-              <div className="flex min-h-0 flex-1 flex-col">
+            {view.canAnswer && can("submit-first-note-answer") && !mayAct ? (
+              <p
+                className="flex flex-1 items-center justify-center text-lg font-bold text-brand-slate"
+                data-testid="first-note-answer-teammate"
+              >
+                <span>
+                  الإجابة من جوال <bdi>{holderName}</bdi>. عرفتوها؟ قولوا له.
+                </span>
+              </p>
+            ) : view.canAnswer && can("submit-first-note-answer") ? (
+              <form
+                className="flex min-h-0 flex-1 flex-col"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (answer.trim())
+                    dispatch("answer", "submit-first-note-answer", {
+                      answer: answer.trim(),
+                    });
+                }}
+              >
                 <div className="flex flex-1 flex-col justify-center">
-                  <Input
+                  <AnswerEntry
                     value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
+                    onChange={setAnswer}
                     placeholder="اسم الأغنية"
-                    data-testid="first-note-answer-input"
-                    className="h-16 rounded-[var(--radius)] border-2 text-center text-xl font-black focus-visible:border-brand-gold"
+                    inputTestId="first-note-answer-input"
                   />
                 </div>
                 <MobileActionArea>
-                  <Button
-                    size="lg"
+                  <button
+                    type="submit"
                     disabled={!live || Boolean(sending) || !answer.trim()}
-                    onClick={() =>
-                      dispatch("answer", "submit-first-note-answer", {
-                        answer: answer.trim(),
-                      })
-                    }
                     data-testid="first-note-submit-answer"
-                    className="h-14 w-full text-base font-black"
+                    className={cn(
+                      GOLD_ACTION,
+                      "w-full",
+                      !answer.trim() && !sending && "bg-brand-lavender",
+                    )}
                   >
-                    {sending === "answer" ? "جارٍ الإرسال…" : "إرسال الإجابة"}
-                  </Button>
+                    {sending === "answer" ? "نرسلها…" : "إرسال الإجابة"}
+                  </button>
                 </MobileActionArea>
-              </div>
-            ) : phone ? (
+              </form>
+            ) : (
               <p
-                className="flex flex-1 items-center justify-center font-black text-muted-foreground"
+                className="flex flex-1 items-center justify-center text-lg font-bold text-brand-slate"
                 data-testid="first-note-answer-waiting"
               >
                 {view.phase === "steal"
-                  ? "فرصة السرقة مع الفريق الآخر"
-                  : "بانتظار الفريق المجيب"}
+                  ? "فرصة السرقة مع الخصم"
+                  : "ننتظر الفريق اللي يجاوب"}
               </p>
-            ) : null}
-          </section>
-        )}
-        {view.phase === "resolved" && view.reveal && (
-          <section
-            className="space-y-2 text-center"
-            data-testid="first-note-reveal"
-          >
-            <h2 className="text-3xl font-black">{view.reveal.title}</h2>
-            <ResolutionSubmissions
-              answers={view.reveal.answers}
-              teamName={team}
-            />
-            <p>المزايدة الأخيرة: {view.reveal.finalBidSeconds} ثانية</p>
-            <p>
-              {view.reveal.winnerTeamId
-                ? `${team(view.reveal.winnerTeamId)} · ${view.reveal.points[view.reveal.winnerTeamId]} نقاط`
-                : "بدون فائز"}
-            </p>
-            {actor === "controller" && can("advance-first-note") && (
-              <Button onClick={() => send("advance-first-note")}>
-                الأغنية التالية
-              </Button>
             )}
           </section>
         )}
-        {view.phase === "completed" && view.result && (
-          <section className="text-center" data-testid="first-note-recap">
-            {Object.entries(view.result.points).map(([id, points]) => (
-              <p key={id} className="text-xl font-black">
-                {team(id)}: {points}
-              </p>
-            ))}
-          </section>
-        )}
+        {reveal}
+        {recap}
       </div>
     </ChallengeFrame>
   );
