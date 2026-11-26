@@ -265,7 +265,7 @@ function Surface({
       case "top-5": {
         if (example.kind === "bomb" && step === 1 && !team)
           return (
-            <ol>
+            <ol className={styles.panelFill}>
               <ResultRoundCard
                 snapshot={snapshot}
                 round={1}
@@ -335,7 +335,13 @@ function Surface({
         return example.kind === "bomb" ? (
           <BombResultRecap result={result} snapshot={snapshot} />
         ) : (
-          <div className={reduced ? styles.instantReveal : undefined}>
+          <div
+            className={
+              reduced
+                ? `${styles.panelFill} ${styles.instantReveal}`
+                : styles.panelFill
+            }
+          >
             <Top5ResultReveal
               result={result}
               snapshot={snapshot}
