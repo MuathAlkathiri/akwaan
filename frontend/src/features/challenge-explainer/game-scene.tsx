@@ -5,8 +5,6 @@ import { RyoResultRecap } from "../live-game-session/match/components/ryo-result
 import { OddPieceResultRecap } from "../live-game-session/match/components/odd-piece-result-recap";
 import { MarhalaResultRecap } from "../live-game-session/match/components/marhala-result-recap";
 import { MarhalaAnswerReveal } from "../live-game-session/match/components/marhala-answer-reveal";
-import { ResultRoundCard } from "../live-game-session/match/components/challenge-result-banner";
-import { usePrefersReducedMotion } from "./use-explainer-timeline";
 import styles from "./scene.module.css";
 import { LiveSessionContext } from "../live-game-session/hooks/live-session-context";
 import { LiveSessionClockContext } from "../live-game-session/hooks/live-session-clock-context";
@@ -106,6 +104,26 @@ export function GameScene({ example }: { example: SceneExample }) {
   );
 }
 const noop = () => {};
+
+function ryoExplainLine(
+  example: Extract<SceneExample, { kind?: "ryo" }>,
+  answeringName: string,
+  opposingName: string,
+) {
+  const correct = example.outcome.correct;
+  const trusted = example.opposingDecision === "STEAL";
+  if (correct && trusted) {
+    return `${answeringName} جاوب صح، و${opposingName} قرأهم صح وسرق النقطة.`;
+  }
+  if (!correct && !trusted) {
+    return `${answeringName} جاوب غلط، و${opposingName} شكّ فيهم صح وأخذ النقطة.`;
+  }
+  if (correct && !trusted) {
+    return `${answeringName} جاوب صح، و${opposingName} شكّ فيهم غلط وخسر نقطة.`;
+  }
+  return `${answeringName} جاوب غلط، و${opposingName} وثق فيهم غلط وخسر نقطة.`;
+}
+
 function Surface({
   example,
   step,
@@ -115,7 +133,6 @@ function Surface({
   step: number;
   team?: string;
 }) {
-  const reduced = usePrefersReducedMotion();
   const { runtime, snapshot } = sceneProjection(example, step, team);
   const baseResult: MatchChallengeResult = {
     id: "example",
@@ -171,7 +188,7 @@ function Surface({
             mechanicPoints: [{ teamId: owner, points: example.outcome.delta }],
           };
           return (
-            <div className={styles.roundOnly}>
+            <div className={`${styles.centeredRecap} ${styles.roundOnly}`}>
               <RyoResultRecap
                 result={{ ...baseResult, details: { items: [item] } }}
                 snapshot={snapshot}
@@ -179,11 +196,28 @@ function Surface({
             </div>
           );
         }
+        if (step === 1 && !team) {
+          return (
+            <div className={styles.panelFill}>
+              <RyoGameplayPanel runtime={runtime} />
+              <p
+                data-testid="ryo-explain-line"
+                className={styles.ryoExplain}
+              >
+                {ryoExplainLine(
+                  example,
+                  teamName("team-a"),
+                  teamName("team-b"),
+                )}
+              </p>
+            </div>
+          );
+        }
         return <RyoGameplayPanel runtime={runtime} />;
       case "closest":
         if (step === 2 && !team)
           return (
-            <div className={styles.roundOnly}>
+            <div className={`${styles.centeredRecap} ${styles.roundOnly}`}>
               <ClosestResultRecap
                 result={{
                   ...baseResult,
@@ -208,14 +242,16 @@ function Surface({
       case "odd-piece":
         if (step === 2 && !team)
           return (
-            <OddPieceResultRecap
-              snapshot={snapshot}
-              result={{
-                ...baseResult,
-                winnerTeamId: example.outcome.winnerTeam,
-                details: { points: example.outcome.points },
-              }}
-            />
+            <div className={styles.centeredRecap}>
+              <OddPieceResultRecap
+                snapshot={snapshot}
+                result={{
+                  ...baseResult,
+                  winnerTeamId: example.outcome.winnerTeam,
+                  details: { points: example.outcome.points },
+                }}
+              />
+            </div>
           );
         return (
           <OddPieceGameplayPanel
@@ -226,7 +262,7 @@ function Surface({
       case "marhala":
         if (step === 2 && !team)
           return (
-            <div className={styles.turnOnly}>
+            <div className={`${styles.centeredRecap} ${styles.turnOnly}`}>
               <MarhalaResultRecap
                 result={{
                   ...baseResult,
@@ -241,8 +277,11 @@ function Surface({
               />
             </div>
           );
-        if (step === 1)
-          return (
+        if (step === 1) {
+          if (team && team !== example.activeTeam) {
+            return <MarhalaPhonePanel runtime={runtime} />;
+          }
+          const reveal = (
             <MarhalaAnswerReveal
               turn={{
                 ...example.outcome,
@@ -256,6 +295,12 @@ function Surface({
               compact={!!team}
             />
           );
+          return team ? (
+            reveal
+          ) : (
+            <div className={styles.centeredRecap}>{reveal}</div>
+          );
+        }
         return team ? (
           <MarhalaPhonePanel runtime={runtime} />
         ) : (
@@ -263,23 +308,6 @@ function Surface({
         );
       case "bomb":
       case "top-5": {
-        if (example.kind === "bomb" && step === 1 && !team)
-          return (
-            <ol className={styles.panelFill}>
-              <ResultRoundCard
-                snapshot={snapshot}
-                round={1}
-                question={example.prompt}
-                stamp={{ label: "إجابة صحيحة", tone: "correct" }}
-                facts={[
-                  {
-                    label: teamName(example.startingTeam),
-                    value: example.acceptedAnswer,
-                  },
-                ]}
-              />
-            </ol>
-          );
         if (step !== 2 || (team && example.kind === "top-5"))
           return example.kind === "bomb" ? (
             <BombGameplayPanel runtime={runtime} />
@@ -333,19 +361,15 @@ function Surface({
                 },
         };
         return example.kind === "bomb" ? (
-          <BombResultRecap result={result} snapshot={snapshot} />
+          <div className={styles.centeredRecap}>
+            <BombResultRecap result={result} snapshot={snapshot} />
+          </div>
         ) : (
-          <div
-            className={
-              reduced
-                ? `${styles.panelFill} ${styles.instantReveal}`
-                : styles.panelFill
-            }
-          >
+          <div className={styles.panelFill}>
             <Top5ResultReveal
               result={result}
               snapshot={snapshot}
-              stepMs={reduced ? 0 : 270}
+              stepMs={0}
             />
           </div>
         );

@@ -58,11 +58,11 @@ const PREVIEW_RYO_SCENARIO: RyoTutorialScenario = {
   ],
   correctOptionId: "opt-1",
   answeringSelectionOptionId: "opt-1",
-  opposingDecision: "TRUST",
+  opposingDecision: "STEAL",
   outcome: {
     teamRole: "opposing",
     delta: 1,
-    reason: "ryo.correct-trust",
+    reason: "ryo.correct-steal",
     correct: true,
   },
 };

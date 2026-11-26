@@ -179,8 +179,8 @@ export function sceneProjection(
         questionsPresented: 5,
         successfulMoveCount: step === 2 ? 5 : 4,
       });
-      if (actor === a)
-        allow("mode:submit-moving-xo-answer", "mode:place-moving-xo-mark");
+      if (actor === a && step === 0) allow("mode:submit-moving-xo-answer");
+      if (actor === a && step === 1) allow("mode:place-moving-xo-mark");
       setMatchEnd(a, { [a]: 1, [b]: 0 });
       break;
     }
@@ -196,6 +196,8 @@ export function sceneProjection(
           : example.outcome.delta < 0
             ? otherTeamId
             : null;
+      const trusted = example.opposingDecision === "STEAL";
+      const readMatchedOutcome = example.outcome.correct ? trusted : !trusted;
       const payload = {
         correct: example.outcome.correct,
         selectedAnswer: label(example.answeringSelectionOptionId),
@@ -203,8 +205,7 @@ export function sceneProjection(
         decision: example.opposingDecision.toLowerCase(),
         teamId,
         delta: example.outcome.delta,
-        readMatchedOutcome:
-          example.outcome.teamRole === "opposing" && example.outcome.delta > 0,
+        readMatchedOutcome,
       };
       Object.assign(state, {
         phase: step ? "revealed" : "collecting",
@@ -281,7 +282,7 @@ export function sceneProjection(
             })
           : null,
       });
-      allow("mode:submit-estimate");
+      if (!step) allow("mode:submit-estimate");
       setMatchEnd(
         outcome.winnerTeam,
         {
@@ -302,6 +303,11 @@ export function sceneProjection(
       round.activeParticipantId = active;
       runtime.activeTeamId = active;
       runtime.prompt = step ? example.nextPrompt : example.prompt;
+      runtime.currentItem = {
+        id: "example",
+        index: step ? 1 : 0,
+        totalItems: 3,
+      };
       const media = step ? example.nextQuestion?.media : example.media;
       Object.assign(state, {
         phase: "presenting",
@@ -321,7 +327,7 @@ export function sceneProjection(
         clock.remainingMs = 1000 * example.correctAtSecondsRemaining;
         clock.consumedMs = clock.allocatedMs - clock.remainingMs;
       }
-      if (actor === active) allow("mode:submit-answer");
+      if (step < 2 && actor === active) allow("mode:submit-answer");
       setMatchEnd(example.outcome.winnerTeam, {
         [a]: example.outcome.winnerTeam === a ? 1 : 0,
         [b]: example.outcome.winnerTeam === b ? 1 : 0,
@@ -356,7 +362,7 @@ export function sceneProjection(
             : [],
         ),
       });
-      if (actor === state.activeTeamId) allow("mode:decide-card");
+      if (step < 2 && actor === state.activeTeamId) allow("mode:decide-card");
       setMatchEnd(example.outcome.winnerTeam, example.outcome.top5Counts);
       break;
     }
@@ -367,7 +373,12 @@ export function sceneProjection(
         ) ?? example.stages.at(-1);
       if (!question) break;
       Object.assign(state, {
-        phase: step === 2 ? "run-complete" : step ? "break-reveal" : "question",
+        phase:
+          step === 2
+            ? "run-complete"
+            : step === 1 && actor === b
+              ? "break-reveal"
+              : "question",
         questionPrompt: json(question.prompt),
         questionNumber: question.stage,
         questionStage: question.stage,
@@ -377,7 +388,7 @@ export function sceneProjection(
         forcedQuestion: true,
         comboBreakRevealedByTeamId: b,
         lastQuestionRevealJson:
-          step === 1
+          step === 1 && actor !== b
             ? json({
                 teamId: a,
                 correct: false,
@@ -402,7 +413,7 @@ export function sceneProjection(
             : [],
         ),
       });
-      if (actor === a) allow("mode:submit-combo-answer");
+      if (step === 0 && actor === a) allow("mode:submit-combo-answer");
       break;
     }
     case "odd-piece": {
@@ -410,6 +421,7 @@ export function sceneProjection(
         phase: ["open", "revealed", "completed"][step],
         prompt: example.prompt,
         modifiedImageJson: json(example.modifiedImage),
+        isAssignedActor: !!actor,
         canClaim: !!actor && !step,
         revealJson: step ? json(example) : null,
         resultJson:
@@ -429,6 +441,7 @@ export function sceneProjection(
             : [],
         ),
       });
+      if (step === 0) allow("mode:claim-odd-piece");
       setMatchEnd(example.outcome.winnerTeam, example.outcome.points);
       break;
     }
@@ -448,18 +461,19 @@ export function sceneProjection(
         selectedDifficulty: example.difficulty,
         questionPrompt: json(example.prompt),
         positionsJson: json(positions),
-        lastTurnJson: step
-          ? json({
-              ...example.outcome,
-              teamId: active,
-              turnNumber: 1,
-              correctAnswer: example.correctAnswer,
-              submittedAnswer: example.submittedAnswer,
-              resolvedBy: "answer",
-            })
-          : null,
+        lastTurnJson:
+          step && (!actor || actor === active)
+            ? json({
+                ...example.outcome,
+                teamId: active,
+                turnNumber: 1,
+                correctAnswer: example.correctAnswer,
+                submittedAnswer: example.submittedAnswer,
+                resolvedBy: "answer",
+              })
+            : null,
       });
-      if (actor === active) allow("mode:submit-marhala-answer");
+      if (step === 0 && actor === active) allow("mode:submit-marhala-answer");
       const posA = positions[a] ?? 0;
       const posB = positions[b] ?? 0;
       setMatchEnd(
