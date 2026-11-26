@@ -31,6 +31,11 @@ export interface DrawnThing {
   category: DrawnThingCategory;
   /** The drawing itself: SVG markup on a 32-unit square. */
   body: string;
+  /**
+   * Other drawings whose shadow is nearly the same as this one's (three
+   * balls, a kiwi and an olive). Worked out when the library is built.
+   */
+  twins: string[];
 }
 
 const LIBRARY_FILE = 'things.json';

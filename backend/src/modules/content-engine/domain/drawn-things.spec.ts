@@ -70,6 +70,23 @@ describe('the library of drawn things', () => {
     }
   });
 
+  it('knows which drawings cast nearly the same shadow, both ways', () => {
+    const byKey = new Map(things.map((thing) => [thing.key, thing]));
+    for (const thing of things) {
+      expect(thing.twins).not.toContain(thing.key);
+      for (const twin of thing.twins) {
+        expect(byKey.get(twin)!.twins).toContain(thing.key);
+      }
+    }
+    // Two balls are one circle; a giraffe is like nothing else.
+    expect(byKey.get('football')!.twins).toContain('basketball');
+    expect(byKey.get('giraffe')!.twins).toEqual([]);
+    // Enough distinct shadows are left to ask about.
+    expect(
+      things.filter((thing) => thing.twins.length <= 2).length,
+    ).toBeGreaterThan(200);
+  });
+
   it('says «to the thing» the way it is written', () => {
     expect(toThe('القطة')).toBe('للقطة');
     expect(toThe('شنطة الظهر')).toBe('لشنطة الظهر');

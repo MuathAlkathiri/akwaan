@@ -100,7 +100,9 @@ Avoid breaking the core experience of puzzles.
   - **Pictures are drawn by the engine, not written by a model (2026-11-26).**
     The composer draws a growing list of families itself — battery level,
     copy the mark, colour recall, thread tracing, the folded cube, fold and
-    punch — with the answer fixed by the drawing. A family that needs a
+    punch, and — from its library of drawn everyday things — the shadow or
+    fragment of a thing, the difference between two boards, and the scan of
+    one board — with the answer fixed by the drawing. A family that needs a
     picture the composer cannot draw yet stays paused. A model still writes
     text-only items and must never refer to a picture.
   - **اقرأ خصمك is the exception to the first two rules (2026-11-25).** Its
