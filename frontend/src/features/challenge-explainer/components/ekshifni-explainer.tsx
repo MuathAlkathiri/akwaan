@@ -12,8 +12,12 @@ import { cn } from "@/lib/utils";
 import type { EkshifniTutorialScenario } from "../tutorial-scenario";
 import { EKSHIFNI_DEMO_STEPS } from "../ekshifni-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
-import type { ExplainerMode } from "./ryo-explainer";
+import {
+  ExplainerCaption,
+  ExplainerControls,
+  showsExplainerControls,
+} from "./explainer-controls";
+import type { ExplainerMode } from "../index";
 
 export function EkshifniExplainer({
   scenario,
@@ -92,7 +96,9 @@ export function EkshifniExplainer({
       dir="rtl"
       data-testid="ekshifni-explainer"
       data-demo-step={step.id}
-      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-5"}
+      className={
+        compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-5"
+      }
     >
       {showsExplainerControls(mode, timeline) ? (
         <div className="h-[9rem] sm:h-[7rem]">
@@ -132,7 +138,10 @@ export function EkshifniExplainer({
             {final ? (
               <section
                 data-testid="ekshifni-final"
-                className={cn("flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-4 text-center", !compact && "min-h-[34rem] sm:min-h-[36rem]")}
+                className={cn(
+                  "flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-4 text-center",
+                  !compact && "min-h-[34rem] sm:min-h-[36rem]",
+                )}
               >
                 <p className="text-sm font-black text-muted-foreground">
                   النتيجة بعد 3 صور
@@ -150,8 +159,12 @@ export function EkshifniExplainer({
                 className={cn(
                   "flex flex-col p-1",
                   phoneFocused
-                    ? compact ? "h-full min-h-0 flex-1 justify-between space-y-1" : "min-h-[19rem] justify-between space-y-1 sm:min-h-[20rem]"
-                    : compact ? "h-full min-h-0 flex-1 space-y-2 sm:space-y-3" : "min-h-[34rem] space-y-2 sm:min-h-[36rem] sm:space-y-3",
+                    ? compact
+                      ? "h-full min-h-0 flex-1 justify-between space-y-1"
+                      : "min-h-[19rem] justify-between space-y-1 sm:min-h-[20rem]"
+                    : compact
+                      ? "h-full min-h-0 flex-1 space-y-2 sm:space-y-3"
+                      : "min-h-[34rem] space-y-2 sm:min-h-[36rem] sm:space-y-3",
                 )}
               >
                 {phoneFocused ? (

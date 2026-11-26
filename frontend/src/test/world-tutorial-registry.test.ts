@@ -4,13 +4,14 @@ import { shouldRenderTutorialEditor } from "@/features/world-management/componen
 
 describe("world-specific tutorial editor registry", () => {
   it("exposes every supported release mechanic through the Admin gate", () => {
-    expect(SUPPORTED_TUTORIAL_MECHANIC_KEYS).toHaveLength(11);
+    expect(SUPPORTED_TUTORIAL_MECHANIC_KEYS).toHaveLength(10);
     for (const key of SUPPORTED_TUTORIAL_MECHANIC_KEYS) {
       expect(shouldRenderTutorialEditor(key)).toBe(true);
     }
   });
 
   it("does not grant historical or excluded mechanics publication access", () => {
+    expect(shouldRenderTutorialEditor("laqatha")).toBe(false);
     expect(shouldRenderTutorialEditor("one-clue")).toBe(false);
     expect(shouldRenderTutorialEditor("rakkibha")).toBe(false);
     expect(shouldRenderTutorialEditor("moving-xo")).toBe(false);

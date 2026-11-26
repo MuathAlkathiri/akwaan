@@ -28,8 +28,12 @@ import {
   type LaTahriqhaDemoStepId,
 } from "../la-tahriqha-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
-import type { ExplainerMode } from "./ryo-explainer";
+import {
+  ExplainerCaption,
+  ExplainerControls,
+  showsExplainerControls,
+} from "./explainer-controls";
+import type { ExplainerMode } from "../index";
 
 const SELECTION_STEPS: readonly LaTahriqhaDemoStepId[] = [
   "opening",
@@ -159,7 +163,9 @@ export function LaTahriqhaExplainer({
       data-testid="la-tahriqha-explainer"
       data-demo-step={step.id}
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
+      className={
+        compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"
+      }
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls

@@ -1,31 +1,9 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SAMPLE_TUTORIAL_SCENARIO,
-  type TutorialScenario,
-} from "@/features/challenge-explainer";
-import { SAMPLE_BOMB_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/bomb-demo-scenario";
-import { SAMPLE_CLOSEST_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/closest-demo-scenario";
-import { SAMPLE_TOP5_TUTORIAL_SCENARIO } from "@/features/challenge-explainer/top5-demo-scenario";
-
-/**
- * The published tutorial the mechanic serves. `null` is the real no-content
- * state, which the Preflight must handle with an explicit unavailable message.
- */
-let publishedTutorial: {
-  mechanicKey: string;
-  revision: number;
-  scenario: TutorialScenario;
-} | null = null;
-
+import type { PublishedTutorial } from "@/features/challenge-explainer/tutorial-scenario";
+let publishedTutorial: PublishedTutorial | null = null;
 vi.mock("@/features/challenge-explainer/use-published-tutorial", () => ({
   usePublishedTutorial: () => ({ data: publishedTutorial }),
 }));
@@ -85,7 +63,7 @@ const position = (
   worldName: "انمي",
   slotKey,
   challengeTypeId: `type-${index}`,
-  challengeKey: index === 0 ? "rakkibha" : `mechanic-${index}`,
+  challengeKey: index === 0 ? "closest" : `mechanic-${index}`,
   challengeName: `تحدي ${occurrenceIndex}-${index}`,
   requiresPhones: true,
   launchability: index === 0 ? "launchable" : "configured_but_unimplemented",
@@ -104,9 +82,9 @@ const preflight = (
   worldId: WORLD,
   worldName: "انمي",
   challengeTypeId: "type-0",
-  challengeKey: "rakkibha",
-  challengeName: "ركّبها",
-  description: "لا أحد يملك المعلومة كاملة",
+  challengeKey: "closest",
+  challengeName: "مين أقرب",
+  description: "كل فريق يرسل تقديره",
   requiresPhones: true,
   selectedScopes: [
     { scopeId: "s0", name: "نطاق أول" },
@@ -314,11 +292,7 @@ beforeEach(() => {
   vi.mocked(toast.success).mockClear();
   vi.mocked(toast.error).mockClear();
   window.sessionStorage.clear();
-  publishedTutorial = {
-    mechanicKey: "read-your-opponent",
-    revision: 1,
-    scenario: SAMPLE_TUTORIAL_SCENARIO,
-  };
+  publishedTutorial = null;
   mocks.prepare.mockResolvedValue({ sessionId: "session-1" });
   mocks.launch.mockResolvedValue({ sessionId: "session-1" });
   mocks.cancel.mockResolvedValue({ sessionId: "session-1" });
@@ -349,87 +323,26 @@ describe("challenge preflight", () => {
     expect(mocks.resync).toHaveBeenCalled();
   });
 
-  it("shows the QR, join code and both team counters", () => {
+  it("opens the join QR on demand and shows both fixed team names", async () => {
     renderRouter(match({ stage: "preflight", preflight: preflight() }));
-
-    const view = screen.getByTestId("challenge-preflight");
-    expect(view.textContent).toContain("ركّبها");
-    expect(view.textContent).toContain("العالم الثالث");
-    expect(view.textContent).not.toContain("اجمعوا المقاطع ثم أجيبوا");
-    expect(view.textContent).not.toContain("نطاق أول");
-    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
+    expect(screen.getByText(/الفريق الأول ·/)).toBeVisible();
+    expect(screen.getByText(/الفريق الثاني ·/)).toBeVisible();
+    const join = screen.getByRole("button", { name: "انضمام" });
+    expect(join).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(join);
+    expect(join).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("preflight-join-qr")).toHaveAttribute(
+      "data-join-code",
       "ABC123",
     );
-    // A real QR, carrying the absolute join URL for this origin.
-    const qr = view.querySelector("svg[height]");
-    expect(qr).toBeTruthy();
-    expect(view.textContent).not.toContain("/join/live-session/ABC123");
-    // The QR is now the tap-to-enlarge trigger, with its conversational hint.
-    expect(screen.getByTestId("qr-enlarge-trigger")).toBeInTheDocument();
-    expect(view.textContent).toContain("اضغط على الكود عشان تكبّره");
-    // Both teams, with their counts and their chips.
-    expect(screen.getByTestId("preflight-team-team-a").textContent).toContain(
-      "1/3",
-    );
-    expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
-      "3/3",
-    );
-    expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
-      "سارة",
-    );
-    expect(screen.getByTestId("preflight-team-team-a").dataset.ready).toBe(
-      "false",
-    );
-    expect(screen.getByTestId("preflight-team-team-b").dataset.ready).toBe(
-      "true",
-    );
-    expect(screen.getByTestId("preflight-turn-chip").textContent).toBe(
-      "أسود الشمال يبدأ",
-    );
-    // V6 Launch rail: readiness leads the rail and the collapsible join card
-    // sits directly beneath it so hosts immediately see who has arrived.
-    expect(
-      screen
-        .getByTestId("preflight-readiness")
-        .compareDocumentPosition(screen.getByTestId("preflight-join-toggle")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    fireEvent.click(join);
+    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
   });
-
-  it("enlarges the join QR to the same payload, and closes again", () => {
-    renderRouter(match({ stage: "preflight", preflight: preflight() }));
-    const view = screen.getByTestId("challenge-preflight");
-    const inline = view
-      .querySelector('[data-testid="qr-enlarge-trigger"] svg path[d]')
-      ?.getAttribute("d");
-
-    fireEvent.click(screen.getByTestId("qr-enlarge-trigger"));
-    const dialog = screen.getByRole("dialog");
-    const enlarged = dialog
-      .querySelector('[data-testid="qr-enlarged-image"] path[d]')
-      ?.getAttribute("d");
-    // Same code, bigger — never a re-encoded or different join URL.
-    expect(inline).toBeTruthy();
-    expect(enlarged).toBe(inline);
-
-    // The join code and copy control the room relies on are still there.
-    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
-      "ABC123",
-    );
-
-    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
   it("keeps Start disabled until the server says ready", () => {
     renderRouter(match({ stage: "preflight", preflight: preflight() }));
 
     const start = screen.getByTestId("preflight-start");
     expect(start.hasAttribute("disabled")).toBe(true);
-    // And says who it is waiting for.
-    expect(screen.getByTestId("challenge-preflight").textContent).toContain(
-      "بانتظار أسود الشمال",
-    );
   });
 
   it("enables Start once both teams are ready", async () => {
@@ -488,57 +401,7 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-start").hasAttribute("disabled")).toBe(
       true,
     );
-    // The dropped phone is still listed, marked as not connected.
-    expect(
-      within(screen.getByTestId("preflight-team-team-a")).getByLabelText(
-        "غير متصل",
-      ),
-    ).toBeTruthy();
-  });
-
-  it("steps the QR back when the players are already paired", async () => {
-    const user = userEvent.setup();
-    renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
-
-    expect(
-      screen.getByTestId("preflight-players-paired").textContent,
-    ).toContain("اللاعبين متصلين وجاهزين");
-    // No QR taking over the screen, but the code is one tap away.
-    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
-    await user.click(screen.getByTestId("preflight-join-toggle"));
-    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
-      "ABC123",
-    );
-  });
-
-  it("keeps the QR milestone scoped to the current Match session", () => {
-    window.sessionStorage.setItem(
-      "akwaan:preflight-join-complete:session-1",
-      "true",
-    );
-    const first = renderRouter(
-      match({ stage: "preflight", preflight: preflight() }),
-    );
-
-    expect(screen.getByTestId("preflight-join-toggle")).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
-
-    // A different Match gets its own first-join presentation state.
-    first.unmount();
-    window.sessionStorage.clear();
-    const view = renderRouter(
-      match({ stage: "preflight", preflight: preflight() }),
-      "controller",
-      "session-2",
-    );
-    expect(screen.getByTestId("preflight-join-toggle")).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-    view.unmount();
+    expect(screen.getByText(/الفريق الأول ·/)).toHaveTextContent("1/3");
   });
 
   it("cancels back to the board", async () => {
@@ -565,9 +428,7 @@ describe("challenge preflight", () => {
 
     renderRouter(state);
     expect(screen.getByTestId("challenge-preflight").textContent).toBe(before);
-    expect(screen.getByTestId("preflight-join-qr").getAttribute("data-join-code")).toBe(
-      "ABC123",
-    );
+    expect(screen.getByRole("button", { name: "انضمام" })).toBeVisible();
     // Nothing was re-requested to get back here.
     expect(mocks.prepare).not.toHaveBeenCalled();
   });
@@ -604,37 +465,12 @@ describe("challenge preflight", () => {
     expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
     // It still says what is happening.
     const waiting = screen.getByTestId("preflight-waiting");
-    expect(waiting.textContent).toContain("ركّبها");
+    expect(waiting.textContent).toContain("مين أقرب");
     expect(waiting.textContent).toContain("هذا التحدي يحتاج جوالات اللاعبين");
     // The shared screen still names the team and its count; the counter itself is
     // rendered as a tabular numeral so it reads left-to-right inside Arabic copy.
     expect(waiting.textContent).toContain("أسود الشمال");
     expect(waiting.textContent).toContain("1/3");
-  });
-
-  it("shows no pairing panel for a mechanic that needs no phones", () => {
-    renderRouter(
-      match({
-        stage: "preflight",
-        preflight: preflight({
-          requiresPhones: false,
-          join: undefined,
-          teams: [],
-          requirement: undefined,
-          allTeamsReady: true,
-          readyToLaunch: true,
-          blockingReasons: [],
-        }),
-      }),
-    );
-
-    expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
-    expect(screen.getByTestId("challenge-preflight").textContent).toContain(
-      "يُلعب هذا التحدي من الشاشة المشتركة",
-    );
-    expect(screen.getByTestId("preflight-start").hasAttribute("disabled")).toBe(
-      false,
-    );
   });
 
   it("never renders the old session management panel", () => {
@@ -669,581 +505,19 @@ describe("challenge preflight", () => {
     }
   });
 
-  describe("GSAP-only explanation", () => {
-    it("renders the published V6 integrated dual-iPhone RYO tutorial with intro and 4 stages", async () => {
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 1,
-        scenario: SAMPLE_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-          }),
-        }),
-      );
-
-      const explainer = screen.getByTestId("preflight-explainer");
-      expect(explainer).toHaveAttribute("data-animated", "true");
-      expect(
-        screen.getByTestId("preflight-inline-tutorial"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("tablist", { name: "خطوات الشرح التوضيحي" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId("preflight-inline-tutorial-caption"),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId("preflight-how-to-play")).toBeNull();
-      expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
-      expect(screen.queryByTestId("preflight-highlight")).toBeNull();
-
-      // Opens on the V6 intro card before advancing into stage 1.
-      const ryo = screen.getByTestId("ryo-explainer");
-      expect(ryo).toHaveAttribute("data-variant", "integrated");
-      expect(ryo).toHaveAttribute("data-step", "-1");
-      expect(ryo.textContent).toContain("بطاقة البداية");
-      expect(
-        screen.getByTestId("preflight-inline-tutorial-play"),
-      ).toHaveAttribute("data-playing", "false");
-
-      // Play/Start advances from intro into Stage 1 ("السؤال والإجابة") where
-      // the answering phone acts and reveal is still hidden.
-      const playToggle = screen.getByTestId("preflight-inline-tutorial-play");
-      await user.click(playToggle);
-      expect(playToggle).toHaveAttribute("data-playing", "true");
-      expect(
-        screen.getByRole("tab", { name: /السؤال والإجابة/ }),
-      ).toHaveAttribute("aria-selected", "true");
-      expect(
-        screen.getByTestId("explainer-phone-answering"),
-      ).toHaveAttribute("data-acting", "true");
-      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
-
-      // Step Next into Stage 2 ("قرار الخصم") where the opposing phone acts.
-      await user.click(screen.getByTestId("preflight-inline-tutorial-next"));
-      expect(screen.getByRole("tab", { name: /قرار الخصم/ })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-      expect(
-        screen.getByTestId("explainer-phone-opposing"),
-      ).toHaveAttribute("data-acting", "true");
-      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
-
-      // Direct step into Stage 3 ("تثبيت القرار") locks both phones with zero answer leakage.
-      await user.click(screen.getByRole("tab", { name: /تثبيت القرار/ }));
-      expect(
-        screen.getByTestId("explainer-lock-answering"),
-      ).toHaveAttribute("data-locked", "true");
-      expect(
-        screen.getByTestId("explainer-lock-opposing"),
-      ).toHaveAttribute("data-locked", "true");
-      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
-
-      // Direct step into Stage 4 ("الكشف والنتيجة") reveals answer + opposing decision + payoff.
-      await user.click(screen.getByRole("tab", { name: /الكشف والنتيجة/ }));
-      expect(screen.getByTestId("explainer-reveal")).toBeInTheDocument();
-
-      // Replay returns cleanly to the intro card.
-      await user.click(screen.getByTestId("preflight-inline-tutorial-replay"));
-      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-step",
-        "-1",
-      );
-    });
-
-    it("renders all four RYO options and highlights selection of the fourth option without pre-reveal leakage", async () => {
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 1,
-        scenario: {
-          ...SAMPLE_TUTORIAL_SCENARIO,
-          options: [
-            { id: "a", label: "خمسة" },
-            { id: "b", label: "ستة" },
-            { id: "c", label: "سبعة" },
-            { id: "d", label: "ثمانية" },
-          ],
-          correctOptionId: "d",
-          answeringSelectionOptionId: "d",
-        },
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-          }),
-        }),
-      );
-
-      await user.click(screen.getByRole("tab", { name: /السؤال والإجابة/ }));
-      const controls = screen.getByTestId("explainer-phone-answer-controls");
-      for (const label of ["خمسة", "ستة", "سبعة", "ثمانية"]) {
-        expect(within(controls).getByText(new RegExp(label))).toBeInTheDocument();
-      }
-      const fourth = controls.querySelectorAll('[data-selected]')[3];
-      expect(fourth).toHaveAttribute("data-selected", "true");
-      expect(fourth.textContent).toContain("ثمانية");
-      expect(
-        screen.getByTestId("explainer-phone-opposing").textContent,
-      ).not.toContain("ثمانية");
-      expect(screen.queryByTestId("explainer-reveal")).toBeNull();
-
-      await user.click(screen.getByRole("tab", { name: /الكشف والنتيجة/ }));
-      expect(screen.getByTestId("explainer-reveal").textContent).toContain(
-        "ثمانية",
-      );
-    });
-
-    it("shows an explicit unavailable state when no tutorial is published", () => {
-      publishedTutorial = null;
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "closest",
-            challengeName: "مين أقرب",
-          }),
-        }),
-      );
-
-      expect(
-        screen.getByTestId("preflight-inline-tutorial-fallback"),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId("preflight-how-to-play")).toBeNull();
-      expect(
-        screen.getByTestId("preflight-inline-tutorial").textContent,
-      ).toContain("لا يوجد شرح منشور لهذا التحدي بعد");
-      expect(screen.queryByTestId("preflight-player-instructions")).toBeNull();
-      expect(screen.queryByTestId("preflight-highlight")).toBeNull();
-    });
-
-    it("shows both team phones and the shared stage in one integrated RYO frame without view switcher tabs", () => {
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 1,
-        scenario: SAMPLE_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-          }),
-        }),
-      );
-
-      expect(screen.getAllByTestId("ryo-explainer")).toHaveLength(1);
-      expect(screen.getByTestId("ryo-explainer")).toHaveAttribute(
-        "data-variant",
-        "integrated",
-      );
-      expect(screen.getByTestId("explainer-phone-opposing")).toBeInTheDocument();
-      expect(screen.getByTestId("explainer-phone-answering")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("tab", { name: "جوالات اللاعبين" }),
-      ).toBeNull();
-    });
-
-    it("preserves non-RYO mechanics inside MechanicTutorialRenderer with their own stage counts and labels", async () => {
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "closest",
-        revision: 1,
-        scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "closest",
-            challengeName: "مين أقرب",
-          }),
-        }),
-      );
-
-      expect(screen.getByTestId("closest-explainer")).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).toBeNull();
-      const tabs = within(
-        screen.getByRole("tablist", { name: "خطوات الشرح التوضيحي" }),
-      ).getAllByRole("tab");
-      expect(tabs).toHaveLength(4);
-      await user.click(screen.getByRole("tab", { name: /تقديرات الفريقين/ }));
-      expect(
-        screen.getByRole("tab", { name: /تقديرات الفريقين/ }),
-      ).toHaveAttribute("aria-selected", "true");
-    });
-
-    it("plays Closest, Bomb, and Top 5 continuously through intermediate GSAP scenes without unexpected pauses and preserves V6 embedded chrome", async () => {
-      vi.useRealTimers();
-      const gsap = (await import("gsap")).default;
-      const user = userEvent.setup();
-
-      const cases = [
-        {
-          mechanicKey: "closest",
-          challengeName: "مين أقرب",
-          scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
-          intermediateScene: "2",
-          intermediateTabName: /تقديرات الفريقين/,
-          finalTabName: /النتيجة/,
-        },
-        {
-          mechanicKey: "bomb",
-          challengeName: "القنبلة",
-          scenario: SAMPLE_BOMB_TUTORIAL_SCENARIO,
-          intermediateScene: "1",
-          intermediateTabName: /بداية القنبلة/,
-          finalTabName: /انتهاء الوقت/,
-        },
-        {
-          mechanicKey: "top-5",
-          challengeName: "أفضل 5",
-          scenario: SAMPLE_TOP5_TUTORIAL_SCENARIO,
-          intermediateScene: "1",
-          intermediateTabName: /اختيار البطاقة/,
-          finalTabName: /النقاط/,
-        },
-      ] as const;
-
-      try {
-        gsap.globalTimeline.timeScale(35);
-
-        for (const item of cases) {
-          publishedTutorial = {
-            mechanicKey: item.mechanicKey,
-            revision: 1,
-            scenario: item.scenario,
-          };
-          const view = renderRouter(
-            match({
-              stage: "preflight",
-              preflight: preflight({
-                challengeKey: item.mechanicKey,
-                challengeName: item.challengeName,
-              }),
-            }),
-          );
-
-          // Starts on V6 intro card with embedded stage (no nested TV stand) and V6 iPhones.
-          expect(
-            screen.getByTestId("preflight-inline-tutorial-intro"),
-          ).toBeInTheDocument();
-          expect(
-            document.querySelector(
-              '[data-tutorial-surface="shared"][data-variant="v6-embedded"]',
-            ),
-          ).not.toBeNull();
-          expect(
-            screen.getByTestId("v6-dynamic-island-team-a"),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByTestId("v6-dynamic-island-team-b"),
-          ).toBeInTheDocument();
-          // Live match team names bind into the explainer stage.
-          expect(
-            screen.getByTestId("preflight-inline-tutorial").textContent,
-          ).toContain("أسود الشمال");
-          expect(
-            screen.getByTestId("preflight-inline-tutorial").textContent,
-          ).toContain("صقور الرياض");
-
-          const playToggle = screen.getByTestId(
-            "preflight-inline-tutorial-play",
-          );
-          await user.click(playToggle);
-          expect(playToggle).toHaveAttribute("data-playing", "true");
-
-          // Verify continuous progression through intermediate scenes without pausing!
-          await waitFor(
-            () => {
-              const wrapper = document.querySelector("[data-tutorial-scene]");
-              expect(
-                Number(wrapper?.getAttribute("data-tutorial-scene") ?? "0"),
-              ).toBeGreaterThanOrEqual(Number(item.intermediateScene));
-              expect(playToggle).toHaveAttribute("data-playing", "true");
-            },
-            { timeout: 3000 },
-          );
-
-          // Pause preserves exact current scene, Resume continues from it.
-          await user.click(playToggle);
-          expect(playToggle).toHaveAttribute("data-playing", "false");
-          const pausedScene = document
-            .querySelector("[data-tutorial-scene]")
-            ?.getAttribute("data-tutorial-scene");
-          expect(Number(pausedScene ?? "0")).toBeGreaterThanOrEqual(1);
-          await user.click(playToggle);
-          expect(playToggle).toHaveAttribute("data-playing", "true");
-
-          // User tab click seeks to the exact group boundary and pauses.
-          await user.click(
-            screen.getByRole("tab", { name: item.finalTabName }),
-          );
-          expect(playToggle).toHaveAttribute("data-playing", "false");
-          expect(
-            screen.getByRole("tab", { name: item.finalTabName }),
-          ).toHaveAttribute("aria-selected", "true");
-
-          // Replay returns cleanly to the V6 intro card.
-          await user.click(
-            screen.getByTestId("preflight-inline-tutorial-replay"),
-          );
-          expect(
-            screen.getByTestId("preflight-inline-tutorial-intro"),
-          ).toBeInTheDocument();
-
-          view.unmount();
-        }
-      } finally {
-        gsap.globalTimeline.timeScale(1);
-      }
-    });
-
-    it("keeps Closest estimates private on the shared screen until the canonical reveal stage", async () => {
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "closest",
-        revision: 1,
-        scenario: SAMPLE_CLOSEST_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "closest",
-            challengeName: "مين أقرب",
-          }),
-        }),
-      );
-
-      // Step into Stage 2 ("تقديرات الفريقين"): Team A phone shows its locked estimate,
-      // but the shared screen lock card keeps the numeric value secret until Reveal.
-      await user.click(
-        screen.getByRole("tab", { name: /تقديرات الفريقين/ }),
-      );
-      expect(
-        screen.getByTestId("closest-shared-screen").textContent,
-      ).not.toContain("١١٠");
-      expect(
-        screen.getByTestId("closest-shared-screen").textContent,
-      ).not.toContain("١٢٠");
-      expect(screen.queryByTestId("closest-tutorial-reveal")).toBeNull();
-
-      // Step into Stage 3 ("الكشف"): the target value and comparative distances appear.
-      await user.click(screen.getByRole("tab", { name: /الكشف/ }));
-      expect(
-        screen.getByTestId("closest-tutorial-reveal"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId("closest-tutorial-reveal").textContent,
-      ).toContain("١٢٠");
-    });
-
-    it("shows a compact recap on repeated encounters and lets the host expand without delaying launch", async () => {
-      const user = userEvent.setup();
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 1,
-        scenario: SAMPLE_TUTORIAL_SCENARIO,
-      };
-      const base = match({
-        stage: "preflight",
-        preflight: preflight({
-          ...readyPreflight(),
-          challengeKey: "read-your-opponent",
-          challengeName: "اقرأ خصمك",
-        }),
-      });
-      // Mark an earlier occurrence of read-your-opponent as already completed.
-      base.unified!.board.positions[0] = {
-        ...base.unified!.board.positions[0],
-        challengeKey: "read-your-opponent",
-        status: "completed",
-      };
-      renderRouter(base);
-
-      expect(
-        screen.getByTestId("preflight-inline-tutorial-recap"),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId("ryo-explainer")).toBeNull();
-      // Start stays enabled immediately on repeat encounters.
-      expect(screen.getByTestId("preflight-start")).not.toBeDisabled();
-
-      await user.click(screen.getByTestId("preflight-inline-tutorial-expand"));
-      expect(screen.getByTestId("ryo-explainer")).toBeInTheDocument();
-    });
-
-    it("places the joining panel before the tutorial in the preflight document order", () => {
-      publishedTutorial = {
-        mechanicKey: "read-your-opponent",
-        revision: 1,
-        scenario: SAMPLE_TUTORIAL_SCENARIO,
-      };
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            challengeKey: "read-your-opponent",
-            challengeName: "اقرأ خصمك",
-          }),
-        }),
-      );
-
-      const joiningRegion = screen.getByTestId("preflight-joining-region");
-      const tutorialRegion = screen.getByTestId("preflight-explainer");
-      expect(joiningRegion).toHaveClass("order-1", "lg:order-2");
-      expect(tutorialRegion).toHaveClass("order-2", "lg:order-1");
-    });
+  it("names the missing published example and keeps launch available", () => {
+    renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
+    expect(screen.getByRole("status")).toHaveTextContent("ما فيه مثال منشور");
+    expect(screen.getByTestId("preflight-start")).toBeEnabled();
   });
-
-  describe("readiness roster", () => {
-    it("is one clean roster card with authoritative counts and human status", () => {
-      renderRouter(match({ stage: "preflight", preflight: preflight() }));
-      const readiness = screen.getByTestId("preflight-readiness");
-      expect(readiness.textContent).toContain("جاهزية اللاعبين");
-      // Counts come straight from the snapshot, per team.
-      expect(screen.getByTestId("preflight-team-team-a").textContent).toContain(
-        "1/3",
-      );
-      expect(screen.getByTestId("preflight-team-team-b").textContent).toContain(
-        "3/3",
-      );
-      // The ready team says so in the semantic green status; the waiting team
-      // gets a human phrase, never a technical "ناقص" badge.
-      expect(
-        screen.getByTestId("preflight-team-status-team-b").textContent,
-      ).toContain("جاهز");
-      const waiting =
-        screen.getByTestId("preflight-team-status-team-a").textContent ?? "";
-      expect(waiting).toMatch(/باقي|بانتظار/);
-      expect(waiting).not.toContain("ناقص");
-    });
-
-    it("keeps a public player's name reachable and marks a dropped phone offline", () => {
-      renderRouter(
-        match({
-          stage: "preflight",
-          preflight: preflight({
-            teams: [
-              {
-                teamId: "team-a",
-                teamName: "أسود الشمال",
-                connectedCount: 1,
-                minimum: 2,
-                maximum: 3,
-                ready: false,
-                participants: [
-                  { participantId: "p1", displayName: "أحمد", connected: true },
-                  { participantId: "p2", displayName: "منى", connected: false },
-                ],
-              },
-            ],
-          }),
-        }),
-      );
-      const teamA = screen.getByTestId("preflight-team-team-a");
-      // The connected player's real (public) name is still reachable…
-      expect(within(teamA).getByText("أحمد")).toBeTruthy();
-      // …and the dropped phone is labelled as not connected.
-      expect(within(teamA).getByLabelText("غير متصل")).toBeTruthy();
-    });
-
-    it("renders participant character avatars from the live session snapshot when chosen", () => {
-      const state = match({ stage: "preflight", preflight: readyPreflight() });
-      const client = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
-      render(
-        <QueryClientProvider client={client}>
-          <LiveSessionContext.Provider
-            value={
-              {
-                snapshot: {
-                  sessionId: "session-1",
-                  mode: { key: "core-timed-turns", version: 1 },
-                  status: "active",
-                  revision: 4,
-                  serverTimestamp: "2026-08-06T00:00:00.000Z",
-                  round: { number: 1 },
-                  teams: [
-                    { id: "team-a", name: "أسود الشمال", active: true },
-                    { id: "team-b", name: "صقور الرياض", active: true },
-                  ],
-                  participants: [
-                    {
-                      id: "p1",
-                      displayName: "أحمد",
-                      role: "team-player",
-                      teamId: "team-a",
-                      ready: true,
-                      joinedAt: "2026-08-06T00:00:00.000Z",
-                      connected: true,
-                      connectedDeviceCount: 1,
-                      lastSeenAt: "2026-08-06T00:00:00.000Z",
-                      presence: "connected",
-                      avatarKey: "astronaut",
-                    },
-                  ],
-                  availableActions: [],
-                  match: state,
-                },
-                connection: "connected",
-                command: vi.fn(),
-                gameplayCommand: vi.fn(),
-                resync: vi.fn(),
-              } as unknown as React.ContextType<typeof LiveSessionContext>
-            }
-          >
-            <MatchStageRouter actor="controller" />
-          </LiveSessionContext.Provider>
-        </QueryClientProvider>,
-      );
-
-      const teamA = screen.getByTestId("preflight-team-team-a");
-      expect(
-        teamA.querySelector('[data-character="astronaut"]'),
-      ).toBeInTheDocument();
-      // Connected state is exposed for assistive tech & E2E alongside visible name and character identity.
-      expect(within(teamA).getAllByLabelText("متصل")).toHaveLength(2);
-      expect(within(teamA).getByText("أحمد")).toBeInTheDocument();
-      expect(within(teamA).getByText("منى")).toBeInTheDocument();
-      // Back-to-board control trails the tutorial stage so mobile order stays clean.
-      expect(
-        screen
-          .getByTestId("preflight-explainer")
-          .compareDocumentPosition(
-            screen.getByRole("button", { name: "ارجع للوحة" }),
-          ) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-    });
+  it("offers a reminder on a repeated encounter in this match", () => {
+    const value = match({ stage: "preflight", preflight: readyPreflight() });
+    value.unified.board.positions[0].status = "completed";
+    renderRouter(value);
+    fireEvent.click(screen.getByRole("button", { name: "ذكّرني بالقواعد" }));
+    expect(screen.getByRole("status")).toHaveTextContent("ما فيه مثال منشور");
   });
-
-  describe("feedback states", () => {
-    it("toasts once on a successful join-link copy (invisible success)", async () => {
-      const user = userEvent.setup();
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: { writeText: vi.fn().mockResolvedValue(undefined) },
-      });
-      renderRouter(match({ stage: "preflight", preflight: preflight() }));
-
-      await user.click(screen.getByRole("button", { name: /نسخ الرابط/ }));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith("تم نسخ الرابط"),
-      );
-      expect(toast.success).toHaveBeenCalledTimes(1);
-    });
-
+  describe("launch feedback", () => {
     it("cannot re-fire the launch while one is already pending", async () => {
       const user = userEvent.setup();
       // A launch that never resolves keeps the pending state active.

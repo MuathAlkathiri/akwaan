@@ -25,8 +25,12 @@ import {
   type FirstNoteDemoStepId,
 } from "../first-note-demo-scenario";
 import { useExplainerTimeline } from "../use-explainer-timeline";
-import { ExplainerCaption, ExplainerControls, showsExplainerControls } from "./explainer-controls";
-import type { ExplainerMode } from "./ryo-explainer";
+import {
+  ExplainerCaption,
+  ExplainerControls,
+  showsExplainerControls,
+} from "./explainer-controls";
+import type { ExplainerMode } from "../index";
 
 const auctionReward = (seconds: number) =>
   seconds <= 3 ? 3 : seconds <= 7 ? 2 : 1;
@@ -93,7 +97,9 @@ export function FirstNoteExplainer({
       data-testid="first-note-explainer"
       data-demo-step={step.id}
       data-variant={compact ? "compact" : "full"}
-      className={compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"}
+      className={
+        compact ? "flex h-full min-h-0 flex-col space-y-3" : "space-y-6"
+      }
     >
       {showsExplainerControls(mode, timeline) ? (
         <ExplainerControls
@@ -465,10 +471,7 @@ function FirstNotePhoneScene({
           >
             {correct ? (
               <>
-                <Check
-                  className="mx-auto size-4 text-foreground"
-                  aria-hidden
-                />
+                <Check className="mx-auto size-4 text-foreground" aria-hidden />
                 <p className="mt-1 text-xs font-black">سرقة ناجحة</p>
                 <p className="text-[0.62rem] font-bold text-muted-foreground">
                   11 نقطة · قيمة مزايدته هو
