@@ -10,8 +10,7 @@ import type {
 export interface CreateLiveSessionInput {
   modeKey?: string;
   modeVersion?: number;
-  teamNames: string[];
-  /** Positional against `teamNames`. See `src/lib/team-palette.ts`. */
+  /** Positional: first team, then second. See `src/lib/team-palette.ts`. */
   teamColorIds?: string[];
 }
 

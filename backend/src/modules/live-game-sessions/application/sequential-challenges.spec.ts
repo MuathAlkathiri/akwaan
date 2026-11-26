@@ -134,7 +134,6 @@ describe('a live session plays challenges in sequence', () => {
       actor,
       modeKey: CORE_TIMED_TURNS_MODE.key,
       modeVersion: CORE_TIMED_TURNS_MODE.version,
-      teamNames: ['One', 'Two'],
     });
     sessionId = created.snapshot.sessionId;
 

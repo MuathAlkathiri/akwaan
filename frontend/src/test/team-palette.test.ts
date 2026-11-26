@@ -12,7 +12,6 @@ import {
   RESERVED_COLORS,
   resolveTeamColor,
   TEAM_COLORS,
-  TEAM_NAMES,
   teamColorAt,
   teamColorViolations,
   teamFillTextViolations,
@@ -27,10 +26,8 @@ import {
  * assertions that make such an edit fail loudly instead.
  */
 describe("the two team colours", () => {
-  it("is exactly two, and a team is named by its position", () => {
+  it("is exactly two", () => {
     expect(TEAM_COLORS).toHaveLength(2);
-    // Named by position; the colour keeps its own label for the palette.
-    expect(TEAM_NAMES).toEqual(["الفريق الأول", "الفريق الثاني"]);
     expect(TEAM_COLORS.map((color) => color.label)).toEqual([
       "الأزرق",
       "الأحمر",

@@ -404,7 +404,10 @@ export function ClosestGameplayPanel({
                           : "حرّكوا المؤشر"}
                       </p>
                     )}
-                    <div className="flex w-full items-center gap-2.5">
+                    <div
+                      dir="ltr"
+                      className="flex w-full items-center gap-2.5"
+                    >
                       <button
                         type="button"
                         aria-label="نقّص"
@@ -790,13 +793,30 @@ export function ClosestGameplayPanel({
                 return (
                   <div
                     key={teamId}
+                    data-testid={`closest-team-result-${teamId}`}
+                    data-closest={
+                      !result.tie && result.winnerTeamId === teamId
+                        ? "true"
+                        : "false"
+                    }
+                    // A team's colour is its dot, never the card: a red card
+                    // beside the answer reads as "wrong". Gold marks the side
+                    // that was closest, because that is game state.
                     className={cn(
-                      "rounded-[var(--radius)] border p-4",
-                      identity.surface,
-                      identity.border,
+                      "rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 text-[hsl(var(--brand-navy))]",
+                      !result.tie &&
+                        result.winnerTeamId === teamId &&
+                        "bg-[hsl(var(--brand-gold))] shadow-[4px_5px_0_hsl(var(--brand-navy))]",
                     )}
                   >
-                    <p className={cn("font-black", identity.text)}>
+                    <p className="inline-flex items-center gap-2 font-display font-extrabold">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "size-3.5 shrink-0 rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                          identity.dot,
+                        )}
+                      />
                       {teamName(teamId)}
                     </p>
                     <p className="akwaan-numeral mt-1 text-3xl font-black">
@@ -820,7 +840,7 @@ export function ClosestGameplayPanel({
                         result.answers[teamId]
                       )}
                     </p>
-                    <p className="text-sm font-bold text-muted-foreground">
+                    <p className="text-sm font-bold text-brand-plum">
                       {item?.slider?.mode === "between-anchors"
                         ? "على المقياس المشترك"
                         : result.distances[teamId] === null

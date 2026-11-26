@@ -312,7 +312,6 @@ describe('Unified Match API integration', () => {
         .send({
           modeKey: 'core-timed-turns',
           modeVersion: 1,
-          teamNames: ['ألفا', 'بيتا'],
         })
         .expect(201),
     ).snapshot;
@@ -1359,7 +1358,6 @@ describe('Unified Match API integration', () => {
         .send({
           modeKey: 'core-timed-turns',
           modeVersion: 1,
-          teamNames: ['البنفسجي', 'الأخضر'],
         })
         .expect(201),
     );

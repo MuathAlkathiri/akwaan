@@ -147,7 +147,7 @@ describe("bomb countdown is presentation only", () => {
     // The countdown keeps doing its real job: it stops offering an answer box
     // for a clock that has visibly run out, and says why.
     render(<BombGameplayPanel runtime={runtime} />);
-    expect(screen.getByText(/Time is up/i)).toBeInTheDocument();
+    expect(screen.getByText(/انتهى الوقت/)).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
@@ -155,7 +155,7 @@ describe("bomb countdown is presentation only", () => {
     render(<BombGameplayPanel runtime={runtime} />);
     expect(
       screen.getByRole("status", {
-        name: /صقور الرياض remaining Bomb time/i,
+        name: /الوقت المتبقي لـصقور الرياض/,
       }),
     ).toHaveTextContent("0:00");
   });

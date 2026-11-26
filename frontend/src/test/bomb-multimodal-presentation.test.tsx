@@ -145,7 +145,7 @@ describe("Bomb Multimodal Presentation", () => {
     expect(screen.getByText("بيلينغهام... وش اسمه الأول؟")).toBeDefined();
     expect(screen.queryByText(/The image for this Bomb item is unavailable/i)).toBeNull();
     expect(screen.getByPlaceholderText(/اكتب إجابتك/i)).toBeDefined();
-    expect(screen.getByRole("button", { name: /Skip/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /تخطّي/ })).toBeDefined();
   });
 
   it("renders an image item with image preview and altText", () => {
@@ -234,7 +234,7 @@ describe("Bomb Multimodal Presentation", () => {
 
     render(<BombGameplayPanel runtime={runtime} />);
 
-    const skipButton = screen.getByRole("button", { name: /Skip/i });
+    const skipButton = screen.getByRole("button", { name: /تخطّي/ });
     fireEvent.click(skipButton);
 
     expect(mocks.gameplayCommand).toHaveBeenCalledWith("gameplay-command", {

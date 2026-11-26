@@ -436,7 +436,8 @@ describe("Top 5 ownership reveal", () => {
       );
       const winner = screen.getByTestId("top5-winner");
       expect(winner.textContent).toContain("أسود الشمال");
-      expect(winner.textContent).toContain("3 من أفضل 5");
+      // The count and its unit are separate pieces set apart by a gap.
+      expect(winner.textContent).toMatch(/3\s*من أفضل 5/);
       expect(winner.textContent).toContain("+1 نقطة للمباراة");
     } finally {
       vi.useRealTimers();

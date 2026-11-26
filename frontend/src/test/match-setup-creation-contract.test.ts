@@ -185,7 +185,6 @@ describe("configured Match creation contract", () => {
       // and the identity still travels with the session so every client resolves
       // the same two hues rather than deciding locally.
       expect(recorded[0].body).toEqual({
-        teamNames: ["الفريق الأول", "الفريق الثاني"],
         teamColorIds: ["blue", "red"],
         modeKey: "core-timed-turns",
         modeVersion: 1,

@@ -1,6 +1,5 @@
 import {
   ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsInt,
   IsObject,
@@ -24,15 +23,8 @@ export class CreateLiveGameSessionDto {
   @Min(1)
   modeVersion!: number;
 
-  @IsArray()
-  @ArrayMinSize(2)
-  @ArrayMaxSize(8)
-  @IsString({ each: true })
-  @MaxLength(80, { each: true })
-  teamNames!: string[];
-
   /**
-   * The colour each team wears, positional against `teamNames`.
+   * The colour each team wears, positional: first team, then second.
    *
    * Optional, and deliberately not validated against a colour list: which colours
    * exist is a presentation concern the client owns, and a server that also knew the

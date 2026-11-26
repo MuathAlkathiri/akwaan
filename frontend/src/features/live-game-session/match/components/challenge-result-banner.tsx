@@ -18,6 +18,7 @@ export function ChallengeWinnerBanner({
   result,
   snapshot,
   totals,
+  totalsUnit,
   testIds = {},
   className,
 }: {
@@ -25,13 +26,18 @@ export function ChallengeWinnerBanner({
   snapshot: LiveSessionSnapshot;
   /** The challenge's own per-team score, when the mechanic keeps one. */
   totals?: Record<string, number>;
+  /**
+   * What a total counts, when it is a count and not a signed score: «من أفضل
+   * 5». With a unit the number is shown plain, without a plus sign.
+   */
+  totalsUnit?: string;
   testIds?: { root?: string; totals?: string; matchPoint?: string };
   className?: string;
 }) {
   const winnerId = result.winnerTeamId ?? undefined;
   const tied = !winnerId;
   const matchPoint =
-    result.matchPoints.find((entry) => entry.teamId === winnerId)?.points ?? 1;
+    (result.matchPoints ?? []).find((entry) => entry.teamId === winnerId)?.points ?? 1;
   return (
     <section
       data-testid={testIds.root ?? "challenge-winner-banner"}
@@ -79,15 +85,16 @@ export function ChallengeWinnerBanner({
                 />
                 {teamName(snapshot, teamId)}
                 <span dir="ltr" className="akwaan-numeral">
-                  {signed(total)}
+                  {totalsUnit ? total : signed(total)}
                 </span>
+                {totalsUnit}
               </li>
             ))}
           </ul>
         )}
         <p
           data-testid={testIds.matchPoint ?? "challenge-match-point"}
-          className="inline-flex min-h-11 items-center rounded-full bg-[hsl(var(--brand-navy))] px-[18px] text-[17px] font-extrabold text-white"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[hsl(var(--brand-navy))] px-[18px] text-[17px] font-extrabold text-white"
         >
           {tied ? (
             "لا نقطة مباراة، تعادل"

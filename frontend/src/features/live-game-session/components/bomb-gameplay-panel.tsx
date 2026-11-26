@@ -38,6 +38,12 @@ import {
 } from "../match/components/countdown-presentation";
 import { CountdownSoundToggle } from "../match/components/challenge-countdown";
 import { ChallengeFrame } from "../match/components/challenge-frame";
+import {
+  TeamStatusCard,
+  TeamStatusRow,
+} from "../match/components/team-status-card";
+import { BidiText } from "@/components/akwaan/bidi-text";
+import { teamIdentityOf } from "@/lib/team-identity";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import type { GameplayRuntimeSnapshot } from "../model";
@@ -54,7 +60,7 @@ function BombItemImage({ url, altText }: { url: string; altText: string }) {
           role="status"
           className="absolute inset-0 flex animate-pulse items-center justify-center text-sm text-muted-foreground"
         >
-          Loading image…
+          نحمّل الصورة…
         </div>
       )}
       {url && state !== "unavailable" && (
@@ -197,7 +203,11 @@ function BombItemAudio({ url }: { url: string }) {
           className={`size-5 ${isPlaying ? "animate-pulse text-primary" : ""}`}
           aria-hidden
         />
-        <span>{isPlaying ? "جارٍ تشغيل المقطع الصوتي…" : "اضغط للتشغيل أو الاستماع مجددًا"}</span>
+        <span>
+          {isPlaying
+            ? "جارٍ تشغيل المقطع الصوتي…"
+            : "اضغط للتشغيل أو الاستماع مجددًا"}
+        </span>
       </div>
 
       {hasError && (
@@ -205,16 +215,6 @@ function BombItemAudio({ url }: { url: string }) {
           تعذر تشغيل المقطع الصوتي. يمكنك كتابة الإجابة أو تخطي السؤال.
         </p>
       )}
-    </div>
-  );
-}
-
-function BombItemText({ prompt }: { prompt: string }) {
-  return (
-    <div className="relative mx-auto flex min-h-[140px] w-full max-w-2xl items-center justify-center rounded-[var(--radius)] border border-muted bg-muted/40 p-6 text-center shadow-inner">
-      <p className="text-2xl font-black leading-snug tracking-tight text-foreground sm:text-3xl">
-        {prompt}
-      </p>
     </div>
   );
 }
@@ -349,29 +349,26 @@ export function BombGameplayPanel({
     setAnswer("");
   }, [itemIndex, activeTeamId, roundId]);
 
-  const release = useCallback(
-    (outcome?: AnswerNotice) => {
-      const pending = pendingRef.current;
-      pendingRef.current = undefined;
-      sendingRef.current = false;
-      setSending(false);
-      setNotice(outcome);
-      // An answer that was refused, never left, or went unanswered is handed
-      // back rather than lost with the keyboard.
-      if (
-        (outcome === "rejected" ||
-          outcome === "not-sent" ||
-          outcome === "unknown") &&
-        pending?.text
-      ) {
-        setAnswer((current) => current || pending.text!);
-      }
-      // Disabling the field closed the phone keyboard; a player who has to
-      // try again should not have to tap the field to get it back.
-      if (outcome) window.setTimeout(() => answerInputRef.current?.focus(), 0);
-    },
-    [],
-  );
+  const release = useCallback((outcome?: AnswerNotice) => {
+    const pending = pendingRef.current;
+    pendingRef.current = undefined;
+    sendingRef.current = false;
+    setSending(false);
+    setNotice(outcome);
+    // An answer that was refused, never left, or went unanswered is handed
+    // back rather than lost with the keyboard.
+    if (
+      (outcome === "rejected" ||
+        outcome === "not-sent" ||
+        outcome === "unknown") &&
+      pending?.text
+    ) {
+      setAnswer((current) => current || pending.text!);
+    }
+    // Disabling the field closed the phone keyboard; a player who has to
+    // try again should not have to tap the field to get it back.
+    if (outcome) window.setTimeout(() => answerInputRef.current?.focus(), 0);
+  }, []);
 
   // The server processed the command and answered at `ackRevision`. A wrong
   // answer moves nothing the reset effect above watches — the item and the turn
@@ -399,10 +396,7 @@ export function BombGameplayPanel({
 
   /** Follows one send to the server's answer, and only that send. */
   const follow = useCallback(
-    (
-      kind: "answer" | "skip",
-      text?: string,
-    ): GameplayCommandDelivery => {
+    (kind: "answer" | "skip", text?: string): GameplayCommandDelivery => {
       const token = {};
       const sentRoundId = roundId;
       const sentItemIndex = itemIndex;
@@ -605,35 +599,22 @@ export function BombGameplayPanel({
             data-testid="bomb-phone-clock"
             aria-label="الوقت المتبقي لفريقكم"
             className={cn(
-              // Bomb draws its own chip because its clock is a team's, not an
-              // interaction's — but it grows and beats at `critical` exactly
-              // like the shared countdown, so the last seconds read the same
-              // in every mechanic. Silent here too: the room's screen sounds.
-              "akwaan-numeral inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-black tabular-nums transition-all duration-base ease-akwaan",
-              clockUrgency === "critical" || clockUrgency === "expired"
-                ? "border-destructive/50 bg-destructive/10 text-destructive"
-                : clockUrgency === "warning"
-                  ? "border-warning bg-warning-subtle text-foreground"
-                  : "border-border bg-muted/60 text-foreground",
-              clockUrgency === "critical" &&
-                "scale-110 border-2 px-3.5 py-1.5 text-base shadow-[0_3px_0_hsl(var(--brand-navy))]",
-              clockUrgency === "expired" && "border-2",
+              // The same round face as every other challenge's clock, at
+              // thumb scale. It reads minutes and seconds because Bomb's
+              // clock is a team's whole budget, not one question's window.
+              "akwaan-numeral relative inline-flex size-[72px] shrink-0 flex-col items-center justify-center rounded-full border-[6px] font-bold tabular-nums outline outline-[3px] outline-[hsl(var(--brand-navy))] transition-all duration-base ease-akwaan",
+              BOMB_CLOCK_TONE[clockUrgency],
+              clockUrgency === "critical" && "scale-110",
             )}
             data-urgency={clockUrgency}
           >
             {clockUrgency !== "calm" && (
-              <AlarmClock
-                className={cn(
-                  "shrink-0",
-                  clockUrgency === "critical" ? "size-5" : "size-3.5",
-                )}
-                aria-hidden
-              />
+              <AlarmClock className="absolute top-1.5 size-3.5" aria-hidden />
             )}
             <span
               className={cn(
-                clockUrgency === "critical" &&
-                  "akwaan-countdown-beat text-xl leading-none",
+                "text-xl leading-none",
+                clockUrgency === "critical" && "akwaan-countdown-beat",
               )}
             >
               {clock.formatted}
@@ -691,7 +672,10 @@ export function BombGameplayPanel({
                   </p>
                 )}
                 {voice.transcript && (
-                  <p className="text-sm font-bold text-muted-foreground" dir="rtl">
+                  <p
+                    className="text-sm font-bold text-muted-foreground"
+                    dir="rtl"
+                  >
                     «{voice.transcript}»
                   </p>
                 )}
@@ -732,7 +716,9 @@ export function BombGameplayPanel({
                       microphone sits beside it rather than dominating. */}
                   <Button
                     type="button"
-                    variant={voice.state === "listening" ? "destructive" : "outline"}
+                    variant={
+                      voice.state === "listening" ? "destructive" : "outline"
+                    }
                     disabled={
                       !answerEnabled ||
                       sending ||
@@ -740,10 +726,14 @@ export function BombGameplayPanel({
                       voice.state === "unsupported"
                     }
                     onClick={() =>
-                      voice.state === "listening" ? voice.stop("idle") : voice.start()
+                      voice.state === "listening"
+                        ? voice.stop("idle")
+                        : voice.start()
                     }
                     aria-label={
-                      voice.state === "listening" ? "إيقاف الاستماع" : "الإجابة بالصوت"
+                      voice.state === "listening"
+                        ? "إيقاف الاستماع"
+                        : "الإجابة بالصوت"
                     }
                     data-testid="bomb-phone-voice"
                     className="size-14 shrink-0 rounded-full"
@@ -776,210 +766,202 @@ export function BombGameplayPanel({
     );
   }
 
-  return (
-    <section className="space-y-5 rounded-[var(--radius)] border bg-card p-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-xl font-semibold">
-          <Bomb className="size-5 text-destructive" aria-hidden />
-          Bomb
-        </h3>
-        <output
-          data-testid="bomb-stage-clock"
-          data-urgency={clockUrgency}
-          className={cn(
-            // Same box rules as every room countdown, lower on a 720p screen.
-            "akwaan-numeral akwaan-stage-countdown akwaan-stage-countdown-digits inline-flex items-center gap-2.5 rounded-full border-2 px-6 font-black tabular-nums transition-colors duration-fast ease-akwaan",
-            BOMB_STAGE_TONE[clockUrgency],
-          )}
-          aria-label={`${activeTeam?.name ?? "Active team"} remaining Bomb time`}
-          aria-live="off"
-        >
-          <Bomb className="size-8 shrink-0" aria-hidden />
-          {clockUrgency === "warning" || clockUrgency === "critical" ? (
-            <AlarmClock className="size-7 shrink-0" aria-hidden />
-          ) : null}
-          <span
-            className={cn(
-              "inline-block min-w-[3.5ch] text-center",
-              clockUrgency === "critical" && "akwaan-countdown-beat",
-            )}
-          >
-            {clock.formatted}
-          </span>
-        </output>
-        {/* The room's only clock in Bomb, so the room's sound switch lives here
-            too — a Match that opens on Bomb would otherwise have none. */}
-        {countdownSurface === "stage" && <CountdownSoundToggle />}
-        <p className="text-sm text-muted-foreground">
-          Item {Math.min(itemIndex + 1, itemCount)} of {itemCount}
-        </p>
-      </header>
+  const question =
+    mediaType === "image" && rawMediaUrl ? (
+      <BombItemImage
+        key={rawMediaUrl}
+        url={getMediaUrl(rawMediaUrl)}
+        altText={altText}
+      />
+    ) : mediaType === "audio" && rawMediaUrl ? (
+      <BombItemAudio key={rawMediaUrl} url={getMediaUrl(rawMediaUrl)} />
+    ) : null;
 
-      {phase === "presenting" ? (
-        mediaType === "image" && rawMediaUrl ? (
-          <div className="space-y-4">
-            <div className="space-y-1 text-center">
-              <p className="text-2xl font-bold">{prompt}</p>
-              <p className="text-sm text-muted-foreground">
-                Active team: {activeTeam?.name ?? "—"}
-              </p>
-            </div>
-            <BombItemImage
-              key={rawMediaUrl}
-              url={getMediaUrl(rawMediaUrl)}
-              altText={altText}
-            />
-          </div>
-        ) : mediaType === "audio" && rawMediaUrl ? (
-          <div className="space-y-4">
-            <div className="space-y-1 text-center">
-              <p className="text-2xl font-bold">{prompt}</p>
-              <p className="text-sm text-muted-foreground">
-                Active team: {activeTeam?.name ?? "—"}
-              </p>
-            </div>
-            <BombItemAudio
-              key={rawMediaUrl}
-              url={getMediaUrl(rawMediaUrl)}
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Active team: {activeTeam?.name ?? "—"}
-              </p>
-            </div>
-            <BombItemText
-              key={prompt}
-              prompt={prompt}
-            />
-          </div>
-        )
-      ) : (
-        <p className="rounded-lg bg-muted p-6 text-center font-medium">
-          This Bomb question is complete. The host can complete the round and
-          start the next question.
-        </p>
-      )}
-      {resolvingExpiration && (
-        <p
-          role="status"
-          className="rounded-lg bg-muted p-4 text-center font-medium"
-        >
-          Time is up. Resolving the Bomb result…
-        </p>
-      )}
-      {(canSubmit || canSkip) &&
-        phase === "presenting" &&
-        !resolvingExpiration &&
-        snapshot?.status === "active" && (
-          <div className="space-y-4">
-            <div className="flex flex-col items-center gap-3 rounded-[var(--radius)] bg-muted/60 p-4 text-center">
-              <Button
-                type="button"
-                size="lg"
-                className="size-20 rounded-full"
-                variant={
-                  voice.state === "listening" ? "destructive" : "default"
-                }
-                disabled={
-                  !answerEnabled ||
-                  voice.state === "processing" ||
-                  voice.state === "unsupported"
-                }
-                onClick={() =>
-                  voice.state === "listening"
-                    ? voice.stop("idle")
-                    : voice.start()
-                }
-                aria-label={
-                  voice.state === "listening"
-                    ? "إيقاف الاستماع"
-                    : "الإجابة بالصوت"
-                }
-              >
-                {voice.state === "listening" ? (
-                  <Square className="size-8 fill-current" aria-hidden />
-                ) : voice.state === "processing" ? (
-                  <Loader2 className="size-9 animate-spin" aria-hidden />
-                ) : (
-                  <Mic className="size-9" aria-hidden />
-                )}
-              </Button>
-              {voice.state === "listening" && (
-                <span
-                  className="inline-flex items-center gap-2 font-medium text-destructive"
-                  role="status"
-                >
-                  <span className="size-3 animate-pulse rounded-full bg-destructive" />
-                  {VOICE_MESSAGES.listening}
-                </span>
+  return (
+    <ChallengeFrame
+      progressLabel={`السؤال ${Math.min(itemIndex + 1, itemCount)} من ${itemCount}`}
+      aside={
+        <div className="relative inline-flex items-center gap-2">
+          <output
+            data-testid="bomb-stage-clock"
+            data-urgency={clockUrgency}
+            className={cn(
+              // The round face every room countdown wears. Minutes and
+              // seconds, because the bomb burns a team's whole budget.
+              "akwaan-numeral akwaan-stage-countdown relative flex shrink-0 flex-col items-center justify-center rounded-full font-bold tabular-nums outline outline-4 outline-[hsl(var(--brand-navy))] transition-colors duration-fast ease-akwaan",
+              BOMB_CLOCK_TONE[clockUrgency],
+            )}
+            aria-label={`الوقت المتبقي لـ${activeTeam?.name ?? "الفريق"}`}
+            aria-live="off"
+          >
+            <Bomb className="absolute top-[13%] size-5 lg:size-6" aria-hidden />
+            <span
+              className={cn(
+                "inline-block min-w-[3.5ch] text-center text-4xl leading-none lg:text-5xl",
+                clockUrgency === "critical" && "akwaan-countdown-beat",
               )}
-              {voice.transcript && (
-                <p
-                  className="text-lg font-semibold"
-                  dir="rtl"
-                  aria-live="polite"
-                >
-                  «{voice.transcript}»
-                </p>
-              )}
-              {voice.state !== "idle" && voice.state !== "listening" && (
-                <p
-                  className={
-                    voice.state === "recognized"
-                      ? "text-sm text-primary"
-                      : "text-sm text-muted-foreground"
-                  }
-                  role="status"
-                >
-                  {voiceMessage(voice.state, sending)}
-                </p>
-              )}
-            </div>
-            <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row">
-              <Input
-                ref={answerInputRef}
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="اكتب إجابتك"
-                aria-label="Bomb answer"
-                autoComplete="off"
-                disabled={!answerEnabled}
+            >
+              {clock.formatted}
+            </span>
+            <span className="text-sm font-semibold opacity-80 lg:text-base">
+              باقي لهم
+            </span>
+          </output>
+          {/* The room's only clock in Bomb, so the room's sound switch lives
+              here too — a Match that opens on Bomb would otherwise have none. */}
+          {countdownSurface === "stage" && <CountdownSoundToggle />}
+        </div>
+      }
+    >
+      <div dir="rtl" className="flex flex-col gap-6">
+        {/* Who is holding the bomb: gold, because it is the state of the game.
+            The other side simply waits. */}
+        <TeamStatusRow data-testid="bomb-team-status">
+          {(snapshot?.teams ?? [])
+            .filter((team) => team.active)
+            .map((team) => (
+              <TeamStatusCard
+                key={team.id}
+                role={team.id === activeTeamId ? "يجاوبون" : "ينتظرون"}
+                name={team.name}
+                dotClass={teamIdentityOf(team.id, snapshot?.teams ?? []).dot}
+                done={team.id === activeTeamId}
+                doneLabel="القنبلة معهم"
+                pendingLabel="ينتظرون دورهم"
               />
-              <Button
-                type="submit"
-                disabled={
-                  !canSubmit || !answer.trim() || connection !== "connected"
-                }
-              >
-                <Send className="size-4" aria-hidden />
-                Submit
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!canSkip || connection !== "connected"}
-                onClick={skip}
-              >
-                <SkipForward className="size-4" aria-hidden />
-                Skip (-5s)
-              </Button>
-            </form>
-          </div>
+            ))}
+        </TeamStatusRow>
+
+        {phase === "presenting" ? (
+          <>
+            {question}
+            <h2
+              data-testid="bomb-stage-prompt"
+              className="font-display text-3xl font-extrabold leading-relaxed text-[hsl(var(--brand-navy))] lg:text-[44px] lg:leading-[1.55]"
+            >
+              <BidiText>{prompt}</BidiText>
+            </h2>
+          </>
+        ) : (
+          <p className="rounded-[18px] border-[3px] border-dashed border-brand-dash bg-white p-6 text-center text-xl font-bold text-brand-plum">
+            خلص هذا السؤال. نجهّز اللي بعده…
+          </p>
         )}
-    </section>
+        {resolvingExpiration && (
+          <p
+            role="status"
+            className="rounded-[18px] border-[3px] border-dashed border-brand-dash bg-white p-4 text-center text-xl font-bold text-brand-plum"
+          >
+            انتهى الوقت. نحسب النتيجة…
+          </p>
+        )}
+        {(canSubmit || canSkip) &&
+          phase === "presenting" &&
+          !resolvingExpiration &&
+          snapshot?.status === "active" && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 rounded-[18px] bg-brand-lavender p-4 text-center">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="size-20 rounded-full"
+                  variant={
+                    voice.state === "listening" ? "destructive" : "default"
+                  }
+                  disabled={
+                    !answerEnabled ||
+                    voice.state === "processing" ||
+                    voice.state === "unsupported"
+                  }
+                  onClick={() =>
+                    voice.state === "listening"
+                      ? voice.stop("idle")
+                      : voice.start()
+                  }
+                  aria-label={
+                    voice.state === "listening"
+                      ? "إيقاف الاستماع"
+                      : "الإجابة بالصوت"
+                  }
+                >
+                  {voice.state === "listening" ? (
+                    <Square className="size-8 fill-current" aria-hidden />
+                  ) : voice.state === "processing" ? (
+                    <Loader2 className="size-9 animate-spin" aria-hidden />
+                  ) : (
+                    <Mic className="size-9" aria-hidden />
+                  )}
+                </Button>
+                {voice.state === "listening" && (
+                  <span
+                    className="inline-flex items-center gap-2 font-medium text-destructive"
+                    role="status"
+                  >
+                    <span className="size-3 animate-pulse rounded-full bg-destructive" />
+                    {VOICE_MESSAGES.listening}
+                  </span>
+                )}
+                {voice.transcript && (
+                  <p className="text-lg font-semibold" aria-live="polite">
+                    «{voice.transcript}»
+                  </p>
+                )}
+                {voice.state !== "idle" && voice.state !== "listening" && (
+                  <p
+                    className={
+                      voice.state === "recognized"
+                        ? "text-sm text-primary"
+                        : "text-sm text-muted-foreground"
+                    }
+                    role="status"
+                  >
+                    {voiceMessage(voice.state, sending)}
+                  </p>
+                )}
+              </div>
+              <form
+                onSubmit={submit}
+                className="flex flex-col gap-3 sm:flex-row"
+              >
+                <Input
+                  ref={answerInputRef}
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  placeholder="اكتب إجابتك"
+                  aria-label="إجابة القنبلة"
+                  autoComplete="off"
+                  disabled={!answerEnabled}
+                />
+                <Button
+                  type="submit"
+                  disabled={
+                    !canSubmit || !answer.trim() || connection !== "connected"
+                  }
+                >
+                  <Send className="size-4" aria-hidden />
+                  إرسال
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canSkip || connection !== "connected"}
+                  onClick={skip}
+                >
+                  <SkipForward className="size-4" aria-hidden />
+                  تخطّي (-5 ثوان)
+                </Button>
+              </form>
+            </div>
+          )}
+      </div>
+    </ChallengeFrame>
   );
 }
 
-/**
- * The room's Bomb clock, in the same four states every countdown uses. It was
- * red from the first second, which left the last five nowhere to go.
- */
-const BOMB_STAGE_TONE = {
-  calm: "border-destructive/30 bg-destructive/10 text-destructive",
+/** Bomb's clock in the four states every countdown uses, room and phone. */
+const BOMB_CLOCK_TONE = {
+  calm: "border-[hsl(var(--brand-gold))] bg-card text-foreground",
   warning: "border-warning bg-warning-subtle text-foreground",
-  critical: "border-sem-error bg-sem-error text-white",
-  expired: "border-sem-error/50 bg-muted text-sem-error",
+  critical: "border-white bg-sem-error text-white",
+  expired: "border-brand-dash bg-brand-wash text-sem-error",
 } as const;

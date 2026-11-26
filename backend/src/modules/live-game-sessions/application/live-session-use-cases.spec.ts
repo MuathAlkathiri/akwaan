@@ -89,7 +89,6 @@ describe('live session application use cases', () => {
       actor,
       modeKey: CORE_TIMED_TURNS_MODE.key,
       modeVersion: CORE_TIMED_TURNS_MODE.version,
-      teamNames: ['One', 'Two'],
     });
     const recovered = await getSession.execute(
       created.snapshot.sessionId,
@@ -105,7 +104,6 @@ describe('live session application use cases', () => {
       actor,
       modeKey: CORE_TIMED_TURNS_MODE.key,
       modeVersion: 1,
-      teamNames: ['One', 'Two'],
     });
     const base = {
       sessionId: created.snapshot.sessionId,
@@ -155,7 +153,6 @@ describe('live session application use cases', () => {
       actor,
       modeKey: CORE_TIMED_TURNS_MODE.key,
       modeVersion: 1,
-      teamNames: ['One', 'Two'],
     });
     const ready = new MarkSessionReady(executor);
     await expect(

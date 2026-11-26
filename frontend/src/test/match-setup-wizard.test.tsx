@@ -371,7 +371,6 @@ describe("pre-match setup wizard", () => {
       // Not defaults a host is expected to overwrite: these are the teams. A
       // Match is الأزرق against الأحمر, and the colour is the name, so there is
       // nothing to remember and nothing to set up.
-      teamNames: ["الفريق الأول", "الفريق الثاني"],
       teamColorIds: ["blue", "red"],
     });
     // The session stays in the lobby: the host begins it from the waiting room
