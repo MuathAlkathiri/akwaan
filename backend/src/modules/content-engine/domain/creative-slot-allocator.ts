@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { isComposedFamily } from './composed-visuals';
 import {
   CanonicalFamily,
   FamilyVariant,
@@ -638,15 +639,17 @@ export function allocateCreativeSlots(
       selectedWf.family.playerSolve?.trim() ||
       `Solve ${selectedWf.family.name} via ${selectedWf.family.modality || 'deductive reasoning'}`;
 
-    const creativeAngle = variant
-      ? `TEMPLATE «${variant.name}» [${variant.key}] — ${variant.brief}${
-          mode === 'exploration'
-            ? ' Stretch it: a framing this template has not had yet.'
-            : ''
-        }`
-      : mode === 'exploitation'
-        ? `Core execution: Standard ${input.mechanicKey} interaction pattern emphasizing ${selectedWf.family.name} mechanics.`
-        : `Exploratory variation: Cognitive stretch within ${selectedWf.family.name}; introduce novel lateral framing or nuanced challenge.`;
+    const creativeAngle = isComposedFamily(selectedWf.family.familyKey)
+      ? 'DRAWN BY THE ENGINE — return the shortest valid placeholder for this slot; it is discarded.'
+      : variant
+        ? `${selectedWf.family.modality === 'position-estimation' ? 'SLIDER: between-anchors. ' : ''}TEMPLATE «${variant.name}» [${variant.key}] — ${variant.brief}${
+            mode === 'exploration'
+              ? ' Stretch it: a framing this template has not had yet.'
+              : ''
+          }`
+        : mode === 'exploitation'
+          ? `Core execution: Standard ${input.mechanicKey} interaction pattern emphasizing ${selectedWf.family.name} mechanics.`
+          : `Exploratory variation: Cognitive stretch within ${selectedWf.family.name}; introduce novel lateral framing or nuanced challenge.`;
 
     const selectionReason =
       mode === 'exploitation'

@@ -223,7 +223,7 @@ describe('settling the grid of a derived مين أقرب answer', () => {
 
     it('tells the model when to use it and to stay off the centre', () => {
       expect(CLOSEST_TASK_GUIDANCE).toMatch(/TWO SLIDERS/);
-      expect(CLOSEST_TASK_GUIDANCE).toMatch(/position-estimation/);
+      expect(CLOSEST_TASK_GUIDANCE).toMatch(/SLIDER: between-anchors/);
       expect(CLOSEST_TASK_GUIDANCE).toMatch(/middle fifth/);
     });
   });

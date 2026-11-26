@@ -15,7 +15,7 @@ import {
   COMBO_MAX_ACCEPTED_ANSWERS,
 } from './candidate-generator.service';
 import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
-import { isComposedVisualFamily } from '../domain/composed-visuals';
+import { isComposedFamily } from '../domain/composed-visuals';
 import { mediaIntentOf } from '../domain/candidate-media-intent';
 import { BOMB_IMAGE_SLOT } from '../domain/media-requirements';
 import {
@@ -893,6 +893,9 @@ export class DeterministicScreenService {
       return { passed: false, findings };
     }
 
+    // Whatever it is answered with, a composed item needs its picture.
+    findings.push(...this.composedPictureFindings(draft, authoring));
+
     // --- answer payload integrity (mirrors the backend policy's rules) ---
     if (payload.mode === 'closest') {
       findings.push(
@@ -1548,42 +1551,6 @@ export class DeterministicScreenService {
           'unit must be at most 40 characters',
         ),
       );
-    }
-
-    // --- a composed family is drawn by the engine, or it is not playable ---
-    const assignedFamily = (
-      authoring?.assignedSlot as { familyKey?: unknown } | undefined
-    )?.familyKey;
-    const composed = authoring?.composedVisual as
-      { failureReason?: unknown } | undefined;
-    if (
-      composed ||
-      isComposedVisualFamily(
-        typeof assignedFamily === 'string' ? assignedFamily : undefined,
-      )
-    ) {
-      const assets = (draft.media as { type?: unknown; assets?: unknown })
-        ?.assets;
-      const hasPicture =
-        (draft.media as { type?: unknown } | undefined)?.type === 'image' &&
-        Array.isArray(assets) &&
-        assets.some(
-          (asset) =>
-            typeof (asset as { url?: unknown })?.url === 'string' &&
-            Boolean((asset as { url: string }).url.trim()),
-        );
-      if (!composed || composed.failureReason || !hasPicture) {
-        findings.push(
-          blocking(
-            'COMPOSED_VISUAL_MISSING',
-            `this item is a picture the engine draws, and it has none${
-              composed?.failureReason
-                ? ` (${String(composed.failureReason)})`
-                : ''
-            }`,
-          ),
-        );
-      }
     }
 
     // --- a position line: two labelled ends, and a target off the centre --
@@ -2282,6 +2249,49 @@ export class DeterministicScreenService {
     }
 
     return findings;
+  }
+
+  /**
+   * A composed family is drawn by the engine, or it is not playable: the
+   * question is about the picture, so an item of one without its picture —
+   * or one a model wrote into a composed slot — is blocked.
+   */
+  private composedPictureFindings(
+    draft: Record<string, unknown>,
+    authoring?: Record<string, unknown> | null,
+  ): ScreenFinding[] {
+    const assignedFamily = (
+      authoring?.assignedSlot as { familyKey?: unknown } | undefined
+    )?.familyKey;
+    const composed = authoring?.composedVisual as
+      { failureReason?: unknown } | undefined;
+    if (
+      !composed &&
+      !isComposedFamily(
+        typeof assignedFamily === 'string' ? assignedFamily : undefined,
+      )
+    ) {
+      return [];
+    }
+    const assets = (draft.media as { type?: unknown; assets?: unknown })
+      ?.assets;
+    const hasPicture =
+      (draft.media as { type?: unknown } | undefined)?.type === 'image' &&
+      Array.isArray(assets) &&
+      assets.some(
+        (asset) =>
+          typeof (asset as { url?: unknown })?.url === 'string' &&
+          Boolean((asset as { url: string }).url.trim()),
+      );
+    if (composed && !composed.failureReason && hasPicture) return [];
+    return [
+      blocking(
+        'COMPOSED_VISUAL_MISSING',
+        `this item is a picture the engine draws, and it has none${
+          composed?.failureReason ? ` (${String(composed.failureReason)})` : ''
+        }`,
+      ),
+    ];
   }
 
   /** The checks no screen can perform yet, named rather than skipped. */

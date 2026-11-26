@@ -1,4 +1,7 @@
+import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
+import { composePuzzle } from '../domain/composed-puzzles';
+import { evaluateCandidateMedia } from '../domain/candidate-media-plan';
 import { composeVisual } from '../domain/composed-visuals';
 import { DeterministicScreenService } from './deterministic-screen.service';
 import { ConfigService } from '@nestjs/config';
@@ -221,5 +224,169 @@ describe('ComposedVisualService', () => {
         authoring: { assignedSlot: { familyKey: 'battery-level' } },
       }),
     ).toContain('COMPOSED_VISUAL_MISSING');
+  });
+});
+
+describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
+  // Stores each drawing under its own content hash, as the real storage does.
+  const contentAddressed = () => {
+    const png = jest.fn(async (svg: string) => Buffer.from(svg));
+    const ingest = jest.fn(async (input: { bytes: Buffer }) =>
+      resolved(
+        `https://cdn.example/engine-${createHash('sha256').update(input.bytes).digest('hex').slice(0, 16)}.png`,
+      ),
+    );
+    return new ComposedVisualService(
+      { toPng: png } as never,
+      { ingestBytes: ingest } as never,
+    );
+  };
+  const xoInPaths = { mechanicKey: 'moving-xo', scopeKey: 'paths-motion' };
+
+  it('authors the question, three options and the answer from the drawing', async () => {
+    const expected = composePuzzle('wire-trace-terminal', 'job-9:0');
+    const candidate = await contentAddressed().compose(
+      'wire-trace-terminal',
+      'job-9:0',
+      xoInPaths,
+    );
+    expect(candidate.draft).toMatchObject({
+      prompt: { ar: expected.prompt },
+      answerPayload: {
+        mode: 'multiple_choice',
+        options: expected.options.map((option) => ({
+          id: option.id,
+          label: { ar: option.label },
+        })),
+        correctOptionId: expected.correctOptionId,
+      },
+      media: { type: 'image' },
+    });
+    expect(candidate.authoring.distractorRationale).toEqual(
+      expected.distractorRationale,
+    );
+    expect(candidate.authoring.composedVisual).toEqual({
+      familyKey: 'wire-trace-terminal',
+      variant: expected.variant,
+    });
+  });
+
+  it.each([
+    'wire-trace-terminal',
+    'opposite-cube-faces',
+    'fold-and-punch',
+  ] as const)('%s passes the screen as an إكس أو item', async (familyKey) => {
+    const candidate = await contentAddressed().compose(familyKey, 'job-9:1', {
+      mechanicKey: 'moving-xo',
+      scopeKey:
+        familyKey === 'wire-trace-terminal'
+          ? 'paths-motion'
+          : 'assembly-rotation',
+    });
+    expect(
+      new DeterministicScreenService({
+        get: () => undefined,
+      } as unknown as ConfigService)
+        .screen(candidate.draft, candidate.authoring, {
+          worldKey: 'puzzles',
+          mechanicKey: 'moving-xo',
+        })
+        .findings.filter((finding) => finding.severity === 'blocking')
+        .map((finding) => finding.code),
+    ).toEqual([]);
+  });
+
+  it('enters its picture in the media plan where the contract asks for one, as ours', async () => {
+    const candidate = await contentAddressed().compose(
+      'wire-trace-terminal',
+      'job-9:2',
+      xoInPaths,
+    );
+    expect(candidate.mediaReviewRevision).toBe(1);
+    expect(candidate.mediaPlan).toEqual([
+      expect.objectContaining({
+        slotKey: 'puzzle-image',
+        status: 'resolved',
+        rights: expect.objectContaining({ status: 'CLEARED' }),
+        provenance: expect.objectContaining({
+          acquisition: 'generate',
+          provider: 'akwaan-composer',
+        }),
+      }),
+    ]);
+    // Drawn and owned: the only thing left is for a person to look at it.
+    const readiness = evaluateCandidateMedia({
+      ...xoInPaths,
+      draft: candidate.draft,
+      mediaPlan: candidate.mediaPlan,
+      mediaReviewRevision: candidate.mediaReviewRevision,
+    });
+    expect(readiness.governed).toBe(true);
+    expect(readiness.blockers.map((finding) => finding.code)).toEqual([
+      'MEDIA_REVIEW_REQUIRED',
+    ]);
+  });
+
+  it('leaves the media plan alone where no contract governs the picture', async () => {
+    const candidate = await contentAddressed().compose(
+      'battery-level',
+      'job-9:3',
+      {
+        mechanicKey: 'closest',
+        scopeKey: 'numbers-estimation',
+      },
+    );
+    expect(candidate).not.toHaveProperty('mediaPlan');
+    expect(candidate.draft).toHaveProperty('media');
+  });
+
+  it('tells two drawings apart even when the question and the answer read the same', async () => {
+    const service = contentAddressed();
+    const items = await Promise.all(
+      Array.from({ length: 60 }, (_, index) =>
+        service.compose('wire-trace-terminal', `job-9:${index}`, xoInPaths),
+      ),
+    );
+    const said = (item: (typeof items)[number]) => {
+      const payload = item.draft.answerPayload as {
+        options: Array<{ id: string; label: { ar: string } }>;
+        correctOptionId: string;
+      };
+      return JSON.stringify([
+        item.draft.prompt,
+        payload.options.find((option) => option.id === payload.correctOptionId)
+          ?.label.ar,
+      ]);
+    };
+    const sameWords = (a: (typeof items)[number], b: (typeof items)[number]) =>
+      said(a) === said(b);
+    const first = items[0];
+    const twin = items.find(
+      (item) =>
+        item !== first &&
+        sameWords(item, first) &&
+        JSON.stringify(item.draft.media) !== JSON.stringify(first.draft.media),
+    )!;
+    expect(twin).toBeDefined();
+    const blocking = new DeterministicScreenService({
+      get: () => undefined,
+    } as unknown as ConfigService)
+      .screen(twin.draft, twin.authoring, {
+        worldKey: 'puzzles',
+        scopeKey: 'paths-motion',
+        mechanicKey: 'moving-xo',
+        historicalRecords: [
+          {
+            id: 'held-1',
+            sourceType: 'CANONICAL_READY',
+            worldKey: 'puzzles',
+            scopeKey: 'paths-motion',
+            draft: first.draft,
+          },
+        ],
+      })
+      .findings.filter((finding) => finding.severity === 'blocking')
+      .map((finding) => finding.code);
+    expect(blocking).toEqual([]);
   });
 });

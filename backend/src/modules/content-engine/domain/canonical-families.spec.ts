@@ -500,6 +500,21 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         }
       });
 
+      it('the two visual Scopes draw only what the composer can draw, and only for إكس أو المتحرك', () => {
+        expect(drawable('assembly-rotation', 'moving-xo')).toEqual([
+          'fold-and-punch',
+          'opposite-cube-faces',
+        ]);
+        expect(drawable('paths-motion', 'moving-xo')).toEqual([
+          'wire-trace-terminal',
+        ]);
+        for (const scopeKey of ['assembly-rotation', 'paths-motion']) {
+          for (const mechanicKey of ['read-your-opponent', 'bomb', 'closest']) {
+            expect(drawable(scopeKey, mechanicKey)).toEqual([]);
+          }
+        }
+      });
+
       it('اقرأ خصمك shares no family with إكس أو المتحرك (2026-11-25)', () => {
         const ryoNumbers = drawable('numbers-estimation', 'read-your-opponent');
         const ryoWords = drawable('wordplay-letters', 'read-your-opponent');

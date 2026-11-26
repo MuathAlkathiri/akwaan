@@ -1017,7 +1017,11 @@ describe('Slice 3C — Generator Integration, Pinned Plans & Family Compliance',
 
       // Only the composed slot is composed, seeded by job and ordinal.
       expect(compose).toHaveBeenCalledTimes(1);
-      expect(compose).toHaveBeenCalledWith('battery-level', 'job-composed-1:1');
+      expect(compose).toHaveBeenCalledWith(
+        'battery-level',
+        'job-composed-1:1',
+        { mechanicKey: 'closest', scopeKey: 'numbers-estimation' },
+      );
       const saved = (
         updateOne.mock.calls as unknown as Array<
           [{ ordinal: number }, { $set: Record<string, any> }]

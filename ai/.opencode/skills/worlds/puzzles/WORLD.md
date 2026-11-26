@@ -97,8 +97,12 @@ Avoid breaking the core experience of puzzles.
   - **All four mechanics run here** — Moving XO, اقرأ خصمك, مين أقرب and
     القنبلة. القنبلة waits for the image composer: every Bomb item must carry
     a picture, so it is paused per family (`pausedFor: ["bomb"]`).
-  - **No pictures yet.** Families that need a drawn or templated picture are
-    paused until the image composer exists.
+  - **Pictures are drawn by the engine, not written by a model (2026-11-26).**
+    The composer draws a growing list of families itself — battery level,
+    copy the mark, colour recall, thread tracing, the folded cube, fold and
+    punch — with the answer fixed by the drawing. A family that needs a
+    picture the composer cannot draw yet stays paused. A model still writes
+    text-only items and must never refer to a picture.
   - **اقرأ خصمك is the exception to the first two rules (2026-11-25).** Its
     difficulty is reading the other team, not the question: direct
     know-it-or-not items, medium leaning easy, never a trap. Riddles, proverbs

@@ -36,7 +36,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 2 | `cube-net-fold` | طي مخطط المكعب | 2D Net + 3D Render | `multiple_choice` |
 | 3 | `opposite-cube-faces` | الأوجه المتقابلة في المكعب | 2D Vector Net | `multiple_choice` |
 | 4 | `orthographic-projection` | المساقط الهندسية للمجسم | 3D Render + 2D Silhouettes | `multiple_choice` |
-| 5 | `spatial-cube-count` | عد المكعبات المخفية في المجسم | 3D Isometric Render | `multiple_choice \| closest` |
+| 5 | `spatial-cube-count` | عد المكعبات المخفية في المجسم | 3D Isometric Render | `multiple_choice, closest` |
 | 6 | `missing-puzzle-piece` | القطعة المفقودة لإكمال الشكل | 2D Geometry Vector | `multiple_choice` |
 | 7 | `cross-section-slice` | المقطع العرضي للشكل المقطوع | 3D Solid + Slicing Plane | `multiple_choice` |
 | 8 | `fold-and-punch` | طي الورق وتخريم الثقوب | 2D Step Flow Vector | `multiple_choice` |

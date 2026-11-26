@@ -439,3 +439,261 @@ When generating or reviewing an authored batch for `paths-motion`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## Composed families — مركّب الصور (owner decision 2026-11-26)
+
+The families of this Scope need a picture, and until now nothing could make
+one. The engine now **draws** the ones listed here itself (`wire-trace-terminal`): the
+picture, the question, the three options and the right answer are all made
+from one seed, so the answer is correct by construction. No model writes them
+and no model is paid for them.
+
+They are generated for إكس أو المتحرك only. Every other family of the library
+stays in it with its ratings and is **paused** until the composer can draw it:
+nothing is deleted, and a family returns by removing its `status` below.
+
+## Machine-Readable Family Catalog
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.paths-motion",
+  "families": [
+    {
+      "familyKey": "gear-train-direction",
+      "name": "اتجاه دوران التروس المتشابكة",
+      "description": "اتجاه دوران التروس المتشابكة",
+      "playerSolve": "اتجاه دوران التروس المتشابكة",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "pulley-rope-system",
+      "name": "حركة البكرات والأحمال",
+      "description": "حركة البكرات والأحمال",
+      "playerSolve": "حركة البكرات والأحمال",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "pipe-valve-flow",
+      "name": "تدفق السوائل والصمامات",
+      "description": "تدفق السوائل والصمامات",
+      "playerSolve": "تدفق السوائل والصمامات",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "electrical-switch-circuit",
+      "name": "مسارات الدوائر الكهربائية",
+      "description": "مسارات الدوائر الكهربائية",
+      "playerSolve": "مسارات الدوائر الكهربائية",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "maze-exit-route",
+      "name": "مسار الخروج من المتاهة",
+      "description": "مسار الخروج من المتاهة",
+      "playerSolve": "مسار الخروج من المتاهة",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "domino-cascade-chain",
+      "name": "تساقط الدومينو وسلاسل الأثر",
+      "description": "تساقط الدومينو وسلاسل الأثر",
+      "playerSolve": "تساقط الدومينو وسلاسل الأثر",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "ball-marble-track",
+      "name": "مسار دحرجة الكرة والمنحدرات",
+      "description": "مسار دحرجة الكرة والمنحدرات",
+      "playerSolve": "مسار دحرجة الكرة والمنحدرات",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "conveyor-sorter-route",
+      "name": "سيور النقل ومسارات الفرز",
+      "description": "سيور النقل ومسارات الفرز",
+      "playerSolve": "سيور النقل ومسارات الفرز",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "one-way-traffic-flow",
+      "name": "مسارات الاتجاه الواحد",
+      "description": "مسارات الاتجاه الواحد",
+      "playerSolve": "مسارات الاتجاه الواحد",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "cam-linkage-motion",
+      "name": "حركة الكامات والأذرع",
+      "description": "حركة الكامات والأذرع",
+      "playerSolve": "حركة الكامات والأذرع",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "shortest-path-grid",
+      "name": "أقصر مسار حركي في الشبكة",
+      "description": "أقصر مسار حركي في الشبكة",
+      "playerSolve": "أقصر مسار حركي في الشبكة",
+      "modality": "visual-spatial",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "wire-trace-terminal",
+      "name": "تتبع الأسلاك المتشابكة",
+      "description": "ثلاث دوائر ملوّنة تخرج منها خيوط متشابكة إلى ثلاثة أشكال، والمطلوب أي دائرة يصل خيطها لشكل محدد. المحرك يرسم الخيوط ويعرف مسار كل واحد.",
+      "playerSolve": "تتبّع خيط واحد بالعين عبر التقاطعات.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "capacity": 36,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent"
+      ]
+    }
+  ]
+}
+```

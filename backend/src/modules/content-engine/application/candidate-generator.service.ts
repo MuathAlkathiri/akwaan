@@ -46,7 +46,7 @@ import {
 import { EngineCandidateDocument } from '../schemas/engine-candidate.schema';
 import { ResolvedAuthoringContext } from './authoring-context.service';
 import { ComposedVisualService } from './composed-visual.service';
-import { isComposedVisualFamily } from '../domain/composed-visuals';
+import { isComposedFamily } from '../domain/composed-visuals';
 import { EngineBudgetService } from './engine-budget.service';
 import { GenerationJobService } from './generation-job.service';
 
@@ -829,7 +829,12 @@ export const MOVING_XO_TASK_GUIDANCE = [
   'which position holds it across the batch.',
   '',
   'Text only. The prompt must not refer to a picture, a shape or a diagram:',
-  'nothing is drawn yet. A pattern is written with words or emoji in the prompt itself.',
+  'you draw nothing. A pattern is written with words or emoji in the prompt itself.',
+  '',
+  'DRAWN BY THE ENGINE. A slot whose Direction begins DRAWN BY THE ENGINE is not',
+  'yours to author: the engine draws its picture, writes its question and sets',
+  'its answer, and discards whatever you return for it. For such a slot return',
+  'the shortest valid item you can and spend no thought on it.',
 ].join('\n');
 
 /**
@@ -970,7 +975,7 @@ export const CLOSEST_TASK_GUIDANCE = [
   '',
   'TWO SLIDERS. Set sliderMode for every item:',
   '  - numeric-range — the default. leftAnchor and rightAnchor are empty strings.',
-  '  - between-anchors — ONLY for a slot whose Task says position-estimation. Use numeric-range for every other slot.',
+  '  - between-anchors — ONLY for a slot whose Direction begins SLIDER: between-anchors. Use numeric-range for every other slot.',
   'A between-anchors item is a POSITION question. The player sees a bare line with a label at each end and NO numbers, and places a mark where the thing falls:',
   '  - the line is a complete order everybody knows (the days of the year, the letters of the alphabet), and min..max counts its positions in order (1..365, 1..28);',
   '  - leftAnchor is the thing at min and rightAnchor the thing at max, each a short Arabic label («1 يناير», «31 ديسمبر»). The prompt names both ends in the same words;',
@@ -979,7 +984,7 @@ export const CLOSEST_TASK_GUIDANCE = [
   '  - NEVER pick a thing that falls in the middle fifth of the line, and avoid the two ends: a mark left in the centre must not win. Good targets sit clearly off-centre and still take thought to place;',
   '  - the asked thing must have ONE fixed position everyone would accept (a date that does not move from year to year, a letter in the standard order). A lunar-calendar date moves — never use one.',
   '',
-  'DRAWN BY THE ENGINE. A slot whose Task says composed-visual is not yours to author: the engine draws its picture and sets its answer itself, and discards whatever you return for it. For such a slot return the shortest valid item you can (a one-line prompt, numeric-range, min 0, max 100, step 1, correctValue 1) and spend no thought on it.',
+  'DRAWN BY THE ENGINE. A slot whose Direction begins DRAWN BY THE ENGINE is not yours to author: the engine draws its picture and sets its answer itself, and discards whatever you return for it. For such a slot return the shortest valid item you can (a one-line prompt, numeric-range, min 0, max 100, step 1, correctValue 1) and spend no thought on it.',
 ].join('\n');
 
 import {
@@ -1590,17 +1595,26 @@ export class CandidateGeneratorService {
       // the answer from one value, and what the model wrote for this slot is
       // discarded. Seeded by job and ordinal, so a recovered job redraws the
       // same items.
-      if (
-        this.composedVisuals &&
-        isComposedVisualFamily(assignedSlot?.familyKey)
-      ) {
+      let composedMedia:
+        { mediaPlan: unknown[]; mediaReviewRevision: number } | undefined;
+      if (this.composedVisuals && isComposedFamily(assignedSlot?.familyKey)) {
         const composed = await this.composedVisuals.compose(
           assignedSlot.familyKey,
           `${input.jobId}:${ordinal}`,
+          {
+            mechanicKey: input.context.mechanicKey,
+            scopeKey: input.context.scopeKey,
+          },
         );
         draft = composed.draft;
         factualClaims = composed.factualClaims;
         authoring = composed.authoring;
+        if (composed.mediaPlan) {
+          composedMedia = {
+            mediaPlan: composed.mediaPlan,
+            mediaReviewRevision: composed.mediaReviewRevision ?? 1,
+          };
+        }
       }
       const mergedAuthoring = {
         ...(authoring ?? {}),
@@ -1654,6 +1668,7 @@ export class CandidateGeneratorService {
               reviewEvents: [],
               publishedContentItemId: null,
               writeEpoch: input.leaseEpoch,
+              ...(composedMedia ?? {}),
             },
           },
           { upsert: true },
