@@ -604,6 +604,27 @@ shows for the same hue. Only everyday things are drawn — never a character or
 a brand. It sits in this Scope until «الملاحظة والخدع» has a family list of its
 own, which is where it belongs.
 
+### Templates and capacity — owner decision 2026-11-26
+
+The owner saw that every item of a family was the family's one example with
+the numbers changed, and that a player who buys many games would feel the
+questions repeat. So each active family now names several **templates**
+(`variants` in the catalog below): different scenarios that share its solve.
+
+- The planner gives every slot one template and tells the generator to write
+  in it. Two items of one family differ in kind, not only in their numbers.
+- **A batch differs from the one before it.** Families the previous batch for
+  the same Scope and mechanic used get at most one slot in the next; where
+  there are too few other families for that, the templates rotate instead.
+- **A family fills up.** Once it holds 6 approved items per template (or its
+  own `capacity`), the planner stops drawing it. A family that names neither
+  templates nor a capacity is not capped. When every family is full the
+  planner refuses the batch and says so: the answer is more templates or more
+  families, not more of the same.
+
+Adding a template is one entry in `variants`: a kebab-case `key`, a short
+Arabic `name`, and a `brief` the generator can act on.
+
 ## 12. Machine-Readable Family Catalog
 
 The block below is the structured form of the 23 families in the matrix of §5.
@@ -866,6 +887,38 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "digit-in-count",
+          "name": "رقم في العدّ",
+          "brief": "How many times one digit is written when counting from 1 to a stated number."
+        },
+        {
+          "key": "book-pages",
+          "name": "صفحات كتاب",
+          "brief": "A book with numbered pages: how many times one digit is printed across all the page numbers."
+        },
+        {
+          "key": "numbers-containing",
+          "name": "أعداد فيها الرقم",
+          "brief": "How many NUMBERS in a stated range contain a given digit at least once — houses on a street, seats in a stand, lockers. Counts numbers, not digits."
+        },
+        {
+          "key": "total-digits",
+          "name": "كم خانة تنكتب",
+          "brief": "How many digits are written in total when every number from 1 to a stated number is written out."
+        },
+        {
+          "key": "divisible-by",
+          "name": "تنقسم على",
+          "brief": "How many numbers from 1 to a stated number divide exactly by a given small number (7, 9, 11, 13)."
+        },
+        {
+          "key": "ending-in",
+          "name": "تنتهي بـ",
+          "brief": "How many numbers in a stated range end in one of two given digits, in an everyday setting: tickets, seats, room numbers."
+        }
       ]
     },
     {
@@ -883,6 +936,38 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "time-units",
+          "name": "وحدات الوقت",
+          "brief": "A big count of small time units in a familiar span: seconds in days, minutes in weeks, hours in a stated number of weeks."
+        },
+        {
+          "key": "daily-habit",
+          "name": "عادة يومية",
+          "brief": "A daily habit with a stated daily count, totalled over a stated number of weeks or days: cups, prayers, phone unlocks."
+        },
+        {
+          "key": "rate-over-time",
+          "name": "معدّل على مدة",
+          "brief": "A steady stated rate held for a stated time: steps per minute over an hour and a half, heartbeats, typing."
+        },
+        {
+          "key": "work-and-shifts",
+          "name": "دوام وورديات",
+          "brief": "Hours or shifts over a stated number of weeks, from a stated days-per-week and hours-per-day."
+        },
+        {
+          "key": "pages-and-episodes",
+          "name": "صفحات وحلقات",
+          "brief": "Reading or watching at a stated daily amount: pages over weeks, minutes of episodes across a season."
+        },
+        {
+          "key": "sleep-and-meals",
+          "name": "نوم ووجبات",
+          "brief": "Hours slept or meals eaten over a stated long stretch of days, from a stated nightly or daily figure."
+        }
       ]
     },
     {
@@ -900,6 +985,38 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "one-to-n",
+          "name": "من 1 إلى عدد",
+          "brief": "The sum of every whole number from 1 to a stated number."
+        },
+        {
+          "key": "multiples-sum",
+          "name": "مجموع المضاعفات",
+          "brief": "The sum of the multiples of a small number between two stated ends."
+        },
+        {
+          "key": "odd-or-even",
+          "name": "فردي أو زوجي",
+          "brief": "The sum of the odd numbers, or of the even numbers, up to a stated number."
+        },
+        {
+          "key": "between-two",
+          "name": "بين رقمين",
+          "brief": "The sum of every whole number between two stated numbers, neither of them 1."
+        },
+        {
+          "key": "stacked-rows",
+          "name": "صفوف متراكمة",
+          "brief": "Things stacked in rows that grow by one — cans, chairs, bricks: one in the first row, two in the second, up to a stated row. How many in all?"
+        },
+        {
+          "key": "growing-savings",
+          "name": "تحويشة تزيد",
+          "brief": "Saving one riyal the first day, two the second, and so on for a stated number of days. How much in all?"
+        }
       ]
     },
     {
@@ -917,6 +1034,43 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "handshakes",
+          "name": "مصافحات",
+          "brief": "Everyone shakes hands with everyone else once. State the group size; a handshake between two is one handshake."
+        },
+        {
+          "key": "private-messages",
+          "name": "رسائل خاصة",
+          "brief": "Everyone sends one private message to every other person. A to B and B to A are two messages; say so."
+        },
+        {
+          "key": "two-sides-greet",
+          "name": "فريقين يسلّمون",
+          "brief": "Two groups of stated sizes: each person greets every person of the OTHER group only, never their own."
+        },
+        {
+          "key": "gift-exchange",
+          "name": "تبادل هدايا",
+          "brief": "Everyone gives one gift to every other person. How many gifts were bought?"
+        },
+        {
+          "key": "friendly-matches",
+          "name": "مباريات بين الشلة",
+          "brief": "Friends playing one against one: every pair plays a stated number of games."
+        },
+        {
+          "key": "pair-photos",
+          "name": "صور ثنائية",
+          "brief": "Every two people take one photo together. How many photos?"
+        },
+        {
+          "key": "calls-counted-once",
+          "name": "مكالمات",
+          "brief": "Everyone phones everyone else once; a call between two counts as one call. Say so plainly."
+        }
       ]
     },
     {
@@ -934,6 +1088,38 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "league-home-away",
+          "name": "دوري ذهاب وإياب",
+          "brief": "A league where every team hosts every other team once. State the number of teams."
+        },
+        {
+          "key": "league-single",
+          "name": "دوري من دور واحد",
+          "brief": "A league where every team meets every other team exactly once."
+        },
+        {
+          "key": "group-stage",
+          "name": "دور مجموعات",
+          "brief": "Teams split into equal groups of a stated size; each team plays the others in its group once. Matches in the whole group stage?"
+        },
+        {
+          "key": "knockout",
+          "name": "خروج المغلوب",
+          "brief": "A straight knockout from a stated number of teams to one champion. How many matches?"
+        },
+        {
+          "key": "groups-then-knockout",
+          "name": "مجموعات ثم إقصاء",
+          "brief": "Groups first, then a stated number of teams advance to a knockout. Total matches in the whole tournament; explain the format in full."
+        },
+        {
+          "key": "two-legged-knockout",
+          "name": "إقصاء ذهاب وإياب",
+          "brief": "A knockout where every tie is two matches, and the final is one. How many matches in all?"
+        }
       ]
     },
     {
@@ -951,6 +1137,28 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "national-days",
+          "name": "أيام وطنية",
+          "brief": "A Saudi national day fixed in the Gregorian calendar that everyone here knows."
+        },
+        {
+          "key": "month-start",
+          "name": "بداية شهر",
+          "brief": "The first day of a named Gregorian month, never one in the middle of the year."
+        },
+        {
+          "key": "month-end",
+          "name": "نهاية شهر",
+          "brief": "The last day of a named Gregorian month, never one in the middle of the year."
+        },
+        {
+          "key": "world-days",
+          "name": "أيام عالمية معروفة",
+          "brief": "A fixed worldwide date ordinary people here know without looking it up. If in doubt that it is widely known, choose another template."
+        }
       ]
     },
     {
@@ -971,6 +1179,38 @@ out of generation; `pausedReason` says why.
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "bag-of-balls",
+          "name": "كيس كرات",
+          "brief": "Coloured balls in a bag, some drawn without looking."
+        },
+        {
+          "key": "plate-of-food",
+          "name": "صحن أكل",
+          "brief": "Two kinds of the same food on one plate — samosa, dates, sweets — some taken without looking."
+        },
+        {
+          "key": "drawer-in-the-dark",
+          "name": "درج في الظلام",
+          "brief": "Two colours of socks or gloves in a drawer, taken with the light off."
+        },
+        {
+          "key": "picking-players",
+          "name": "اختيار لاعبين",
+          "brief": "Players from two named groups, some picked at random for a team."
+        },
+        {
+          "key": "cards-face-down",
+          "name": "أوراق مقلوبة",
+          "brief": "Cards of two colours face down on a table, some turned over."
+        },
+        {
+          "key": "seats-and-tickets",
+          "name": "تذاكر",
+          "brief": "Tickets of two kinds in a box, some handed out at random."
+        }
       ]
     },
     {
@@ -991,6 +1231,38 @@ out of generation; `pausedReason` says why.
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "machines-and-time",
+          "name": "مكائن ووقت",
+          "brief": "Machines making things in a stated time, then more machines and more things."
+        },
+        {
+          "key": "workers-and-walls",
+          "name": "عمال وجدران",
+          "brief": "Workers finishing a job in a stated time, then a different number of workers or jobs."
+        },
+        {
+          "key": "taps-and-tanks",
+          "name": "صنابير وخزانات",
+          "brief": "Taps filling tanks at one rate, then more taps and more tanks."
+        },
+        {
+          "key": "animals-and-catch",
+          "name": "حيوانات تصيد",
+          "brief": "Animals each catching or eating at one rate, then a different count over a different time."
+        },
+        {
+          "key": "printers-and-pages",
+          "name": "طابعات وصفحات",
+          "brief": "Printers printing pages at one rate, then a different number of printers and pages."
+        },
+        {
+          "key": "ovens-and-loaves",
+          "name": "أفران وخبز",
+          "brief": "Ovens or cooks producing food at one rate, then a different number of them."
+        }
       ]
     },
     {
@@ -1011,6 +1283,33 @@ out of generation; `pausedReason` says why.
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "half-age-later",
+          "name": "نص العمر بعدين",
+          "brief": "Someone was half another person's age at a stated time; how old much later? The gap stays the same."
+        },
+        {
+          "key": "gap-stays",
+          "name": "الفرق ثابت",
+          "brief": "Two ages now; one of them at a later stated age — how old is the other then?"
+        },
+        {
+          "key": "twice-as-old-then",
+          "name": "ضعف العمر وقتها",
+          "brief": "Someone is twice another's age now; how old will the younger be when the older reaches a stated age?"
+        },
+        {
+          "key": "years-ago",
+          "name": "قبل سنين",
+          "brief": "Two ages now; how old was one when the other was a stated younger age?"
+        },
+        {
+          "key": "sum-after-years",
+          "name": "مجموع الأعمار",
+          "brief": "The sum of two or three ages now; what is the sum after a stated number of years? Every person ages."
+        }
       ]
     },
     {
@@ -1031,6 +1330,33 @@ out of generation; `pausedReason` says why.
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "two-fruits",
+          "name": "فاكهتين",
+          "brief": "Two emoji, two equations, ask for one of them."
+        },
+        {
+          "key": "three-in-a-chain",
+          "name": "ثلاثة بالتسلسل",
+          "brief": "Three emoji where each equation unlocks the next, then ask for the last."
+        },
+        {
+          "key": "final-sum",
+          "name": "احسب الأخير",
+          "brief": "Two or three emoji found from equations, then ask for a new sum of them."
+        },
+        {
+          "key": "doubles",
+          "name": "المضاعف",
+          "brief": "An emoji added to itself, then combined with another; whole-number values in the head."
+        },
+        {
+          "key": "price-list",
+          "name": "قائمة أسعار",
+          "brief": "Emoji as items with a stated total for two orders; what does one item cost?"
+        }
       ]
     },
     {
@@ -1051,6 +1377,33 @@ out of generation; `pausedReason` says why.
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "nth-in-cycle",
+          "name": "رقم كم في التكرار",
+          "brief": "A repeating run of colours shown for two full cycles; which colour is at a stated later position?"
+        },
+        {
+          "key": "emoji-cycle",
+          "name": "إيموجي يتكرر",
+          "brief": "A repeating run of emoji shapes; which one is at a stated later position?"
+        },
+        {
+          "key": "growing-run",
+          "name": "نمط يكبر",
+          "brief": "A pattern whose runs grow — one red, two blue, three red — which colour is at a stated position?"
+        },
+        {
+          "key": "how-many-of-one",
+          "name": "كم واحد من لون",
+          "brief": "A repeating run of colours; how many of one colour are among the first stated number of items?"
+        },
+        {
+          "key": "traffic-and-days",
+          "name": "إشارات وأيام",
+          "brief": "A familiar cycle (traffic lights, days of the week) repeated; what comes at a stated step?"
+        }
       ]
     },
     {
@@ -1068,7 +1421,40 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "times-one-digit",
+          "name": "ضرب في خانة",
+          "brief": "A two-digit number times a one-digit number."
+        },
+        {
+          "key": "add-two-numbers",
+          "name": "جمع رقمين",
+          "brief": "Two two- or three-digit numbers added."
+        },
+        {
+          "key": "change-from-note",
+          "name": "الباقي من ورقة",
+          "brief": "Change from a round note after a stated price — subtraction from 100, 200 or 500."
+        },
+        {
+          "key": "exact-division",
+          "name": "قسمة بدون باقي",
+          "brief": "A division that comes out whole."
+        },
+        {
+          "key": "squares",
+          "name": "رقم في نفسه",
+          "brief": "A number from 11 to 25 times itself."
+        },
+        {
+          "key": "double-and-half",
+          "name": "ضعف ونص",
+          "brief": "Double, or half, of a two- or three-digit number."
+        }
+      ],
+      "capacity": 60
     },
     {
       "familyKey": "sequence-next",
@@ -1085,7 +1471,40 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "doubling",
+          "name": "يتضاعف",
+          "brief": "Each number is twice the one before."
+        },
+        {
+          "key": "fixed-step",
+          "name": "خطوة ثابتة",
+          "brief": "Each number is the one before plus the same amount — not 1, 2, 5 or 10."
+        },
+        {
+          "key": "squares",
+          "name": "مربعات",
+          "brief": "The square numbers in order."
+        },
+        {
+          "key": "going-down",
+          "name": "تنازلي",
+          "brief": "A sequence that falls by a fixed amount."
+        },
+        {
+          "key": "add-the-last-two",
+          "name": "مجموع آخر اثنين",
+          "brief": "Each number is the sum of the two before it."
+        },
+        {
+          "key": "growing-step",
+          "name": "خطوة تكبر",
+          "brief": "The gap grows by one each time: +1, +2, +3."
+        }
+      ],
+      "capacity": 40
     },
     {
       "familyKey": "everyday-conversions",
@@ -1102,7 +1521,40 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "hours-and-minutes",
+          "name": "ساعات ودقائق",
+          "brief": "Hours and a fraction of an hour into minutes, or minutes into hours and minutes."
+        },
+        {
+          "key": "days-and-weeks",
+          "name": "أيام وأسابيع",
+          "brief": "Weeks into days, or days into weeks and days."
+        },
+        {
+          "key": "riyals-and-halalas",
+          "name": "ريال وهللة",
+          "brief": "Riyals into halalas or halalas into riyals."
+        },
+        {
+          "key": "kilos-and-grams",
+          "name": "كيلو وجرام",
+          "brief": "Kilograms and a fraction into grams, or the reverse."
+        },
+        {
+          "key": "kilometres-and-metres",
+          "name": "كيلو ومتر",
+          "brief": "Kilometres and a fraction into metres, or the reverse."
+        },
+        {
+          "key": "dozens",
+          "name": "درازن",
+          "brief": "Dozens into pieces, or pieces into dozens."
+        }
+      ],
+      "capacity": 40
     },
     {
       "familyKey": "direct-fraction",
@@ -1119,6 +1571,33 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "part-of-a-number",
+          "name": "جزء من رقم",
+          "brief": "A half, a third or a quarter of a stated number."
+        },
+        {
+          "key": "fraction-of-fraction",
+          "name": "جزء من جزء",
+          "brief": "A simple fraction of a simple fraction: half of a quarter, a third of a half."
+        },
+        {
+          "key": "percent-of-round",
+          "name": "نسبة من رقم مدوّر",
+          "brief": "10%, 20%, 25% or 50% of a round number."
+        },
+        {
+          "key": "fraction-as-percent",
+          "name": "الكسر كم بالمية",
+          "brief": "A simple fraction named, asked as a percentage."
+        },
+        {
+          "key": "how-many-in",
+          "name": "كم ربع في",
+          "brief": "How many halves or quarters are in a small whole number."
+        }
       ]
     },
     {
@@ -1136,6 +1615,33 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "times-itself",
+          "name": "في نفسه",
+          "brief": "A number described by its square."
+        },
+        {
+          "key": "half-or-double",
+          "name": "نصه أو ضعفه",
+          "brief": "A number described by its half or its double."
+        },
+        {
+          "key": "add-to-reach",
+          "name": "زدته صار",
+          "brief": "A number that becomes a stated number when a stated amount is added or taken away."
+        },
+        {
+          "key": "smallest-or-largest",
+          "name": "أصغر وأكبر",
+          "brief": "The smallest or largest number of a plain kind: three digits, two different digits, even with two digits."
+        },
+        {
+          "key": "counting-zeros",
+          "name": "كم صفر",
+          "brief": "How many zeros in a familiar big number: a thousand, a million, a hundred thousand."
+        }
       ]
     },
     {
@@ -1153,7 +1659,8 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
-      ]
+      ],
+      "capacity": 50
     },
     {
       "familyKey": "copy-the-mark",
@@ -1170,7 +1677,8 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
-      ]
+      ],
+      "capacity": 50
     },
     {
       "familyKey": "colour-recall",
@@ -1187,7 +1695,8 @@ out of generation; `pausedReason` says why.
       },
       "answerModes": [
         "closest"
-      ]
+      ],
+      "capacity": 150
     }
   ]
 }

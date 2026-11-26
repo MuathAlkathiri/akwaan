@@ -476,6 +476,30 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         expect(drawable('numbers-estimation', 'moving-xo')).toEqual(expected);
       });
 
+      it('every family the engine draws names several templates or its own capacity (2026-11-26)', () => {
+        for (const scopeKey of ['numbers-estimation', 'wordplay-letters']) {
+          const { families } = service.resolve({
+            mechanicKey: 'closest',
+            worldKey: 'puzzles',
+            scopeKey,
+          }).canonicalFamilies;
+          const drawn = families.filter((family) => family.status !== 'paused');
+          expect(drawn.length).toBeGreaterThan(8);
+          for (const family of drawn) {
+            const templates = family.variants?.length ?? 0;
+            // Composed pictures have no author to brief; they carry a number.
+            if (family.modality === 'composed-visual') {
+              expect(family.capacity).toBeGreaterThan(0);
+              continue;
+            }
+            expect(templates).toBeGreaterThanOrEqual(3);
+            expect(
+              new Set(family.variants!.map((variant) => variant.key)).size,
+            ).toBe(templates);
+          }
+        }
+      });
+
       it('اقرأ خصمك shares no family with إكس أو المتحرك (2026-11-25)', () => {
         const ryoNumbers = drawable('numbers-estimation', 'read-your-opponent');
         const ryoWords = drawable('wordplay-letters', 'read-your-opponent');

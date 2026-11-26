@@ -604,6 +604,27 @@ really say. The choosing families above are switched off for اقرأ خصمك
 Rejected the same day: «اقراها بالعكس» (what a word becomes read backwards) —
 the answer is one of the options on the phone, so it is simply read off.
 
+### Templates and capacity — owner decision 2026-11-26
+
+The owner saw that every item of a family was the family's one example with
+the numbers changed, and that a player who buys many games would feel the
+questions repeat. So each active family now names several **templates**
+(`variants` in the catalog below): different scenarios that share its solve.
+
+- The planner gives every slot one template and tells the generator to write
+  in it. Two items of one family differ in kind, not only in their numbers.
+- **A batch differs from the one before it.** Families the previous batch for
+  the same Scope and mechanic used get at most one slot in the next; where
+  there are too few other families for that, the templates rotate instead.
+- **A family fills up.** Once it holds 6 approved items per template (or its
+  own `capacity`), the planner stops drawing it. A family that names neither
+  templates nor a capacity is not capped. When every family is full the
+  planner refuses the batch and says so: the answer is more templates or more
+  families, not more of the same.
+
+Adding a template is one entry in `variants`: a kebab-case `key`, a short
+Arabic `name`, and a `brief` the generator can act on.
+
 ---
 
 ## 11. Machine-Readable Family Catalog
@@ -653,7 +674,40 @@ The block below is the structured form of the 15 canonical families approved for
       "pausedFor": [
         "bomb",
         "read-your-opponent"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "food-and-fruit",
+          "name": "أكل وفاكهة",
+          "brief": "The hint is a food, a fruit or a drink."
+        },
+        {
+          "key": "animals",
+          "name": "حيوانات",
+          "brief": "The hint is an animal or a bird."
+        },
+        {
+          "key": "around-the-house",
+          "name": "في البيت",
+          "brief": "The hint is something found at home."
+        },
+        {
+          "key": "sports-and-play",
+          "name": "رياضة ولعب",
+          "brief": "The hint is a sport, a game or something used in one."
+        },
+        {
+          "key": "jobs",
+          "name": "مهن",
+          "brief": "The hint is a job."
+        },
+        {
+          "key": "on-the-road",
+          "name": "في الشارع",
+          "brief": "The hint is something seen on the road or a way of getting around."
+        }
+      ],
+      "capacity": 60
     },
     {
       "familyKey": "add-letter",
@@ -807,6 +861,23 @@ The block below is the structured form of the 15 canonical families approved for
       "pausedFor": [
         "bomb",
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "proverbs",
+          "name": "أمثال",
+          "brief": "A well-known proverb written without its dots."
+        },
+        {
+          "key": "everyday-phrases",
+          "name": "عبارات يومية",
+          "brief": "A set phrase people say every day — a greeting, a wish, a thanks — written without its dots."
+        },
+        {
+          "key": "signs-and-labels",
+          "name": "لوحات وملصقات",
+          "brief": "Words everyone has read on a sign or a label, written without their dots."
+        }
       ]
     },
     {
@@ -922,6 +993,28 @@ The block below is the structured form of the 15 canonical families approved for
       ],
       "pausedFor": [
         "read-your-opponent"
+      ],
+      "variants": [
+        {
+          "key": "three-letters",
+          "name": "ثلاث حروف",
+          "brief": "A three-letter answer."
+        },
+        {
+          "key": "four-letters",
+          "name": "أربع حروف",
+          "brief": "A four-letter answer."
+        },
+        {
+          "key": "one-green-rest-out",
+          "name": "حرف في مكانه",
+          "brief": "The guess has exactly one letter in its place and the rest absent."
+        },
+        {
+          "key": "yellows-only",
+          "name": "موجودة بس مكانها غلط",
+          "brief": "The guess has letters in the word but none in its place."
+        }
       ]
     },
     {
@@ -939,6 +1032,33 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "dotless-letters",
+          "name": "حروف بدون نقط",
+          "brief": "How many letters of the alphabet have no dot."
+        },
+        {
+          "key": "total-dots",
+          "name": "مجموع النقط",
+          "brief": "How many dots there are across a stated set of letters — the whole alphabet, or the letters with dots above."
+        },
+        {
+          "key": "non-connecting",
+          "name": "حروف ما تتصل",
+          "brief": "How many letters do not join to the letter after them."
+        },
+        {
+          "key": "letters-in-names",
+          "name": "حروف أسماء معروفة",
+          "brief": "How many letters it takes to write a familiar closed set of names: the days of the week, the months of one calendar."
+        },
+        {
+          "key": "dots-above-or-below",
+          "name": "نقط فوق وتحت",
+          "brief": "How many letters carry their dots above, or below."
+        }
       ]
     },
     {
@@ -956,6 +1076,23 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "closest"
+      ],
+      "variants": [
+        {
+          "key": "alphabet-order",
+          "name": "ترتيب الأبجدية",
+          "brief": "A letter in the standard 28-letter order, between «أ» and «ي»."
+        },
+        {
+          "key": "gregorian-months",
+          "name": "الشهور الميلادية",
+          "brief": "A Gregorian month in the order of the twelve, between «يناير» and «ديسمبر»."
+        },
+        {
+          "key": "hijri-months",
+          "name": "الشهور الهجرية",
+          "brief": "A Hijri month in the order of the twelve, between «محرم» and «ذو الحجة»."
+        }
       ]
     },
     {
@@ -973,7 +1110,40 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "around-the-house",
+          "name": "أشياء في البيت",
+          "brief": "A riddle whose answer is a household thing."
+        },
+        {
+          "key": "body",
+          "name": "الجسم",
+          "brief": "A riddle whose answer is a part of the body."
+        },
+        {
+          "key": "nature",
+          "name": "الطبيعة",
+          "brief": "A riddle whose answer is in nature: sun, shadow, water, wind, fire."
+        },
+        {
+          "key": "time-and-days",
+          "name": "الوقت",
+          "brief": "A riddle whose answer is about time: a clock, a day, a year."
+        },
+        {
+          "key": "food-and-drink",
+          "name": "أكل وشرب",
+          "brief": "A riddle whose answer is a food or a drink."
+        },
+        {
+          "key": "on-the-road",
+          "name": "في الطريق",
+          "brief": "A riddle whose answer is something met on the road."
+        }
+      ],
+      "capacity": 60
     },
     {
       "familyKey": "proverb-completion",
@@ -990,7 +1160,35 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "gulf-sayings",
+          "name": "أمثال خليجية",
+          "brief": "A saying used in Saudi Arabia and the Gulf today."
+        },
+        {
+          "key": "classical",
+          "name": "أمثال فصيحة",
+          "brief": "A classical Arabic proverb every schoolchild has heard."
+        },
+        {
+          "key": "patience-and-work",
+          "name": "الصبر والشغل",
+          "brief": "A common proverb about patience, effort or haste."
+        },
+        {
+          "key": "animals-in-proverbs",
+          "name": "أمثال فيها حيوان",
+          "brief": "A common proverb that names an animal."
+        },
+        {
+          "key": "people-and-neighbours",
+          "name": "الناس والجيران",
+          "brief": "A common proverb about friends, neighbours or family."
+        }
+      ],
+      "capacity": 50
     },
     {
       "familyKey": "word-completion",
@@ -1007,7 +1205,40 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "places",
+          "name": "أماكن",
+          "brief": "A place people go: a building or a kind of place, not a named city."
+        },
+        {
+          "key": "food",
+          "name": "أكل",
+          "brief": "A dish or an ingredient."
+        },
+        {
+          "key": "animals",
+          "name": "حيوانات",
+          "brief": "An animal or a bird."
+        },
+        {
+          "key": "jobs",
+          "name": "مهن",
+          "brief": "A job."
+        },
+        {
+          "key": "household",
+          "name": "أشياء البيت",
+          "brief": "Something found at home."
+        },
+        {
+          "key": "school-and-office",
+          "name": "مدرسة ومكتب",
+          "brief": "Something found in a school or an office."
+        }
+      ],
+      "capacity": 60
     },
     {
       "familyKey": "antonym",
@@ -1024,7 +1255,30 @@ The block below is the structured form of the 15 canonical families approved for
       },
       "answerModes": [
         "multiple_choice"
-      ]
+      ],
+      "variants": [
+        {
+          "key": "describing-words",
+          "name": "صفات",
+          "brief": "The opposite of an everyday describing word."
+        },
+        {
+          "key": "doing-words",
+          "name": "أفعال",
+          "brief": "The opposite of an everyday verb."
+        },
+        {
+          "key": "feelings",
+          "name": "مشاعر",
+          "brief": "The opposite of a feeling."
+        },
+        {
+          "key": "place-and-time",
+          "name": "مكان ووقت",
+          "brief": "The opposite of a word of place or time."
+        }
+      ],
+      "capacity": 50
     }
   ]
 }
