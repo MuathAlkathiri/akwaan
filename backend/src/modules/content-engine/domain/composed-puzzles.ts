@@ -46,6 +46,7 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'overlapping-boundary-trace',
   'size-distortion-illusion',
   'picture-initials',
+  'wordle-single-guess',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
@@ -72,6 +73,11 @@ import {
   AssemblyFamily,
   composeAssembly,
 } from './composed-assembly';
+import {
+  WORDLE_VARIANTS,
+  WordleFamily,
+  composeWordle,
+} from './composed-wordle';
 import {
   LETTERS_VARIANTS,
   LettersFamily,
@@ -116,6 +122,7 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   ...ASSEMBLY_VARIANTS,
   ...OBSERVATION_VARIANTS,
   ...LETTERS_VARIANTS,
+  ...WORDLE_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
 export interface ComposedPuzzle extends ComposedPuzzleDrawing {
@@ -1506,6 +1513,13 @@ export function composePuzzle(
   if (familyKey in PATHS_VARIANTS) {
     return composePaths(
       familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in WORDLE_VARIANTS) {
+    return composeWordle(
+      familyKey as WordleFamily,
       seed,
       variant,
     ) as ComposedPuzzle;

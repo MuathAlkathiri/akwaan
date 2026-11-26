@@ -455,7 +455,7 @@
 | 13 | `word-inside-word` | كلمة في بطن كلمة | **EXCELLENT** | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | Text Layout | Multiple Choice (4 words) |
 | 14 | `arabic-cipher-dhad` | شفرات الحروف والرموز | **EXCELLENT** | **GOOD** | **LIMITED** | DO_NOT_FORCE | Typographic Vector | Multiple Choice (4 words) |
 | 15 | `word-ladder-mini` | سلالم الكلمات المصغرة | **EXCELLENT** | **GOOD** | **LIMITED** | DO_NOT_FORCE | Text Layout | Multiple Choice (4 words) |
-| 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Emoji in text | Multiple Choice (3 words) |
+| 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed tiles | Multiple Choice (4 words) |
 | 17 | `alphabet-counts` | من لغتنا | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Numeric Slider |
 | 18 | `alphabet-position` | وين في الترتيب؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Text only | 1D Slider (Between Anchors) |
 | 19 | `classic-riddle` | فوازير | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
@@ -536,7 +536,8 @@ When generating or reviewing an authored batch for `wordplay-letters`:
 The owner reviewed this World's question types on 2026-11-24 and narrowed what
 the engine generates to the families he chose. Rows 16–18 of the matrix in §5
 were **approved by him that day** and are canonical. Of rows 1–15, two are
-active — `anagram-rearrange` and `dotless-disambiguation` — and the other
+active — `anagram-rearrange` and `dotless-disambiguation` (paused again on
+2026-11-27: a famous phrase without its dots reads itself) — and the other
 thirteen stay in the library with their ratings, **paused**: nothing is deleted,
 and a family returns to generation by changing its `status` in the catalog.
 
@@ -552,7 +553,7 @@ exists.
 |---|---|---|---|
 | `anagram-rearrange` | Rearrange the letters, **with a hint that fixes the answer** | رتّبها وتطلع فاكهة: ز، م، و | موز |
 | `dotless-disambiguation` | Read a familiar phrase written without its dots | «الصٮر مڡٮاح الڡرح» | الصبر مفتاح الفرج |
-| `wordle-single-guess` | One coloured guess, four options, one fits | ق⬜ م🟨 ر🟩 — مطر، نمر، قصر؟ | مطر |
+| `wordle-single-guess` | One or two guesses drawn as coloured tiles, four options, one fits | drawn: ح(grey) ب(green) ل(yellow) — لبن، خبز، كبد، كلب؟ | لبن |
 | `alphabet-counts` | A count over the alphabet nobody has memorised (slider) | كم نقطة في حروف الأبجدية العربية كلها؟ | 22 |
 | `alphabet-position` | Where a letter sits in an order everyone knows (between-anchors: a bare line, two labelled ends, no numbers; the target is never in the middle fifth) | بين «أ» و«ي»، وين حرف القاف؟ | letter 21 of 28 |
 
@@ -566,11 +567,12 @@ Per-family rules added by this decision:
   only well-known proverbs and set phrases, where the meaning settles the
   reading. Answer by choosing between readings, or ask for one word of the
   phrase; never ask the player to type the whole sentence.
-- `wordle-single-guess` — 🟩 right letter in the right place, 🟨 in the word but
-  elsewhere, ⬜ not in the word. Bright yellow is the owner's choice. Always
-  options, never typed: several words can fit one set of colours. Each wrong
-  option must break **exactly one stated colour**, and the reviewer must be able
-  to say which. Three or four letters; common words only.
+- `wordle-single-guess` — drawn by the engine, never written by the model:
+  green in its place, bright yellow (the owner's choice) in the word but
+  elsewhere, grey not in the word, with the key under the tiles. Always
+  options, never typed: several words can fit one set of colours. The engine
+  proves one option fits and that each wrong option breaks a stated tile.
+  Three or four different letters; common words only.
 - `alphabet-counts` — the count must be checkable by listing the letters.
   Answered on the slider, so it follows the Closest rule of this World: exact
   and computable by us, not reachable exactly in the time.
@@ -859,27 +861,8 @@ The block below is the structured form of the 15 canonical families approved for
       "answerModes": [
         "multiple_choice"
       ],
-      "pausedFor": [
-        "bomb",
-        "read-your-opponent"
-      ],
-      "variants": [
-        {
-          "key": "proverbs",
-          "name": "أمثال",
-          "brief": "A well-known proverb written without its dots."
-        },
-        {
-          "key": "everyday-phrases",
-          "name": "عبارات يومية",
-          "brief": "A set phrase people say every day — a greeting, a wish, a thanks — written without its dots."
-        },
-        {
-          "key": "signs-and-labels",
-          "name": "لوحات وملصقات",
-          "brief": "Words everyone has read on a sign or a label, written without their dots."
-        }
-      ]
+      "status": "paused",
+      "pausedReason": "Owner 2026-11-27: a famous phrase without its dots reads itself — trivial. Paused until a harder form is approved."
     },
     {
       "familyKey": "dot-shift",
@@ -979,9 +962,9 @@ The block below is the structured form of the 15 canonical families approved for
     {
       "familyKey": "wordle-single-guess",
       "name": "ووردل بتخمينة واحدة",
-      "description": "كلمة مخمَّنة واحدة تُعرض وكل حرف فيها بلون (🟩 الحرف في مكانه، 🟨 موجود في مكان آخر، ⬜ غير موجود)، وثلاثة اختيارات واحد منها فقط يطابق الألوان.",
+      "description": "تخمينة لكلمة مخفية تُرسم مربعات ملونة (أخضر: الحرف في مكانه، أصفر: موجود ومكانه غلط، رمادي: مو موجود) ومفتاح الألوان تحتها، وأربع كلمات واحدة منها فقط توافق كل الألوان. المحرك يختار الكلمة ويلوّن التخمينة ويرسمها. (قرار المالك 2026-11-27: الصياغة النصية بالإيموجي كانت مبهمة.)",
       "playerSolve": "استبعاد كل اختيار يخالف لوناً واحداً على الأقل حتى تبقى كلمة واحدة.",
-      "modality": "letter-deduction",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -999,24 +982,20 @@ The block below is the structured form of the 15 canonical families approved for
         {
           "key": "three-letters",
           "name": "ثلاث حروف",
-          "brief": "A three-letter answer."
+          "brief": "One drawn guess of three letters."
         },
         {
           "key": "four-letters",
           "name": "أربع حروف",
-          "brief": "A four-letter answer."
+          "brief": "One drawn guess of four letters."
         },
         {
-          "key": "one-green-rest-out",
-          "name": "حرف في مكانه",
-          "brief": "The guess has exactly one letter in its place and the rest absent."
-        },
-        {
-          "key": "yellows-only",
-          "name": "موجودة بس مكانها غلط",
-          "brief": "The guess has letters in the word but none in its place."
+          "key": "two-guesses",
+          "name": "تخمينتين",
+          "brief": "Two drawn guesses of four letters; the answer agrees with both."
         }
-      ]
+      ],
+      "capacity": 400
     },
     {
       "familyKey": "alphabet-counts",

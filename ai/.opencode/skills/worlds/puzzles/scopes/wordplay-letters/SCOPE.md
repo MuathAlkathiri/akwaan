@@ -45,7 +45,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 13 | `word-inside-word` | كلمة في بطن كلمة | Text Layout | `multiple_choice` |
 | 14 | `arabic-cipher-dhad` | شفرات الحروف والرموز | Typographic Vector | `multiple_choice` |
 | 15 | `word-ladder-mini` | سلالم الكلمات المصغرة | Text Layout | `multiple_choice` |
-| 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | Emoji in text | `multiple_choice` |
+| 16 | `wordle-single-guess` | ووردل بتخمينة واحدة | Composed tiles | `multiple_choice` |
 | 17 | `alphabet-counts` | من لغتنا | Text only | `closest` |
 | 18 | `alphabet-position` | وين في الترتيب؟ | Text only | `closest` |
 | 19 | `classic-riddle` | فوازير | Text only | `multiple_choice` |
