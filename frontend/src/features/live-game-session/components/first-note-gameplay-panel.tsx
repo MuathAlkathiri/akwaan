@@ -296,7 +296,7 @@ export function FirstNoteGameplayPanel({
       <section
         dir="rtl"
         data-testid="first-note-panel"
-        className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+        className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
       >
         <ChallengeContextStrip
           {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -323,7 +323,7 @@ export function FirstNoteGameplayPanel({
         {recap}
 
         {view.phase !== "preparing" && view.phase !== "completed" && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
             <main
               className={cn(
                 "flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-[28px] bg-brand-paper px-[34px] py-7 text-center shadow-[7px_8px_0_hsl(var(--brand-navy))]",

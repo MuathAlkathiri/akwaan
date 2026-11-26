@@ -420,7 +420,7 @@ export function EkshifniGameplayPanel({
     <section
       dir="rtl"
       data-testid="ekshifni-panel"
-      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -442,7 +442,7 @@ export function EkshifniGameplayPanel({
       {view.phase === "completed" ? (
         recap
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           {/* The shared board is the hero. A phone renders no picture at all —
               the server sends it none. */}
           <main className="flex min-h-[420px] items-center justify-center rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 shadow-[7px_8px_0_hsl(var(--brand-navy))]">

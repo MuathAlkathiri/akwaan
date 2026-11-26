@@ -187,7 +187,7 @@ function OddPieceHotspotGameplayPanel({
     <section
       dir="rtl"
       data-testid="odd-piece-v2-panel"
-      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -224,7 +224,7 @@ function OddPieceHotspotGameplayPanel({
           }
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="flex items-center rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 shadow-[7px_8px_0_hsl(var(--brand-navy))]">
             {image ? (
               <div className="w-full">
@@ -800,7 +800,7 @@ function HotspotResolution({
 
   return (
     <section
-      className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"
+      className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"
       data-testid="odd-piece-v2-resolution"
     >
       <main className="flex items-center rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 shadow-[7px_8px_0_hsl(var(--brand-navy))]">

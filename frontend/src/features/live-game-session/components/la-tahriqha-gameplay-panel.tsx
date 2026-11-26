@@ -610,7 +610,7 @@ export function LaTahriqhaGameplayPanel({
         dir="rtl"
         data-testid="la-tahriqha-panel"
         data-phase={view.phase}
-        className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+        className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
       >
         <ChallengeContextStrip
           {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -628,7 +628,7 @@ export function LaTahriqhaGameplayPanel({
         {preparing}
         {view.phase === "completed" && !view.reveal && recap}
         {view.dish && view.phase !== "preparing" && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
             <main
               className={cn(
                 "flex flex-col gap-4 rounded-[28px] bg-brand-paper p-5 shadow-[7px_8px_0_hsl(var(--brand-navy))]",

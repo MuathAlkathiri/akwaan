@@ -197,7 +197,7 @@ export function ComboGameplayPanel({
     <section
       dir="rtl"
       data-testid="combo-stage"
-      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -214,7 +214,7 @@ export function ComboGameplayPanel({
 
       <div
         className={cn(
-          "grid gap-6",
+          "grid min-h-0 flex-1 gap-6",
           !terminal && "lg:grid-cols-[minmax(0,1fr)_360px]",
         )}
       >
