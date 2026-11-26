@@ -42,6 +42,12 @@ const config = {
           plum: "#4B4380",
           slate: "#4A5468",
           bronze: "#7A5C14",
+          // Right and wrong, worn like the gold: a vivid fill with a navy
+          // border and navy text. The tints are row backgrounds only.
+          mint: "#5FD6A0",
+          "mint-tint": "#DDF7EA",
+          coral: "#FF7B6B",
+          "coral-tint": "#FFE4DF",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

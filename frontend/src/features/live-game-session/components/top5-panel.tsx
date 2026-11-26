@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Hand, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  TeamStatusCard,
-  TeamStatusRow,
-} from "../match/components/team-status-card";
-import { ChallengeFrame } from "../match/components/challenge-frame";
+  ChallengeFrame,
+  ChallengeProgress,
+} from "../match/components/challenge-frame";
+import {
+  ChallengeContextStrip,
+  TeamDot,
+  useChallengeContext,
+} from "../match/components/challenge-context-strip";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
 import { teamIdentityOf } from "@/lib/team-identity";
@@ -58,6 +60,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
   // Which surface is rendering this, from the shell that mounted it. The shared
   // screen reads `false` and keeps exactly the presentation it had.
   const phone = useMobileSurface();
+  const context = useChallengeContext();
   // Presentational only. `gameplayCommand` is fire-and-forget, so there is no
   // in-flight promise: this closes the window in which a decider could tap
   // احتفظ and then دسّها and emit two commands for one card.
@@ -104,83 +107,74 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
     });
   };
 
-  return (
-    <ChallengeFrame
-      {...(phone ? {} : { eyebrow: "أفضل 5" })}
-      title={String(state.title || "احتفظ بها أو دسّها")}
-      compact={phone}
-      progressLabel={
-        completed ? "اكتمل التحدي" : `البطاقة ${cardNumber} من ${cardCount}`
-      }
-      progressValue={completed ? 100 : ((cardNumber - 1) / cardCount) * 100}
-      {...(phone ? { className: "flex min-h-0 flex-1 flex-col" } : {})}
-    >
-      <div
-        className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
-        data-testid="top5-panel"
+  const title = String(state.title || "توب 5");
+  const stageTeams = (snapshot?.teams ?? []).filter((team) => team.active);
+  const cardsOf = (teamId: string) =>
+    ownership.filter((record) => record.ownerTeamId === teamId);
+  const counter = completed
+    ? "اكتمل التحدي"
+    : `البطاقة ${cardNumber} من ${cardCount}`;
+
+  // The two ways to play a card. Keep is the gold one: it is the move a team
+  // makes for itself. Neither is dressed as dangerous.
+  const decisions = canDecide && (
+    <>
+      <button
+        type="button"
+        disabled={connection !== "connected" || Boolean(deciding)}
+        onClick={() => decide("keep")}
+        data-testid="top5-keep"
+        className={cn(DECISION, "bg-[hsl(var(--brand-gold))]")}
       >
-        {/* The card counter lives in the frame header; this testid keeps the
-            browser smoke addressing one stable element. */}
-        <span data-testid="top5-card-counter" className="sr-only">
-          {completed ? "اكتمل التحدي" : `البطاقة ${cardNumber} من ${cardCount}`}
+        <span className="font-display text-2xl font-black">احتفظ فيها</span>
+        <span className="text-sm leading-relaxed">
+          تحسها من التوب 5؟ خلها عندكم
         </span>
+      </button>
+      <button
+        type="button"
+        disabled={connection !== "connected" || Boolean(deciding)}
+        onClick={() => decide("give")}
+        data-testid="top5-give"
+        className={cn(DECISION, "bg-white")}
+      >
+        <span className="font-display text-2xl font-black">أعطها للخصم</span>
+        <span className="text-sm leading-relaxed">تحسها فخ؟ ارمها عليهم</span>
+      </button>
+    </>
+  );
 
-        {!completed && !phone && (
-          <TeamStatusRow data-testid="top5-team-status">
-            {(snapshot?.teams ?? [])
-              .filter((team) => team.active)
-              .map((team) => (
-                <TeamStatusCard
-                  key={team.id}
-                  role={team.id === activeTeamId ? "يقررون" : "ينتظرون"}
-                  name={team.name}
-                  dotClass={teamIdentityOf(team.id, snapshot?.teams ?? []).dot}
-                  done={team.id === activeTeamId}
-                  doneLabel="القرار عندهم"
-                  pendingLabel="ينتظرون دورهم"
-                />
-              ))}
-          </TeamStatusRow>
-        )}
+  if (phone) {
+    const ownTeamId = canDecide ? activeTeamId : undefined;
+    return (
+      <ChallengeFrame
+        compact
+        progressLabel={counter}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div
+          className="flex min-h-0 flex-1 flex-col gap-3.5"
+          data-testid="top5-panel"
+        >
+          <span data-testid="top5-card-counter" className="sr-only">
+            {counter}
+          </span>
+          {/* The topic, for the whole challenge: every card is judged against it. */}
+          <p className="rounded-[14px] bg-[hsl(var(--brand-navy))] px-3.5 py-2.5 text-center text-[15px] font-bold leading-relaxed text-white">
+            {title}
+          </p>
 
-        {!completed && current && (
-          <section
-            className={
-              phone ? "flex min-h-0 flex-1 flex-col" : "space-y-5 text-center"
-            }
-          >
-            <div
-              className={
-                phone
-                  ? "akwaan-rise flex flex-1 flex-col items-center justify-center text-center"
-                  : "akwaan-rise rounded-[22px] border-[3px] border-[hsl(var(--brand-navy))] bg-white p-5 shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:p-8"
-              }
-            >
-              {!phone && current.media?.url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={current.media.url}
-                  alt={current.media.altText ?? current.label}
-                  className="mx-auto mb-4 h-36 w-full rounded-[var(--radius)] object-contain"
-                />
-              )}
-              {/* The entity name and nothing else. Rank, metric, cutoff and
-                  evidence are not in this payload at all — the roadmap contract
-                  keeps them hidden metadata until the challenge resolves. */}
-              <p
-                className={
-                  phone
-                    ? "[overflow-wrap:anywhere] font-display text-3xl font-extrabold leading-snug text-[hsl(var(--brand-navy))]"
-                    : "[overflow-wrap:anywhere] font-display text-3xl font-extrabold leading-snug text-[hsl(var(--brand-navy))] md:text-5xl md:leading-snug"
-                }
-                data-testid="top5-current-card"
-              >
-                {current.label}
-              </p>
-            </div>
-
-            {canDecide ? (
-              phone ? (
+          {!completed && current && (
+            <>
+              <div className="akwaan-rise flex flex-1 flex-col items-center justify-center">
+                <p
+                  data-testid="top5-current-card"
+                  className="-rotate-2 rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender px-7 py-5 text-center font-display text-3xl font-black [overflow-wrap:anywhere] shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+                >
+                  {current.label}
+                </p>
+              </div>
+              {canDecide ? (
                 <MobileActionArea>
                   {/* The primitive stays a place, not a component that knows
                       about decisions: the mechanic labels its own region. */}
@@ -188,147 +182,229 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                     data-testid="top5-decider-controls"
                     className="contents"
                   />
-                  <p className="text-center text-sm font-bold text-brand-plum">
-                    {deciding ? "جارٍ إرسال قراركم…" : "أنت صاحب القرار"}
-                  </p>
-                  {/* Two peers, not a safe choice and a dangerous one. Both are
-                      legitimate plays, so neither is dressed as destructive —
-                      the tension comes from the decision, not from the colour. */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      disabled={connection !== "connected" || Boolean(deciding)}
-                      onClick={() => decide("keep")}
-                      data-testid="top5-keep"
-                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
+                  {deciding && (
+                    <p
+                      role="status"
+                      className="text-center text-sm font-bold text-brand-plum"
                     >
-                      <Hand className="size-5" aria-hidden />
-                      احتفظ بها
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      disabled={connection !== "connected" || Boolean(deciding)}
-                      onClick={() => decide("give")}
-                      data-testid="top5-give"
-                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
-                    >
-                      <Send className="size-5" aria-hidden />
-                      دسّها للخصم
-                    </Button>
-                  </div>
+                      نرسل قراركم…
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-3">{decisions}</div>
+                  {ownTeamId && (
+                    <p className="text-center text-[13px] text-brand-slate">
+                      عندكم{" "}
+                      <span className="akwaan-numeral">
+                        {cardsOf(ownTeamId).length}
+                      </span>{" "}
+                      · عند الخصم{" "}
+                      <span className="akwaan-numeral">
+                        {ownership.length - cardsOf(ownTeamId).length}
+                      </span>
+                    </p>
+                  )}
                 </MobileActionArea>
               ) : (
-                <div className="space-y-3" data-testid="top5-decider-controls">
-                  <p className="text-base font-bold text-brand-plum">
-                    أنت صاحب القرار
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      size="lg"
-                      disabled={connection !== "connected" || Boolean(deciding)}
-                      onClick={() => decide("keep")}
-                      variant="outline"
-                      data-testid="top5-keep"
-                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
-                    >
-                      <Hand className="size-5" aria-hidden />
-                      احتفظ بها
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      disabled={connection !== "connected" || Boolean(deciding)}
-                      onClick={() => decide("give")}
-                      data-testid="top5-give"
-                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
-                    >
-                      <Send className="size-5" aria-hidden />
-                      دسّها للخصم
-                    </Button>
-                  </div>
+                <div
+                  data-testid="top5-waiting"
+                  className="flex shrink-0 flex-col items-center gap-1 rounded-[18px] bg-brand-lavender p-4 text-center text-base"
+                >
+                  {deciderName ? (
+                    <>
+                      <p className="font-bold">ناقش البطاقة مع فريقك</p>
+                      <p
+                        className="font-semibold text-brand-plum"
+                        data-testid="top5-decider-name"
+                      >
+                        {deciderName} هو صاحب القرار
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-semibold text-brand-plum">
+                      ننتظر قرار الفريق الثاني…
+                    </p>
+                  )}
                 </div>
-              )
-            ) : (
-              <div
-                className={
-                  phone
-                    ? "flex shrink-0 flex-col items-center gap-1 pb-2 text-center text-sm"
-                    : "space-y-1 rounded-[18px] bg-brand-lavender p-4 text-base"
-                }
-                data-testid="top5-waiting"
-              >
-                {deciderName ? (
-                  <>
-                    <p className="font-black text-foreground">
-                      ناقش البطاقة مع فريقك
-                    </p>
-                    <p
-                      className="font-bold text-muted-foreground"
-                      data-testid="top5-decider-name"
-                    >
-                      {deciderName} هو صاحب القرار
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">
-                    بانتظار قرار الفريق الحالي…
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-        )}
+              )}
+            </>
+          )}
 
-        {ownership.length > 0 && !completed && !phone && (
-          <section>
-            <h3 className="mb-2 text-sm font-bold text-brand-slate">
-              البطاقات الموزّعة
-            </h3>
-            <ul className="grid list-none gap-1.5 sm:grid-cols-2">
-              {ownership.slice(-6).map((record) => {
-                const identity = teamIdentityOf(
-                  record.ownerTeamId,
-                  snapshot?.teams ?? [],
-                );
-                return (
+          {completed && (
+            <p
+              className="rounded-[18px] border-[3px] border-dashed border-brand-dash bg-white p-6 text-center text-lg font-bold text-brand-plum"
+              data-testid="top5-awaiting-result"
+            >
+              خلصت البطاقات. شوفوا الكشف على الشاشة.
+            </p>
+          )}
+        </div>
+      </ChallengeFrame>
+    );
+  }
+
+  return (
+    <section
+      dir="rtl"
+      data-testid="top5-panel"
+      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+    >
+      <span data-testid="top5-card-counter" className="sr-only">
+        {counter}
+      </span>
+      {/* The topic stays in the strip for the whole challenge. */}
+      <ChallengeContextStrip
+        eyebrow={[context.eyebrow, "توب 5"].filter(Boolean).join(" · ")}
+        title={title}
+        aside={
+          completed ? (
+            <span className="inline-flex min-h-9 items-center rounded-full bg-white px-4 text-[15px] font-bold text-[hsl(var(--brand-navy))]">
+              اكتمل التحدي
+            </span>
+          ) : (
+            <span
+              data-testid="top5-active-team"
+              className="inline-flex min-h-[44px] items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-white bg-[hsl(var(--brand-gold))] px-[18px] text-lg font-extrabold text-[hsl(var(--brand-navy))]"
+            >
+              <TeamDot
+                className={
+                  teamIdentityOf(activeTeamId, snapshot?.teams ?? []).dot
+                }
+              />
+              دور {teams.get(activeTeamId) ?? "الفريق"}
+            </span>
+          )
+        }
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)_minmax(0,340px)]">
+        {stageTeams.map((team, index) => {
+          const cards = cardsOf(team.id);
+          const empty = Math.max(0, 5 - cards.length);
+          return (
+            <aside
+              key={team.id}
+              data-testid={`top5-team-cards-${team.id}`}
+              className={cn(
+                "flex flex-col gap-3 rounded-[24px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-[18px]",
+                // First team beside the card on one side, second on the other.
+                index === 0 ? "lg:order-1" : "lg:order-3",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex min-w-0 items-center gap-2 font-display text-xl font-extrabold lg:text-[22px]">
+                  <TeamDot
+                    className={
+                      teamIdentityOf(team.id, snapshot?.teams ?? []).dot
+                    }
+                  />
+                  {team.name}
+                </span>
+                <span className="shrink-0 text-base font-bold text-brand-slate">
+                  {cardsLabel(cards.length)}
+                </span>
+              </div>
+              <ul className="flex list-none flex-col gap-2">
+                {cards.map((record) => (
                   <li
                     key={record.entryId}
-                    className="flex items-center justify-between gap-2 rounded-[12px] border-2 border-[hsl(var(--brand-navy))] bg-brand-paper px-3 py-2 text-sm font-bold text-[hsl(var(--brand-navy))]"
+                    className="flex min-h-[52px] items-center rounded-[14px] border-[3px] border-[hsl(var(--brand-navy))] bg-white px-4 text-xl font-bold [overflow-wrap:anywhere]"
                   >
-                    {/* No rank and no correctness: which cards were real is
-                        still unknown to everyone, including this screen. */}
-                    <span className="truncate">{record.label}</span>
-                    <span className="inline-flex shrink-0 items-center gap-1.5 font-extrabold">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "size-3 rounded-full border-2 border-[hsl(var(--brand-navy))]",
-                          identity.dot,
-                        )}
-                      />
-                      {teams.get(record.ownerTeamId)}
-                      {record.resolutionReason === "host-skipped"
-                        ? " · تخطّى المضيف"
-                        : ""}
-                    </span>
+                    {record.label}
                   </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
+                ))}
+                {Array.from({ length: empty }, (_, slot) => (
+                  <li
+                    key={`empty-${slot}`}
+                    aria-hidden
+                    className="min-h-[52px] rounded-[14px] border-2 border-dashed border-brand-dash"
+                  />
+                ))}
+              </ul>
+              <span className="mt-auto text-sm leading-relaxed text-brand-slate">
+                ما أحد يعرف أي بطاقة من التوب 5 إلا وقت الكشف.
+              </span>
+            </aside>
+          );
+        })}
 
-        {completed && (
-          <p
-            className="rounded-[18px] border-[3px] border-dashed border-brand-dash bg-white p-6 text-center text-lg font-bold text-brand-plum"
-            data-testid="top5-awaiting-result"
-          >
-            اكتملت البطاقات العشر. جارٍ عرض النتيجة…
-          </p>
-        )}
+        <main className="flex min-h-[420px] flex-col items-center justify-center gap-[18px] rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-lavender p-6 text-center shadow-[7px_8px_0_hsl(var(--brand-navy))] lg:order-2">
+          {completed ? (
+            <p
+              className="font-display text-3xl font-extrabold"
+              data-testid="top5-awaiting-result"
+            >
+              خلصت البطاقات العشر. نجهّز الكشف…
+            </p>
+          ) : (
+            current && (
+              <>
+                <ChallengeProgress label={counter} className="flex-col gap-2" />
+                {current.media?.url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={current.media.url}
+                    alt={current.media.altText ?? current.label}
+                    className="h-36 w-full rounded-[18px] object-contain"
+                  />
+                )}
+                {/* The entity name and nothing else. Rank, metric, cutoff and
+                    evidence are not in this payload at all — the roadmap
+                    contract keeps them hidden until the challenge resolves. */}
+                <p
+                  data-testid="top5-current-card"
+                  className="-rotate-2 rounded-[26px] border-4 border-[hsl(var(--brand-navy))] bg-white px-10 py-8 font-display text-4xl font-black [overflow-wrap:anywhere] shadow-[8px_9px_0_hsl(var(--brand-navy))] lg:min-w-[420px] lg:text-[56px] lg:leading-snug"
+                >
+                  {current.label}
+                </p>
+                <p className="text-xl font-bold lg:text-[22px]">
+                  يحتفظون فيها ولا يعطونها للخصم؟
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <span className={HINT}>احتفظ = تحسها من التوب 5</span>
+                  <span className={HINT}>أعطِ = تحسها فخ</span>
+                </div>
+                {canDecide && (
+                  <div
+                    className="grid w-full max-w-xl grid-cols-2 gap-3"
+                    data-testid="top5-decider-controls"
+                  >
+                    {decisions}
+                  </div>
+                )}
+              </>
+            )
+          )}
+        </main>
       </div>
-    </ChallengeFrame>
+
+      {!completed && !canDecide && (
+        <p
+          data-testid="top5-waiting"
+          className="text-[17px] font-semibold text-brand-slate"
+        >
+          {deciderName ? (
+            <span data-testid="top5-decider-name">
+              القرار عند {deciderName}…
+            </span>
+          ) : (
+            "ننتظر قرار الفريق…"
+          )}
+        </p>
+      )}
+    </section>
   );
+}
+
+const DECISION =
+  "flex min-h-[104px] flex-col items-center justify-center gap-1 rounded-[20px] border-[3px] border-[hsl(var(--brand-navy))] px-4 py-3 text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 disabled:opacity-60";
+
+const HINT =
+  "inline-flex min-h-10 items-center rounded-full border-2 border-[hsl(var(--brand-navy))] bg-white px-4 text-base font-bold";
+
+/** «بطاقة», «بطاقتين», «3 بطاقات». */
+function cardsLabel(count: number) {
+  if (count === 0) return "0 بطاقات";
+  if (count === 1) return "بطاقة";
+  if (count === 2) return "بطاقتين";
+  return `${count} بطاقات`;
 }

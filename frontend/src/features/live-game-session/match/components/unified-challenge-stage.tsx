@@ -16,6 +16,7 @@ import type { MatchActor } from "../types";
 const SELF_FRAMED_MODES: ReadonlySet<string> = new Set([
   "marhala",
   "moving-xo",
+  "top-5",
 ]);
 
 /**
