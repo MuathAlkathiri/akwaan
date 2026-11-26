@@ -151,6 +151,7 @@ describe('World Content architecture', () => {
       'modules/live-game-sessions/domain/marhala-board.ts',
       // Moving XO shares its canonical persisted slug with the runtime key.
       'modules/live-game-sessions/domain/moving-xo-board.ts',
+      'modules/live-game-sessions/domain/odd-piece-captain.spec.ts',
       'modules/live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin.spec.ts',
       'modules/live-game-sessions/domain/odd-piece-hotspot-gameplay.plugin.ts',
       'modules/live-game-sessions/domain/one-clue-gameplay.plugin.ts',
