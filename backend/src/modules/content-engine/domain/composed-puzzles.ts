@@ -12,7 +12,7 @@ import {
  * Drawn puzzles answered by choosing — the second kind of composed item.
  *
  * Like every composed family, each is produced whole from one seed: the
- * drawing, the question, the three options and which of them is right. The
+ * drawing, the question, the options and which of them is right. The
  * answer is not looked up or reasoned out afterwards; it is the same fact the
  * drawing was made from (which thread was routed to which end, which faces a
  * fold brings opposite, how many layers a punch went through).
@@ -45,6 +45,7 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'reflection-fidelity',
   'overlapping-boundary-trace',
   'size-distortion-illusion',
+  'picture-initials',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
@@ -72,6 +73,11 @@ import {
   composeAssembly,
 } from './composed-assembly';
 import {
+  LETTERS_VARIANTS,
+  LettersFamily,
+  composeLetters,
+} from './composed-letters';
+import {
   OBSERVATION_VARIANTS,
   ObservationFamily,
   composeObservation,
@@ -97,12 +103,19 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   ],
   'opposite-cube-faces': ['opposite', 'opposite-pair', 'not-touching'],
   'fold-and-punch': ['count-holes', 'count-folds'],
-  'visual-closure-fragment': ['shadow', 'close-up', 'half-hidden'],
+  'visual-closure-fragment': [
+    'shadow',
+    'close-up',
+    'half-hidden',
+    'upside-down',
+    'shattered',
+  ],
   'spot-the-difference': ['vanished', 'appeared', 'replaced'],
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
   ...PATHS_VARIANTS,
   ...ASSEMBLY_VARIANTS,
   ...OBSERVATION_VARIANTS,
+  ...LETTERS_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
 export interface ComposedPuzzle extends ComposedPuzzleDrawing {
@@ -516,7 +529,7 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
         ...shuffled(
           labels.filter((label) => label !== correct),
           random,
-        ).slice(0, 2),
+        ).slice(0, 3),
       ],
       correct,
       random,
@@ -561,7 +574,7 @@ function composeThreads(seed: string, variantKey: string): ComposedPuzzle {
     const answer = threadCrossings(routing, asked);
     const wrong = [answer - 1, answer + 1, answer + 2, answer - 2]
       .filter((value) => value >= 1)
-      .slice(0, 2);
+      .slice(0, 3);
     const { options, correctOptionId } = asOptions(
       [answer, ...wrong].map((value) => COUNT_WORDS[value]),
       COUNT_WORDS[answer],
@@ -790,7 +803,10 @@ function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
         (pair) =>
           !pair.some((face) => far[0].includes(face) && answer.includes(face)),
       );
-    const wrong = [far[0], second ?? far[1]];
+    const first = second ?? far[1];
+    // A third pair unlike the two already taken.
+    const third = far.find((pair) => pair !== far[0] && pair !== first)!;
+    const wrong = [far[0], first, third];
     const { options, correctOptionId } = asOptions(
       [answer, ...wrong].map(name),
       name(answer),
@@ -829,7 +845,7 @@ function composeCubeNet(seed: string, variantKey: string): ComposedPuzzle {
           ? apart(b, asked) - apart(a, asked)
           : apart(a, asked) - apart(b, asked)) || a - b,
     )
-    .slice(0, 2);
+    .slice(0, 3);
   const { options, correctOptionId } = asOptions(
     [labels[answer], ...wrong.map((index) => labels[index])],
     labels[answer],
@@ -1073,7 +1089,7 @@ function composeFold(seed: string, variantKey: string): ComposedPuzzle {
       slip.value >= 1 &&
       all.findIndex((other) => other.value === slip.value) === index,
   );
-  const wrong = slips.slice(0, 2);
+  const wrong = slips.slice(0, 3);
   const { options, correctOptionId } = asOptions(
     [holes, ...wrong.map((slip) => slip.value)].map(String),
     String(holes),
@@ -1119,12 +1135,39 @@ function thingAmongItsKind(
       (thing) => thing.key !== answer.key && !answer.twins.includes(thing.key),
     ),
     random,
-  ).slice(0, 2);
+  ).slice(0, 3);
   return asOptions(
     [answer.ar, ...others.map((thing) => thing.ar)],
     answer.ar,
     random,
   );
+}
+
+/**
+ * Where each tile of a cut-up drawing is dealt: `order[place]` is the tile
+ * shown there. No tile stays in its own place, and none keeps its neighbour
+ * to the right — the picture must be put together, not read.
+ */
+export function shatteredOrder(
+  columns: number,
+  rows: number,
+  detail: number,
+): number[] {
+  const random = seededRandom(`shattered:${columns}x${rows}:${detail}`);
+  const tiles = Array.from({ length: columns * rows }, (_, index) => index);
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const order = shuffled(tiles, random);
+    const displaced = order.every((source, place) => source !== place);
+    const brokenUp = order.every(
+      (source, place) =>
+        (place + 1) % columns === 0 ||
+        source % columns === columns - 1 ||
+        order[place + 1] !== source + 1,
+    );
+    if (displaced && brokenUp) return order;
+  }
+  // A plain rotation of the tiles: always displaced.
+  return tiles.map((index) => (index + 1) % tiles.length);
 }
 
 export function fragmentSvg(
@@ -1162,6 +1205,37 @@ export function fragmentSvg(
       ),
     );
   }
+  if (variantKey === 'upside-down') {
+    return frame(
+      card(
+        `<g data-thing="${thing.key}" transform="translate(0 ${round(2 * cy)}) scale(1 -1)">${thingSvg(thing, cx, cy, size)}</g>`,
+      ),
+    );
+  }
+  if (variantKey === 'shattered') {
+    // Cut into four or six tiles and dealt back with every tile out of
+    // place. No finer: a drawing does not fill its corners, and a grid of
+    // nine leaves tiles with nothing on them.
+    const columns = detail % 2 ? 3 : 2;
+    const rows = 2;
+    const order = shatteredOrder(columns, rows, detail);
+    const gap = 14;
+    const wide = (size - (columns - 1) * gap) / columns;
+    const tall = (size - (rows - 1) * gap) / rows;
+    let tiles = '';
+    order.forEach((source, place) => {
+      const tx = x + (place % columns) * (wide + gap);
+      const ty = y + Math.floor(place / columns) * (tall + gap);
+      tiles +=
+        `<g data-tile="${place}" data-from="${source}">` +
+        `<rect x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" fill="#FFFFFF" stroke="${INK}" stroke-width="6"/>` +
+        `<svg x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" viewBox="${round((source % columns) * (32 / columns))} ${round(Math.floor(source / columns) * (32 / rows))} ${round(32 / columns)} ${round(32 / rows)}" preserveAspectRatio="none" fill="none">${thing.body}</svg></g>`;
+    });
+    return frame(
+      `<rect x="${x - 30}" y="${y - 30}" width="${size + 60}" height="${size + 60}" rx="36" fill="${GOLD}" stroke="${INK}" stroke-width="10"/>` +
+        `<g data-thing="${thing.key}">${tiles}</g>`,
+    );
+  }
   // Half of it behind a wall: left, right, top or bottom.
   const side = detail % 4;
   const wall =
@@ -1186,7 +1260,10 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
     drawnThings().filter(
       (entry) =>
         entry.category !== 'place' &&
-        (variantKey !== 'shadow' || entry.twins.length <= SHADOW_MAX_TWINS),
+        (variantKey !== 'shadow' || entry.twins.length <= SHADOW_MAX_TWINS) &&
+        // Cut into tiles, a thin drawing leaves tiles with nothing on them:
+        // only well-filled drawings are cut up.
+        (variantKey !== 'shattered' || entry.twins.length >= 1),
     ),
     random,
   );
@@ -1201,7 +1278,11 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
         ? 'هذا ظل وش؟'
         : variantKey === 'close-up'
           ? 'هذي صورة مقرّبة من وش؟'
-          : 'نصّه مغطّى. وش هو؟',
+          : variantKey === 'upside-down'
+            ? 'الرسمة مقلوبة فوق تحت. وش هي؟'
+            : variantKey === 'shattered'
+              ? 'الرسمة مقطّعة ومتلخبطة. وش هي؟'
+              : 'نصّه مغطّى. وش هو؟',
     options,
     correctOptionId,
     distractorRationale: options
@@ -1215,7 +1296,11 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
         ? 'ظل أسود لشيء معروف'
         : variantKey === 'close-up'
           ? 'جزء مقرّب من رسمة شيء معروف'
-          : 'رسمة شيء معروف نصفها مغطّى',
+          : variantKey === 'upside-down'
+            ? 'رسمة شيء معروف مقلوبة رأسًا على عقب'
+            : variantKey === 'shattered'
+              ? 'رسمة شيء معروف مقطّعة إلى مربعات متلخبطة'
+              : 'رسمة شيء معروف نصفها مغطّى',
     concept:
       'Recognise an everyday thing from part of what would normally identify it.',
     factualClaim: `The drawing shown is "${thing.key}" («${thing.ar}»).`,
@@ -1285,7 +1370,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, null], random);
     second = shuffled([...kept, odd], random);
     answer = odd;
-    tempting = shuffled(kept, random).slice(0, 2);
+    tempting = shuffled(kept, random).slice(0, 3);
     prompt = 'وش الشي الجديد اللي انضاف في الصورة 2؟';
     rationale = 'It is in both pictures; it only moved to another place.';
     claim = `"${odd.key}" is in picture 2 and not in picture 1.`;
@@ -1294,7 +1379,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, odd], random);
     second = first.map((thing) => (thing === odd ? newcomer : thing));
     answer = odd;
-    tempting = [newcomer, pick(kept, random)];
+    tempting = [newcomer, ...shuffled(kept, random).slice(0, 2)];
     prompt = 'أي واحد من الصورة 1 انبدل بشي ثاني في الصورة 2؟';
     rationale =
       'Either the thing that took the place — it is what arrived, not what left — or one that is unchanged in both pictures.';
@@ -1304,7 +1389,7 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
     first = shuffled([...kept, odd], random);
     second = shuffled([...kept, null], random);
     answer = odd;
-    tempting = shuffled(kept, random).slice(0, 2);
+    tempting = shuffled(kept, random).slice(0, 3);
     prompt = 'وش اللي اختفى في الصورة 2؟';
     rationale = 'It is still in picture 2; it only moved to another place.';
     claim = `"${odd.key}" is in picture 1 and not in picture 2.`;
@@ -1357,7 +1442,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
       random,
     );
     cells = shuffled(cast, random);
-    tempting = [like, cast[1]];
+    tempting = [like, cast[1], cast[2]];
     prompt = 'أي واحد من هذول مو موجود في الصورة؟';
     rationale = 'It is on the board, among the other things.';
     claim = `"${answer.key}" is not on the board; the other two options are.`;
@@ -1366,7 +1451,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
     const cast = castOfThings(8, random);
     answer = cast[0];
     cells = shuffled([...cast, ...cast.slice(1)], random);
-    tempting = cast.slice(1, 3);
+    tempting = cast.slice(1, 4);
     prompt = 'كل رسمة لها توأم إلا وحدة. أي وحدة؟';
     rationale = 'It appears twice on the board; its twin is farther away.';
     claim = `"${answer.key}" appears once; every other drawing appears twice.`;
@@ -1375,7 +1460,7 @@ function composeScan(seed: string, variantKey: string): ComposedPuzzle {
     const cast = castOfThings(14, random);
     answer = cast[0];
     cells = shuffled([...cast, answer], random);
-    tempting = cast.slice(1, 3);
+    tempting = cast.slice(1, 4);
     prompt = 'أي رسمة تكررت مرتين في الصورة؟';
     rationale = 'It appears once only.';
     claim = `"${answer.key}" appears twice; every other drawing appears once.`;
@@ -1421,6 +1506,13 @@ export function composePuzzle(
   if (familyKey in PATHS_VARIANTS) {
     return composePaths(
       familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in LETTERS_VARIANTS) {
+    return composeLetters(
+      familyKey as LettersFamily,
       seed,
       variant,
     ) as ComposedPuzzle;

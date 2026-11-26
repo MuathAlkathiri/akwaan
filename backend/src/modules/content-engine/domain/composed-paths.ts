@@ -154,7 +154,7 @@ function composeGears(seed: string, variantKey: string): ComposedPuzzleDrawing {
     const unlike = shuffled(
       gears.map((_, index) => index).filter((index) => index % 2 === 1),
       random,
-    ).slice(0, 2);
+    ).slice(0, 3);
     const { options, correctOptionId } = asOptions(
       [like, ...unlike].map((index) => gears[index].name),
       gears[like].name,
@@ -647,7 +647,13 @@ function composeDominoes(
         'A falling domino reaches as far as its own height: find where the chain stops and count what is left.',
     };
   }
-  const { options, correctOptionId } = countOptions(fallen, random, piece);
+  const { options, correctOptionId } = countOptions(
+    fallen,
+    random,
+    piece,
+    1,
+    count,
+  );
   return {
     ...shared,
     prompt: 'دفّينا القطعة 1 باتجاه السهم. وش آخر قطعة تطيح؟',

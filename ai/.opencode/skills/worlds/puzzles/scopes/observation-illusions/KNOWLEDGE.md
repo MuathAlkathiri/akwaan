@@ -1394,9 +1394,19 @@ nothing is deleted, and a family returns by removing its `status` below.
           "key": "half-hidden",
           "name": "نصّه مغطّى",
           "brief": "Half of the thing behind a wall; which thing is it."
+        },
+        {
+          "key": "upside-down",
+          "name": "مقلوب",
+          "brief": "The thing drawn upside down; which thing is it."
+        },
+        {
+          "key": "shattered",
+          "name": "متكسّر",
+          "brief": "The drawing cut into tiles and dealt back with every tile out of place; which thing is it."
         }
       ],
-      "capacity": 300,
+      "capacity": 500,
       "pausedFor": [
         "bomb",
         "read-your-opponent"

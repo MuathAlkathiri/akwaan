@@ -108,7 +108,9 @@ function composeAsymmetry(
     left.filter((_, index) => index !== slot),
     random,
   );
-  const tempting = missing ? others.slice(0, 2) : [left[slot], others[0]];
+  const tempting = missing
+    ? others.slice(0, 3)
+    : [left[slot], others[0], others[1]];
   const { options, correctOptionId } = asOptions(
     [answer, ...tempting].map((thing) => thing.ar),
     answer.ar,
@@ -268,11 +270,12 @@ function composeReflection(
       random,
     );
     const shown = mirroredMinutes(real);
-    const near = shuffled([60, 660, 120], random)
+    const near = shuffled([60, 660, 120, 600], random)
       .map((shift) => (real + shift) % 720)
-      .find((minutes) => minutes !== shown && minutes !== real)!;
+      .filter((minutes) => minutes !== shown && minutes !== real)
+      .slice(0, 2);
     const { options, correctOptionId } = asOptions(
-      [real, shown, near].map(clockText),
+      [real, shown, ...near].map(clockText),
       clockText(real),
       random,
     );
@@ -405,7 +408,8 @@ function composePile(seed: string, variantKey: string): ComposedPuzzleDrawing {
   const layers = shuffled(things, random);
   const top = variantKey === 'on-top';
   const answer = top ? layers[3] : layers[0];
-  const tempting = top ? [layers[2], layers[0]] : [layers[1], layers[3]];
+  // All four are offered: the order has to be read, not narrowed down.
+  const tempting = layers.filter((thing) => thing !== answer);
   const { options, correctOptionId } = asOptions(
     [answer, ...tempting].map((thing) => thing.ar),
     answer.ar,

@@ -666,7 +666,7 @@ describe('originality guidance reaches every mechanic', () => {
       expect(prompt.endsWith(ORIGINALITY_GUIDANCE)).toBe(true);
     });
 
-    it('asks for three options and no Steal/Trust estimate', () => {
+    it('asks for four options and no Steal/Trust estimate', () => {
       const item = (
         (MOVING_XO_CANDIDATE_SCHEMA.properties as Record<string, unknown>)
           .candidates as {
@@ -689,8 +689,8 @@ describe('originality guidance reaches every mechanic', () => {
       ]);
       expect(item.properties).not.toHaveProperty('estimatedConfidence');
       expect(item.properties.options).toMatchObject({
-        minItems: 3,
-        maxItems: 3,
+        minItems: 4,
+        maxItems: 4,
       });
       // The اقرأ خصمك schema it is built from is left as it was.
       expect(JSON.stringify(RYO_CANDIDATE_SCHEMA)).toContain(

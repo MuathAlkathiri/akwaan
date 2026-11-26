@@ -458,7 +458,7 @@ When generating or reviewing an authored batch for `assembly-rotation`:
 
 The families of this Scope need a picture, and until now nothing could make
 one. The engine now **draws** the ones listed here itself (`mental-rotation-2d`, `cube-net-fold`, `opposite-cube-faces`, `orthographic-projection`, `spatial-cube-count`, `missing-puzzle-piece`, `fold-and-punch`, `mirror-vs-rotation-discrim`): the
-picture, the question, the three options and the right answer are all made
+picture, the question, the options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
 

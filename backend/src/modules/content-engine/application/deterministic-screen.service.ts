@@ -14,7 +14,10 @@ import {
   BOMB_MAX_PROMPT_LENGTH,
   COMBO_MAX_ACCEPTED_ANSWERS,
 } from './candidate-generator.service';
-import { BOMB_SLUG } from '../../world-content/domain/world-content.constants';
+import {
+  BOMB_SLUG,
+  MOVING_XO_SLUG,
+} from '../../world-content/domain/world-content.constants';
 import { isComposedFamily } from '../domain/composed-visuals';
 import { mediaIntentOf } from '../domain/candidate-media-intent';
 import { BOMB_IMAGE_SLOT } from '../domain/media-requirements';
@@ -912,7 +915,15 @@ export class DeterministicScreenService {
       findings.push(
         ...(screenOptions?.mechanicKey === BOMB_SLUG
           ? this.screenBomb(prompt, payload.acceptedAnswers, authoring)
-          : this.screenCombo(draft, prompt, payload.acceptedAnswers)),
+          : screenOptions?.mechanicKey === MOVING_XO_SLUG
+            ? // إكس أو takes a typed answer as it is: one text input on the
+              // phone, graded against the accepted answers. Nothing of
+              // الكومبو's stages applies.
+              [
+                ...this.screenMatchAnswers(prompt, payload.acceptedAnswers),
+                ...this.screenPromptHygiene(prompt),
+              ]
+            : this.screenCombo(draft, prompt, payload.acceptedAnswers)),
       );
       findings.push(...this.screenFamilyCompliance(draft, authoring));
       findings.push(...this.deferredNotes());

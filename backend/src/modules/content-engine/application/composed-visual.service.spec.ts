@@ -276,6 +276,36 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
     });
   });
 
+  it('authors a typed answer where the puzzle has no options, and إكس أو accepts it', async () => {
+    const expected = composePuzzle('picture-initials', 'job-9:4', 'cipher');
+    const candidate = await contentAddressed().compose(
+      'picture-initials',
+      'job-9:4',
+      { mechanicKey: 'moving-xo', scopeKey: 'wordplay-letters' },
+      'cipher',
+    );
+    expect(candidate.draft.answerPayload).toEqual({
+      mode: 'match',
+      acceptedAnswers: expected.acceptedAnswers,
+    });
+    // No contract governs a picture in this Scope: it rides on the draft.
+    expect(candidate).not.toHaveProperty('mediaPlan');
+    expect(candidate.draft).toHaveProperty('media');
+    const screen = (mechanicKey: string) =>
+      new DeterministicScreenService({
+        get: () => undefined,
+      } as unknown as ConfigService)
+        .screen(candidate.draft, candidate.authoring, {
+          worldKey: 'puzzles',
+          mechanicKey,
+        })
+        .findings.filter((finding) => finding.severity === 'blocking')
+        .map((finding) => finding.code);
+    expect(screen('moving-xo')).toEqual([]);
+    // الكومبو still asks for its stage: the typed path is إكس أو's alone.
+    expect(screen('combo')).toContain('COMBO_STAGE_REQUIRED');
+  });
+
   it('draws the template the slot was given', async () => {
     for (const variantKey of COMPOSED_PUZZLE_VARIANTS['wire-trace-terminal']) {
       const expected = composePuzzle(

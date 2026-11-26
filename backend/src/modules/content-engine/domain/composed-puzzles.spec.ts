@@ -3,6 +3,7 @@ import { join } from 'path';
 import {
   COMPOSED_PUZZLE_FAMILIES,
   COMPOSED_PUZZLE_VARIANTS,
+  ComposedPuzzleFamily,
   CUBE_NETS,
   FOLD_CASES,
   THREAD_LAYOUTS,
@@ -12,6 +13,7 @@ import {
   cubeThemes,
   holesAfterUnfolding,
   routeThreads,
+  shatteredOrder,
   seededRandom,
   threadCrossings,
   unfoldedHoles,
@@ -40,21 +42,27 @@ describe('composed puzzles answered by choosing', () => {
   });
 
   it.each(templates)(
-    '%s / %s: three different options, one of them right, the same for the same seed',
+    '%s / %s: three or four different options with one right — or a typed answer — the same for the same seed',
     (familyKey, variantKey) => {
       for (const seed of seeds.slice(0, 60)) {
         const item = composePuzzle(familyKey, seed, variantKey);
         expect(item).toEqual(composePuzzle(familyKey, seed, variantKey));
         expect(item.variantKey).toBe(variantKey);
-        expect(item.options).toHaveLength(3);
+        expect(item.svg.startsWith('<svg')).toBe(true);
+        if (item.acceptedAnswers) {
+          // Typed: something to accept, nothing to choose from.
+          expect(item.acceptedAnswers.length).toBeGreaterThan(0);
+          expect(item.options).toEqual([]);
+          expect(item.correctOptionId).toBe('');
+          continue;
+        }
+        expect([3, 4]).toContain(item.options.length);
         expect(new Set(item.options.map((option) => option.label)).size).toBe(
-          3,
+          item.options.length,
         );
-        expect(item.options.map((option) => option.id)).toEqual([
-          'a',
-          'b',
-          'c',
-        ]);
+        expect(item.options.map((option) => option.id)).toEqual(
+          ['a', 'b', 'c', 'd'].slice(0, item.options.length),
+        );
         expect(
           item.options.some((option) => option.id === item.correctOptionId),
         ).toBe(true);
@@ -70,7 +78,6 @@ describe('composed puzzles answered by choosing', () => {
         for (const entry of item.distractorRationale) {
           expect(entry.why.length).toBeGreaterThan(10);
         }
-        expect(item.svg.startsWith('<svg')).toBe(true);
       }
     },
   );
@@ -78,14 +85,34 @@ describe('composed puzzles answered by choosing', () => {
   it.each(templates)(
     '%s / %s: the right answer is not always in the same place',
     (familyKey, variantKey) => {
-      const positions = new Set(
-        seeds.map(
-          (seed) => composePuzzle(familyKey, seed, variantKey).correctOptionId,
-        ),
+      const items = seeds.map((seed) =>
+        composePuzzle(familyKey, seed, variantKey),
       );
-      expect([...positions].sort()).toEqual(['a', 'b', 'c']);
+      if (items[0].acceptedAnswers) return;
+      const positions = new Set(items.map((item) => item.correctOptionId));
+      expect(positions.size).toBeGreaterThanOrEqual(3);
     },
   );
+
+  it('offers four options wherever the answer is a name, a number or a word (owner decision 2026-11-27)', () => {
+    const four: Array<[ComposedPuzzleFamily, string]> = [
+      ['visual-closure-fragment', 'shadow'],
+      ['spot-the-difference', 'vanished'],
+      ['visual-match-scan', 'duplicate'],
+      ['opposite-cube-faces', 'opposite'],
+      ['spatial-cube-count', 'count-all'],
+      ['domino-cascade-chain', 'count-standing'],
+      ['overlapping-boundary-trace', 'on-top'],
+      ['reflection-fidelity', 'mirror-clock'],
+    ];
+    for (const [familyKey, variantKey] of four) {
+      for (const seed of seeds.slice(0, 40)) {
+        expect(composePuzzle(familyKey, seed, variantKey).options).toHaveLength(
+          4,
+        );
+      }
+    }
+  });
 
   it.each(COMPOSED_PUZZLE_FAMILIES)(
     '%s: with no template asked for, the seed chooses among all of them',
@@ -112,6 +139,7 @@ describe('composed puzzles answered by choosing', () => {
       'assembly-rotation',
       'paths-motion',
       'observation-illusions',
+      'wordplay-letters',
     ].flatMap((scope) => {
       const text = readFileSync(join(skills, scope, 'KNOWLEDGE.md'), 'utf8');
       const block = /```akwaan-families\n([\s\S]*?)\n```/.exec(text)![1];
@@ -137,7 +165,7 @@ describe('composed puzzles answered by choosing', () => {
     const named = (label: string) =>
       drawnThings().find((thing) => thing.ar === label)!;
 
-    it.each(['shadow', 'close-up', 'half-hidden'])(
+    it.each(['shadow', 'close-up', 'half-hidden', 'upside-down', 'shattered'])(
       'fragment / %s: answers with the thing drawn, against two of its own kind',
       (variantKey) => {
         for (const seed of seeds.slice(0, 80)) {
@@ -171,6 +199,34 @@ describe('composed puzzles answered by choosing', () => {
           ),
         );
         expect([...fills].sort()).toEqual(['#1B1F3B', '#F6F1E7', '#FFFFFF']);
+      }
+    });
+
+    it('shattered: four or six tiles, each shown once and none in its own place', () => {
+      for (const [columns, rows] of [
+        [2, 2],
+        [3, 2],
+      ]) {
+        for (let detail = 0; detail < 20; detail += 1) {
+          const order = shatteredOrder(columns, rows, detail);
+          expect([...order].sort((a, b) => a - b)).toEqual(
+            Array.from({ length: columns * rows }, (_, index) => index),
+          );
+          order.forEach((source, place) => expect(source).not.toBe(place));
+        }
+      }
+      for (const seed of seeds.slice(0, 60)) {
+        const item = composePuzzle(
+          'visual-closure-fragment',
+          seed,
+          'shattered',
+        );
+        const tiles = [
+          ...item.svg.matchAll(/data-tile="(\d)" data-from="(\d)"/g),
+        ].map((match) => [Number(match[1]), Number(match[2])]);
+        expect([4, 6]).toContain(tiles.length);
+        expect(new Set(tiles.map(([, from]) => from)).size).toBe(tiles.length);
+        for (const [place, from] of tiles) expect(from).not.toBe(place);
       }
     });
 
