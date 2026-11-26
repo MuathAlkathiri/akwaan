@@ -450,6 +450,13 @@ picture, the question, the three options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
 
+Each drawn family asks its drawing in more than one way — its **templates**
+(`variants` below): a different question of the same kind of picture, on a
+different arrangement of it. The allocator rotates them like any family's
+templates, and the composer draws the one a slot was given. The keys below
+must match the composer's own list (`COMPOSED_PUZZLE_VARIANTS`); a test holds
+the two together.
+
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
@@ -675,7 +682,7 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "wire-trace-terminal",
       "name": "تتبع الأسلاك المتشابكة",
-      "description": "ثلاث دوائر ملوّنة تخرج منها خيوط متشابكة إلى ثلاثة أشكال، والمطلوب أي دائرة يصل خيطها لشكل محدد. المحرك يرسم الخيوط ويعرف مسار كل واحد.",
+      "description": "دوائر ملوّنة تخرج منها خيوط متشابكة إلى أشكال — ثلاثة أو أربعة، من اليمين أو من اليسار. المحرك يرسم الخيوط ويعرف مسار كل واحد، ويسأل عنها بأكثر من طريقة.",
       "playerSolve": "تتبّع خيط واحد بالعين عبر التقاطعات.",
       "modality": "composed-visual",
       "scalability": "HIGH",
@@ -688,7 +695,29 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "capacity": 36,
+      "variants": [
+        {
+          "key": "which-start",
+          "name": "من يوصل للشكل",
+          "brief": "Asked from the end: which coloured start owns the thread that reaches a named shape."
+        },
+        {
+          "key": "which-end",
+          "name": "الخيط يوصل لوين",
+          "brief": "Asked from the start: which shape one named thread reaches."
+        },
+        {
+          "key": "count-crossings",
+          "name": "عدّ التقاطعات",
+          "brief": "How many times one named thread crosses the others; three threads only."
+        },
+        {
+          "key": "broken-thread",
+          "name": "الخيط المقطوع",
+          "brief": "One thread is cut before it arrives; which start owns it."
+        }
+      ],
+      "capacity": 400,
       "pausedFor": [
         "bomb",
         "read-your-opponent"

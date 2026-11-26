@@ -462,6 +462,13 @@ picture, the question, the three options and the right answer are all made
 from one seed, so the answer is correct by construction. No model writes them
 and no model is paid for them.
 
+Each drawn family asks its drawing in more than one way — its **templates**
+(`variants` below): a different question of the same kind of picture, on a
+different arrangement of it. The allocator rotates them like any family's
+templates, and the composer draws the one a slot was given. The keys below
+must match the composer's own list (`COMPOSED_PUZZLE_VARIANTS`); a test holds
+the two together.
+
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
@@ -514,7 +521,7 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "opposite-cube-faces",
       "name": "الأوجه المتقابلة في المكعب",
-      "description": "شبكة مكعب مرسومة عليها ستة أسماء، والمطلوب الوجه المقابل لوجه محدد بعد الطي. المحرك يرسم الشبكة ويحدد الجواب بنفسه.",
+      "description": "شبكة مكعب على أوجهها الستة أسماء أو ألوان أو أشكال، والمطلوب ما يحدث للأوجه بعد الطي. المحرك يرسم الشبكة ويحدد الجواب بنفسه.",
       "playerSolve": "طيّ الشبكة ذهنيًا وتحديد الوجه المقابل.",
       "modality": "composed-visual",
       "scalability": "HIGH",
@@ -527,7 +534,24 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "capacity": 120,
+      "variants": [
+        {
+          "key": "opposite",
+          "name": "الوجه المقابل",
+          "brief": "Which face ends up opposite a named one."
+        },
+        {
+          "key": "opposite-pair",
+          "name": "وجهين متقابلين",
+          "brief": "Which of three pairs of faces ends up opposite each other."
+        },
+        {
+          "key": "not-touching",
+          "name": "ما يلمسه أبدًا",
+          "brief": "Which face never touches a named one; the wrong ones lie far from it on paper yet meet it once folded."
+        }
+      ],
+      "capacity": 300,
       "pausedFor": [
         "bomb",
         "read-your-opponent"
@@ -613,7 +637,7 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "fold-and-punch",
       "name": "طي الورق وتخريم الثقوب",
-      "description": "ورقة مربعة تُطوى خطوة بخطوة ثم تُخرم، والمطلوب عدد الخروم بعد فتحها. المحرك يرسم الخطوات ويحسب الجواب بنفسه.",
+      "description": "ورقة مربعة تُطوى ثم تُخرم. إما تُعرض الخطوات والمطلوب عدد الخروم بعد فتحها، أو تُعرض مفتوحة والمطلوب كم مرة انطوت. المحرك يرسم ويحسب الجواب بنفسه.",
       "playerSolve": "تتبّع عدد الطبقات التي يخترقها كل خرم.",
       "modality": "composed-visual",
       "scalability": "HIGH",
@@ -626,7 +650,19 @@ nothing is deleted, and a family returns by removing its `status` below.
       "answerModes": [
         "multiple_choice"
       ],
-      "capacity": 5,
+      "variants": [
+        {
+          "key": "count-holes",
+          "name": "كم خرم بعد الفتح",
+          "brief": "The folding steps and the punches are shown; how many holes the opened sheet has."
+        },
+        {
+          "key": "count-folds",
+          "name": "كم مرة انطوت",
+          "brief": "The opened sheet and its holes are shown, the number of punches is stated; how many times it was folded."
+        }
+      ],
+      "capacity": 28,
       "pausedFor": [
         "bomb",
         "read-your-opponent"

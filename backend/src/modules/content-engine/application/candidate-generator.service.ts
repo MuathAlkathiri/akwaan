@@ -1605,6 +1605,7 @@ export class CandidateGeneratorService {
             mechanicKey: input.context.mechanicKey,
             scopeKey: input.context.scopeKey,
           },
+          assignedSlot.variantKey,
         );
         draft = composed.draft;
         factualClaims = composed.factualClaims;

@@ -50,9 +50,11 @@ export class ComposedVisualService {
     familyKey: ComposedFamily,
     seed: string,
     target?: { mechanicKey: string; scopeKey: string },
+    /** The template the slot was given; the seed chooses when there is none. */
+    variantKey?: string,
   ): Promise<ComposedCandidate> {
     const puzzle = isComposedPuzzleFamily(familyKey)
-      ? composePuzzle(familyKey, seed)
+      ? composePuzzle(familyKey, seed, variantKey)
       : undefined;
     const visual = puzzle ? undefined : composeVisual(familyKey as never, seed);
     const drawing = (puzzle ?? visual)!;
@@ -135,6 +137,7 @@ export class ComposedVisualService {
     const composedVisual = {
       familyKey: drawing.familyKey,
       variant: drawing.variant,
+      ...(puzzle ? { variantKey: puzzle.variantKey } : {}),
       ...(visual ? { value: visual.value } : {}),
       ...(failureReason ? { failureReason } : {}),
     };

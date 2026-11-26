@@ -1,6 +1,10 @@
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
-import { composePuzzle } from '../domain/composed-puzzles';
+import {
+  COMPOSED_PUZZLE_FAMILIES,
+  COMPOSED_PUZZLE_VARIANTS,
+  composePuzzle,
+} from '../domain/composed-puzzles';
 import { evaluateCandidateMedia } from '../domain/candidate-media-plan';
 import { composeVisual } from '../domain/composed-visuals';
 import { DeterministicScreenService } from './deterministic-screen.service';
@@ -268,33 +272,62 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
     expect(candidate.authoring.composedVisual).toEqual({
       familyKey: 'wire-trace-terminal',
       variant: expected.variant,
+      variantKey: expected.variantKey,
     });
   });
 
-  it.each([
-    'wire-trace-terminal',
-    'opposite-cube-faces',
-    'fold-and-punch',
-  ] as const)('%s passes the screen as an إكس أو item', async (familyKey) => {
-    const candidate = await contentAddressed().compose(familyKey, 'job-9:1', {
-      mechanicKey: 'moving-xo',
-      scopeKey:
-        familyKey === 'wire-trace-terminal'
-          ? 'paths-motion'
-          : 'assembly-rotation',
-    });
-    expect(
-      new DeterministicScreenService({
-        get: () => undefined,
-      } as unknown as ConfigService)
-        .screen(candidate.draft, candidate.authoring, {
-          worldKey: 'puzzles',
-          mechanicKey: 'moving-xo',
-        })
-        .findings.filter((finding) => finding.severity === 'blocking')
-        .map((finding) => finding.code),
-    ).toEqual([]);
+  it('draws the template the slot was given', async () => {
+    for (const variantKey of COMPOSED_PUZZLE_VARIANTS['wire-trace-terminal']) {
+      const expected = composePuzzle(
+        'wire-trace-terminal',
+        'job-9:0',
+        variantKey,
+      );
+      const candidate = await contentAddressed().compose(
+        'wire-trace-terminal',
+        'job-9:0',
+        xoInPaths,
+        variantKey,
+      );
+      expect(candidate.draft.prompt).toEqual({ ar: expected.prompt });
+      expect(candidate.authoring.composedVisual).toMatchObject({ variantKey });
+    }
   });
+
+  it.each(
+    COMPOSED_PUZZLE_FAMILIES.flatMap((familyKey) =>
+      COMPOSED_PUZZLE_VARIANTS[familyKey].map(
+        (variantKey) => [familyKey, variantKey] as const,
+      ),
+    ),
+  )(
+    '%s / %s passes the screen as an إكس أو item',
+    async (familyKey, variantKey) => {
+      const candidate = await contentAddressed().compose(
+        familyKey,
+        'job-9:1',
+        {
+          mechanicKey: 'moving-xo',
+          scopeKey:
+            familyKey === 'wire-trace-terminal'
+              ? 'paths-motion'
+              : 'assembly-rotation',
+        },
+        variantKey,
+      );
+      expect(
+        new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService)
+          .screen(candidate.draft, candidate.authoring, {
+            worldKey: 'puzzles',
+            mechanicKey: 'moving-xo',
+          })
+          .findings.filter((finding) => finding.severity === 'blocking')
+          .map((finding) => finding.code),
+      ).toEqual([]);
+    },
+  );
 
   it('enters its picture in the media plan where the contract asks for one, as ours', async () => {
     const candidate = await contentAddressed().compose(
@@ -343,8 +376,13 @@ describe('ComposedVisualService — drawn puzzles answered by choosing', () => {
   it('tells two drawings apart even when the question and the answer read the same', async () => {
     const service = contentAddressed();
     const items = await Promise.all(
-      Array.from({ length: 60 }, (_, index) =>
-        service.compose('wire-trace-terminal', `job-9:${index}`, xoInPaths),
+      Array.from({ length: 120 }, (_, index) =>
+        service.compose(
+          'wire-trace-terminal',
+          `job-9:${index}`,
+          xoInPaths,
+          'which-start',
+        ),
       ),
     );
     const said = (item: (typeof items)[number]) => {
