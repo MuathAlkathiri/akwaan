@@ -256,29 +256,49 @@ export function FirstNoteGameplayPanel({
 
   const recap = view.phase === "completed" && view.result && (
     <section
-      className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2"
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5"
       data-testid="first-note-recap"
     >
-      {Object.entries(view.result.points).map(([id, points]) => (
-        <div
-          key={id}
-          className={cn(
-            "flex flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-center",
-            NAVY,
-            view.result?.winnerTeamId === id
-              ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
-              : "bg-white",
-          )}
+      {/* Who took it, said in words: two bare numbers leave the room to work
+          the winner out for itself. */}
+      {view.result.winnerTeamId ? (
+        <p
+          className="inline-flex items-center gap-2.5 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 py-2 font-display text-2xl font-black shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+          data-testid="first-note-recap-winner"
         >
-          <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
-            <TeamDot className={dotOf(id)} />
-            {team(id)}
-          </p>
-          <p className="akwaan-numeral text-[56px] font-bold leading-none">
-            {points}
-          </p>
-        </div>
-      ))}
+          <TeamDot className={dotOf(view.result.winnerTeamId)} />
+          فاز {team(view.result.winnerTeamId)} بالتحدي
+        </p>
+      ) : (
+        <p
+          className="font-display text-2xl font-black"
+          data-testid="first-note-tie"
+        >
+          تعادل! الفريقين خلصوا بنفس المجموع.
+        </p>
+      )}
+      <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
+        {Object.entries(view.result.points).map(([id, points]) => (
+          <div
+            key={id}
+            className={cn(
+              "flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-center",
+              NAVY,
+              view.result?.winnerTeamId === id
+                ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+                : "bg-white",
+            )}
+          >
+            <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
+              <TeamDot className={dotOf(id)} />
+              {team(id)}
+            </p>
+            <p className="akwaan-numeral text-[56px] font-bold leading-none">
+              {points}
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 
