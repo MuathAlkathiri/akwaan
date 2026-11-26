@@ -193,6 +193,26 @@ describe('ContentEngineReviewService enforcement characterization', () => {
     expect(detail.reviewEligibility.quickReview).toEqual({ eligible: true, reasons: [], eligibleWithMediaSteps: false, mediaSteps: [] });
   });
 
+  describe('quick review of a typed إكس أو item', () => {
+    const xoJob = { _id: 'job-1', mechanicKey: 'moving-xo', worldKey: 'puzzles', scopeKey: 'wordplay-letters', status: 'awaiting_review' };
+    const typed = (acceptedAnswers: unknown) => candidate({
+      humanAssessment: null, factVerification: { state: 'UNRESOLVED' },
+      draft: { prompt: { ar: 'خذ آخر حرف من اسم كل رسمة، بالترتيب من اليمين. وش الكلمة؟' }, answerPayload: { mode: 'match', acceptedAnswers } },
+    });
+    const reasons = async (current: Record<string, unknown>) =>
+      (await build({ current, jobOverride: xoJob }).service.detail('candidate-1')).reviewEligibility.quickReview.reasons;
+
+    it('takes accepted answers in place of options', async () => {
+      expect(await reasons(typed(['ذهب']))).not.toContain('خيارات الإجابة أو الإجابة الصحيحة غير مكتملة.');
+      expect(await reasons(typed(['ذهب']))).not.toContain('الإجابات المقبولة غير مكتملة.');
+    });
+
+    it('still refuses one with nothing to accept', async () => {
+      expect(await reasons(typed([]))).toContain('الإجابات المقبولة غير مكتملة.');
+      expect(await reasons(typed(['  ']))).toContain('الإجابات المقبولة غير مكتملة.');
+    });
+  });
+
   describe('quick review of a القنبلة item', () => {
     const bombJob = { _id: 'job-1', mechanicKey: 'bomb', worldKey: 'football', scopeKey: 'premier-league', status: 'awaiting_review' };
     const URL = `/uploads/world-content/content-items/engine-${'a'.repeat(64)}.jpg`;

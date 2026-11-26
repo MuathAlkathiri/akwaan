@@ -298,7 +298,9 @@ function detectStructuralFamily(input: {
   correctLabel: string;
   concept: string;
 }): string | undefined {
-  const { prompt, correctLabel, concept } = input;
+  const { correctLabel, concept } = input;
+  // Read without the marks over the letters: «رتّبها» is «رتبها».
+  const prompt = input.prompt.replace(/[\u064B-\u0652\u0640]/g, '');
   const combined = `${prompt} ${concept}`;
 
   // Letter arithmetic / subtraction & addition math
@@ -319,7 +321,11 @@ function detectStructuralFamily(input: {
     /(?:كون|تكوين|رتب|ترتيب|أعد ترتيب|اعد ترتيب|تجميع)\s+(?:كلمة|الحروف|حروف)/i.test(
       combined,
     ) ||
-    /(?:الحروف التالية|من الحروف)/i.test(combined)
+    /(?:الحروف التالية|من الحروف)/i.test(combined) ||
+    // The approved wording: «رتّبها وتطلع فاكهة: ز، م، و» — the verb with its
+    // pronoun, and the letters laid out one by one.
+    /(?:^|\s)رتب(?:ها|وها|وا)?(?=\s|$)/.test(prompt) ||
+    scatteredLetters(prompt).length >= 3
   ) {
     return 'anagram-rearrange';
   }
@@ -405,6 +411,23 @@ function isFamilyMatchOrEquivalent(
   return false;
 }
 
+/** The single letters a prompt lays out after its colon, or anywhere in it. */
+function scatteredLetters(prompt: string): string[] {
+  const region = /[:：]\s*([^\n.?؟!]+)/.exec(prompt)?.[1] ?? prompt;
+  return region
+    .split(/[^\p{L}]+/gu)
+    .filter((token) => token.length === 1 && /[\u0621-\u064A]/.test(token));
+}
+
+/**
+ * The hint of an anagram names the kind of thing and stops: «فاكهة», «حيوان».
+ * A hint that describes the answer — its colour, its size, where it lives —
+ * lets the table say the word without touching the letters (owner, 2026-11-27).
+ * Seven words hold the longest plain instruction («رتب الحروف التالية لتكوين
+ * اسم أداة كتابة»); a description runs past that.
+ */
+export const ANAGRAM_MAX_HINT_WORDS = 7;
+
 /**
  * Validates anagram letter multiset consistency between prompt clue letters and answer.
  */
@@ -416,6 +439,20 @@ function verifyAnagramRule(
     return {
       passed: false,
       reason: 'Missing prompt or answer text for anagram validation',
+    };
+  }
+
+  const hintWords = (prompt.split(/[:：]/)[0] ?? prompt)
+    .replace(/[\u064B-\u0652\u0640]/g, '')
+    .split(/[^\p{L}]+/gu)
+    .filter((token) => token.length > 1);
+  if (
+    scatteredLetters(prompt).length >= 2 &&
+    hintWords.length > ANAGRAM_MAX_HINT_WORDS
+  ) {
+    return {
+      passed: false,
+      reason: `Anagram hint describes the answer: ${hintWords.length} words before the letters, at most ${ANAGRAM_MAX_HINT_WORDS} allowed (the instruction and the kind of thing)`,
     };
   }
 

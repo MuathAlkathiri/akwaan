@@ -31,6 +31,45 @@ describe('FamilyCompliance Policy', () => {
     });
   });
 
+  describe('رتّب الحروف in its approved wording (2026-11-27)', () => {
+    const anagram = (prompt: string, answer: string) =>
+      evaluateFamilyCompliance({
+        assignedFamilyKey: 'anagram-rearrange',
+        draft: {
+          prompt: { ar: prompt },
+          answerPayload: {
+            mode: 'multiple_choice',
+            options: [
+              { id: 'a', label: { ar: answer } },
+              { id: 'b', label: { ar: 'غيرها' } },
+            ],
+            correctOptionId: 'a',
+          },
+        },
+      });
+
+    it('recognises «رتّبها وتطلع …» with its marks and its pronoun', () => {
+      const result = anagram('رتّبها وتطلع فاكهة: ي، خ، ب، ط', 'بطيخ');
+      expect(result.detectedFamilyKey).toBe('anagram-rearrange');
+      expect(result.isCompliant).toBe(true);
+    });
+
+    it('refuses a hint that describes the answer instead of naming its kind', () => {
+      const result = anagram(
+        'رتّبها وتطلع فاكهة كبيرة خضراء من برا وحمراء من جوا: ي، خ، ب، ط',
+        'بطيخ',
+      );
+      expect(result.isCompliant).toBe(false);
+      expect(result.mismatchReason).toContain('hint describes the answer');
+    });
+
+    it('still refuses letters that do not spell the answer', () => {
+      const result = anagram('رتّبها وتطلع فاكهة: ي، خ، ب، ر', 'بطيخ');
+      expect(result.isCompliant).toBe(false);
+      expect(result.mismatchReason).toContain('multiset mismatch');
+    });
+  });
+
   describe('2. Declared familyKey overrides', () => {
     it('detects mismatch when candidate declares a different familyKey in metadata', () => {
       const result = evaluateFamilyCompliance({

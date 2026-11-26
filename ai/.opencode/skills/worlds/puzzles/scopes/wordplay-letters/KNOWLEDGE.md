@@ -680,32 +680,32 @@ The block below is the structured form of the 15 canonical families approved for
         {
           "key": "food-and-fruit",
           "name": "أكل وفاكهة",
-          "brief": "The hint is a food, a fruit or a drink."
+          "brief": "The hint is a food, a fruit or a drink. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         },
         {
           "key": "animals",
           "name": "حيوانات",
-          "brief": "The hint is an animal or a bird."
+          "brief": "The hint is an animal or a bird. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         },
         {
           "key": "around-the-house",
           "name": "في البيت",
-          "brief": "The hint is something found at home."
+          "brief": "The hint is something found at home. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         },
         {
           "key": "sports-and-play",
           "name": "رياضة ولعب",
-          "brief": "The hint is a sport, a game or something used in one."
+          "brief": "The hint is a sport, a game or something used in one. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         },
         {
           "key": "jobs",
           "name": "مهن",
-          "brief": "The hint is a job."
+          "brief": "The hint is a job. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         },
         {
           "key": "on-the-road",
           "name": "في الشارع",
-          "brief": "The hint is something seen on the road or a way of getting around."
+          "brief": "The hint is something seen on the road or a way of getting around. Name the kind in ONE word and stop («فاكهة», «حيوان», «مهنة»): never describe the answer — no colour, size, taste, use or place. Wording: «رتّبها وتطلع <الكلمة>: ح، ر، و، ف»."
         }
       ],
       "capacity": 60
