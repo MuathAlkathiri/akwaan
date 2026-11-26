@@ -256,7 +256,7 @@ describe("the host is untouched", () => {
       "البطاقات الموزّعة",
     );
     expect(screen.getByTestId("top5-current-card").className).toContain(
-      "md:text-4xl",
+      "md:text-5xl",
     );
   });
 

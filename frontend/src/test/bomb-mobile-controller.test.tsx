@@ -199,8 +199,9 @@ describe("the acting phone", () => {
 
   it("marks the clock urgent at low time without changing any rule", () => {
     renderPhone(runtimeOf(), vi.fn(), { remainingMs: 4_000 });
-    expect(screen.getByTestId("bomb-phone-clock").className).toContain(
-      "text-destructive",
+    expect(screen.getByTestId("bomb-phone-clock")).toHaveAttribute(
+      "data-urgency",
+      "critical",
     );
   });
 
@@ -740,7 +741,12 @@ describe("the shared screen keeps the room's Bomb", () => {
     expect(screen.queryByTestId("bomb-phone-voice")).toBeNull();
     expect(screen.queryByTestId("bomb-phone-skip")).toBeNull();
     expect(screen.queryByTestId("mobile-action-area")).toBeNull();
-    expect(screen.queryByTestId("challenge-frame")).toBeNull();
+    // The room wears the shared frame now, in its screen form, never the
+    // phone's compact one.
+    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
+      "data-frame-surface",
+      "screen",
+    );
   });
 
   it("keeps the historical audio item playing on the room's screen", () => {

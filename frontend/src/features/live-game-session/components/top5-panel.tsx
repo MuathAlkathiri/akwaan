@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Hand, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  TeamStatusCard,
+  TeamStatusRow,
+} from "../match/components/team-status-card";
 import { ChallengeFrame } from "../match/components/challenge-frame";
 import { MobileActionArea } from "../match/components/mobile-action-area";
 import { useMobileSurface } from "../match/components/mobile-gameplay-shell";
@@ -74,7 +78,6 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
     () => new Map(snapshot?.teams.map((team) => [team.id, team.name]) ?? []),
     [snapshot?.teams],
   );
-  const activeIdentity = teamIdentityOf(activeTeamId, snapshot?.teams ?? []);
   const deciderName =
     snapshot?.participants.find((person) => person.id === activeParticipantId)
       ?.displayName ?? "";
@@ -110,26 +113,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
         completed ? "اكتمل التحدي" : `البطاقة ${cardNumber} من ${cardCount}`
       }
       progressValue={completed ? 100 : ((cardNumber - 1) / cardCount) * 100}
-      aside={
-        !completed && (
-          <span
-            data-testid="top5-active-team"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-black",
-              activeIdentity.surface,
-              activeIdentity.border,
-              activeIdentity.text,
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn("size-2 rounded-full", activeIdentity.dot)}
-            />
-            دور {teams.get(activeTeamId) ?? "الفريق"}
-          </span>
-        )
-      }
-      className={phone ? "flex min-h-0 flex-1 flex-col" : "mx-auto max-w-3xl"}
+      {...(phone ? { className: "flex min-h-0 flex-1 flex-col" } : {})}
     >
       <div
         className={phone ? "flex min-h-0 flex-1 flex-col gap-3" : "space-y-5"}
@@ -141,6 +125,24 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
           {completed ? "اكتمل التحدي" : `البطاقة ${cardNumber} من ${cardCount}`}
         </span>
 
+        {!completed && !phone && (
+          <TeamStatusRow data-testid="top5-team-status">
+            {(snapshot?.teams ?? [])
+              .filter((team) => team.active)
+              .map((team) => (
+                <TeamStatusCard
+                  key={team.id}
+                  role={team.id === activeTeamId ? "يقررون" : "ينتظرون"}
+                  name={team.name}
+                  dotClass={teamIdentityOf(team.id, snapshot?.teams ?? []).dot}
+                  done={team.id === activeTeamId}
+                  doneLabel="القرار عندهم"
+                  pendingLabel="ينتظرون دورهم"
+                />
+              ))}
+          </TeamStatusRow>
+        )}
+
         {!completed && current && (
           <section
             className={
@@ -151,7 +153,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
               className={
                 phone
                   ? "akwaan-rise flex flex-1 flex-col items-center justify-center text-center"
-                  : "akwaan-rise rounded-[var(--radius)] border-2 border-border bg-background p-4 shadow-[inset_0_1px_0_hsl(var(--card))] sm:p-6"
+                  : "akwaan-rise rounded-[22px] border-[3px] border-[hsl(var(--brand-navy))] bg-white p-5 shadow-[5px_6px_0_hsl(var(--brand-navy))] sm:p-8"
               }
             >
               {!phone && current.media?.url && (
@@ -168,8 +170,8 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
               <p
                 className={
                   phone
-                    ? "[overflow-wrap:anywhere] text-3xl font-black leading-tight text-foreground"
-                    : "[overflow-wrap:anywhere] text-2xl font-black leading-tight text-foreground sm:text-3xl md:text-4xl"
+                    ? "[overflow-wrap:anywhere] font-display text-3xl font-extrabold leading-snug text-[hsl(var(--brand-navy))]"
+                    : "[overflow-wrap:anywhere] font-display text-3xl font-extrabold leading-snug text-[hsl(var(--brand-navy))] md:text-5xl md:leading-snug"
                 }
                 data-testid="top5-current-card"
               >
@@ -182,8 +184,11 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                 <MobileActionArea>
                   {/* The primitive stays a place, not a component that knows
                       about decisions: the mechanic labels its own region. */}
-                  <div data-testid="top5-decider-controls" className="contents" />
-                  <p className="text-center text-xs font-black text-muted-foreground">
+                  <div
+                    data-testid="top5-decider-controls"
+                    className="contents"
+                  />
+                  <p className="text-center text-sm font-bold text-brand-plum">
                     {deciding ? "جارٍ إرسال قراركم…" : "أنت صاحب القرار"}
                   </p>
                   {/* Two peers, not a safe choice and a dangerous one. Both are
@@ -196,7 +201,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                       disabled={connection !== "connected" || Boolean(deciding)}
                       onClick={() => decide("keep")}
                       data-testid="top5-keep"
-                      className="h-16 border-2 text-base font-black"
+                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
                     >
                       <Hand className="size-5" aria-hidden />
                       احتفظ بها
@@ -207,7 +212,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                       disabled={connection !== "connected" || Boolean(deciding)}
                       onClick={() => decide("give")}
                       data-testid="top5-give"
-                      className="h-16 border-2 text-base font-black"
+                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
                     >
                       <Send className="size-5" aria-hidden />
                       دسّها للخصم
@@ -215,41 +220,42 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                   </div>
                 </MobileActionArea>
               ) : (
-              <div className="space-y-3" data-testid="top5-decider-controls">
-                <p className="text-base font-black text-foreground">
-                  أنت صاحب القرار
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    size="lg"
-                    disabled={connection !== "connected" || Boolean(deciding)}
-                    onClick={() => decide("keep")}
-                    data-testid="top5-keep"
-                    className="h-14 text-base font-black"
-                  >
-                    <Hand className="size-5" aria-hidden />
-                    احتفظ بها
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="destructive"
-                    disabled={connection !== "connected" || Boolean(deciding)}
-                    onClick={() => decide("give")}
-                    data-testid="top5-give"
-                    className="h-14 text-base font-black"
-                  >
-                    <Send className="size-5" aria-hidden />
-                    دسّها للخصم
-                  </Button>
+                <div className="space-y-3" data-testid="top5-decider-controls">
+                  <p className="text-base font-bold text-brand-plum">
+                    أنت صاحب القرار
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      size="lg"
+                      disabled={connection !== "connected" || Boolean(deciding)}
+                      onClick={() => decide("keep")}
+                      variant="outline"
+                      data-testid="top5-keep"
+                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
+                    >
+                      <Hand className="size-5" aria-hidden />
+                      احتفظ بها
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      disabled={connection !== "connected" || Boolean(deciding)}
+                      onClick={() => decide("give")}
+                      data-testid="top5-give"
+                      className="h-16 rounded-[18px] border-[3px] border-[hsl(var(--brand-navy))] bg-white font-display text-lg font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 hover:bg-brand-lavender hover:text-[hsl(var(--brand-navy))]"
+                    >
+                      <Send className="size-5" aria-hidden />
+                      دسّها للخصم
+                    </Button>
+                  </div>
                 </div>
-              </div>
               )
             ) : (
               <div
                 className={
                   phone
                     ? "flex shrink-0 flex-col items-center gap-1 pb-2 text-center text-sm"
-                    : "space-y-1 rounded-[var(--radius)] bg-muted p-4 text-sm"
+                    : "space-y-1 rounded-[18px] bg-brand-lavender p-4 text-base"
                 }
                 data-testid="top5-waiting"
               >
@@ -277,7 +283,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
 
         {ownership.length > 0 && !completed && !phone && (
           <section>
-            <h3 className="mb-2 text-xs font-black text-muted-foreground">
+            <h3 className="mb-2 text-sm font-bold text-brand-slate">
               البطاقات الموزّعة
             </h3>
             <ul className="grid list-none gap-1.5 sm:grid-cols-2">
@@ -289,20 +295,19 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
                 return (
                   <li
                     key={record.entryId}
-                    className={cn(
-                      "flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-bold",
-                      identity.surface,
-                      identity.border,
-                    )}
+                    className="flex items-center justify-between gap-2 rounded-[12px] border-2 border-[hsl(var(--brand-navy))] bg-brand-paper px-3 py-2 text-sm font-bold text-[hsl(var(--brand-navy))]"
                   >
                     {/* No rank and no correctness: which cards were real is
                         still unknown to everyone, including this screen. */}
-                    <span className="truncate text-foreground/85">
-                      {record.label}
-                    </span>
-                    <span
-                      className={cn("shrink-0 font-black", identity.text)}
-                    >
+                    <span className="truncate">{record.label}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 font-extrabold">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "size-3 rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                          identity.dot,
+                        )}
+                      />
                       {teams.get(record.ownerTeamId)}
                       {record.resolutionReason === "host-skipped"
                         ? " · تخطّى المضيف"
@@ -317,7 +322,7 @@ export function Top5Panel({ runtime }: { runtime: GameplayRuntimeSnapshot }) {
 
         {completed && (
           <p
-            className="rounded-[var(--radius)] bg-muted p-6 text-center text-sm font-bold text-muted-foreground"
+            className="rounded-[18px] border-[3px] border-dashed border-brand-dash bg-white p-6 text-center text-lg font-bold text-brand-plum"
             data-testid="top5-awaiting-result"
           >
             اكتملت البطاقات العشر. جارٍ عرض النتيجة…

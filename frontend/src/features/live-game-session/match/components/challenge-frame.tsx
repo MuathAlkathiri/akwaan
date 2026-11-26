@@ -50,7 +50,7 @@ export function ChallengeProgress({
     <div
       data-testid="challenge-progress"
       className={cn(
-        "flex items-center",
+        "flex min-w-0 max-w-full items-center",
         compact ? "flex-col items-start gap-2" : "gap-4",
         className,
       )}
@@ -64,12 +64,19 @@ export function ChallengeProgress({
         {label}
       </span>
       {count ? (
-        <span role="img" aria-label={label} className="flex gap-1.5">
+        <span
+          role="img"
+          aria-label={label}
+          // The dashes share the row they are given and shrink to fit it: ten
+          // of them at a fixed width ran off the edge of a phone.
+          className="flex min-w-0 max-w-full gap-1.5"
+        >
           {Array.from({ length: count.total }, (_unused, index) => (
             <span
               key={index}
               className={cn(
                 "h-2.5 rounded-full border-2 border-[hsl(var(--brand-navy))]",
+                "min-w-0 shrink",
                 compact ? "w-[30px]" : "w-8 lg:w-11",
                 index < count.current
                   ? "bg-[hsl(var(--brand-gold))]"
