@@ -45,6 +45,7 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'reflection-fidelity',
   'overlapping-boundary-trace',
   'size-distortion-illusion',
+  'picture-initials',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
@@ -72,6 +73,11 @@ import {
   composeAssembly,
 } from './composed-assembly';
 import {
+  LETTERS_VARIANTS,
+  LettersFamily,
+  composeLetters,
+} from './composed-letters';
+import {
   OBSERVATION_VARIANTS,
   ObservationFamily,
   composeObservation,
@@ -97,12 +103,19 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   ],
   'opposite-cube-faces': ['opposite', 'opposite-pair', 'not-touching'],
   'fold-and-punch': ['count-holes', 'count-folds'],
-  'visual-closure-fragment': ['shadow', 'close-up', 'half-hidden'],
+  'visual-closure-fragment': [
+    'shadow',
+    'close-up',
+    'half-hidden',
+    'upside-down',
+    'shattered',
+  ],
   'spot-the-difference': ['vanished', 'appeared', 'replaced'],
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
   ...PATHS_VARIANTS,
   ...ASSEMBLY_VARIANTS,
   ...OBSERVATION_VARIANTS,
+  ...LETTERS_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
 export interface ComposedPuzzle extends ComposedPuzzleDrawing {
@@ -1127,6 +1140,33 @@ function thingAmongItsKind(
   );
 }
 
+/**
+ * Where each tile of a cut-up drawing is dealt: `order[place]` is the tile
+ * shown there. No tile stays in its own place, and none keeps its neighbour
+ * to the right — the picture must be put together, not read.
+ */
+export function shatteredOrder(
+  columns: number,
+  rows: number,
+  detail: number,
+): number[] {
+  const random = seededRandom(`shattered:${columns}x${rows}:${detail}`);
+  const tiles = Array.from({ length: columns * rows }, (_, index) => index);
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const order = shuffled(tiles, random);
+    const displaced = order.every((source, place) => source !== place);
+    const brokenUp = order.every(
+      (source, place) =>
+        (place + 1) % columns === 0 ||
+        source % columns === columns - 1 ||
+        order[place + 1] !== source + 1,
+    );
+    if (displaced && brokenUp) return order;
+  }
+  // A plain rotation of the tiles: always displaced.
+  return tiles.map((index) => (index + 1) % tiles.length);
+}
+
 export function fragmentSvg(
   thing: DrawnThing,
   variantKey: string,
@@ -1162,6 +1202,37 @@ export function fragmentSvg(
       ),
     );
   }
+  if (variantKey === 'upside-down') {
+    return frame(
+      card(
+        `<g data-thing="${thing.key}" transform="translate(0 ${round(2 * cy)}) scale(1 -1)">${thingSvg(thing, cx, cy, size)}</g>`,
+      ),
+    );
+  }
+  if (variantKey === 'shattered') {
+    // Cut into four or six tiles and dealt back with every tile out of
+    // place. No finer: a drawing does not fill its corners, and a grid of
+    // nine leaves tiles with nothing on them.
+    const columns = detail % 2 ? 3 : 2;
+    const rows = 2;
+    const order = shatteredOrder(columns, rows, detail);
+    const gap = 14;
+    const wide = (size - (columns - 1) * gap) / columns;
+    const tall = (size - (rows - 1) * gap) / rows;
+    let tiles = '';
+    order.forEach((source, place) => {
+      const tx = x + (place % columns) * (wide + gap);
+      const ty = y + Math.floor(place / columns) * (tall + gap);
+      tiles +=
+        `<g data-tile="${place}" data-from="${source}">` +
+        `<rect x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" fill="#FFFFFF" stroke="${INK}" stroke-width="6"/>` +
+        `<svg x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" viewBox="${round((source % columns) * (32 / columns))} ${round(Math.floor(source / columns) * (32 / rows))} ${round(32 / columns)} ${round(32 / rows)}" preserveAspectRatio="none" fill="none">${thing.body}</svg></g>`;
+    });
+    return frame(
+      `<rect x="${x - 30}" y="${y - 30}" width="${size + 60}" height="${size + 60}" rx="36" fill="${GOLD}" stroke="${INK}" stroke-width="10"/>` +
+        `<g data-thing="${thing.key}">${tiles}</g>`,
+    );
+  }
   // Half of it behind a wall: left, right, top or bottom.
   const side = detail % 4;
   const wall =
@@ -1186,7 +1257,10 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
     drawnThings().filter(
       (entry) =>
         entry.category !== 'place' &&
-        (variantKey !== 'shadow' || entry.twins.length <= SHADOW_MAX_TWINS),
+        (variantKey !== 'shadow' || entry.twins.length <= SHADOW_MAX_TWINS) &&
+        // Cut into tiles, a thin drawing leaves tiles with nothing on them:
+        // only well-filled drawings are cut up.
+        (variantKey !== 'shattered' || entry.twins.length >= 1),
     ),
     random,
   );
@@ -1201,7 +1275,11 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
         ? 'هذا ظل وش؟'
         : variantKey === 'close-up'
           ? 'هذي صورة مقرّبة من وش؟'
-          : 'نصّه مغطّى. وش هو؟',
+          : variantKey === 'upside-down'
+            ? 'الرسمة مقلوبة فوق تحت. وش هي؟'
+            : variantKey === 'shattered'
+              ? 'الرسمة مقطّعة ومتلخبطة. وش هي؟'
+              : 'نصّه مغطّى. وش هو؟',
     options,
     correctOptionId,
     distractorRationale: options
@@ -1215,7 +1293,11 @@ function composeFragment(seed: string, variantKey: string): ComposedPuzzle {
         ? 'ظل أسود لشيء معروف'
         : variantKey === 'close-up'
           ? 'جزء مقرّب من رسمة شيء معروف'
-          : 'رسمة شيء معروف نصفها مغطّى',
+          : variantKey === 'upside-down'
+            ? 'رسمة شيء معروف مقلوبة رأسًا على عقب'
+            : variantKey === 'shattered'
+              ? 'رسمة شيء معروف مقطّعة إلى مربعات متلخبطة'
+              : 'رسمة شيء معروف نصفها مغطّى',
     concept:
       'Recognise an everyday thing from part of what would normally identify it.',
     factualClaim: `The drawing shown is "${thing.key}" («${thing.ar}»).`,
@@ -1421,6 +1503,13 @@ export function composePuzzle(
   if (familyKey in PATHS_VARIANTS) {
     return composePaths(
       familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in LETTERS_VARIANTS) {
+    return composeLetters(
+      familyKey as LettersFamily,
       seed,
       variant,
     ) as ComposedPuzzle;

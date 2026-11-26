@@ -12,6 +12,7 @@ import {
   cubeThemes,
   holesAfterUnfolding,
   routeThreads,
+  shatteredOrder,
   seededRandom,
   threadCrossings,
   unfoldedHoles,
@@ -112,6 +113,7 @@ describe('composed puzzles answered by choosing', () => {
       'assembly-rotation',
       'paths-motion',
       'observation-illusions',
+      'wordplay-letters',
     ].flatMap((scope) => {
       const text = readFileSync(join(skills, scope, 'KNOWLEDGE.md'), 'utf8');
       const block = /```akwaan-families\n([\s\S]*?)\n```/.exec(text)![1];
@@ -137,7 +139,7 @@ describe('composed puzzles answered by choosing', () => {
     const named = (label: string) =>
       drawnThings().find((thing) => thing.ar === label)!;
 
-    it.each(['shadow', 'close-up', 'half-hidden'])(
+    it.each(['shadow', 'close-up', 'half-hidden', 'upside-down', 'shattered'])(
       'fragment / %s: answers with the thing drawn, against two of its own kind',
       (variantKey) => {
         for (const seed of seeds.slice(0, 80)) {
@@ -171,6 +173,34 @@ describe('composed puzzles answered by choosing', () => {
           ),
         );
         expect([...fills].sort()).toEqual(['#1B1F3B', '#F6F1E7', '#FFFFFF']);
+      }
+    });
+
+    it('shattered: four or six tiles, each shown once and none in its own place', () => {
+      for (const [columns, rows] of [
+        [2, 2],
+        [3, 2],
+      ]) {
+        for (let detail = 0; detail < 20; detail += 1) {
+          const order = shatteredOrder(columns, rows, detail);
+          expect([...order].sort((a, b) => a - b)).toEqual(
+            Array.from({ length: columns * rows }, (_, index) => index),
+          );
+          order.forEach((source, place) => expect(source).not.toBe(place));
+        }
+      }
+      for (const seed of seeds.slice(0, 60)) {
+        const item = composePuzzle(
+          'visual-closure-fragment',
+          seed,
+          'shattered',
+        );
+        const tiles = [
+          ...item.svg.matchAll(/data-tile="(\d)" data-from="(\d)"/g),
+        ].map((match) => [Number(match[1]), Number(match[2])]);
+        expect([4, 6]).toContain(tiles.length);
+        expect(new Set(tiles.map(([, from]) => from)).size).toBe(tiles.length);
+        for (const [place, from] of tiles) expect(from).not.toBe(place);
       }
     });
 

@@ -462,6 +462,7 @@
 | 20 | `proverb-completion` | كمّل المثل | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
+| 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Multiple Choice (3 options) |
 
 ---
 
@@ -1279,6 +1280,46 @@ The block below is the structured form of the 15 canonical families approved for
         }
       ],
       "capacity": 50
+    },
+    {
+      "familyKey": "picture-initials",
+      "name": "أول حرف",
+      "description": "صف من رسمات لأشياء معروفة، وكل رسمة تعطي حرفًا من اسمها، والحروف تكوّن كلمة. المحرك يختار الكلمة والرسمات من مكتبته ويرسم الصف. (اعتماد المالك 2026-11-27: أربعة أشكال، وبدون الشكل السهل «أول حرف بالترتيب».)",
+      "playerSolve": "تسمية الرسمات وأخذ حرف من كل اسم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "scrambled",
+          "name": "ملخبطة",
+          "brief": "First letters of four pictures, out of order; arrange them into the word."
+        },
+        {
+          "key": "last-letter",
+          "name": "آخر حرف",
+          "brief": "The last letter of each name, read right to left."
+        },
+        {
+          "key": "cipher",
+          "name": "الشفرة",
+          "brief": "A number under each picture says which letter of its name to take."
+        },
+        {
+          "key": "extra",
+          "name": "الرسمة الزايدة",
+          "brief": "All but one of the pictures spell a thing of a named kind by their first letters; name the extra picture."
+        }
+      ],
+      "capacity": 300
     }
   ]
 }
