@@ -521,7 +521,11 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'wire-trace-terminal',
         ]);
         expect(drawable('observation-illusions', 'moving-xo')).toEqual([
+          'overlapping-boundary-trace',
+          'reflection-fidelity',
+          'size-distortion-illusion',
           'spot-the-difference',
+          'visual-asymmetry-detection',
           'visual-closure-fragment',
           'visual-match-scan',
         ]);

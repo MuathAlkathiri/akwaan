@@ -1003,8 +1003,7 @@ The Puzzle Family Library is an authoring contract. It evolves through deliberat
 ## Composed families — مركّب الصور (owner decision 2026-11-26)
 
 The families of this Scope need a picture. The engine **draws** the ones
-listed here itself (`visual-closure-fragment`, `spot-the-difference`,
-`visual-match-scan`): the picture, the question, the three options and the
+listed here itself (`size-distortion-illusion`, `spot-the-difference`, `visual-match-scan`, `reflection-fidelity`, `overlapping-boundary-trace`, `visual-closure-fragment`, `visual-asymmetry-detection`): the picture, the question, the three options and the
 right answer are all made from one seed, so the answer is correct by
 construction. No model writes them and no model is paid for them.
 
@@ -1093,9 +1092,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "size-distortion-illusion",
       "name": "خداع الحجم والأبعاد",
-      "description": "خداع الحجم والأبعاد",
-      "playerSolve": "خداع الحجم والأبعاد",
-      "modality": "visual-perceptual",
+      "description": "خطان أو دائرتان يخدع العين حجمهم بسبب اللي حولهم: إما متساويين فعلًا، أو اللي يبان أصغر هو الأكبر. المحرك يرسم بقياسات يعرفها.",
+      "playerSolve": "الحكم على الحجم نفسه مو على شكله.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -1107,8 +1106,29 @@ nothing is deleted, and a family returns by removing its `status` below.
         "multiple_choice",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "arrow-lines",
+          "name": "خطين بأسهم",
+          "brief": "Two lines with fins pointing in and out; which is longer, or equal."
+        },
+        {
+          "key": "surrounded-circles",
+          "name": "دائرتين وحولهم دوائر",
+          "brief": "Two circles among big and small neighbours; which is bigger, or equal."
+        },
+        {
+          "key": "tall-or-wide",
+          "name": "واقف ونايم",
+          "brief": "An upright line on a flat one; which is longer, or equal."
+        }
+      ],
+      "capacity": 60,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     },
     {
       "familyKey": "color-contrast-illusion",
@@ -1272,9 +1292,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "reflection-fidelity",
       "name": "انعكاس المرآة والمسطحات",
-      "description": "انعكاس المرآة والمسطحات",
-      "playerSolve": "انعكاس المرآة والمسطحات",
-      "modality": "visual-perceptual",
+      "description": "شي معكوس في المراية: ساعة عقارب بدون أرقام، أو صف أشياء مرسومة وتحته ثلاثة صفوف. المحرك يحسب الانعكاس الصحيح.",
+      "playerSolve": "عكس المراية في الذهن.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -1287,15 +1307,31 @@ nothing is deleted, and a family returns by removing its `status` below.
         "match",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "mirror-clock",
+          "name": "ساعة في المراية",
+          "brief": "A clock as a mirror shows it; what the true time is."
+        },
+        {
+          "key": "true-mirror",
+          "name": "أي صف في المراية",
+          "brief": "Which of three rows is what a mirror beside the row would show."
+        }
+      ],
+      "capacity": 200,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     },
     {
       "familyKey": "overlapping-boundary-trace",
       "name": "تداخل الأشكال والمسارات المغلقة",
-      "description": "تداخل الأشكال والمسارات المغلقة",
-      "playerSolve": "تداخل الأشكال والمسارات المغلقة",
-      "modality": "visual-perceptual",
+      "description": "أربعة أشياء مرسومة فوق بعض في كومة وحدة، كل واحد يغطي جزء من غيره. المحرك يعرف ترتيبها.",
+      "playerSolve": "قراءة مين يغطي مين.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -1307,8 +1343,24 @@ nothing is deleted, and a family returns by removing its `status` below.
         "multiple_choice",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "on-top",
+          "name": "فوق الكل",
+          "brief": "Which thing nothing covers."
+        },
+        {
+          "key": "at-bottom",
+          "name": "تحت الكل",
+          "brief": "Which thing covers nothing."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     },
     {
       "familyKey": "visual-closure-fragment",
@@ -1353,9 +1405,9 @@ nothing is deleted, and a family returns by removing its `status` below.
     {
       "familyKey": "visual-asymmetry-detection",
       "name": "ملاحظة كسر التناظر",
-      "description": "ملاحظة كسر التناظر",
-      "playerSolve": "ملاحظة كسر التناظر",
-      "modality": "visual-perceptual",
+      "description": "لوحة يقسمها خط: نصفها الأيمن صورة مراية لنصفها الأيسر إلا في مكان واحد. المحرك يبني اللوحة ويعرف وين الكسر.",
+      "playerSolve": "مقارنة نصفين متناظرين.",
+      "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
         "moving-xo": "EXCELLENT",
@@ -1367,8 +1419,24 @@ nothing is deleted, and a family returns by removing its `status` below.
         "multiple_choice",
         "closest"
       ],
-      "status": "paused",
-      "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+      "variants": [
+        {
+          "key": "intruder",
+          "name": "الدخيل",
+          "brief": "One thing on the right has no mirror partner on the left; name it."
+        },
+        {
+          "key": "missing",
+          "name": "الناقص",
+          "brief": "One place on the right is empty; name what should be there."
+        }
+      ],
+      "capacity": 300,
+      "pausedFor": [
+        "bomb",
+        "read-your-opponent",
+        "closest"
+      ]
     }
   ]
 }

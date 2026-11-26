@@ -1,6 +1,5 @@
 import {
   ComposedPuzzleDrawing,
-  H,
   INK,
   LETTERS,
   PUZZLE_FONT_FAMILY,

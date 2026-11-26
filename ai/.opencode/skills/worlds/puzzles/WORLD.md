@@ -102,7 +102,10 @@ Avoid breaking the core experience of puzzles.
     copy the mark, colour recall, thread tracing, the folded cube, fold and
     punch, and — from its library of drawn everyday things — the shadow or
     fragment of a thing, the difference between two boards, and the scan of
-    one board — with the answer fixed by the drawing. A family that needs a
+    one board, and since then most of the three visual Scopes' libraries
+    (gears, mazes, turned and mirrored shapes, stacks of cubes, reflections,
+    sizes the eye misjudges) — with the answer fixed by the drawing. Each
+    Scope's KNOWLEDGE.md lists what is drawn. A family that needs a
     picture the composer cannot draw yet stays paused. A model still writes
     text-only items and must never refer to a picture.
   - **اقرأ خصمك is the exception to the first two rules (2026-11-25).** Its

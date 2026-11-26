@@ -41,6 +41,10 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'cube-net-fold',
   'spatial-cube-count',
   'orthographic-projection',
+  'visual-asymmetry-detection',
+  'reflection-fidelity',
+  'overlapping-boundary-trace',
+  'size-distortion-illusion',
 ] as const;
 
 export type ComposedPuzzleFamily = (typeof COMPOSED_PUZZLE_FAMILIES)[number];
@@ -67,6 +71,11 @@ import {
   AssemblyFamily,
   composeAssembly,
 } from './composed-assembly';
+import {
+  OBSERVATION_VARIANTS,
+  ObservationFamily,
+  composeObservation,
+} from './composed-observation';
 import { PATHS_VARIANTS, PathsFamily, composePaths } from './composed-paths';
 import { CUBE_NETS, Cell, cubeNetNormals, cubeNetOpposites } from './cube-nets';
 
@@ -93,6 +102,7 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
   ...PATHS_VARIANTS,
   ...ASSEMBLY_VARIANTS,
+  ...OBSERVATION_VARIANTS,
 } as const satisfies Record<ComposedPuzzleFamily, readonly string[]>;
 
 export interface ComposedPuzzle extends ComposedPuzzleDrawing {
@@ -1411,6 +1421,13 @@ export function composePuzzle(
   if (familyKey in PATHS_VARIANTS) {
     return composePaths(
       familyKey as PathsFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in OBSERVATION_VARIANTS) {
+    return composeObservation(
+      familyKey as ObservationFamily,
       seed,
       variant,
     ) as ComposedPuzzle;
