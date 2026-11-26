@@ -16,6 +16,120 @@ const tutorialMediaUrl = (url?: string) =>
   url?.startsWith("/tutorial-media/") && typeof window !== "undefined"
     ? new URL(url, window.location.origin).href
     : (url ?? null);
+
+interface ClosestSliderSpec {
+  mode: "numeric-range" | "between-anchors" | "colour-hue";
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  displayFormat?: "number" | "calendar-year";
+  leftAnchor?: string;
+  rightAnchor?: string;
+}
+
+const NICE_STEP_BASES = [1, 5, 10] as const;
+
+function niceSteps(maxSpan: number): number[] {
+  const steps: number[] = [];
+  for (let pow = 0; pow <= 9; pow++) {
+    const scale = 10 ** pow;
+    for (const base of NICE_STEP_BASES) {
+      const candidate = base * scale;
+      if (candidate > maxSpan) return steps;
+      if (steps.at(-1) !== candidate) steps.push(candidate);
+    }
+  }
+  return steps;
+}
+
+function isStepAligned(value: number, step: number): boolean {
+  const ratio = value / step;
+  return Math.abs(ratio - Math.round(ratio)) < 1e-6;
+}
+
+function deriveClosestSlider(
+  example: Extract<SceneExample, { kind: "closest" }>,
+): ClosestSliderSpec {
+  const extended = example as Extract<SceneExample, { kind: "closest" }> & {
+    slider?: ClosestSliderSpec;
+    min?: number;
+    max?: number;
+    step?: number;
+  };
+  if (
+    extended.slider &&
+    typeof extended.slider.min === "number" &&
+    typeof extended.slider.max === "number"
+  ) {
+    return {
+      ...extended.slider,
+      mode: extended.slider.mode ?? "numeric-range",
+      ...(extended.slider.unit ?? example.unit
+        ? { unit: extended.slider.unit ?? example.unit }
+        : {}),
+    };
+  }
+  if (typeof extended.min === "number" && typeof extended.max === "number") {
+    return {
+      mode: "numeric-range",
+      min: extended.min,
+      max: extended.max,
+      ...(typeof extended.step === "number" ? { step: extended.step } : {}),
+      ...(example.unit ? { unit: example.unit } : {}),
+    };
+  }
+
+  const values = [
+    example.correctValue,
+    example.teamAEstimate,
+    example.teamBEstimate,
+  ];
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const spread = Math.max(
+    high - low,
+    Math.max(1, Math.abs(example.correctValue) * 0.1),
+  );
+  const pad = spread * 0.5;
+  const nonNegative = low >= 0;
+  const rawMin = nonNegative ? Math.max(0, low - pad) : low - pad;
+  const rawMax = high + pad;
+  const span = Math.max(1, rawMax - rawMin);
+
+  let step = 1;
+  if (values.every((value) => Number.isInteger(value))) {
+    const candidates = niceSteps(span);
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const candidate = candidates[i];
+      if (
+        span / candidate >= 6 &&
+        values.every((value) => isStepAligned(value, candidate))
+      ) {
+        step = candidate;
+        break;
+      }
+    }
+  } else {
+    step = values.every((value) => isStepAligned(value, 0.5)) ? 0.5 : 0.1;
+  }
+
+  let min = Math.floor(rawMin / step) * step;
+  if (nonNegative && min < 0) min = 0;
+  let max = Math.ceil(rawMax / step) * step;
+  if (max <= min) max = min + step * 6;
+  // Avoid floating-point tails for fractional steps.
+  min = Number(min.toFixed(6));
+  max = Number(max.toFixed(6));
+
+  return {
+    mode: "numeric-range",
+    min,
+    max,
+    step,
+    ...(example.unit ? { unit: example.unit } : {}),
+  };
+}
 export function sceneProjection(
   example: SceneExample,
   step: number,
@@ -106,7 +220,7 @@ export function sceneProjection(
     revision: 1,
     status: "active",
     stage: {
-      key: step === 2 ? "challenge_result" : "challenge",
+      key: "challenge",
       enteredAt: stamp,
       minimumDisplayDurationMs: 0,
       animationCue: null,
@@ -122,31 +236,6 @@ export function sceneProjection(
     },
     scoring: { matchTotals: [], worldSubtotals: [] },
     availableActions: [],
-  };
-  const setMatchEnd = (
-    winnerTeamId: string | null,
-    totals: Record<string, number>,
-    tie = winnerTeamId === null,
-  ) => {
-    if (step !== 2 || !snapshot.match) return;
-    const teamScores = teamIds.map((id) => ({
-      teamId: id,
-      signedTotal: totals[id] ?? 0,
-      displayTotal: totals[id] ?? 0,
-    }));
-    snapshot.match.scoring.matchTotals = teamScores;
-    snapshot.match.standings = teamIds.map((id, i) => ({
-      teamId: id,
-      name: teamNames[i],
-      signedTotal: totals[id] ?? 0,
-      displayTotal: totals[id] ?? 0,
-    }));
-    snapshot.match.result = {
-      teams: teamScores,
-      winnerTeamId,
-      tie,
-      worlds: [],
-    };
   };
   switch (example.kind) {
     case "moving-xo": {
@@ -181,7 +270,6 @@ export function sceneProjection(
       });
       if (actor === a && step === 0) allow("mode:submit-moving-xo-answer");
       if (actor === a && step === 1) allow("mode:place-moving-xo-mark");
-      setMatchEnd(a, { [a]: 1, [b]: 0 });
       break;
     }
     case "ryo":
@@ -189,13 +277,6 @@ export function sceneProjection(
       const label = (id: string) =>
         example.options.find((o) => o.id === id)?.label ?? "";
       const teamId = example.outcome.teamRole === "answering" ? a : b;
-      const otherTeamId = teamId === a ? b : a;
-      const ryoWinner =
-        example.outcome.delta > 0
-          ? teamId
-          : example.outcome.delta < 0
-            ? otherTeamId
-            : null;
       const trusted = example.opposingDecision === "STEAL";
       const readMatchedOutcome = example.outcome.correct ? trusted : !trusted;
       const payload = {
@@ -216,7 +297,22 @@ export function sceneProjection(
         id: "example",
         revision: 1,
         status: step ? "resolved" : "open",
-        submissions: [],
+        submissions: step
+          ? [
+              {
+                id: "example-answer",
+                status: "accepted",
+                payload: { kind: "answer" },
+                receivedAt: stamp,
+              },
+              {
+                id: "example-decision",
+                status: "accepted",
+                payload: { kind: "decision" },
+                receivedAt: stamp,
+              },
+            ]
+          : [],
         prompt: {
           id: "example",
           type: "question",
@@ -252,17 +348,18 @@ export function sceneProjection(
           : {}),
       };
       if (!step) allow("submission:create");
-      setMatchEnd(ryoWinner, {
-        [teamId]: example.outcome.delta,
-        [otherTeamId]: 0,
-      });
       break;
     }
     case "closest": {
       const { outcome } = example;
+      const slider = deriveClosestSlider(example);
       Object.assign(state, {
         phase: step ? "revealed" : "collecting",
-        currentItemJson: json({ id: "example", prompt: example.prompt }),
+        currentItemJson: json({
+          id: "example",
+          prompt: example.prompt,
+          slider,
+        }),
         isAssignedActor: !!actor,
         assignedParticipantIdsJson: json({ [a]: a, [b]: b }),
         submissionStatusJson: json({ [a]: !!step, [b]: !!step }),
@@ -283,14 +380,6 @@ export function sceneProjection(
           : null,
       });
       if (!step) allow("mode:submit-estimate");
-      setMatchEnd(
-        outcome.winnerTeam,
-        {
-          [a]: outcome.winnerTeam === a ? 1 : 0,
-          [b]: outcome.winnerTeam === b ? 1 : 0,
-        },
-        outcome.tie,
-      );
       break;
     }
     case "bomb": {
@@ -328,10 +417,6 @@ export function sceneProjection(
         clock.consumedMs = clock.allocatedMs - clock.remainingMs;
       }
       if (step < 2 && actor === active) allow("mode:submit-answer");
-      setMatchEnd(example.outcome.winnerTeam, {
-        [a]: example.outcome.winnerTeam === a ? 1 : 0,
-        [b]: example.outcome.winnerTeam === b ? 1 : 0,
-      });
       break;
     }
     case "top-5": {
@@ -363,7 +448,6 @@ export function sceneProjection(
         ),
       });
       if (step < 2 && actor === state.activeTeamId) allow("mode:decide-card");
-      setMatchEnd(example.outcome.winnerTeam, example.outcome.top5Counts);
       break;
     }
     case "combo": {
@@ -378,15 +462,18 @@ export function sceneProjection(
             ? "run-complete"
             : step === 1 && actor === b
               ? "break-reveal"
-              : "question",
+              : step === 1 && actor === a
+                ? "decision"
+                : "question",
         questionPrompt: json(question.prompt),
         questionNumber: question.stage,
         questionStage: question.stage,
         assignedParticipantId: a,
         unbankedPoints:
-          step === 2 ? 0 : example.outcome.unbankedPointsBeforeForcedQuestion,
+          step === 0 ? example.outcome.unbankedPointsBeforeForcedQuestion : 0,
         forcedQuestion: true,
         comboBreakRevealedByTeamId: b,
+        chargesJson: json({ [a]: "available", [b]: "spent" }),
         lastQuestionRevealJson:
           step === 1 && actor !== b
             ? json({
@@ -423,7 +510,7 @@ export function sceneProjection(
         modifiedImageJson: json(example.modifiedImage),
         isAssignedActor: !!actor,
         canClaim: !!actor && !step,
-        revealJson: step ? json(example) : null,
+        revealJson: step === 1 ? json(example) : null,
         resultJson:
           step === 2
             ? json({
@@ -442,7 +529,6 @@ export function sceneProjection(
         ),
       });
       if (step === 0) allow("mode:claim-odd-piece");
-      setMatchEnd(example.outcome.winnerTeam, example.outcome.points);
       break;
     }
     case "marhala": {
@@ -453,7 +539,7 @@ export function sceneProjection(
       };
       if (step === 2) positions[active] = example.outcome.finalLanding;
       Object.assign(state, {
-        phase: step === 2 ? "difficulty-choice" : "question",
+        phase: step === 2 ? "completed" : "question",
         activeTeamId: active,
         isAssignedActor: actor === active,
         isActiveTeam: actor === active,
@@ -462,7 +548,7 @@ export function sceneProjection(
         questionPrompt: json(example.prompt),
         positionsJson: json(positions),
         lastTurnJson:
-          step && (!actor || actor === active)
+          step === 1 && (!actor || actor === active)
             ? json({
                 ...example.outcome,
                 teamId: active,
@@ -474,13 +560,6 @@ export function sceneProjection(
             : null,
       });
       if (step === 0 && actor === active) allow("mode:submit-marhala-answer");
-      const posA = positions[a] ?? 0;
-      const posB = positions[b] ?? 0;
-      setMatchEnd(
-        posA > posB ? a : posB > posA ? b : null,
-        positions,
-        posA === posB,
-      );
       break;
     }
     case "ekshifni": {
@@ -566,7 +645,6 @@ export function sceneProjection(
           allow("mode:submit-ekshifni");
         }
       }
-      setMatchEnd(example.outcome.winnerTeam, example.outcome.finalTotals);
       break;
     }
     case "la-tahriqha": {
@@ -668,11 +746,6 @@ export function sceneProjection(
           "mode:lock-la-tahriqha-dish",
         );
       }
-      setMatchEnd(
-        example.outcome.winnerTeam,
-        example.outcome.finalTotals,
-        example.outcome.tie,
-      );
       break;
     }
     case "first-note": {
@@ -748,7 +821,6 @@ export function sceneProjection(
       if (step === 0 && actor === biddingTeamId) {
         allow("mode:submit-first-note-bid", "mode:pass-first-note-bid");
       }
-      setMatchEnd(matchWinner, example.outcome.points, matchWinner === null);
       break;
     }
   }

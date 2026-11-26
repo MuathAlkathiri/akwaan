@@ -42,7 +42,7 @@ const captions = {
     "الأكثر نقاط بعد 3 أسئلة يفوز بالتحدي.",
   ],
   closest: [
-    "الفريقين يقدّرون الرقم بالسلايدر في نفس الوقت.",
+    "الفريقين يقدّرون الرقم بالمؤشر في نفس الوقت.",
     "ينكشف الرقم الصح، والأقرب له ياخذ النقطة.",
     "الأكثر نقاط بعد 3 أسئلة يفوز بالتحدي.",
   ],
@@ -153,15 +153,6 @@ function Surface({
   const teamName = (id: string) =>
     snapshot.teams.find((t) => t.id === id)?.name ?? "الفريق";
   function content() {
-    if (step === 2 && team && snapshot.match?.result) {
-      return (
-        <ParticipantWaiting
-          matchComplete
-          teamId={team}
-          teamName={teamName(team)}
-        />
-      );
-    }
     switch (example.kind) {
       case "moving-xo":
         return team ? (
@@ -171,9 +162,29 @@ function Surface({
         );
       case "ryo":
       case undefined:
-        if (step === 2 && !team) {
+        if (step === 2) {
           const owner =
             example.outcome.teamRole === "answering" ? "team-a" : "team-b";
+          const other = owner === "team-a" ? "team-b" : "team-a";
+          const winnerTeamId =
+            example.outcome.delta > 0
+              ? owner
+              : example.outcome.delta < 0
+                ? other
+                : null;
+          if (team) {
+            return (
+              <ParticipantWaiting
+                teamName={teamName(team)}
+                challengeResult={{
+                  ...baseResult,
+                  winnerTeamId,
+                  tie: winnerTeamId === null,
+                  matchPoints: [],
+                }}
+              />
+            );
+          }
           const answer = (id: string) =>
             example.options.find((o) => o.id === id)?.label;
           const item = {
@@ -200,10 +211,7 @@ function Surface({
           return (
             <div className={styles.panelFill}>
               <RyoGameplayPanel runtime={runtime} />
-              <p
-                data-testid="ryo-explain-line"
-                className={styles.ryoExplain}
-              >
+              <p data-testid="ryo-explain-line" className={styles.ryoExplain}>
                 {ryoExplainLine(
                   example,
                   teamName("team-a"),
@@ -215,7 +223,20 @@ function Surface({
         }
         return <RyoGameplayPanel runtime={runtime} />;
       case "closest":
-        if (step === 2 && !team)
+        if (step === 2) {
+          if (team) {
+            return (
+              <ParticipantWaiting
+                teamName={teamName(team)}
+                challengeResult={{
+                  ...baseResult,
+                  winnerTeamId: example.outcome.winnerTeam,
+                  tie: example.outcome.tie,
+                  matchPoints: [],
+                }}
+              />
+            );
+          }
           return (
             <div className={`${styles.centeredRecap} ${styles.roundOnly}`}>
               <ClosestResultRecap
@@ -236,6 +257,7 @@ function Surface({
               />
             </div>
           );
+        }
         return <ClosestGameplayPanel runtime={runtime} />;
       case "combo":
         return <ComboGameplayPanel runtime={runtime} />;
@@ -361,9 +383,16 @@ function Surface({
                 },
         };
         return example.kind === "bomb" ? (
-          <div className={styles.centeredRecap}>
-            <BombResultRecap result={result} snapshot={snapshot} />
-          </div>
+          team ? (
+            <ParticipantWaiting
+              teamName={teamName(team)}
+              challengeResult={result}
+            />
+          ) : (
+            <div className={styles.centeredRecap}>
+              <BombResultRecap result={result} snapshot={snapshot} />
+            </div>
+          )
         ) : (
           <div className={styles.panelFill}>
             <Top5ResultReveal
