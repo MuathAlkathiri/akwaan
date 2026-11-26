@@ -93,7 +93,7 @@ describe("semantic colour never becomes a team's identity", () => {
     // And the status chip is semantic, with an icon as well as a colour.
     expect(preflight).toMatch(/preflight-team-status-/);
     // Mint tint behind navy words: never green text.
-    expect(preflight).toContain("bg-[#5FD6A0]");
+    expect(preflight).toContain("bg-brand-mint");
   });
 });
 
@@ -141,7 +141,7 @@ describe("a persistent status may still be legible", () => {
     const preflight = read(
       "src/features/live-game-session/match/components/challenge-preflight.tsx",
     );
-    expect(preflight).toContain("bg-[#5FD6A0]");
+    expect(preflight).toContain("bg-brand-mint");
     expect(preflight).not.toMatch(/text-success\b/);
     expect(preflight).toContain("✓ جاهز");
   });

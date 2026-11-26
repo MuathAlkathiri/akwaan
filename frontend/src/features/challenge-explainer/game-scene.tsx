@@ -22,6 +22,9 @@ import { ComboGameplayPanel } from "../live-game-session/components/combo-gamepl
 import { OddPieceGameplayPanel } from "../live-game-session/components/odd-piece-gameplay-panel";
 import { MarhalaScreen } from "../live-game-session/components/marhala-screen";
 import { MarhalaPhonePanel } from "../live-game-session/components/marhala-phone-panel";
+import { EkshifniGameplayPanel } from "../live-game-session/components/ekshifni-gameplay-panel";
+import { LaTahriqhaGameplayPanel } from "../live-game-session/components/la-tahriqha-gameplay-panel";
+import { FirstNoteGameplayPanel } from "../live-game-session/components/first-note-gameplay-panel";
 import { BombResultRecap } from "../live-game-session/match/components/bomb-result-recap";
 import { Top5ResultReveal } from "../live-game-session/match/components/top5-result-reveal";
 import type { MatchChallengeResult } from "../live-game-session/match/types";
@@ -30,59 +33,66 @@ import { SceneTemplate } from "./scene-template";
 
 const captions = {
   "moving-xo": [
-    "جاوبوا اللغز عشان تاخذون حركة.",
-    "إذا صح جوابكم، اختاروا خانة وثبّتوا العلامة.",
-    "أول فريق يصف 3 علامات يفوز.",
+    "الفريق اللي عليه الدور يجاوب من جواله. الجواب الصح يعطيكم علامة.",
+    "الكابتن يحط العلامة. عندكم 3 بس، والرابعة تنقل أقدم وحدة. والغلط يعطي الدور للخصم.",
+    "أول فريق يصف 3 علامات في خط واحد يفوز بالتحدي.",
   ],
   ryo: [
-    "فريق يجاوب، وخصمه يتوقّع إذا يعرف الجواب.",
-    "شوفوا الجواب الصحيح وقرار الخصم.",
-    "شوفوا كيف أثّرت قراءة الخصم على نقاط الجولة.",
+    "فريق يجاوب، والخصم يقرر: متأكد منهم ولا شاكك فيهم؟",
+    "تنكشف الإجابة. القراءة الصح تعطيكم نقطة، والغلط تاخذ منكم وحدة.",
+    "الأكثر نقاط بعد 3 أسئلة يفوز بالتحدي.",
   ],
   closest: [
-    "كل فريق يرسل تقديره من جواله.",
-    "قارنوا تقدير كل فريق بالجواب الصحيح.",
-    "الفريق الأقرب ياخذ الجولة، وإذا المسافة نفسها تتعادلون.",
+    "الفريقين يقدّرون الرقم بالسلايدر في نفس الوقت.",
+    "ينكشف الرقم الصح، والأقرب له ياخذ النقطة.",
+    "الأكثر نقاط بعد 3 أسئلة يفوز بالتحدي.",
   ],
   bomb: [
-    "جاوبوا قبل ما يخلص وقتكم.",
-    "الجواب الصح ينقل القنبلة للفريق الثاني.",
-    "إذا خلص وقت فريق، يفوز خصمه.",
+    "القنبلة عندك وساعتك تمشي. جاوب صح عشان ترميها على خصمك.",
+    "الجواب الصح ينقل القنبلة للخصم وتبدأ ساعته. والتخطي يكلفك 5 ثواني.",
+    "اللي تخلص ساعته والقنبلة عنده يخسر التحدي.",
   ],
   "top-5": [
-    "خلّوا البطاقة عندكم أو عطوها للخصم.",
-    "شوفوا عند مين راحت البطاقة.",
-    "اكشفوا الترتيب وشوفوا مين جمع أكثر من التوب 5.",
+    "تطلع بطاقة: تحتفظون فيها، ولا تدسّونها على الخصم؟",
+    "البطاقات تنكشف وحدة وحدة. كل بطاقة عندكم من التوب 5 تعطيكم نقطة.",
+    "الأكثر نقاط بعد كشف البطاقات العشر يفوز بالتحدي.",
   ],
   combo: [
-    "جاوبوا وقرروا تكمّلون الكومبو أو تحفظون نقاطكم.",
-    "إذا الخصم كسر الكومبو، لازم تجاوبون السؤال الجاي.",
-    "إذا غلطتم في سؤال الكسر، تروح النقاط اللي ما حفظتوها.",
+    "فريق يجاوب أسئلة ورا بعض، وكل جواب صح يزيد رصيده.",
+    "بعد كل جواب صح: ثبّت الرصيد أو كمّل. الغلط يطيّره كله، والخصم يقدر يكسر الكومبو.",
+    "كل فريق يلعب جولته، والأكثر نقاط يفوز بالتحدي.",
   ],
   "odd-piece": [
-    "لقّطوا القطعة الدخيلة وحددوا مكانها.",
-    "شوفوا مكان القطعة وقارنوا الصورتين.",
-    "النتيجة تبيّن نقاط الفريقين ومين فاز.",
+    "في الصورة قطعة مو منها. أول فريق يضغط «جاوب» يلمس مكانها في جواله.",
+    "ينكشف مكان القطعة مع الصورة الأصلية. اللمسة الصح تعطي نقطة.",
+    "الأكثر نقاط بعد 3 صور يفوز بالتحدي.",
   ],
   marhala: [
-    "اختاروا الصعوبة وجاوبوا السؤال.",
-    "الجواب الصح يحرّككم على اللوحة.",
-    "شوفوا وين وقفتوا. أول فريق يوصل للنهاية يفوز.",
+    "اختاروا مستوى السؤال. كل ما صعب السؤال كبر النرد.",
+    "جاوبتوا صح؟ ترمون النرد وتتقدمون. السلم يطلّعكم، والزحليقة تنزّلكم لآخر نقطة حفظ.",
+    "أول فريق يوصل النهاية يفوز بالتحدي.",
+  ],
+  ekshifni: [
+    "الصورة مغطاة. كل منطقة تنكشف تنقّص قيمة الصورة نقطة.",
+    "عرفته؟ جاوب من جوالك. اللي يعرفه أول ياخذ قيمة الصورة الباقية.",
+    "الأكثر نقاط بعد 3 صور يفوز بالتحدي.",
+  ],
+  "la-tahriqha": [
+    "قائد الطبق يختار من 3 إلى 5 مكونات. مكوّن واحد غلط يحرق الطبق كله.",
+    "تنكشف المكونات. 3 صح تعطي 3 نقاط، 4 تعطي 4، و5 تعطي 7.",
+    "الأكثر نقاط بعد 3 أطباق يفوز بالتحدي.",
+  ],
+  "first-note": [
+    "زايدوا: في كم ثانية تعرفون الأغنية؟ كل ما قلّ الوقت زادت النقاط.",
+    "صاحب أقل مزايدة يسمع المقطع ويجاوب أول. لو غلط، الخصم يحاول يسرقها.",
+    "الأكثر نقاط بعد 3 أغاني يفوز بالتحدي.",
   ],
 } as const;
 
 export function GameScene({ example }: { example: SceneExample }) {
   return (
     <SceneTemplate
-      captions={
-        example.kind === "moving-xo" && !example.prompt
-          ? [
-              "ما فيه سؤال مثال منشور لهالعالم. جاوبوا اللغز عشان تاخذون حركة.",
-              captions["moving-xo"][1],
-              captions["moving-xo"][2],
-            ]
-          : captions[example.kind ?? "ryo"]
-      }
+      captions={captions[example.kind ?? "ryo"]}
       renderSurface={(step, team) => (
         <Surface
           key={step}
@@ -324,6 +334,22 @@ function Surface({
           </div>
         );
       }
+      case "ekshifni":
+        return (
+          <EkshifniGameplayPanel
+            runtime={runtime}
+            actor={team ? "participant" : "shared-screen"}
+          />
+        );
+      case "la-tahriqha":
+        return <LaTahriqhaGameplayPanel runtime={runtime} />;
+      case "first-note":
+        return (
+          <FirstNoteGameplayPanel
+            runtime={runtime}
+            actor={team ? "participant" : "shared-screen"}
+          />
+        );
     }
   }
   const panel = content();

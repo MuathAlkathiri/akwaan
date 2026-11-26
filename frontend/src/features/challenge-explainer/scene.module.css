@@ -2,46 +2,102 @@
   color: hsl(var(--brand-navy));
   text-align: center;
 }
+
+.card {
+  border-radius: 22px;
+  padding: clamp(10px, 1.4vw, 18px);
+}
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.stageShell {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.stageViewport {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform-origin: top center;
+}
+
 .scene {
   display: grid;
-  grid-template-columns: 1fr 3.3fr 1fr;
-  gap: clamp(4px, 1vw, 18px);
-  align-items: center;
-  padding: clamp(8px, 1.8vw, 24px);
-  background: hsl(var(--brand-paper));
-  border: 2px solid;
-  border-radius: 22px;
+  grid-template-columns: 222px 912px 222px;
+  gap: 14px;
+  align-items: end;
+  justify-content: center;
+  --team-1-tint: white;
+  --team-2-tint: white;
+  --team-1-fill: var(--card);
+  --team-2-fill: var(--card);
+  --team-1-fill-foreground: var(--brand-navy);
+  --team-2-fill-foreground: var(--brand-navy);
+  --team-1-text: var(--brand-navy);
+  --team-2-text: var(--brand-navy);
 }
+
+.deviceColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
 .phone,
 .screen {
   position: relative;
   overflow: hidden;
   background: white;
   border: 3px solid hsl(var(--brand-navy));
-  border-radius: 14px;
+  border-radius: 16px;
+  box-sizing: border-box;
 }
-.phone {
-  aspect-ratio: 9/18;
-}
-.screen {
-  aspect-ratio: 16/10;
-}
-.canvas {
+
+.phoneCanvas,
+.screenCanvas {
   position: absolute;
-  top: 50%;
-  right: 50%;
-  transform-origin: center;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
   text-align: start;
   pointer-events: none;
+  box-sizing: border-box;
 }
-.canvas :global([data-testid="mobile-gameplay-shell"]) {
-  height: auto;
-  min-height: 600px;
+
+.screenCanvas {
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
 }
+
+.phoneCanvas {
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneCanvas :global([data-testid="mobile-gameplay-shell"]) {
+  height: 763px;
+  min-height: 763px;
+}
+
 .caption {
   font-weight: 700;
-  margin: 0.8rem auto;
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  min-height: 1.6em;
+  margin: 0.85rem auto 0.65rem;
 }
+
 .timeline,
 .controls {
   display: flex;
@@ -52,6 +108,25 @@
   padding: 0;
   margin: 0.5rem 0;
 }
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 48rem;
+  margin-inline: auto;
+  gap: 0;
+}
+
+.timeline li {
+  border-top-width: 3px;
+  border-top-style: solid;
+  padding-top: 0.45rem;
+}
+
+.timeline li:has([aria-current]) {
+  border-top-color: hsl(var(--brand-navy));
+}
+
 .timeline button,
 .controls button {
   min-height: 44px;
@@ -59,10 +134,12 @@
   border-radius: 999px;
   font-weight: 700;
 }
+
 .timeline [aria-current] {
   background: hsl(var(--brand-navy));
   color: white;
 }
+
 .controls button {
   display: inline-flex;
   align-items: center;
@@ -70,9 +147,17 @@
   border: 2px solid;
   background: white;
 }
+
 .controls button:disabled {
   opacity: 0.5;
 }
+
+.controls button:focus-visible,
+.timeline button:focus-visible {
+  outline: 3px solid hsl(var(--brand-purple));
+  outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scene *,
   .scene *::before,
@@ -87,71 +172,34 @@
 .roundOnly :global([data-testid="ryo-result-winner"]) {
   display: none;
 }
+
 .roundOnly ol {
   display: block;
 }
+
 .instantReveal:not(:has(:global([data-testid="top5-winner"]))) {
   visibility: hidden;
 }
-.scene {
-  --team-1-tint: white;
-  --team-2-tint: white;
-  --team-1-fill: var(--brand-paper);
-  --team-2-fill: var(--brand-paper);
-  --team-1-fill-foreground: var(--brand-navy);
-  --team-2-fill-foreground: var(--brand-navy);
-  --team-1-text: var(--brand-navy);
-  --team-2-text: var(--brand-navy);
-}
+
 .scene :global(.bg-sem-success),
-.scene :global(.bg-success) {
-  background: #5fd6a0;
+.scene :global(.bg-success),
+.scene :global(.bg-brand-mint),
+.scene :global(.bg-brand-mint-tint) {
+  background: hsl(var(--sem-success));
   color: hsl(var(--brand-navy));
   border: 2px solid hsl(var(--brand-navy));
 }
+
 .scene :global(.bg-sem-error),
-.scene :global(.bg-destructive) {
-  background: #ff7b6b;
+.scene :global(.bg-destructive),
+.scene :global(.bg-brand-coral),
+.scene :global(.bg-brand-coral-tint) {
+  background: hsl(var(--sem-error));
   color: hsl(var(--brand-navy));
   border: 2px solid hsl(var(--brand-navy));
-}
-.caption {
-  font-size: clamp(1rem, 1.5vw, 1.3rem);
-  min-height: 1.6em;
-}
-.timeline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 48rem;
-  margin-inline: auto;
-  gap: 0;
-}
-.timeline li {
-  border-top: 3px solid hsl(var(--brand-dash));
-  padding-top: 0.45rem;
-}
-.timeline li:has([aria-current]) {
-  border-top-color: hsl(var(--brand-navy));
-}
-.controls button:focus-visible,
-.timeline button:focus-visible {
-  outline: 3px solid hsl(var(--brand-purple));
-  outline-offset: 3px;
 }
 
 /* The published race example ends after one turn, before either team wins. */
 .turnOnly header {
   display: none;
-}
-.scene :global(.bg-brand-mint),
-.scene :global(.bg-brand-mint-tint) {
-  background: #5fd6a0;
-  color: hsl(var(--brand-navy));
-  border-color: hsl(var(--brand-navy));
-}
-.scene :global(.bg-brand-coral),
-.scene :global(.bg-brand-coral-tint) {
-  background: #ff7b6b;
-  color: hsl(var(--brand-navy));
-  border-color: hsl(var(--brand-navy));
 }

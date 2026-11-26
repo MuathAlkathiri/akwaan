@@ -343,8 +343,9 @@ describe("mechanic tutorial editor", () => {
     );
     await user.click(screen.getByTestId("tutorial-validate"));
     expect(
-      within(await screen.findByTestId("tutorial-preview")).getByTestId(
-        "ekshifni-explainer",
+      within(await screen.findByTestId("tutorial-preview")).getByRole(
+        "region",
+        { name: "شرح التحدي" },
       ),
     ).toBeInTheDocument();
     expect(api.validateTutorialDraft).toHaveBeenCalledWith(

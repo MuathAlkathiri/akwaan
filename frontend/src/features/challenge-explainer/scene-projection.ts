@@ -5,19 +5,17 @@ import type {
 import type { TutorialScenario } from "./tutorial-scenario";
 
 export type SceneExample =
-  | Exclude<
-      TutorialScenario,
-      {
-        kind:
-          "one-clue" | "laqatha" | "first-note" | "ekshifni" | "la-tahriqha";
-      }
-    >
+  | Exclude<TutorialScenario, { kind: "one-clue" | "laqatha" }>
   | { kind: "moving-xo"; prompt?: string };
 export const teamIds = ["team-a", "team-b"];
 export const teamNames = ["الفريق الأول", "الفريق الثاني"];
 const [a, b] = teamIds;
 const stamp = "2026-01-01T00:00:00Z";
 const json = JSON.stringify;
+const tutorialMediaUrl = (url?: string) =>
+  url?.startsWith("/tutorial-media/") && typeof window !== "undefined"
+    ? new URL(url, window.location.origin).href
+    : (url ?? null);
 export function sceneProjection(
   example: SceneExample,
   step: number,
@@ -411,6 +409,267 @@ export function sceneProjection(
           : null,
       });
       if (actor === active) allow("mode:submit-marhala-answer");
+      break;
+    }
+    case "ekshifni": {
+      const initTeam = example.outcome.openingInitiative[0] ?? a;
+      const openIds =
+        step === 0
+          ? example.outcome.revealedRegionIds.slice(0, 1)
+          : example.outcome.revealedRegionIds;
+      const currentValue =
+        step === 0
+          ? Math.max(1, 5 - openIds.length)
+          : example.outcome.resolvedValue;
+      const imageUrl = tutorialMediaUrl(example.image.url);
+      Object.assign(state, {
+        phase: step === 2 ? "completed" : step === 1 ? "resolved" : "playing",
+        currentImageIndex: 0,
+        imageCount: example.outcome.imageCount,
+        imageNumber: 1,
+        regionCount: example.regions.length,
+        imageMediaJson:
+          !actor && imageUrl
+            ? json({
+                type: "image",
+                assets: [{ url: imageUrl, altText: example.image.altText }],
+              })
+            : null,
+        promptJson: json({ ar: example.prompt }),
+        regionsJson: json(
+          example.regions.map((r) => ({
+            id: r.id,
+            number: r.number,
+            revealed: openIds.includes(r.id),
+            ...(actor ? {} : { shape: r.shape }),
+          })),
+        ),
+        revealedRegionIdsJson: json(openIds),
+        currentValue,
+        initiativeTeamId: initTeam,
+        hasInitiative: actor === initTeam,
+        canReveal: step === 0 && actor === initTeam,
+        canAnswer: step === 0 && !!actor,
+        isAssignedActor: !!actor,
+        isAssignedRevealer: true,
+        isAssignedAnswerer: true,
+        revealJson:
+          step === 1
+            ? json({
+                imageIndex: 0,
+                identity: example.celebrityIdentity,
+                value: example.outcome.resolvedValue,
+                winnerTeamId: example.outcome.correctTeam,
+                resolvedBy: "answer",
+                attempts: [
+                  {
+                    teamId: example.outcome.wrongTeam,
+                    answer: example.wrongSubmittedAnswer,
+                    correct: false,
+                  },
+                  {
+                    teamId: example.outcome.correctTeam,
+                    answer: example.correctSubmittedAnswer,
+                    correct: true,
+                  },
+                ],
+                points: example.outcome.imagePoints,
+                revealedRegionIds: openIds,
+                resolvedAt: stamp,
+              })
+            : null,
+        resultJson:
+          step === 2
+            ? json({
+                winnerTeamId: example.outcome.winnerTeam,
+                tie: false,
+                points: example.outcome.finalTotals,
+              })
+            : null,
+      });
+      if (step === 0) {
+        if (actor === initTeam) {
+          allow("mode:reveal-ekshifni-region", "mode:submit-ekshifni");
+        } else if (actor) {
+          allow("mode:submit-ekshifni");
+        }
+      }
+      break;
+    }
+    case "la-tahriqha": {
+      const dish = example.dishes[0];
+      const dishResult = example.outcome.dishResults[0];
+      const dishView = dish
+        ? {
+            id: dish.id,
+            dishName: dish.name,
+            ingredients: dish.ingredients.map((item) => ({
+              localId: item.id,
+              label: item.label,
+            })),
+          }
+        : undefined;
+      Object.assign(state, {
+        phase: step === 2 ? "completed" : step === 1 ? "revealed" : "selecting",
+        currentDishIndex: 0,
+        dishCount: example.outcome.dishCount,
+        minSelection: 3,
+        maxSelection: 5,
+        dishSeconds: example.dishWindowSeconds,
+        deadlineAt: new Date(
+          Date.parse(stamp) + example.dishWindowSeconds * 1000,
+        ).toISOString(),
+        currentDishJson: step !== 2 && dishView ? json(dishView) : null,
+        teamStatusJson: json({
+          [a]: {
+            locked: step > 0,
+            committedCount: step > 0 ? (dish?.teamASelection.length ?? 0) : null,
+          },
+          [b]: {
+            locked: step > 0,
+            committedCount: step > 0 ? (dish?.teamBSelection.length ?? 0) : null,
+          },
+        }),
+        captainParticipantIdsJson: json({ [a]: a, [b]: b }),
+        totalsJson: json(
+          step === 0
+            ? { [a]: 0, [b]: 0 }
+            : {
+                [a]: dishResult?.teamA.points ?? 0,
+                [b]: dishResult?.teamB.points ?? 0,
+              },
+        ),
+        isDishCaptain: !!actor,
+        isAssignedActor: !!actor,
+        ownSelectedJson: json(
+          actor === a
+            ? (dish?.teamASelection ?? [])
+            : actor === b
+              ? (dish?.teamBSelection ?? [])
+              : [],
+        ),
+        revealJson:
+          step === 1 && dish && dishResult
+            ? json({
+                dishIndex: 0,
+                contentItemId: dish.id,
+                dishName: dish.name,
+                correctIngredientIds: dish.ingredients
+                  .filter((item) => item.correct)
+                  .map((item) => item.id),
+                teams: [
+                  {
+                    teamId: a,
+                    ...dishResult.teamA,
+                    lockReason: "manual",
+                    captainParticipantId: a,
+                  },
+                  {
+                    teamId: b,
+                    ...dishResult.teamB,
+                    lockReason: "manual",
+                    captainParticipantId: b,
+                  },
+                ],
+                totalsAfter: {
+                  [a]: dishResult.teamA.points,
+                  [b]: dishResult.teamB.points,
+                },
+                resolutionReason: "both-locked",
+                resolvedAt: stamp,
+              })
+            : null,
+        resultJson:
+          step === 2
+            ? json({
+                winnerTeamId: example.outcome.winnerTeam,
+                tie: example.outcome.tie,
+                totals: example.outcome.finalTotals,
+              })
+            : null,
+      });
+      if (step === 0 && actor) {
+        allow(
+          "mode:select-la-tahriqha-ingredient",
+          "mode:deselect-la-tahriqha-ingredient",
+          "mode:lock-la-tahriqha-dish",
+        );
+      }
+      break;
+    }
+    case "first-note": {
+      const prevBid =
+        example.bids.length >= 2
+          ? example.bids[example.bids.length - 2]
+          : example.bids[0];
+      const hasPriorBid = Boolean(prevBid && prevBid.seconds > 1);
+      const currentBidSeconds = hasPriorBid ? prevBid.seconds : null;
+      const currentBidTeamId = hasPriorBid ? prevBid.team : null;
+      const biddingTeamId = hasPriorBid
+        ? prevBid.team === a
+          ? b
+          : a
+        : (example.outcome.auctionWinner ?? a);
+      const roundWinner = example.outcome.stolen
+        ? example.outcome.stealTeam
+        : example.outcome.firstAnswerFailed
+          ? null
+          : example.outcome.firstAnswerTeam;
+      const pointsA = example.outcome.points["team-a"] ?? 0;
+      const pointsB = example.outcome.points["team-b"] ?? 0;
+      const matchWinner =
+        pointsA === pointsB ? null : pointsA > pointsB ? a : b;
+      Object.assign(state, {
+        phase: step === 2 ? "completed" : step === 1 ? "resolved" : "auction",
+        currentSongIndex: 0,
+        songCount: example.outcome.songCount,
+        contextualClueJson: json({ ar: example.contextualClue }),
+        clueLabelJson: example.clueLabel
+          ? json({ ar: example.clueLabel })
+          : null,
+        currentBidSeconds,
+        currentBidTeamId,
+        biddingTeamId,
+        answerOwnerTeamId: example.outcome.auctionWinner,
+        finalBidSeconds: example.outcome.finalBidSeconds,
+        canBid: step === 0 && actor === biddingTeamId,
+        canPass: step === 0 && actor === biddingTeamId && hasPriorBid,
+        canAnswer: false,
+        isAssignedActor: true,
+        revealJson:
+          step === 1
+            ? json({
+                title: example.title,
+                finalBidSeconds: example.outcome.finalBidSeconds,
+                auctionTeamId: example.outcome.auctionWinner,
+                winnerTeamId: roundWinner,
+                stolen: example.outcome.stolen,
+                points: example.outcome.points,
+                answers: {
+                  [example.outcome.firstAnswerTeam]:
+                    example.firstSubmittedAnswer,
+                  ...(example.outcome.stolen
+                    ? {
+                        [example.outcome.stealTeam]:
+                          example.stealSubmittedAnswer,
+                      }
+                    : {}),
+                },
+                resolvedAt: stamp,
+              })
+            : null,
+        resultJson:
+          step === 2
+            ? json({
+                winnerTeamId: matchWinner,
+                tie: matchWinner === null,
+                points: example.outcome.points,
+              })
+            : null,
+      });
+      if (step === 0 && actor === biddingTeamId) {
+        allow("mode:submit-first-note-bid", "mode:pass-first-note-bid");
+      }
       break;
     }
   }

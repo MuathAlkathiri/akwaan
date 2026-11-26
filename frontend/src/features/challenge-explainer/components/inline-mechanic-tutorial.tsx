@@ -1,11 +1,18 @@
 "use client";
+
+import { BookOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
+import { STATE_ACTION, StateCard } from "@/components/akwaan/state-card";
+import { STICKER } from "@/components/akwaan/sticker";
+import { cn } from "@/lib/utils";
 import { GameScene } from "../game-scene";
 import {
   MechanicTutorialRenderer,
   SUPPORTED_TUTORIAL_MECHANIC_KEYS,
 } from "../tutorial-renderer";
 import { usePublishedTutorial } from "../use-published-tutorial";
+
 export function InlineMechanicTutorial({
   mechanicKey,
   worldId,
@@ -48,6 +55,7 @@ export function InlineMechanicTutorial({
       (!!worldId &&
         tutorial.source === "world" &&
         tutorial.worldId === worldId));
+
   useEffect(() => {
     if (
       !seenKey ||
@@ -73,42 +81,78 @@ export function InlineMechanicTutorial({
     query.isError,
     launching,
   ]);
+
   if (launching) return null;
+
   if (enabled && (repeatEncounter || seen) && !replay)
     return (
-      <button
-        className="rounded-full border-2 border-brand-navy px-5 py-2 font-bold"
-        onClick={() => setReplay(true)}
-      >
-        ذكّرني بالقواعد
-      </button>
+      <div className="flex justify-center py-2">
+        <button
+          type="button"
+          className={cn(STATE_ACTION.secondary, STICKER.small, "gap-2")}
+          onClick={() => setReplay(true)}
+        >
+          <BookOpen className="size-4" aria-hidden />
+          ذكّرني بالقواعد
+        </button>
+      </div>
     );
-  if (!enabled && !scoped) return <p>{description}</p>;
-  if (enabled && query.isLoading) return <p role="status">نجهّز المثال…</p>;
+
+  if (!enabled && !scoped)
+    return description ? (
+      <div
+        className={cn(
+          "rounded-[22px] bg-brand-paper px-6 py-4 text-center text-base font-bold text-brand-navy",
+          STICKER.base,
+        )}
+      >
+        <p>{description}</p>
+      </div>
+    ) : null;
+
+  if (enabled && query.isLoading)
+    return <AkwaanLoader label="نجهّز المثال…" className="min-h-[260px]" />;
+
   if (query.isError)
     return (
-      <p role="status">
-        ما قدرنا نحمّل المثال.{" "}
-        <button onClick={() => void query.refetch()}>حاول مرة ثانية</button>
-      </p>
+      <StateCard
+        role="status"
+        size="page"
+        title="ما قدرنا نحمّل المثال"
+        line="تقدرون تبدون التحدي مباشرة أو تحاولون تحميل المثال مرة ثانية."
+        actions={
+          <button
+            type="button"
+            className={cn(STATE_ACTION.secondary, STICKER.small)}
+            onClick={() => void query.refetch()}
+          >
+            حاول مرة ثانية
+          </button>
+        }
+      />
     );
 
   if (mechanicKey === "moving-xo")
     return (
-      <>
-        <GameScene
-          example={{
-            kind: "moving-xo",
-            ...(matches && tutorial?.scenario.prompt
-              ? { prompt: tutorial.scenario.prompt }
-              : {}),
-          }}
-        />
-      </>
+      <GameScene
+        example={{
+          kind: "moving-xo",
+          ...(matches && tutorial?.scenario.prompt
+            ? { prompt: tutorial.scenario.prompt }
+            : {}),
+        }}
+      />
     );
+
   if (!matches || !tutorial)
     return (
-      <p role="status">ما فيه مثال منشور لتحدي {challengeName} في هالعالم.</p>
+      <StateCard
+        role="status"
+        size="page"
+        title="ما فيه مثال منشور لهالتحدي"
+        line={`ما فيه مثال منشور لتحدي ${challengeName} في هالعالم. تقدرون تبدون التحدي مباشرة.`}
+      />
     );
+
   return <MechanicTutorialRenderer scenario={tutorial.scenario} />;
 }

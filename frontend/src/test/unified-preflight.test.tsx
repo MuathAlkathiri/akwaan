@@ -335,8 +335,92 @@ describe("challenge preflight", () => {
       "data-join-code",
       "ABC123",
     );
+    expect(screen.getByTestId("preflight-join-code")).toHaveTextContent(
+      "ABC123",
+    );
+    expect(
+      screen.getByRole("button", { name: "نسخ الرابط" }),
+    ).toBeInTheDocument();
     fireEvent.click(join);
     expect(screen.queryByTestId("preflight-join-qr")).toBeNull();
+  });
+
+  it("opens a team side panel listing players, captain, readiness and host-start note", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const snapshot = {
+      sessionId: "session-1",
+      mode: { key: "core-timed-turns", version: 1 },
+      status: "active",
+      revision: 4,
+      serverTimestamp: "2026-08-06T00:00:00.000Z",
+      round: { number: 1 },
+      teams: [
+        {
+          id: "team-a",
+          name: "الفريق الأول",
+          active: true,
+          captainParticipantId: "p1",
+        },
+        { id: "team-b", name: "الفريق الثاني", active: true },
+      ],
+      participants: [
+        {
+          id: "p1",
+          teamId: "team-a",
+          displayName: "أحمد",
+          role: "team-player",
+          ready: true,
+          connected: true,
+          presence: "connected",
+        },
+        {
+          id: "p2",
+          teamId: "team-a",
+          displayName: "منى",
+          role: "team-player",
+          ready: false,
+          connected: true,
+          presence: "connected",
+        },
+      ],
+      availableActions: [],
+      match: match({ stage: "preflight", preflight: preflight() }),
+    } as unknown as LiveSessionSnapshot;
+
+    render(
+      <QueryClientProvider client={client}>
+        <LiveSessionContext.Provider
+          value={
+            {
+              snapshot,
+              connection: "connected",
+              error: undefined,
+              resync: mocks.resync,
+              sessionId: "session-1",
+            } as never
+          }
+        >
+          <MatchStageRouter actor="controller" />
+        </LiveSessionContext.Provider>
+      </QueryClientProvider>,
+    );
+
+    const pillButton = screen.getByTestId("preflight-team-status-team-a");
+    fireEvent.click(pillButton);
+
+    const panel = screen.getByTestId("preflight-team-panel");
+    expect(panel).toHaveTextContent("أحمد");
+    expect(panel).toHaveTextContent("قائد الفريق");
+    expect(panel).toHaveTextContent("منى");
+    expect(panel).toHaveTextContent("مو جاهز");
+    expect(panel).toHaveTextContent(
+      "التحدي يبدأ بالضغط على «ابدأ التحدي» من الشاشة الرئيسية، مو من الجوال.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "إغلاق" }));
+    expect(screen.queryByTestId("preflight-team-panel")).toBeNull();
   });
   it("keeps Start disabled until the server says ready", () => {
     renderRouter(match({ stage: "preflight", preflight: preflight() }));
