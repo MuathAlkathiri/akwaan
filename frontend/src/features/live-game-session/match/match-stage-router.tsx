@@ -93,13 +93,12 @@ export function MatchStageRouter({
   const isPhone = actor === "participant";
   // A phone shows the team it belongs to while it waits; it has no other use for
   // its own identity, because the server already scopes everything else to it.
-  const phoneTeamName = participantId
-    ? snapshot.teams.find(
-        (team) =>
-          team.id ===
-          snapshot.participants.find((person) => person.id === participantId)
-            ?.teamId,
-      )?.name
+  const phoneTeamId = participantId
+    ? snapshot.participants.find((person) => person.id === participantId)
+        ?.teamId
+    : undefined;
+  const phoneTeamName = phoneTeamId
+    ? snapshot.teams.find((team) => team.id === phoneTeamId)?.name
     : undefined;
 
   let content: React.ReactNode;
@@ -164,6 +163,7 @@ export function MatchStageRouter({
       <ParticipantWaiting
         matchComplete
         {...(phoneTeamName ? { teamName: phoneTeamName } : {})}
+        {...(phoneTeamId ? { teamId: phoneTeamId } : {})}
       />
     ) : (
       <UnifiedMatchComplete actor={actor} />
@@ -186,7 +186,7 @@ export function MatchStageRouter({
       data-match-actor={actor}
       data-match-stage={stage}
     >
-      <MatchConnectionBanner />
+      <MatchConnectionBanner phone={isPhone} />
       {error && actor !== "controller" && (
         <p className="sr-only" role="alert">
           ما قدرنا نحدّث المباراة. نحاول مرة ثانية من عندنا.

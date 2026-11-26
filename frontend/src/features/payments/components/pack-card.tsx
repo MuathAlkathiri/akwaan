@@ -43,14 +43,15 @@ export function PackCard({
       <button
         type="button"
         disabled={disabled || busy}
+        aria-busy={busy}
         onClick={onBuy}
         className={
           disabled
             ? "min-h-[3.625rem] w-full rounded-full border-[3px] border-[hsl(var(--brand-purple)/.35)] bg-[hsl(var(--brand-purple)/.08)] font-display text-[15px] font-bold text-[hsl(var(--brand-purple))]"
-            : "min-h-[3.625rem] w-full rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] font-display text-[19px] font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform duration-150 hover:-translate-y-0.5 disabled:opacity-70"
+            : "min-h-[3.625rem] w-full rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] font-display text-[19px] font-extrabold text-[hsl(var(--brand-navy))] shadow-[4px_5px_0_hsl(var(--brand-navy))] transition-transform duration-150 hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none"
         }
       >
-        {disabled ? disabledLabel : busy ? "جاري الفتح…" : buyLabel}
+        {disabled ? disabledLabel : busy ? "نفتح الدفع…" : buyLabel}
       </button>
     </div>
   );

@@ -257,7 +257,10 @@ describe("a phone waits instead of showing the host board", () => {
 
     const waiting = screen.getByTestId("participant-waiting");
     expect(waiting.dataset.matchComplete).toBe("true");
-    expect(waiting.textContent).toContain("انتهت المباراة");
+    // Told from this phone's side: its team won, and both totals are shown.
+    expect(waiting.dataset.matchOutcome).toBe("win");
+    expect(waiting.textContent).toContain("فزتم بالمباراة!");
+    expect(waiting.textContent).toContain("فريقكم");
     expect(screen.queryByTestId("unified-match-complete")).toBeNull();
   });
 });

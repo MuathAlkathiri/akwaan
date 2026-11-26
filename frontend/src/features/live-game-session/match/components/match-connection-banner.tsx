@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -16,16 +17,69 @@ import {
  * host reading it aloud to a room learns nothing they can act on. The code rides
  * along as a data attribute for support instead.
  */
-export function MatchConnectionBanner() {
-  const { error, resync } = useLiveSession();
-  // Initial hydration, live reconnecting, and successful resync are represented
-  // by the fixed MatchShell connection pill. They must not insert a transient
-  // row above the active stage. This surface is reserved for actionable errors.
+/** How long a drop must last before the room is told. Most are shorter. */
+const DISCONNECT_NOTICE_DELAY_MS = 1500;
+
+/**
+ * True once a connection that was live has stayed down long enough to mention.
+ *
+ * The first connect is not a drop, and a blip the socket recovers from on its
+ * own is not worth a line on a television: only a connection that was working
+ * and has now been gone for a moment counts.
+ */
+function useLostConnection(connection: string): boolean {
+  const wasConnected = useRef(false);
+  const [lost, setLost] = useState(false);
+  useEffect(() => {
+    if (connection === "connected") {
+      wasConnected.current = true;
+      setLost(false);
+      return;
+    }
+    if (!wasConnected.current) return;
+    const timer = window.setTimeout(
+      () => setLost(true),
+      DISCONNECT_NOTICE_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [connection]);
+  return lost;
+}
+
+export function MatchConnectionBanner({ phone = false }: { phone?: boolean }) {
+  const { error, resync, connection } = useLiveSession();
+  const lost = useLostConnection(connection);
+  // A strip pinned over the top, not a row in the page: the last screen stays
+  // exactly where it was, and what is safe is said before anything else.
+  if (lost)
+    return (
+      <aside
+        role="status"
+        aria-live="polite"
+        data-testid="match-disconnect-strip"
+        className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-0.5 rounded-[18px] border-2 border-white bg-[hsl(var(--brand-navy))] px-5 py-3 text-center text-white shadow-[4px_5px_0_hsl(var(--brand-gold))]"
+      >
+        <span className="text-base font-extrabold">
+          {phone
+            ? "انقطع اتصالك، نحاول نرجّعك…"
+            : "انقطع اتصال الشاشة، نحاول نرجّعه…"}
+        </span>
+        <span className="text-sm font-semibold text-[hsl(var(--brand-gold))]">
+          {phone
+            ? "مكانك في الفريق محفوظ."
+            : "المباراة محفوظة، وما راح شي. لا تحدّثون الصفحة."}
+        </span>
+      </aside>
+    );
+  // Initial hydration and a successful resync say nothing. Below is reserved
+  // for errors the room can act on.
   if (!error) return null;
   // A race the client already recovered from is not something the room needs
   // to read about; see `matchErrorIsRecoverable`.
   if (matchErrorIsRecoverable(error.code)) return null;
-  const message = matchErrorMessage(error.code) ?? "ما قدرنا ننفّذ آخر حركة. المباراة محفوظة.";
+  const message =
+    matchErrorMessage(error.code) ??
+    "ما قدرنا ننفّذ آخر حركة. المباراة محفوظة.";
   return (
     <aside
       role="status"
