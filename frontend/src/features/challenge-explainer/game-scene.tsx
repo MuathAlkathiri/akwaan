@@ -12,6 +12,7 @@ import { LiveSessionContext } from "../live-game-session/hooks/live-session-cont
 import { LiveSessionClockContext } from "../live-game-session/hooks/live-session-clock-context";
 import { CountdownSurfaceProvider } from "../live-game-session/match/components/countdown-presentation";
 import { MobileGameplayShell } from "../live-game-session/match/components/mobile-gameplay-shell";
+import { ParticipantWaiting } from "../live-game-session/match/components/participant-waiting";
 import { MovingXoScreen } from "../live-game-session/components/moving-xo-screen";
 import { MovingXoPhonePanel } from "../live-game-session/components/moving-xo-phone-panel";
 import { RyoGameplayPanel } from "../live-game-session/components/ryo-gameplay-panel";
@@ -135,6 +136,15 @@ function Surface({
   const teamName = (id: string) =>
     snapshot.teams.find((t) => t.id === id)?.name ?? "الفريق";
   function content() {
+    if (step === 2 && team && snapshot.match?.result) {
+      return (
+        <ParticipantWaiting
+          matchComplete
+          teamId={team}
+          teamName={teamName(team)}
+        />
+      );
+    }
     switch (example.kind) {
       case "moving-xo":
         return team ? (

@@ -175,19 +175,60 @@ export function SceneTemplate({
 
       <p className={styles.caption}>{captions[step]}</p>
 
-      <ol className={styles.timeline}>
-        {STEP_NAMES.map((label, index) => (
-          <li key={label} className="border-brand-dash">
-            <button
-              type="button"
-              aria-current={step === index ? "step" : undefined}
-              onClick={() => seek(index)}
-            >
-              {index + 1} · {label}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <div className={styles.timelineWrap}>
+        <div
+          aria-hidden
+          className={cn(styles.timelineTrack, "bg-brand-mist")}
+        >
+          <div
+            className={cn(styles.timelineProgress, "bg-brand-navy")}
+            style={{ width: `${(step / (STEP_NAMES.length - 1)) * 100}%` }}
+          />
+        </div>
+        <ol className={styles.timeline} data-testid="scene-timeline">
+          {STEP_NAMES.map((label, index) => {
+            const current = index === step;
+            const passed = index < step;
+            return (
+              <li key={label} className={styles.timelineItem}>
+                <button
+                  type="button"
+                  aria-current={current ? "step" : undefined}
+                  onClick={() => seek(index)}
+                  className={styles.timelineButton}
+                >
+                  <span aria-hidden className={styles.timelineDotSlot}>
+                    <span
+                      data-state={
+                        current ? "current" : passed ? "passed" : "upcoming"
+                      }
+                      className={cn(
+                        "block rounded-full transition-all",
+                        current &&
+                          "size-[28px] border-4 border-brand-navy bg-brand-gold shadow-[0_0_0_5px_hsl(var(--brand-gold)/0.32)]",
+                        passed && "size-[18px] bg-brand-navy",
+                        !current &&
+                          !passed &&
+                          "size-[18px] border-[3px] border-brand-dash bg-white",
+                      )}
+                    />
+                  </span>
+                  <span
+                    className={cn(
+                      styles.timelineLabel,
+                      current && "font-extrabold text-brand-navy",
+                      passed && "font-bold text-brand-navy",
+                      !current && !passed && "font-semibold text-brand-slate",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       <div className={styles.controls}>
         <button type="button" aria-label="السابق" onClick={() => seek(step - 1)}>

@@ -90,6 +90,16 @@ describe("GameScene unified explainers", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
     expect(screen.getByTestId("scene-step-counter")).toHaveTextContent("2 / 3");
+    const timeline = screen.getByTestId("scene-timeline");
+    expect(
+      timeline.querySelectorAll('[data-state="passed"]'),
+    ).toHaveLength(1);
+    expect(
+      timeline.querySelectorAll('[data-state="current"]'),
+    ).toHaveLength(1);
+    expect(
+      timeline.querySelectorAll('[data-state="upcoming"]'),
+    ).toHaveLength(1);
   });
 
   it("renders ekshifni through GameScene across all 3 steps", () => {
@@ -114,7 +124,12 @@ describe("GameScene unified explainers", () => {
     expect(screen.getAllByTestId("ekshifni-reveal").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("ekshifni-recap").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("ekshifni-recap")).toBeInTheDocument();
+    const phoneEnds = screen.getAllByTestId("participant-waiting");
+    expect(phoneEnds).toHaveLength(2);
+    expect(phoneEnds.map((el) => el.getAttribute("data-match-outcome"))).toEqual(
+      ["lose", "win"],
+    );
   });
 
   it("renders la-tahriqha through GameScene across all 3 steps", () => {
@@ -137,8 +152,11 @@ describe("GameScene unified explainers", () => {
     ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("la-tahriqha-recap").length).toBeGreaterThan(
-      0,
+    expect(screen.getByTestId("la-tahriqha-recap")).toBeInTheDocument();
+    const phoneEnds = screen.getAllByTestId("participant-waiting");
+    expect(phoneEnds).toHaveLength(2);
+    expect(phoneEnds.map((el) => el.getAttribute("data-match-outcome"))).toEqual(
+      ["lose", "win"],
     );
   });
 
@@ -157,6 +175,11 @@ describe("GameScene unified explainers", () => {
     ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(screen.getAllByTestId("first-note-recap").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("first-note-recap")).toBeInTheDocument();
+    const phoneEnds = screen.getAllByTestId("participant-waiting");
+    expect(phoneEnds).toHaveLength(2);
+    expect(phoneEnds.map((el) => el.getAttribute("data-match-outcome"))).toEqual(
+      ["lose", "win"],
+    );
   });
 });

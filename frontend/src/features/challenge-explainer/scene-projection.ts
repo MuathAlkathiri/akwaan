@@ -123,6 +123,31 @@ export function sceneProjection(
     scoring: { matchTotals: [], worldSubtotals: [] },
     availableActions: [],
   };
+  const setMatchEnd = (
+    winnerTeamId: string | null,
+    totals: Record<string, number>,
+    tie = winnerTeamId === null,
+  ) => {
+    if (step !== 2 || !snapshot.match) return;
+    const teamScores = teamIds.map((id) => ({
+      teamId: id,
+      signedTotal: totals[id] ?? 0,
+      displayTotal: totals[id] ?? 0,
+    }));
+    snapshot.match.scoring.matchTotals = teamScores;
+    snapshot.match.standings = teamIds.map((id, i) => ({
+      teamId: id,
+      name: teamNames[i],
+      signedTotal: totals[id] ?? 0,
+      displayTotal: totals[id] ?? 0,
+    }));
+    snapshot.match.result = {
+      teams: teamScores,
+      winnerTeamId,
+      tie,
+      worlds: [],
+    };
+  };
   switch (example.kind) {
     case "moving-xo": {
       const cells = [a, a, step === 2 ? a : null, b, b, null, null, null, null];
@@ -156,6 +181,7 @@ export function sceneProjection(
       });
       if (actor === a)
         allow("mode:submit-moving-xo-answer", "mode:place-moving-xo-mark");
+      setMatchEnd(a, { [a]: 1, [b]: 0 });
       break;
     }
     case "ryo":
@@ -163,6 +189,13 @@ export function sceneProjection(
       const label = (id: string) =>
         example.options.find((o) => o.id === id)?.label ?? "";
       const teamId = example.outcome.teamRole === "answering" ? a : b;
+      const otherTeamId = teamId === a ? b : a;
+      const ryoWinner =
+        example.outcome.delta > 0
+          ? teamId
+          : example.outcome.delta < 0
+            ? otherTeamId
+            : null;
       const payload = {
         correct: example.outcome.correct,
         selectedAnswer: label(example.answeringSelectionOptionId),
@@ -218,6 +251,10 @@ export function sceneProjection(
           : {}),
       };
       if (!step) allow("submission:create");
+      setMatchEnd(ryoWinner, {
+        [teamId]: example.outcome.delta,
+        [otherTeamId]: 0,
+      });
       break;
     }
     case "closest": {
@@ -245,6 +282,14 @@ export function sceneProjection(
           : null,
       });
       allow("mode:submit-estimate");
+      setMatchEnd(
+        outcome.winnerTeam,
+        {
+          [a]: outcome.winnerTeam === a ? 1 : 0,
+          [b]: outcome.winnerTeam === b ? 1 : 0,
+        },
+        outcome.tie,
+      );
       break;
     }
     case "bomb": {
@@ -277,6 +322,10 @@ export function sceneProjection(
         clock.consumedMs = clock.allocatedMs - clock.remainingMs;
       }
       if (actor === active) allow("mode:submit-answer");
+      setMatchEnd(example.outcome.winnerTeam, {
+        [a]: example.outcome.winnerTeam === a ? 1 : 0,
+        [b]: example.outcome.winnerTeam === b ? 1 : 0,
+      });
       break;
     }
     case "top-5": {
@@ -308,6 +357,7 @@ export function sceneProjection(
         ),
       });
       if (actor === state.activeTeamId) allow("mode:decide-card");
+      setMatchEnd(example.outcome.winnerTeam, example.outcome.top5Counts);
       break;
     }
     case "combo": {
@@ -379,6 +429,7 @@ export function sceneProjection(
             : [],
         ),
       });
+      setMatchEnd(example.outcome.winnerTeam, example.outcome.points);
       break;
     }
     case "marhala": {
@@ -409,6 +460,13 @@ export function sceneProjection(
           : null,
       });
       if (actor === active) allow("mode:submit-marhala-answer");
+      const posA = positions[a] ?? 0;
+      const posB = positions[b] ?? 0;
+      setMatchEnd(
+        posA > posB ? a : posB > posA ? b : null,
+        positions,
+        posA === posB,
+      );
       break;
     }
     case "ekshifni": {
@@ -494,6 +552,7 @@ export function sceneProjection(
           allow("mode:submit-ekshifni");
         }
       }
+      setMatchEnd(example.outcome.winnerTeam, example.outcome.finalTotals);
       break;
     }
     case "la-tahriqha": {
@@ -595,6 +654,11 @@ export function sceneProjection(
           "mode:lock-la-tahriqha-dish",
         );
       }
+      setMatchEnd(
+        example.outcome.winnerTeam,
+        example.outcome.finalTotals,
+        example.outcome.tie,
+      );
       break;
     }
     case "first-note": {
@@ -670,6 +734,7 @@ export function sceneProjection(
       if (step === 0 && actor === biddingTeamId) {
         allow("mode:submit-first-note-bid", "mode:pass-first-note-bid");
       }
+      setMatchEnd(matchWinner, example.outcome.points, matchWinner === null);
       break;
     }
   }
