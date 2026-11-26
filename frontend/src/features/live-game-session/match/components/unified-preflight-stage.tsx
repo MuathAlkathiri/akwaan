@@ -229,7 +229,7 @@ function ParticipantPreflight({
       className="surface-card space-y-5 p-6 text-center"
     >
       <div className="space-y-1">
-        <p className="inline-flex items-center gap-1.5 text-sm font-black text-success">
+        <p className="inline-flex items-center gap-1.5 text-sm font-black text-foreground">
           <CheckCircle2 className="size-4" aria-hidden />
           أنت في المباراة
         </p>

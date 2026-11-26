@@ -195,7 +195,7 @@ export function RakkibhaPanel({
         {lockSeconds > 0 && (
           <p
             role="alert"
-            className="shrink-0 rounded-lg bg-destructive/10 p-3 text-center font-bold text-destructive"
+            className="shrink-0 rounded-lg bg-destructive-subtle p-3 text-center font-bold text-foreground"
           >
             اختيار غير صحيح — حاولوا بعد {lockSeconds}
           </p>

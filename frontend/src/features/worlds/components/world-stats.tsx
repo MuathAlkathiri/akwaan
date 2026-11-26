@@ -64,7 +64,7 @@ export function Stat({
         compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
         tone === "brand"
           ? "border-primary/15 bg-primary/[0.07] text-primary"
-          : "border-success/25 bg-success-subtle text-success",
+          : "border-brand-navy bg-success-subtle text-foreground",
       )}
     >
       {icon}

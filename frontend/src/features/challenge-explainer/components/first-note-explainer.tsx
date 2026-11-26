@@ -319,7 +319,7 @@ function FirstNotePlayback({
       className={cn(
         "space-y-3 rounded-2xl border-2 p-3 text-center sm:p-5",
         completed
-          ? "border-sem-success/40 bg-sem-success/10"
+          ? "border-brand-navy bg-success-subtle"
           : "border-primary/30 bg-primary/5",
       )}
       data-testid="first-note-playback"
@@ -450,7 +450,7 @@ function FirstNotePhoneScene({
                   </div>
                 ) : (
                   <div
-                    className="rounded-md bg-destructive/10 px-2 py-1 text-[0.62rem] font-black text-destructive"
+                    className="rounded-md bg-destructive-subtle px-2 py-1 text-[0.62rem] font-black text-foreground"
                     data-testid="first-note-wrong"
                   >
                     إجابة خاطئة · فرصة واحدة للفريق الثاني
@@ -466,7 +466,7 @@ function FirstNotePhoneScene({
             {correct ? (
               <>
                 <Check
-                  className="mx-auto size-4 text-success"
+                  className="mx-auto size-4 text-foreground"
                   aria-hidden
                 />
                 <p className="mt-1 text-xs font-black">سرقة ناجحة</p>
@@ -487,7 +487,7 @@ function FirstNotePhoneScene({
               </>
             ) : (
               <>
-                <X className="mx-auto size-4 text-destructive" aria-hidden />
+                <X className="mx-auto size-4 text-foreground" aria-hidden />
                 <p className="mt-1 text-xs font-black">الفريق الأول أخطأ</p>
                 <p className="text-[0.62rem] font-bold text-muted-foreground">
                   الفريق الثاني يستلم السرقة
@@ -510,10 +510,10 @@ function FirstNoteStealHandoff({ step }: { step: FirstNoteDemoStepId }) {
       className={cn(
         "rounded-xl border-2 p-3 text-center",
         correct
-          ? "border-sem-success/40 bg-sem-success/10"
+          ? "border-brand-navy bg-success-subtle"
           : active
             ? "border-brand-gold/60 bg-brand-gold/10"
-            : "border-destructive/35 bg-destructive/5",
+            : "border-brand-navy bg-destructive-subtle",
       )}
       data-testid="first-note-steal-handoff"
       data-steal-state={correct ? "success" : active ? "active" : "opened"}
@@ -557,8 +557,8 @@ function FirstNoteReveal({
             سرقة ناجحة · +11
           </p>
         </div>
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2">
-          <X className="mx-auto size-4 text-destructive" aria-hidden />
+        <div className="rounded-lg border border-brand-navy bg-destructive-subtle p-2">
+          <X className="mx-auto size-4 text-foreground" aria-hidden />
           <p className="text-xs font-black">الفريق الأول</p>
           <p className="text-[0.65rem] font-bold text-muted-foreground">
             إجابة خاطئة · 0

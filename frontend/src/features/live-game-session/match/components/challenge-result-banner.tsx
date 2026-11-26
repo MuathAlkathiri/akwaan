@@ -37,7 +37,8 @@ export function ChallengeWinnerBanner({
   const winnerId = result.winnerTeamId ?? undefined;
   const tied = !winnerId;
   const matchPoint =
-    (result.matchPoints ?? []).find((entry) => entry.teamId === winnerId)?.points ?? 1;
+    (result.matchPoints ?? []).find((entry) => entry.teamId === winnerId)
+      ?.points ?? 1;
   return (
     <section
       data-testid={testIds.root ?? "challenge-winner-banner"}
@@ -157,10 +158,9 @@ export function ResultRoundCard({
           <span
             data-testid={stamp.testId}
             className={cn(
-              "inline-flex min-h-[30px] -rotate-6 items-center rounded-[10px] border-[3px] bg-white px-3 text-[15px] font-extrabold",
-              stamp.tone === "correct"
-                ? "border-[hsl(var(--sem-success))] text-[hsl(var(--sem-success))]"
-                : "border-[hsl(var(--sem-error))] text-[hsl(var(--sem-error))]",
+              // A stamp is a sticker: mint or coral fill, navy line, navy words.
+              "inline-flex min-h-[30px] -rotate-6 items-center rounded-[10px] border-[3px] border-brand-navy px-3 text-[15px] font-extrabold text-sem-reveal-foreground",
+              stamp.tone === "correct" ? "bg-sem-success" : "bg-sem-error",
             )}
           >
             {stamp.label}

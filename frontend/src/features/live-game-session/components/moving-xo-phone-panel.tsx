@@ -245,7 +245,7 @@ export function MovingXoPhonePanel({
       {phase === "placement" && mayPlace && (
         <div className="flex min-h-0 flex-1 flex-col items-center gap-3.5">
           <div className="flex w-full items-center justify-between gap-2.5">
-            <span className="inline-flex min-h-8 -rotate-3 items-center rounded-[10px] border-[3px] border-success px-3 text-sm font-extrabold text-success">
+            <span className="inline-flex min-h-8 -rotate-3 items-center rounded-[10px] border-[3px] border-brand-navy bg-sem-success px-3 text-sm font-extrabold text-foreground">
               جاوبتوا صح
             </span>
             {timer}

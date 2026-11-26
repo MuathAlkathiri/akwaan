@@ -791,7 +791,7 @@ function OddPieceHotspotExplainer({
                   )}
 
                   {step.id === "team-1-wrong" && (
-                    <div className="rounded-lg bg-destructive/15 p-2 text-xs font-black text-destructive border border-destructive/30">
+                    <div className="rounded-lg bg-destructive-subtle p-2 text-xs font-black text-foreground border border-brand-navy">
                       ❌ موضع غير صحيح — ضاعت المحاولة
                     </div>
                   )}
@@ -900,8 +900,8 @@ function StatusTeam({
       <p
         className={cn(
           "mt-0.5 text-[0.65rem] font-bold text-muted-foreground",
-          lost && "text-destructive",
-          winner && "text-success dark:text-emerald-400",
+          lost && "text-foreground",
+          winner && "text-foreground dark:text-emerald-400",
         )}
       >
         {lost

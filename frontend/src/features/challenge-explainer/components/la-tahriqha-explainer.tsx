@@ -393,7 +393,7 @@ function LaTahriqhaBoardScene({
                       riskFifth &&
                         "border-2 border-dashed border-brand-gold bg-brand-gold/10 shadow-[0_0_0_3px_hsl(var(--brand-gold)/.12)]",
                       isWrong &&
-                        "border-destructive bg-destructive/10 text-destructive",
+                        "border-brand-navy bg-destructive-subtle text-foreground",
                       isCorrectReveal &&
                         "border-emerald-500 bg-emerald-50 text-emerald-800",
                     )}
@@ -442,7 +442,7 @@ function LaTahriqhaBoardScene({
               <div
                 data-la-tahriqha-burn-emphasis="true"
                 className={cn(
-                  "rounded-xl border-2 border-destructive/50 bg-destructive/10 p-3 text-center text-destructive",
+                  "rounded-xl border-2 border-brand-navy bg-destructive-subtle p-3 text-center text-foreground",
                   compact && "p-2",
                 )}
               >
@@ -828,7 +828,7 @@ function LaTahriqhaPhoneScene({
                 {committed ? "تم التثبيت" : "ثبّت الطبق"}
               </Button>
               {step === "burn-reveal" && !phoneTeamTwo && (
-                <div className="rounded-md bg-destructive/10 px-1.5 py-1 text-[0.54rem] font-black text-destructive">
+                <div className="rounded-md bg-destructive-subtle px-1.5 py-1 text-[0.54rem] font-black text-foreground">
                   <Flame className="mx-auto mb-0.5 size-3" aria-hidden /> احترق
                   · 0
                 </div>

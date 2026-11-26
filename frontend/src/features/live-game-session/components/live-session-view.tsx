@@ -16,7 +16,7 @@ export function LiveSessionView() {
   const { snapshot, error } = useLiveSession();
   if (error && !snapshot) {
     return (
-      <Card role="alert" className="border-destructive">
+      <Card role="alert" className="border-brand-navy">
         <CardHeader>
           <CardTitle>Live session unavailable</CardTitle>
         </CardHeader>
@@ -52,7 +52,7 @@ export function LiveSessionView() {
         </div>
       </header>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-foreground">
           {error.message}
         </p>
       )}

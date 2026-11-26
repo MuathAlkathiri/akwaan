@@ -76,7 +76,7 @@ export function PlayerLobby({ participantId }: { participantId: string }) {
             </p>
           )}
           {error && (
-            <p role="alert" className="text-sm font-bold text-destructive">
+            <p role="alert" className="text-sm font-bold text-foreground">
               {error.message}
             </p>
           )}

@@ -815,7 +815,7 @@ function WorldSelectionSidebar({
           <p
             role="alert"
             data-testid="worlds-home-start-error"
-            className="max-w-[18rem] text-[0.7rem] font-bold leading-5 text-[hsl(var(--destructive))]"
+            className="max-w-[18rem] text-[0.7rem] font-bold leading-5 text-foreground"
           >
             {draft.issue.message}
           </p>

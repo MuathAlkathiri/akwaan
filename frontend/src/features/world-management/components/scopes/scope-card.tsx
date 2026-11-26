@@ -53,7 +53,7 @@ export function ScopeCard({ scope, onEdit, onDelete }: ScopeCardProps) {
             aria-label="حذف النطاق"
             onClick={onDelete}
           >
-            <Trash2 className="size-3.5 text-destructive" />
+            <Trash2 className="size-3.5 text-foreground" />
           </Button>
         </div>
       </div>

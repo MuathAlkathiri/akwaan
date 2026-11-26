@@ -239,7 +239,7 @@ export function EkshifniExplainer({
                     </p>
                   </div>
                 ) : step.id === "correct" ? (
-                  <p className="text-center font-black text-success">
+                  <p className="text-center font-black text-foreground">
                     <Check className="me-1 inline size-5" />
                     إجابة صحيحة · نقطتان
                   </p>
@@ -274,7 +274,7 @@ export function EkshifniExplainer({
                 <Answer value="إجابة أولية غير صحيحة" team="الفريق الأول" />
               ) : step.id === "wrong" ? (
                 <>
-                  <X className="mx-auto size-11 text-destructive" />
+                  <X className="mx-auto size-11 text-foreground" />
                   <p className="text-lg font-black">إجابة غير صحيحة</p>
                   <p className="text-sm text-muted-foreground">
                     مبادرة الكشف انتقلت للفريق الثاني

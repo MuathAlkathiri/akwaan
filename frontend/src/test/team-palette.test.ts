@@ -7,6 +7,7 @@ import {
   hueDistance,
   MINIMUM_FILL_TEXT_CONTRAST,
   MINIMUM_INTER_TEAM_HUE_DISTANCE,
+  MINIMUM_ERROR_HUE_DISTANCE,
   MINIMUM_RESERVED_HUE_DISTANCE,
   MINIMUM_TEXT_CONTRAST,
   RESERVED_COLORS,
@@ -62,43 +63,25 @@ describe("the two team colours", () => {
     expect(teamColorAt(1).id).toBe("red");
   });
 
-  it("carries large text only on a fill, which is why small labels sit on white", () => {
-    // The red has to stay light to clear the error crimson, which leaves both
-    // white and navy around 4:1 on it — large-text contrast, not small-text.
+  it("carries white text on either fill at large-text contrast", () => {
     const white = { hue: 0, saturation: 0, lightness: 100 };
-    const navy = { hue: 239, saturation: 40, lightness: 17 };
     for (const color of TEAM_COLORS) {
       expect(teamFillTextViolations(color, white, "white")).toEqual([]);
     }
     expect(MINIMUM_FILL_TEXT_CONTRAST).toBe(3);
-    // Stated as a fact, so a future edit that makes small white text legible on
-    // both fills has to come here and say so.
-    expect(contrastRatio(TEAM_COLORS[1].base, white)).toBeLessThan(
-      MINIMUM_TEXT_CONTRAST,
-    );
-    expect(contrastRatio(TEAM_COLORS[1].base, navy)).toBeLessThan(
-      MINIMUM_TEXT_CONTRAST,
-    );
   });
 });
 
 describe("reserved colours", () => {
-  it("separates error from the team reds by lightness rather than hue", () => {
-    // This is what frees the warm end of the spectrum for teams at all: error is a
-    // deep crimson, so a *light* rose can share its hue and still not be mistaken
-    // for it. The pool is expected to actually use that freedom — a warm pool with
-    // no colour near the error hue would mean the arc was abandoned instead.
-    const shareErrorHue = TEAM_COLORS.filter(
-      (color) =>
-        hueDistance(color.base.hue, RESERVED_COLORS.error.hue) <
-        MINIMUM_RESERVED_HUE_DISTANCE,
-    );
-    expect(shareErrorHue.length).toBeGreaterThan(0);
-    for (const red of shareErrorHue) {
+  it("keeps the coral that means wrong apart from both team colours", () => {
+    // Coral is warm on purpose: the second team is a pink, and "wrong" must
+    // never be read as "the second team". No team colour may sit on its hue.
+    for (const color of TEAM_COLORS) {
+      expect(teamColorViolations(color), color.id).toEqual([]);
       expect(
-        red.base.lightness - RESERVED_COLORS.error.lightness,
-        `${red.id} is as dark as --sem-error`,
-      ).toBeGreaterThanOrEqual(10);
+        hueDistance(color.base.hue, RESERVED_COLORS.error.hue),
+        `${color.id} against --sem-error`,
+      ).toBeGreaterThanOrEqual(MINIMUM_ERROR_HUE_DISTANCE);
     }
   });
 

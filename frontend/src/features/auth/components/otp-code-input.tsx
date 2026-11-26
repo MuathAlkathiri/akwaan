@@ -108,7 +108,7 @@ export function OtpCodeInput({
             "h-[60px] min-w-0 flex-1 rounded-[14px] border-[3px] bg-white text-center text-2xl font-bold text-brand-navy sm:w-[52px] sm:flex-none",
             "focus:outline-none focus:ring-4 focus:ring-offset-0",
             invalid
-              ? "border-destructive focus:ring-destructive/25"
+              ? "border-brand-navy focus:ring-destructive/25"
               : "border-brand-navy focus:bg-brand-lavender focus:ring-[hsl(var(--brand-purple))]",
             disabled ? "opacity-50" : "",
           ].join(" ")}

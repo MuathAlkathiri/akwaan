@@ -92,7 +92,8 @@ describe("semantic colour never becomes a team's identity", () => {
     expect(preflight).not.toMatch(/team\.ready\s*\?\s*identity\.text/);
     // And the status chip is semantic, with an icon as well as a colour.
     expect(preflight).toMatch(/preflight-team-status-/);
-    expect(preflight).toMatch(/bg-success-subtle text-success/);
+    // Mint tint behind navy words: never green text.
+    expect(preflight).toMatch(/bg-success-subtle text-foreground/);
   });
 });
 
@@ -140,7 +141,8 @@ describe("a persistent status may still be legible", () => {
     const preflight = read(
       "src/features/live-game-session/match/components/challenge-preflight.tsx",
     );
-    expect(preflight).toContain("text-success");
+    expect(preflight).toContain("bg-success-subtle");
+    expect(preflight).not.toMatch(/text-success\b/);
     expect(preflight).toContain("اللاعبين متصلين وجاهزين");
   });
 
@@ -163,7 +165,8 @@ describe("a persistent status may still be legible", () => {
     );
     // Critical takes the error red; warning takes the warning token. The
     // thresholds themselves live in countdown-urgency.ts.
-    expect(countdown).toMatch(/critical:\s*"[^"]*text-sem-error/);
+    expect(countdown).toMatch(/critical:\s*"[^"]*bg-sem-error/);
+    expect(countdown).not.toMatch(/text-sem-error/);
     expect(countdown).toMatch(/warning:\s*"[^"]*text-warning/);
     // Brand gold cannot reach legible contrast on the cream room, so the digits
     // never take it; urgency also carries a non-colour cue.

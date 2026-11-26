@@ -803,7 +803,7 @@ export function MarhalaQuestionAudio({
         <p
           data-testid="marhala-audio-error"
           role="status"
-          className="text-xs font-bold text-destructive"
+          className="text-xs font-bold text-foreground"
         >
           تعذّر تشغيل المقطع الصوتي
         </p>
@@ -899,7 +899,7 @@ function MovementReveal({
       data-movement={movement}
       role="status"
     >
-      <span className="inline-flex min-h-[32px] -rotate-3 items-center rounded-[10px] border-[3px] border-success px-3 text-sm font-extrabold text-success">
+      <span className="inline-flex min-h-[32px] -rotate-3 items-center rounded-[10px] border-[3px] border-brand-navy bg-sem-success px-3 text-sm font-extrabold text-foreground">
         جاوبوا صح
       </span>
       <p className="font-display text-2xl font-black text-[hsl(var(--brand-navy))]">

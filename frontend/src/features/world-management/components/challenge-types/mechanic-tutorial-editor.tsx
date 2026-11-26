@@ -3296,7 +3296,7 @@ function PublishState({ state }: { state: AdminTutorialState | null }) {
       className={cn(
         "rounded-full px-2.5 py-1 text-xs font-black",
         state.published && !state.hasUnpublishedChanges
-          ? "bg-sem-success/15 text-sem-success"
+          ? "bg-success-subtle text-foreground"
           : "bg-muted text-muted-foreground",
       )}
     >
@@ -3311,7 +3311,7 @@ function ValidationReport({ validation }: { validation: TutorialValidation }) {
       <p
         data-testid="tutorial-validation"
         data-valid="true"
-        className="flex items-center gap-2 rounded-[var(--radius)] bg-sem-success/10 p-2.5 text-xs font-bold text-sem-success"
+        className="flex items-center gap-2 rounded-[var(--radius)] bg-success-subtle p-2.5 text-xs font-bold text-foreground"
       >
         <CheckCircle2 className="size-4" aria-hidden />
         جاهز للنشر — ما فيه تعارض مع محتوى المباريات.
@@ -3322,7 +3322,7 @@ function ValidationReport({ validation }: { validation: TutorialValidation }) {
     <div
       data-testid="tutorial-validation"
       data-valid="false"
-      className="space-y-1.5 rounded-[var(--radius)] bg-sem-error/10 p-2.5 text-xs font-bold text-sem-error"
+      className="space-y-1.5 rounded-[var(--radius)] bg-destructive-subtle p-2.5 text-xs font-bold text-foreground"
     >
       {validation.issues.map((issue) => (
         <p key={issue.code} className="flex items-start gap-2">

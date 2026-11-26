@@ -276,7 +276,7 @@ export function PasswordlessLoginForm({
               <p
                 role="alert"
                 data-testid="otp-error"
-                className="text-center text-sm text-destructive"
+                className="text-center text-sm text-foreground"
               >
                 {error.message}
               </p>

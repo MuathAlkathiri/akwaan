@@ -56,7 +56,8 @@ export function ClosestResultRecap({
     ? (result.details.items as unknown as ClosestRecapItem[])
     : [];
   const totals =
-    result.details.mechanicTotals && typeof result.details.mechanicTotals === "object"
+    result.details.mechanicTotals &&
+    typeof result.details.mechanicTotals === "object"
       ? (result.details.mechanicTotals as Record<string, number>)
       : {};
   const teams = snapshot.teams.filter((team) => team.active);
@@ -89,7 +90,9 @@ export function ClosestResultRecap({
             ]}
             // Closest to the number takes the round; a tie gives it to nobody.
             points={
-              item.winnerTeamId ? [{ teamId: item.winnerTeamId, points: 1 }] : []
+              item.winnerTeamId
+                ? [{ teamId: item.winnerTeamId, points: 1 }]
+                : []
             }
           >
             {item.tie && (

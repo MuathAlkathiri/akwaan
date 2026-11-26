@@ -296,7 +296,7 @@ function LaqathaPhoneScene({
                     </Button>
                     {wrong && (
                       <div
-                        className="rounded-md bg-destructive/10 px-2 py-1 text-[0.62rem] font-black text-destructive"
+                        className="rounded-md bg-destructive-subtle px-2 py-1 text-[0.62rem] font-black text-foreground"
                         data-testid="laqatha-tutorial-wrong"
                       >
                         تم استبعاد الفريق الأول
@@ -359,7 +359,7 @@ function LaqathaPhoneScene({
               </>
             ) : wrong ? (
               <div data-laqatha-wrong-emphasis>
-                <X className="mx-auto size-4 text-destructive" aria-hidden />
+                <X className="mx-auto size-4 text-foreground" aria-hidden />
                 <p className="mt-1 text-xs font-black">
                   محاولة الفريق الأول انتهت
                 </p>
@@ -370,7 +370,7 @@ function LaqathaPhoneScene({
             ) : correct ? (
               <>
                 <Check
-                  className="mx-auto size-4 text-success"
+                  className="mx-auto size-4 text-foreground"
                   aria-hidden
                 />
                 <p className="mt-1 text-xs font-black">إجابة نصية صحيحة</p>
@@ -465,9 +465,9 @@ function LaqathaReveal({ scenario }: { scenario: LaqathaTutorialScenario }) {
             أجاب عند الدليل 3 · +3 نقاط
           </p>
         </div>
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2">
+        <div className="rounded-lg border border-brand-navy bg-destructive-subtle p-2">
           <ShieldAlert
-            className="mx-auto size-4 text-destructive"
+            className="mx-auto size-4 text-foreground"
             aria-hidden
           />
           <p className="text-xs font-black">الفريق الأول</p>
@@ -566,7 +566,7 @@ function LaqathaPhoneNotes({
       </p>
       <div className="flex justify-center gap-2 text-[0.62rem] font-black">
         <span className="rounded-full bg-brand-gold/15 px-2 py-1">5 ثوانٍ</span>
-        <span className="rounded-full bg-destructive/10 px-2 py-1">
+        <span className="rounded-full bg-destructive-subtle px-2 py-1">
           محاولة واحدة
         </span>
       </div>

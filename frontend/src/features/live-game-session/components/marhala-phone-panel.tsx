@@ -664,7 +664,7 @@ function RollCard({
       className="flex min-h-0 flex-1 flex-col gap-3.5"
       role="status"
     >
-      <span className="inline-flex min-h-[32px] -rotate-3 items-center self-center rounded-[10px] border-[3px] border-success px-3 text-sm font-extrabold text-success">
+      <span className="inline-flex min-h-[32px] -rotate-3 items-center self-center rounded-[10px] border-[3px] border-brand-navy bg-sem-success px-3 text-sm font-extrabold text-foreground">
         {own ? "جاوبتوا صح" : "جاوبوا صح"}
       </span>
       <div className="flex flex-col items-center gap-[18px] pt-1.5">

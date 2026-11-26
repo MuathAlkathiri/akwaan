@@ -70,7 +70,7 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
           data-step={draft.activeStep}
         >
           <header>
-            <p className="text-sm font-black text-success">إعداد المباراة</p>
+            <p className="text-sm font-black text-foreground">إعداد المباراة</p>
             <h1 className="mt-1 text-3xl font-black text-foreground sm:text-4xl">
               جهّز المباراة كاملة
             </h1>
@@ -92,7 +92,7 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
               shown here rather than inside whichever occurrence is open. */}
           {draft.issue && draft.issue.occurrenceIndex === undefined && (
             <div className="space-y-1 text-center">
-              <p role="alert" className="text-sm font-bold text-destructive">
+              <p role="alert" className="text-sm font-bold text-foreground">
                 {draft.issue.message}
               </p>
               {rolledBack && (
@@ -124,7 +124,7 @@ export function MatchSetupWizard({ initialWorldId }: { initialWorldId?: string }
                 }
               />
               {occurrenceIssue && (
-                <p role="alert" className="text-sm font-bold text-destructive">
+                <p role="alert" className="text-sm font-bold text-foreground">
                   {occurrenceIssue}
                 </p>
               )}

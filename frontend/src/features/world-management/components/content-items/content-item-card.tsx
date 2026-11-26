@@ -73,7 +73,7 @@ export function ContentItemCard({
             aria-label="حذف العنصر"
             onClick={onDelete}
           >
-            <Trash2 className="size-3.5 text-destructive" />
+            <Trash2 className="size-3.5 text-foreground" />
           </Button>
         </div>
       </div>

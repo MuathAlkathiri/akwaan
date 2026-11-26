@@ -238,7 +238,7 @@ export function MovingXoScreen({
                 className="flex flex-col gap-5"
               >
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <span className="inline-flex min-h-10 -rotate-3 items-center rounded-[10px] border-[3px] border-success bg-white px-4 text-lg font-extrabold text-success">
+                  <span className="inline-flex min-h-10 -rotate-3 items-center rounded-[10px] border-[3px] border-brand-navy bg-sem-success px-4 text-lg font-extrabold text-foreground">
                     جاوبوا صح
                   </span>
                   {timer}

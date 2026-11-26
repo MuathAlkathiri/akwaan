@@ -202,7 +202,7 @@ export function AnswerPayloadFields({
                 </div>
                 {colourUnusable && (
                   <p
-                    className="text-xs font-medium text-destructive"
+                    className="text-xs font-medium text-foreground"
                     data-testid="closest-colour-unusable"
                   >
                     الأبيض والأسود والرمادي ما لهم مكان على دائرة الألوان.

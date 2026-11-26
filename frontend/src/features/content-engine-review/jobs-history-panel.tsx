@@ -454,7 +454,7 @@ export function JobsHistoryPanel({
           )}
 
           {jobsQuery.isError && (
-            <div role="alert" data-testid="jobs-load-error" className="rounded-xl border border-destructive/40 p-4 text-sm">
+            <div role="alert" data-testid="jobs-load-error" className="rounded-xl border border-brand-navy p-4 text-sm">
               <p>تعذر تحميل سجل الدفعات.</p>
               <button type="button" onClick={() => void jobsQuery.refetch()} className="mt-2 rounded-lg border px-3 py-2">إعادة المحاولة</button>
             </div>
@@ -615,7 +615,7 @@ export function JobsHistoryPanel({
         <div className="min-w-0 lg:col-span-6">
           {selectedJobId && selectedJobDetailQuery.isLoading && <p role="status">جارٍ تحميل تفاصيل الدفعة…</p>}
           {selectedJobId && selectedJobDetailQuery.isError && (
-            <div role="alert" data-testid="job-detail-load-error" className="mb-3 rounded-xl border border-destructive/40 p-4 text-sm">
+            <div role="alert" data-testid="job-detail-load-error" className="mb-3 rounded-xl border border-brand-navy p-4 text-sm">
               <p>{extractApiError(selectedJobDetailQuery.error, "تعذر تحميل تفاصيل الدفعة").status === 404 ? "لم يُعثر على الدفعة." : "تعذر تحميل تفاصيل الدفعة."}</p>
               <button type="button" onClick={() => void selectedJobDetailQuery.refetch()} className="mt-2 rounded-lg border px-3 py-2">إعادة المحاولة</button>
             </div>

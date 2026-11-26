@@ -64,7 +64,10 @@ export function useMarhalaMovementRoll({
 
   useEffect(() => {
     if (tick === undefined || tick >= CYCLE_TICKS) return;
-    const timer = setTimeout(() => setTick((current) => (current ?? 0) + 1), CYCLE_MS);
+    const timer = setTimeout(
+      () => setTick((current) => (current ?? 0) + 1),
+      CYCLE_MS,
+    );
     return () => clearTimeout(timer);
   }, [tick]);
 
@@ -188,7 +191,9 @@ export function MarhalaMovementRoll({
           "النرد يدور…"
         )}
       </p>
-      <p className="text-xs font-bold text-brand-slate sm:text-sm">{teamName}</p>
+      <p className="text-xs font-bold text-brand-slate sm:text-sm">
+        {teamName}
+      </p>
     </div>
   );
 }

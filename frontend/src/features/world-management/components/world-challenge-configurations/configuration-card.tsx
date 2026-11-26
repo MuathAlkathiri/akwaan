@@ -76,7 +76,7 @@ export function ConfigurationCard({
             title="فصل عن العالم"
             onClick={onDetach}
           >
-            <Link2Off className="size-3.5 text-destructive" />
+            <Link2Off className="size-3.5 text-foreground" />
           </Button>
         </div>
       </div>

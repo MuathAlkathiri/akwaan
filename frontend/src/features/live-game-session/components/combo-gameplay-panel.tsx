@@ -248,7 +248,7 @@ export function ComboGameplayPanel({
             )}
             {view.ownComboBreakArmed && (
               <p
-                className="rounded-[var(--radius)] border border-destructive bg-destructive/10 p-4 text-center font-black text-destructive"
+                className="rounded-[var(--radius)] border border-brand-navy bg-destructive-subtle p-4 text-center font-black text-foreground"
                 data-testid="combo-armed-acknowledgement"
               >
                 كسرتم الكومبو — سيظهر لهم فقط إذا نجوا من هذا السؤال
@@ -444,7 +444,7 @@ function PhoneComboController({
             <div className="flex flex-1 flex-col justify-center gap-3">
               {view.forcedQuestion && (
                 <p
-                  className="font-black text-destructive"
+                  className="font-black text-foreground"
                   data-testid="combo-phone-forced"
                 >
                   الخصم أجبركم تكملون
@@ -543,7 +543,7 @@ function PhoneComboController({
             data-testid="combo-phone-break-reveal"
           >
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
-              <p className="text-2xl font-black text-destructive">
+              <p className="text-2xl font-black text-foreground">
                 الخصم أجبركم تكملون
               </p>
               <p className="text-sm font-bold text-muted-foreground">
@@ -614,7 +614,7 @@ function PhoneComboController({
             >
               {broken ? (
                 <>
-                  <p className="text-3xl font-black text-destructive">
+                  <p className="text-3xl font-black text-foreground">
                     انكسر الكومبو
                   </p>
                   <p className="font-bold text-muted-foreground">
@@ -758,7 +758,7 @@ function RunRecap({
                 {run ? describeComboRunEnd(run) : "لم تلعب بعد"}
               </p>
               {run?.brokenByTeamId ? (
-                <p className="text-sm font-bold text-destructive">
+                <p className="text-sm font-bold text-foreground">
                   {`على يد ${teamName(run.brokenByTeamId)}`}
                 </p>
               ) : null}

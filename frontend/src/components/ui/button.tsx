@@ -17,7 +17,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-muted hover:text-foreground",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "border-2 border-brand-navy bg-destructive text-destructive-foreground hover:brightness-95",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

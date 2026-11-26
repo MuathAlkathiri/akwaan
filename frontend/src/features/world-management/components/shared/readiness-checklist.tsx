@@ -14,7 +14,7 @@ const STATE_STYLE: Record<
 > = {
   ok: { icon: CheckCircle2, className: "text-[#15803D]", label: "مكتمل" },
   warning: { icon: AlertTriangle, className: "text-amber-600", label: "تنبيه" },
-  blocker: { icon: XCircle, className: "text-destructive", label: "ناقص" },
+  blocker: { icon: XCircle, className: "text-foreground", label: "ناقص" },
 };
 
 /**

@@ -36,7 +36,10 @@ export function UnifiedMatchComplete({ actor }: { actor: MatchActor }) {
     : undefined;
 
   const winnerIdentity = winner
-    ? teamIdentityOf(winner.teamId, standings.map((team) => ({ id: team.teamId })))
+    ? teamIdentityOf(
+        winner.teamId,
+        standings.map((team) => ({ id: team.teamId })),
+      )
     : undefined;
 
   const everyTeam = standings.map((team) => ({ id: team.teamId }));

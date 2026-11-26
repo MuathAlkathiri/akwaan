@@ -188,7 +188,7 @@ export function ConfigurationForm({
         </Select>
 
         {!loadingChallengeTypes && !selectable.length && !configuration && (
-          <p className="mt-1 text-xs text-destructive">
+          <p className="mt-1 text-xs text-foreground">
             لا توجد مكانيكا نشطة أخرى متاحة. فعّل مكانيكا عامة أو استبدل أحد
             تحديات اللوحة.
           </p>

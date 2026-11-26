@@ -39,14 +39,15 @@ export interface Hsl {
  */
 export const RESERVED_COLORS = {
   /**
-   * Full-surface "correct" reveal only — never persistent chrome.
-   *
-   * Darker than a typical mint on purpose: at the mint end it cannot carry legible
-   * text and it cannot be told from the cream room, so it fails in both directions.
+   * "Correct": mint `#5FD6A0`, worn like the gold — a fill with a navy border
+   * and navy text, never as coloured text (identity rule, 2026-11-26).
    */
-  success: { hue: 160, saturation: 69, lightness: 29 },
-  /** Full-surface "wrong" reveal only — never persistent chrome. */
-  error: { hue: 351, saturation: 63, lightness: 38 },
+  success: { hue: 153, saturation: 59, lightness: 61 },
+  /**
+   * "Wrong": coral `#FF7B6B`, the same treatment. Deliberately warm, so it is
+   * not confused with the second team's pink.
+   */
+  error: { hue: 6, saturation: 100, lightness: 71 },
   /** Timer, system chrome and brand. */
   gold: { hue: 40, saturation: 57, lightness: 63 },
 } as const satisfies Record<string, Hsl>;
@@ -96,16 +97,20 @@ export const TEAM_COLORS: readonly TeamColor[] = [
   {
     id: "blue",
     label: "الأزرق",
-    base: { hue: 226, saturation: 72, lightness: 50 },
-    onLight: { hue: 226, saturation: 72, lightness: 44 },
-    onDark: { hue: 226, saturation: 72, lightness: 66 },
+    // `#1F5BFF`, the first team's dot on the approved boards.
+    base: { hue: 224, saturation: 100, lightness: 56 },
+    onLight: { hue: 224, saturation: 100, lightness: 45 },
+    onDark: { hue: 224, saturation: 100, lightness: 70 },
   },
   {
     id: "red",
     label: "الأحمر",
-    base: { hue: 358, saturation: 72, lightness: 58 },
-    onLight: { hue: 358, saturation: 72, lightness: 42 },
-    onDark: { hue: 358, saturation: 72, lightness: 60 },
+    // `#E00B6E`, the second team's dot on the approved boards: a pink, kept
+    // well clear of the coral that means "wrong". The id stays `red` because
+    // stored sessions carry it.
+    base: { hue: 332, saturation: 91, lightness: 46 },
+    onLight: { hue: 332, saturation: 91, lightness: 40 },
+    onDark: { hue: 332, saturation: 91, lightness: 66 },
   },
 ];
 

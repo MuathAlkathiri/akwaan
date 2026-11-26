@@ -83,10 +83,8 @@ export function ResolutionOutcome({
     <p
       data-outcome-tone={tone}
       className={cn(
-        "inline-flex min-h-9 -rotate-3 items-center self-start break-words rounded-[10px] border-[3px] bg-white px-3.5 text-base font-extrabold",
-        tone === "correct"
-          ? "border-success text-success"
-          : "border-sem-error text-sem-error",
+        "inline-flex min-h-9 -rotate-3 items-center self-start break-words rounded-[10px] border-[3px] border-brand-navy px-3.5 text-base font-extrabold text-sem-reveal-foreground",
+        tone === "correct" ? "bg-sem-success" : "bg-sem-error",
       )}
     >
       {children}

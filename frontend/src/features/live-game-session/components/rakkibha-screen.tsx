@@ -108,13 +108,13 @@ export function RakkibhaScreen({
 
         {completed && (
           <div className="rounded-[var(--radius)] bg-success-subtle p-5 text-center">
-            <p className="text-xl font-black text-success">
+            <p className="text-xl font-black text-foreground">
               {result?.tie
                 ? "تعادل — لا نقطة لأي فريق"
                 : `فاز ${teams.get(String(result?.winnerTeamId)) ?? ""}`}
             </p>
             {!result?.tie && result?.winnerTeamId && (
-              <p className="mt-1 font-bold text-success">+1 نقطة مباراة</p>
+              <p className="mt-1 font-bold text-foreground">+1 نقطة مباراة</p>
             )}
           </div>
         )}
