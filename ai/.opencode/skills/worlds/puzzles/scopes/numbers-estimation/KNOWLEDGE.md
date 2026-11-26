@@ -393,6 +393,7 @@
 | 28 | `number-riddle` | فزورة رقمية | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 29 | `battery-level` | شحن الجوال | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 | 30 | `copy-the-mark` | انقل العلامة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
+| 31 | `colour-recall` | تذكّر اللون | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Colour Slider |
 
 ---
 
@@ -594,6 +595,14 @@ or stored is blocked by the screen (`COMPOSED_VISUAL_MISSING`).
 |---|---|---|---|
 | `battery-level` | A phone battery with no number, charged as one solid block | كم نسبة شحن هذا الجوال؟ | فاضية · مليانة |
 | `copy-the-mark` | A plain line with one mark and no ticks | حط مؤشرك في نفس مكان العلامة على الخط. | أول الخط · آخر الخط |
+| `colour-recall` | One thing in one colour, or three things in three colours a quarter of the wheel apart | وش كان لون البالون؟ | the colour slider |
+
+`colour-recall` is «تذكّر اللون»: the picture is shown in colour for 3 seconds
+(one thing) or 5 (three things), then in grey, and each team finds the colour
+again on the colour slider. The colour drawn is exactly the colour the phone
+shows for the same hue. Only everyday things are drawn — never a character or
+a brand. It sits in this Scope until «الملاحظة والخدع» has a family list of its
+own, which is where it belongs.
 
 ## 12. Machine-Readable Family Catalog
 
@@ -1151,6 +1160,23 @@ out of generation; `pausedReason` says why.
       "name": "انقل العلامة",
       "description": "خط مرسوم عليه علامة واحدة، والمطلوب وضع المؤشر في نفس موضعها على السلايدر. المحرك يرسم الصورة ويحدد الجواب بنفسه.",
       "playerSolve": "نقل موضع نسبي من خط مرسوم إلى السلايدر بالعين.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ]
+    },
+    {
+      "familyKey": "colour-recall",
+      "name": "تذكّر اللون",
+      "description": "رسمة لشيء واحد أو ثلاثة أشياء ملوّنة تظهر ثواني ثم تصير رمادية، والمطلوب تذكّر لون شيء منها على سلايدر الألوان. المحرك يرسم الصورة ويحدد اللون بنفسه.",
+      "playerSolve": "حفظ اللون وهو ظاهر ثم إيجاده على سلايدر الألوان.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {

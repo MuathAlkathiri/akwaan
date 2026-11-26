@@ -1,7 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
 import {
-  COMPOSED_SCALE_MAX,
-  COMPOSED_SCALE_MIN,
   ComposedVisualFamily,
   composeVisual,
 } from '../domain/composed-visuals';
@@ -72,16 +70,7 @@ export class ComposedVisualService {
       draft: {
         prompt: { ar: visual.prompt },
         answerPayload: { mode: 'closest', correctValue: visual.value },
-        mechanicPayload: {
-          closestSlider: {
-            mode: 'between-anchors',
-            min: COMPOSED_SCALE_MIN,
-            max: COMPOSED_SCALE_MAX,
-            step: 1,
-            leftAnchor: visual.leftAnchor,
-            rightAnchor: visual.rightAnchor,
-          },
-        },
+        mechanicPayload: { closestSlider: visual.slider },
         ...(media ? { media } : {}),
         metadata: {
           notes: 'Composed by the engine: picture and answer share one value.',
@@ -91,8 +80,13 @@ export class ComposedVisualService {
         concept: visual.concept,
         answerBasis: 'reasoning',
         playerReasoningStrategy:
-          'Judge the drawn share by eye and place the mark at the same share of the slider.',
-        domainDescription: 'a share of the whole, 0 to 100',
+          visual.familyKey === 'colour-recall'
+            ? 'Hold the colour in mind while it is shown, then find it again on the colour slider.'
+            : 'Judge the drawn share by eye and place the mark at the same share of the slider.',
+        domainDescription:
+          visual.familyKey === 'colour-recall'
+            ? 'a hue on the colour wheel, 0 to 360'
+            : 'a share of the whole, 0 to 100',
         stepsFromMin: visual.value,
         // What the screen and a reviewer read to know this item has no
         // author, and whether its picture exists.
