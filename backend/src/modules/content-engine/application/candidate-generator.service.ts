@@ -1428,6 +1428,16 @@ export class CandidateGeneratorService {
         `pinned generation plan declares ${input.generationPlan.slots.length} slots but requested count is ${count}`,
       );
     }
+    // A batch whose every slot is drawn by the engine has nothing for a
+    // model to write: what it returned would be discarded slot by slot. So
+    // nobody is asked, nothing is reserved, and the batch costs nothing.
+    const plannedSlots = input.generationPlan?.slots ?? [];
+    const fullyComposed =
+      Boolean(this.composedVisuals) &&
+      plannedSlots.length >= count &&
+      plannedSlots
+        .slice(0, count)
+        .every((slot) => isComposedFamily(slot.familyKey));
     const prompt = this.buildPrompt(input.context, count, answerMode, {
       difficulty: resolvedDifficulty,
       ryoDifficultyTargets: spec?.ryoDifficultyTargets,
@@ -1465,19 +1475,21 @@ export class CandidateGeneratorService {
         ? spec.reasoningEffort
         : resolveReasoningEffort(this.config);
 
-    await this.budget.reserve({
-      reservationId,
-      jobId: input.jobId,
-      stage: 'generation',
-      provider: providerName,
-      model,
-      // A token estimate from characters. Crude, and deliberately generous:
-      // under-reserving is what lets a bill land above the cap.
-      expected: {
-        promptTokens: estimateGenerationPromptTokens(prompt),
-        maxOutputTokens: outputTokenBudget,
-      },
-    });
+    if (!fullyComposed) {
+      await this.budget.reserve({
+        reservationId,
+        jobId: input.jobId,
+        stage: 'generation',
+        provider: providerName,
+        model,
+        // A token estimate from characters. Crude, and deliberately generous:
+        // under-reserving is what lets a bill land above the cap.
+        expected: {
+          promptTokens: estimateGenerationPromptTokens(prompt),
+          maxOutputTokens: outputTokenBudget,
+        },
+      });
+    }
 
     const hasCreativeSlots = Boolean(input.generationPlan?.slots?.length);
     const baseSchema =
@@ -1494,79 +1506,84 @@ export class CandidateGeneratorService {
       ? schemaWithCreativeSlots(baseSchema)
       : baseSchema;
 
-    let raw: string;
-    try {
-      const result = await provider.generateText({
-        model,
-        promptVersion,
-        prompt,
-        responseSchema,
-        omitTemperature,
-        ...(temperature !== undefined ? { temperature } : {}),
-        ...(reasoningEffort ? { reasoningEffort } : {}),
-        // The same number that was reserved. Sending it makes the reservation
-        // an actual ceiling rather than a guess: without `max_tokens` the
-        // provider may bill for more output than the budget committed, and the
-        // cap is checked when money is reserved, not when it is settled.
-        maxOutputTokens: outputTokenBudget,
-      });
-      raw = result.text;
-      await this.budget.settle({
-        reservationId,
-        usage: result.usage,
-        // Measured, not inferred: reasoning-token splits and the provider's
-        // own cost figure. Recorded beside the settlement so a reasoning
-        // model's spend is auditable without re-deriving it from totals.
-        ...((result as { diagnostics?: Record<string, unknown> }).diagnostics
-          ? {
-              diagnostics: (result as { diagnostics: Record<string, unknown> })
-                .diagnostics,
-            }
-          : {}),
-      });
-    } catch (error) {
-      // An ambiguous failure is charged, not retried blindly: the provider may
-      // have billed us. The job's bounded attempts decide whether anything is
-      // tried again, and that retry carries a different reservation id.
-      //
-      // The exception is a provider that answered and declined — an HTTP error
-      // carrying an error body. No inference ran, so nothing was billed, and
-      // charging the reservation would overstate spend by its full amount.
-      // The flag is set by the adapter and read structurally rather than by
-      // matching on error types, so no infrastructure class leaks in here; an
-      // unexplained failure has no flag and stays billable.
-      //
-      // A completed request that ran out of output tokens before producing any
-      // visible content is neither: the provider reported the finish and the
-      // usage, so the cost is a fact. It settles at that usage and fails
-      // deterministically — the identical call would exhaust the identical
-      // ceiling, so retrying could only spend the same money again.
-      const exhausted = outputTokensExhaustion(error);
-      if (exhausted) {
+    let raw = '';
+    if (!fullyComposed) {
+      try {
+        const result = await provider.generateText({
+          model,
+          promptVersion,
+          prompt,
+          responseSchema,
+          omitTemperature,
+          ...(temperature !== undefined ? { temperature } : {}),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
+          // The same number that was reserved. Sending it makes the reservation
+          // an actual ceiling rather than a guess: without `max_tokens` the
+          // provider may bill for more output than the budget committed, and the
+          // cap is checked when money is reserved, not when it is settled.
+          maxOutputTokens: outputTokenBudget,
+        });
+        raw = result.text;
         await this.budget.settle({
           reservationId,
-          usage: exhausted.usage,
-          diagnostics: { ...exhausted.evidence },
+          usage: result.usage,
+          // Measured, not inferred: reasoning-token splits and the provider's
+          // own cost figure. Recorded beside the settlement so a reasoning
+          // model's spend is auditable without re-deriving it from totals.
+          ...((result as { diagnostics?: Record<string, unknown> }).diagnostics
+            ? {
+                diagnostics: (
+                  result as { diagnostics: Record<string, unknown> }
+                ).diagnostics,
+              }
+            : {}),
         });
-        throw new ProviderOutputTokensExhaustedError(
+      } catch (error) {
+        // An ambiguous failure is charged, not retried blindly: the provider may
+        // have billed us. The job's bounded attempts decide whether anything is
+        // tried again, and that retry carries a different reservation id.
+        //
+        // The exception is a provider that answered and declined — an HTTP error
+        // carrying an error body. No inference ran, so nothing was billed, and
+        // charging the reservation would overstate spend by its full amount.
+        // The flag is set by the adapter and read structurally rather than by
+        // matching on error types, so no infrastructure class leaks in here; an
+        // unexplained failure has no flag and stays billable.
+        //
+        // A completed request that ran out of output tokens before producing any
+        // visible content is neither: the provider reported the finish and the
+        // usage, so the cost is a fact. It settles at that usage and fails
+        // deterministically — the identical call would exhaust the identical
+        // ceiling, so retrying could only spend the same money again.
+        const exhausted = outputTokensExhaustion(error);
+        if (exhausted) {
+          await this.budget.settle({
+            reservationId,
+            usage: exhausted.usage,
+            diagnostics: { ...exhausted.evidence },
+          });
+          throw new ProviderOutputTokensExhaustedError(
+            'generation',
+            exhausted.evidence,
+          );
+        }
+        const providerRejected =
+          (error as { definitelyNotBilled?: unknown })?.definitelyNotBilled ===
+          true;
+        const evidence = providerEvidenceOf(error);
+        await this.budget.settle({
+          reservationId,
+          ...(providerRejected
+            ? { providerRejected: true }
+            : { timedOut: true }),
+          // Recorded beside the conservative settlement; never changes the charge.
+          ...(evidence ? { diagnostics: { ...evidence } } : {}),
+        });
+        throw new AmbiguousProviderOutcomeError(
           'generation',
-          exhausted.evidence,
+          error instanceof Error ? error.message : String(error),
         );
       }
-      const providerRejected =
-        (error as { definitelyNotBilled?: unknown })?.definitelyNotBilled ===
-        true;
-      const evidence = providerEvidenceOf(error);
-      await this.budget.settle({
-        reservationId,
-        ...(providerRejected ? { providerRejected: true } : { timedOut: true }),
-        // Recorded beside the conservative settlement; never changes the charge.
-        ...(evidence ? { diagnostics: { ...evidence } } : {}),
-      });
-      throw new AmbiguousProviderOutcomeError(
-        'generation',
-        error instanceof Error ? error.message : String(error),
-      );
     }
 
     // Re-check the lease *after* the call: a slow call may have outlived it,
@@ -1576,10 +1593,12 @@ export class CandidateGeneratorService {
       throw new LeaseLostError(input.jobId, input.leaseEpoch);
     }
 
-    const parsed = this.parse(raw, count, answerMode, {
-      requireSlotIdentity: hasCreativeSlots,
-      mechanicKey: input.context.mechanicKey,
-    });
+    const parsed: ParsedCandidate[] = fullyComposed
+      ? Array.from({ length: count }, () => ({ draft: {}, factualClaims: [] }))
+      : this.parse(raw, count, answerMode, {
+          requireSlotIdentity: hasCreativeSlots,
+          mechanicKey: input.context.mechanicKey,
+        });
     const saved: GeneratedCandidate[] = [];
     const effectiveContextHash = spec?.contextHash ?? input.context.contextHash;
 

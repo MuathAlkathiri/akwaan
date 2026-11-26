@@ -705,6 +705,14 @@ export class ContentEngineOrchestratorService {
     const compatibility = row.compatibilityEvaluation as {
       preDraft?: { blockers?: unknown[] };
     } | null;
+    // An item the engine drew is its picture: a judge that reads only the
+    // words would be paid to assess a puzzle it cannot see. The answer is
+    // right by construction, and a person looks at the drawing.
+    if (
+      (row.authoring as { composedVisual?: unknown } | null)?.composedVisual
+    ) {
+      return false;
+    }
     const factState = facts?.state;
     // UNRESOLVED is judge-eligible because retrieval may be switched off
     // (roadmap §30: quality judging decoupled from *disabled* retrieval). A

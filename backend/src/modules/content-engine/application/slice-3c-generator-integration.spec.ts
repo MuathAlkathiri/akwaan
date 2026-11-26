@@ -1043,6 +1043,69 @@ describe('Slice 3C — Generator Integration, Pinned Plans & Family Compliance',
       });
     });
 
+    it('asks no model and reserves nothing when every slot is drawn by the engine', async () => {
+      const base = {
+        ...createDummyPlan([
+          dummySlot(0, 'battery-level'),
+          dummySlot(1, 'copy-the-mark'),
+        ]),
+        mechanicKey: 'closest',
+        scopeKey: 'numbers-estimation',
+      };
+      const { digest: _stale, ...rest } = base;
+      void _stale;
+      const plan = { ...rest, digest: computeGenerationPlanDigest(rest) };
+      const updateOne = jest.fn(() => ({
+        exec: async () => ({ matchedCount: 1 }),
+      }));
+      const reserve = jest.fn();
+      const settle = jest.fn();
+      const generateText = jest.fn();
+      const compose = jest.fn(async (familyKey: string) => ({
+        draft: { prompt: { ar: `drawn ${familyKey}` } },
+        factualClaims: ['drawn'],
+        authoring: { composedVisual: { familyKey } },
+      }));
+      const generator = new CandidateGeneratorService(
+        { updateOne } as never,
+        { holdsLease: async () => true } as never,
+        { reserve, settle } as never,
+        {
+          get: (key: string) =>
+            key === 'ENGINE_GENERATION_MODEL' ? 'fake-model' : undefined,
+        } as never,
+        { generateText } as never,
+        { compose } as never,
+      );
+
+      await generator.generate({
+        jobId: 'job-composed-2',
+        leaseEpoch: 1,
+        attempt: 1,
+        context: {
+          ...dummyContext(),
+          mechanicKey: 'closest',
+          scopeKey: 'numbers-estimation',
+        } as ResolvedAuthoringContext,
+        count: 2,
+        generationPlan: plan as GenerationPlan,
+      });
+
+      expect(generateText).not.toHaveBeenCalled();
+      expect(reserve).not.toHaveBeenCalled();
+      expect(settle).not.toHaveBeenCalled();
+      expect(compose).toHaveBeenCalledTimes(2);
+      const saved = (
+        updateOne.mock.calls as unknown as Array<
+          [unknown, { $set: Record<string, any> }]
+        >
+      ).map(([, update]): Record<string, any> => update.$set);
+      expect(saved.map((row) => row.draft.prompt.ar)).toEqual([
+        'drawn battery-level',
+        'drawn copy-the-mark',
+      ]);
+    });
+
     it('fails closed with SLOT_IDENTITY_MISSING when creative-slot job candidate lacks slotIndex', () => {
       const generator = new CandidateGeneratorService(
         {} as never,
