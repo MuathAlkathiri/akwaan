@@ -141,9 +141,12 @@ describe("the phone is a decision controller", () => {
     renderPhone();
     const keep = screen.getByTestId("top5-keep");
     const give = screen.getByTestId("top5-give");
-    // Both are legitimate plays, so they carry the same weight.
-    expect(give.className).not.toContain("destructive");
-    expect(keep.className).toBe(give.className);
+    // Both are legitimate plays: same size, same sticker, and neither is red.
+    // Keep wears the gold because it is the move a team makes for itself.
+    for (const button of [keep, give]) {
+      expect(button.className).not.toMatch(/destructive|coral|sem-error/);
+      expect(button.className).toContain("min-h-[104px]");
+    }
   });
 
   it("sends the mechanic's exact command for احتفظ", () => {
@@ -186,7 +189,7 @@ describe("the phone is a decision controller", () => {
     expect(screen.getByTestId("top5-keep")).toBeDisabled();
     expect(screen.getByTestId("top5-give")).toBeDisabled();
     expect(screen.getByTestId("top5-decider-controls").parentElement)
-      .toHaveTextContent("جارٍ إرسال قراركم…");
+      .toHaveTextContent("نرسل قراركم…");
   });
 
   it("offers no decision at all when the server did not authorize this actor", () => {
@@ -249,23 +252,18 @@ describe("the keep-or-give contract holds: entity name only", () => {
 });
 
 describe("the host is untouched", () => {
-  it("keeps the eyebrow, the card chrome and the distributed-cards history", () => {
+  it("puts the topic in the strip, the card in the middle and each team's cards at its side", () => {
     renderHost();
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent("أفضل 5");
-    expect(screen.getByTestId("challenge-frame")).toHaveTextContent(
-      "البطاقات الموزّعة",
-    );
+    expect(screen.getByTestId("top5-panel")).toHaveTextContent("توب 5");
     expect(screen.getByTestId("top5-current-card").className).toContain(
-      "md:text-5xl",
+      "lg:text-[56px]",
     );
+    expect(screen.getAllByTestId(/^top5-team-cards-/)).toHaveLength(2);
   });
 
-  it("keeps its non-compact frame and its own decision styling", () => {
+  it("keeps the room's own layout and never the phone's", () => {
     renderHost();
-    expect(screen.getByTestId("challenge-frame")).toHaveAttribute(
-      "data-frame-surface",
-      "screen",
-    );
+    expect(screen.queryByTestId("challenge-frame")).toBeNull();
     expect(screen.queryByTestId("mobile-action-area")).toBeNull();
   });
 

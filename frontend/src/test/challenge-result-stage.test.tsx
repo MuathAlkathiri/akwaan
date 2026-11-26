@@ -58,33 +58,26 @@ const ENTRIES = [
   })),
 ];
 
-/** Team A owns three of the real five and two traps; team B the rest. */
+/**
+ * Team A ends with three of the real five and two outsiders; team B the rest.
+ * Listed in deal order. A card is "given" when the team that decided is not the
+ * team that holds it.
+ */
 const OWNERSHIP = [
-  { entryId: "real-1", ownerTeamId: TEAM_A },
-  { entryId: "real-2", ownerTeamId: TEAM_B },
-  { entryId: "real-3", ownerTeamId: TEAM_A },
-  { entryId: "real-4", ownerTeamId: TEAM_B },
-  { entryId: "real-5", ownerTeamId: TEAM_A },
-  { entryId: "trap-1", ownerTeamId: TEAM_A },
-  { entryId: "trap-2", ownerTeamId: TEAM_B },
-  { entryId: "trap-3", ownerTeamId: TEAM_A },
-  { entryId: "trap-4", ownerTeamId: TEAM_B },
-  { entryId: "trap-5", ownerTeamId: TEAM_B },
-];
+  { entryId: "trap-3", ownerTeamId: TEAM_A, actingTeamId: TEAM_A },
+  { entryId: "real-2", ownerTeamId: TEAM_B, actingTeamId: TEAM_A },
+  { entryId: "trap-5", ownerTeamId: TEAM_B, actingTeamId: TEAM_B },
+  { entryId: "real-4", ownerTeamId: TEAM_B, actingTeamId: TEAM_B },
+  { entryId: "real-1", ownerTeamId: TEAM_A, actingTeamId: TEAM_A },
+  { entryId: "trap-1", ownerTeamId: TEAM_A, actingTeamId: TEAM_B },
+  { entryId: "real-5", ownerTeamId: TEAM_A, actingTeamId: TEAM_A },
+  { entryId: "trap-2", ownerTeamId: TEAM_B, actingTeamId: TEAM_B },
+  { entryId: "real-3", ownerTeamId: TEAM_A, actingTeamId: TEAM_A },
+  { entryId: "trap-4", ownerTeamId: TEAM_B, actingTeamId: TEAM_A },
+].map((record, turn) => ({ ...record, turn }));
 
-/** Deliberately not the ranked order: this is the suspense order. */
-const REVEAL_ORDER = [
-  "trap-3",
-  "real-2",
-  "trap-5",
-  "real-4",
-  "real-1",
-  "trap-1",
-  "real-5",
-  "trap-2",
-  "real-3",
-  "trap-4",
-];
+/** The server still mints one; the screen reveals in deal order instead. */
+const REVEAL_ORDER = [...ENTRIES].reverse().map((entry) => entry.id);
 
 function top5Result(
   overrides: Partial<MatchChallengeResult> = {},
@@ -361,11 +354,13 @@ describe("challenge result is an authoritative Match stage", () => {
   });
 });
 
-describe("Top 5 ownership reveal", () => {
+describe("Top 5 reveal", () => {
   const result = top5Result();
   const snapshot = snapshotOf(match({ challengeResult: result }));
+  const count = (teamId: string) =>
+    screen.getByTestId(`top5-live-count-${teamId}`).dataset.count;
 
-  it("starts with every field neutral and no winner", () => {
+  it("starts with every card face down, no points and no winner", () => {
     render(<Top5ResultReveal result={result} snapshot={snapshot} />);
     for (const entry of ENTRIES) {
       expect(
@@ -373,71 +368,84 @@ describe("Top 5 ownership reveal", () => {
       ).toBe("false");
     }
     expect(screen.queryByTestId("top5-winner")).toBeNull();
-    expect(screen.getByTestId(`top5-live-count-${TEAM_A}`).textContent).toBe(
-      "0",
-    );
+    expect(count(TEAM_A)).toBe("0");
+    expect(count(TEAM_B)).toBe("0");
   });
 
-  it("keeps the factual order stable while the colours arrive out of order", () => {
+  it("puts each team's cards in its own column, in the order they were dealt", () => {
     render(<Top5ResultReveal result={result} snapshot={snapshot} />);
-    const ranked = screen.getAllByTestId(/^top5-field-real-/);
-    // Ranked 1..5 in order, regardless of the reveal order.
-    expect(ranked.map((node) => node.getAttribute("data-testid"))).toEqual([
+    const column = screen.getByTestId(`top5-team-column-${TEAM_A}`);
+    expect(
+      within(column)
+        .getAllByTestId(/^top5-field-/)
+        .map((node) => node.getAttribute("data-testid")),
+    ).toEqual([
+      "top5-field-trap-3",
       "top5-field-real-1",
-      "top5-field-real-2",
-      "top5-field-real-3",
-      "top5-field-real-4",
+      "top5-field-trap-1",
       "top5-field-real-5",
+      "top5-field-real-3",
     ]);
   });
 
-  it("reveals ownership in the server's order and scores only the real five", async () => {
+  it("says how each card was acquired: kept, or slipped in by the other team", () => {
+    render(<Top5ResultReveal result={result} snapshot={snapshot} />);
+    const kept = screen.getByTestId("top5-field-trap-3");
+    expect(within(kept).getByTestId("top5-card-kept")).toHaveTextContent(
+      "احتفظوا فيها",
+    );
+    // Team A decided, team B holds it: team A slipped it to them.
+    const given = screen.getByTestId("top5-field-real-2");
+    expect(within(given).getByTestId("top5-card-given")).toHaveTextContent(
+      "دسّها عليهم أسود الشمال",
+    );
+  });
+
+  it("turns the cards one at a time in deal order and pays only the top 5", async () => {
     vi.useFakeTimers();
     try {
       render(
         <Top5ResultReveal result={result} snapshot={snapshot} stepMs={10} />,
       );
-      // First in the reveal order is a trap: it takes a colour and pays nothing.
+      // Card 1 is an outsider: it turns over and pays nothing.
       await act(async () => {
         vi.advanceTimersByTime(10);
       });
-      const firstTrap = screen.getByTestId("top5-field-trap-3");
-      expect(firstTrap.dataset.revealed).toBe("true");
-      expect(firstTrap.getAttribute("data-owner-team")).toBe(TEAM_A);
-      expect(within(firstTrap).queryByTestId("top5-point-badge")).toBeNull();
-      expect(screen.getByTestId(`top5-live-count-${TEAM_A}`).textContent).toBe(
-        "0",
+      const first = screen.getByTestId("top5-field-trap-3");
+      expect(first.dataset.revealed).toBe("true");
+      expect(first.dataset.inTop5).toBe("false");
+      expect(first).toHaveTextContent("برا التوب 5");
+      expect(within(first).queryByTestId("top5-point-badge")).toBeNull();
+      expect(count(TEAM_A)).toBe("0");
+      // Nothing dealt later has been turned.
+      expect(screen.getByTestId("top5-field-real-2").dataset.revealed).toBe(
+        "false",
       );
 
-      // Second is a real entry owned by team B: +1 and the counter moves.
+      // Card 2 is in the top 5 and team B holds it: +1 to team B.
       await act(async () => {
         vi.advanceTimersByTime(10);
       });
-      const firstReal = screen.getByTestId("top5-field-real-2");
-      expect(firstReal.dataset.revealed).toBe("true");
-      expect(within(firstReal).getByTestId("top5-point-badge")).toBeTruthy();
-      expect(screen.getByTestId(`top5-live-count-${TEAM_B}`).textContent).toBe(
-        "1",
-      );
-      // The winner is still withheld: six fields are still neutral.
+      const second = screen.getByTestId("top5-field-real-2");
+      expect(second.dataset.inTop5).toBe("true");
+      expect(second).toHaveTextContent("من التوب 5");
+      expect(within(second).getByTestId("top5-point-badge")).toBeTruthy();
+      expect(count(TEAM_B)).toBe("1");
       expect(screen.queryByTestId("top5-winner")).toBeNull();
 
-      // One step per flush: each tick's state update schedules the next timer.
       for (let step = 0; step < 8; step += 1) {
         await act(async () => {
           vi.advanceTimersByTime(10);
         });
       }
-      expect(screen.getByTestId(`top5-live-count-${TEAM_A}`).textContent).toBe(
-        "3",
-      );
-      expect(screen.getByTestId(`top5-live-count-${TEAM_B}`).textContent).toBe(
-        "2",
+      expect(count(TEAM_A)).toBe("3");
+      expect(count(TEAM_B)).toBe("2");
+      // «نقطتين», never «2 نقاط».
+      expect(screen.getByTestId(`top5-live-count-${TEAM_B}`)).toHaveTextContent(
+        "نقطتين",
       );
       const winner = screen.getByTestId("top5-winner");
       expect(winner.textContent).toContain("أسود الشمال");
-      // The count and its unit are separate pieces set apart by a gap.
-      expect(winner.textContent).toMatch(/3\s*من أفضل 5/);
       expect(winner.textContent).toContain("+1 نقطة للمباراة");
     } finally {
       vi.useRealTimers();
