@@ -3,6 +3,7 @@ import {
   allocateCreativeSlots,
   calculateContinuousSaturationWeight,
   computeExplorationCount,
+  familyCapacity,
 } from './creative-slot-allocator';
 import {
   CreativePlannerError,
@@ -640,6 +641,158 @@ describe('CreativeSlotAllocator (Slice 3A)', () => {
         expect(slot.mechanicFit).toBeDefined();
         expect(slot.selectionReason.length).toBeGreaterThan(0);
       }
+    });
+  });
+  describe('Templates, capacity and the previous batch (2026-11-26)', () => {
+    const variantsOf = (familyIndex: number, count: number) =>
+      Array.from({ length: count }, (_, v) => ({
+        key: `template-${v + 1}`,
+        name: `قالب ${familyIndex}-${v + 1}`,
+        brief: `Scenario ${v + 1} of family ${familyIndex}.`,
+      }));
+    const excellent = (count: number, variants = 0): CanonicalFamilyCatalog => {
+      const catalog = createMockCatalog(count);
+      return {
+        ...catalog,
+        families: catalog.families.map((family, index) => ({
+          ...family,
+          mechanicFit: { 'read-your-opponent': 'EXCELLENT' },
+          ...(variants ? { variants: variantsOf(index + 1, variants) } : {}),
+        })),
+      };
+    };
+    const base = (over: Partial<SlotAllocationInput>): SlotAllocationInput => ({
+      worldKey: 'puzzles',
+      scopeKey: 'wordplay-letters',
+      mechanicKey: 'read-your-opponent',
+      count: 5,
+      difficultyQuotas: { medium: 5 },
+      seed: 'seed-1',
+      ...over,
+    });
+
+    it('writes every slot in a named template, and never one twice while another is left', () => {
+      const result = allocateCreativeSlots(
+        base({
+          catalog: excellent(2, 6),
+          count: 6,
+          difficultyQuotas: { medium: 6 },
+        }),
+      );
+      for (const slot of result.slots) {
+        expect(slot.variantKey).toMatch(/^template-\d$/);
+        expect(slot.creativeAngle).toContain(`[${slot.variantKey}]`);
+        expect(slot.creativeAngle.startsWith('TEMPLATE «')).toBe(true);
+      }
+      for (const familyKey of ['family-1', 'family-2']) {
+        const used = result.slots
+          .filter((slot) => slot.familyKey === familyKey)
+          .map((slot) => slot.variantKey);
+        expect(new Set(used).size).toBe(used.length);
+      }
+    });
+
+    it('leaves a family without templates exactly as it was', () => {
+      const result = allocateCreativeSlots(base({ catalog: excellent(3) }));
+      for (const slot of result.slots) {
+        expect(slot).not.toHaveProperty('variantKey');
+        expect(slot.creativeAngle).not.toContain('TEMPLATE');
+      }
+    });
+
+    it("gives the previous batch's families at most one slot when others can fill the rest", () => {
+      for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
+        const result = allocateCreativeSlots(
+          base({
+            catalog: excellent(6, 4),
+            seed,
+            recent: {
+              familyKeys: ['family-1', 'family-2', 'family-3'],
+              variantKeys: {},
+            },
+          }),
+        );
+        const repeated = result.slots.filter((slot) =>
+          ['family-1', 'family-2', 'family-3'].includes(slot.familyKey),
+        );
+        expect(repeated.length).toBeLessThanOrEqual(1);
+        expect(
+          result.diagnostics.some((line) =>
+            line.startsWith('RECENT_FAMILIES_REUSED'),
+          ),
+        ).toBe(false);
+      }
+    });
+
+    it('rotates templates, and says so, when there are too few other families', () => {
+      const result = allocateCreativeSlots(
+        base({
+          catalog: excellent(2, 6),
+          count: 4,
+          difficultyQuotas: { medium: 4 },
+          recent: {
+            familyKeys: ['family-1', 'family-2'],
+            variantKeys: {
+              'family-1': ['template-1', 'template-2'],
+              'family-2': ['template-1', 'template-2'],
+            },
+          },
+        }),
+      );
+      expect(result.slots).toHaveLength(4);
+      for (const slot of result.slots) {
+        expect(['template-1', 'template-2']).not.toContain(slot.variantKey);
+      }
+      expect(
+        result.diagnostics.some((line) =>
+          line.startsWith('RECENT_FAMILIES_REUSED'),
+        ),
+      ).toBe(true);
+    });
+
+    it('stops drawing a family that is full, and refuses when all are', () => {
+      const catalog = excellent(3, 2); // 2 templates × 6 = 12 each
+      const partlyFull = allocateCreativeSlots(
+        base({
+          catalog,
+          coverage: createMockCoverage({
+            'family-1': { human: 12 },
+            'family-2': { human: 3 },
+            'family-3': { human: 0 },
+          }),
+        }),
+      );
+      expect(
+        partlyFull.slots.some((slot) => slot.familyKey === 'family-1'),
+      ).toBe(false);
+      expect(
+        partlyFull.diagnostics.some((line) =>
+          line.startsWith('FAMILIES_FULL: 1'),
+        ),
+      ).toBe(true);
+
+      expect(() =>
+        allocateCreativeSlots(
+          base({
+            catalog,
+            coverage: createMockCoverage({
+              'family-1': { human: 12 },
+              'family-2': { human: 12 },
+              'family-3': { human: 40 },
+            }),
+          }),
+        ),
+      ).toThrow(/is full \(family-1, family-2, family-3\)/);
+    });
+
+    it('sizes capacity from templates or an explicit number, and caps nothing else', () => {
+      const config = { familyCapacityPerVariant: 6 };
+      expect(familyCapacity({ variants: variantsOf(1, 5) }, config)).toBe(30);
+      expect(familyCapacity({ capacity: 150 }, config)).toBe(150);
+      expect(
+        familyCapacity({ capacity: 9, variants: variantsOf(1, 5) }, config),
+      ).toBe(9);
+      expect(familyCapacity({}, config)).toBe(Number.POSITIVE_INFINITY);
     });
   });
 });

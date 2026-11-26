@@ -1613,6 +1613,11 @@ export class CandidateGeneratorService {
                 mode: assignedSlot.mode,
                 difficulty: assignedSlot.difficulty,
                 cognitiveTask: assignedSlot.cognitiveTask,
+                // The template the slot was written in: what the next
+                // batch reads to choose a different one.
+                ...(assignedSlot.variantKey
+                  ? { variantKey: assignedSlot.variantKey }
+                  : {}),
               },
             }
           : {}),

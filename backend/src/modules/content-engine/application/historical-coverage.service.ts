@@ -1,3 +1,4 @@
+import { RecentSlotUsage } from '../domain/creative-plan.types';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -31,6 +32,9 @@ import {
 } from '../domain/candidate-approval-provenance';
 import { resolveEffectiveCandidateFamilyKey } from '../domain/candidate-identity-metadata';
 
+/** How many of a target's newest jobs are looked through for the last batch. */
+export const RECENT_JOB_LOOKBACK = 5;
+
 @Injectable()
 export class HistoricalCoverageService {
   private readonly logger = new Logger(HistoricalCoverageService.name);
@@ -52,6 +56,62 @@ export class HistoricalCoverageService {
     private readonly challengeTypes: Model<ChallengeType>,
     private readonly authoringContext: AuthoringContextService,
   ) {}
+
+  /**
+   * What the most recent batch for a target drew: its families and the
+   * templates it used in each.
+   *
+   * "Most recent" is the newest job for the same World, Scope and mechanic
+   * that has candidates — a job that has not generated yet (the one being
+   * planned, when the worker plans it) has none and is passed over.
+   */
+  async getRecentSlotUsage(target: {
+    worldKey: string;
+    scopeKey: string;
+    mechanicKey: string;
+  }): Promise<RecentSlotUsage | null> {
+    const jobs = await this.jobs
+      .find({
+        worldKey: target.worldKey,
+        scopeKey: target.scopeKey,
+        mechanicKey: target.mechanicKey,
+      })
+      .sort({ createdAt: -1 })
+      .limit(RECENT_JOB_LOOKBACK)
+      .select({ jobId: 1 })
+      .lean()
+      .exec();
+    for (const job of jobs) {
+      const jobId = (job as { jobId?: unknown }).jobId;
+      if (typeof jobId !== 'string' || !jobId) continue;
+      const rows = await this.candidates
+        .find({ jobId })
+        .select({ authoring: 1 })
+        .lean()
+        .exec();
+      const usage: RecentSlotUsage = { familyKeys: [], variantKeys: {} };
+      for (const row of rows) {
+        const slot = (
+          row as { authoring?: { assignedSlot?: Record<string, unknown> } }
+        ).authoring?.assignedSlot;
+        const familyKey = slot?.familyKey;
+        if (typeof familyKey !== 'string' || !familyKey) continue;
+        if (!usage.familyKeys.includes(familyKey)) {
+          usage.familyKeys.push(familyKey);
+        }
+        const variantKey = slot?.variantKey;
+        if (typeof variantKey === 'string' && variantKey) {
+          const used = (usage.variantKeys[familyKey] ??= []);
+          if (!used.includes(variantKey)) used.push(variantKey);
+        }
+      }
+      if (usage.familyKeys.length > 0) {
+        usage.familyKeys.sort();
+        return usage;
+      }
+    }
+    return null;
+  }
 
   /**
    * Generates a comprehensive historical coverage report for a given Scope.

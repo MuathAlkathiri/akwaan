@@ -5,6 +5,7 @@ import {
   GenerationSlot,
   PlannerDiversityConfig,
   ScopeDiversityConstraint,
+  RecentSlotUsage,
 } from '../domain/creative-plan.types';
 import { allocateCreativeSlots } from '../domain/creative-slot-allocator';
 import { ScopeHistoricalCoverageReport } from '../domain/historical-coverage.types';
@@ -23,6 +24,8 @@ export interface GenerationPlanInput {
   diversityConfig?: Partial<PlannerDiversityConfig> | null;
   scopeDiversityConstraints?: ScopeDiversityConstraint | null;
   seed?: string | null;
+  /** What the previous batch for this target drew; see `RecentSlotUsage`. */
+  recent?: RecentSlotUsage | null;
 }
 
 export interface GenerationPlanMediaIntent {
@@ -209,10 +212,26 @@ export class GenerationPlannerService {
       });
     }
 
+    // What the previous batch for this target drew, so this one differs.
+    // Best effort: without it the batch is planned as before, never refused.
+    let recent: RecentSlotUsage | null | undefined = input.recent;
+    if (recent === undefined && catalog && this.historicalCoverage) {
+      try {
+        recent = await this.historicalCoverage.getRecentSlotUsage?.({
+          worldKey,
+          scopeKey,
+          mechanicKey: (input.mechanicKey ?? '').trim(),
+        });
+      } catch {
+        recent = undefined;
+      }
+    }
+
     return this.plan({
       ...input,
       catalog,
       coverage,
+      recent,
     });
   }
   /**
@@ -302,6 +321,7 @@ export class GenerationPlannerService {
         config: input.diversityConfig ?? undefined,
         scopeConstraints: input.scopeDiversityConstraints ?? undefined,
         seed: input.seed ?? undefined,
+        recent: input.recent ?? undefined,
       });
     }
 
@@ -421,6 +441,11 @@ export class GenerationPlannerService {
         '### 7. PER-QUESTION CREATIVE SLOTS (SLOT ALLOCATOR SPECIFICATION)',
         'Each candidate in the batch MUST correspond strictly to its assigned slot index and canonical family directive:',
         ...slotLines,
+        ...((plan.slots ?? []).some((slot) => slot.variantKey)
+          ? [
+              "A Direction that begins with TEMPLATE names the scenario that slot MUST be written in. It is not a suggestion: do not swap it for the family's usual example, and do not write two slots of one family in the same scenario. Two items of one family must differ in KIND, not only in their numbers or words.",
+            ]
+          : []),
       );
     }
 

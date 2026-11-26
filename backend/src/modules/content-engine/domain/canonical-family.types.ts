@@ -54,8 +54,31 @@ export interface CanonicalFamily {
    * allow it — the same reversible switch as `status`, for one mechanic.
    */
   pausedFor?: string[];
+  /**
+   * Templates («قوالب») inside the family: different scenarios that share its
+   * solve. A family with one example is authored as that example with the
+   * numbers changed; naming several is what makes its items differ in kind.
+   * The planner assigns one per slot and rotates away from the ones the
+   * previous batch used.
+   */
+  variants?: FamilyVariant[];
+  /**
+   * How many approved items this family may hold before the planner stops
+   * drawing it. Absent means the default: a fixed number per variant, or a
+   * small flat number for a family with none.
+   */
+  capacity?: number;
   /** Canonical repo-relative path of the profile where this family was declared. */
   source: string;
+}
+
+export interface FamilyVariant {
+  /** Stable kebab-case identifier, unique inside its family. */
+  key: string;
+  /** Short Arabic name a reviewer recognises. */
+  name: string;
+  /** What this template is, in a sentence the generator can act on. */
+  brief: string;
 }
 
 export const FAMILY_GENERATION_STATUSES = ['active', 'paused'] as const;

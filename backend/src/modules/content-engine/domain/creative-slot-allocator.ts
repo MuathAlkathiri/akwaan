@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import {
   CanonicalFamily,
+  FamilyVariant,
   MechanicFitRating,
   isFamilyPausedFor,
 } from './canonical-family.types';
@@ -350,6 +351,7 @@ export function allocateCreativeSlots(
   const eligibleFamilies: CanonicalFamily[] = [];
   const diagnostics: string[] = [];
   const pausedFamilyKeys: string[] = [];
+  const fullFamilyKeys: string[] = [];
 
   for (const fam of allFamilies) {
     const fit = fam.mechanicFit?.[input.mechanicKey];
@@ -377,7 +379,31 @@ export function allocateCreativeSlots(
       continue;
     }
 
+    // Full: the library already holds as many approved items of this family
+    // as its templates can carry without repeating themselves.
+    const approved =
+      input.coverage?.families?.[fam.familyKey]?.humanApprovedCount ??
+      input.coverage?.families?.[fam.familyKey]?.capacityIndicator
+        ?.humanApprovedCount ??
+      0;
+    if (approved >= familyCapacity(fam, config)) {
+      fullFamilyKeys.push(fam.familyKey);
+      continue;
+    }
+
     eligibleFamilies.push(fam);
+  }
+
+  if (eligibleFamilies.length === 0 && fullFamilyKeys.length > 0) {
+    throw new CreativePlannerError(
+      'NO_COMPATIBLE_FAMILIES_FOR_MECHANIC',
+      `Every family that fits mechanic "${input.mechanicKey}" in scope "${input.scopeKey}" is full (${fullFamilyKeys.join(', ')}). Add templates or families before generating more.`,
+      {
+        fullFamilyKeys,
+        mechanicKey: input.mechanicKey,
+        scopeKey: input.scopeKey,
+      },
+    );
   }
 
   if (eligibleFamilies.length === 0) {
@@ -528,6 +554,25 @@ export function allocateCreativeSlots(
 
   const slots: GenerationSlot[] = [];
 
+  // The previous batch for this target. A family it used may take at most
+  // `maxSlotsFromRecentFamilies` slots here, so two batches in a row are
+  // never the same batch with the numbers changed.
+  const recentFamilies = new Set(input.recent?.familyKeys ?? []);
+  let recentSlotsUsed = 0;
+  let recentRuleRelaxed = false;
+  const awayFromRecent = (pool: WeightedFamily[]): WeightedFamily[] => {
+    if (
+      recentFamilies.size === 0 ||
+      recentSlotsUsed < config.maxSlotsFromRecentFamilies
+    ) {
+      return pool;
+    }
+    const fresh = pool.filter((wf) => !recentFamilies.has(wf.family.familyKey));
+    if (fresh.length === 0 && pool.length > 0) recentRuleRelaxed = true;
+    return fresh.length > 0 ? fresh : pool;
+  };
+  const variantsUsedInBatch: Record<string, string[]> = {};
+
   for (let slotIndex = 0; slotIndex < input.count; slotIndex++) {
     const mode = slotModes[slotIndex];
     const difficulty = slotDifficulties[slotIndex];
@@ -550,51 +595,56 @@ export function allocateCreativeSlots(
         );
       }
       selectedWf = available[0];
-    } else if (mode === 'exploration') {
-      // Exploration: favor unused families to introduce cognitive variety
-      const unusedFamilies = weightedFamilies.filter(
-        (wf) =>
-          familyUsageCount[wf.family.familyKey] === 0 &&
-          familyUsageCount[wf.family.familyKey] < wf.maxAllowedSlots,
-      );
-
-      const candidatePool =
-        unusedFamilies.length > 0
-          ? unusedFamilies
-          : weightedFamilies.filter(
-              (wf) =>
-                familyUsageCount[wf.family.familyKey] < wf.maxAllowedSlots,
-            );
-
-      selectedWf = pickWeightedFamily(
-        candidatePool.length > 0 ? candidatePool : weightedFamilies,
-        rng,
-        familyUsageCount,
-        true,
-      );
     } else {
-      // Exploitation: standard weighted selection respecting caps
-      const candidatePool = weightedFamilies.filter(
+      // Families with room left in this batch, kept away from the previous
+      // batch's families first — before anything else narrows the pool, so
+      // "unused so far" can never be the reason a recent family comes back.
+      const open = weightedFamilies.filter(
         (wf) => familyUsageCount[wf.family.familyKey] < wf.maxAllowedSlots,
       );
-
+      const allowed = awayFromRecent(open.length > 0 ? open : weightedFamilies);
+      // Exploration favours a family this batch has not used yet.
+      const unused =
+        mode === 'exploration'
+          ? allowed.filter((wf) => familyUsageCount[wf.family.familyKey] === 0)
+          : [];
       selectedWf = pickWeightedFamily(
-        candidatePool.length > 0 ? candidatePool : weightedFamilies,
+        unused.length > 0 ? unused : allowed,
         rng,
         familyUsageCount,
-        false,
+        mode === 'exploration',
       );
     }
 
     familyUsageCount[selectedWf.family.familyKey]++;
+    if (recentFamilies.has(selectedWf.family.familyKey)) recentSlotsUsed++;
+
+    // Which template of the family this slot is written in: one this batch
+    // has not used and the previous batch did not use, while any is left.
+    const variant = pickVariant(
+      selectedWf.family,
+      variantsUsedInBatch[selectedWf.family.familyKey] ?? [],
+      input.recent?.variantKeys?.[selectedWf.family.familyKey] ?? [],
+      rng,
+    );
+    if (variant) {
+      (variantsUsedInBatch[selectedWf.family.familyKey] ??= []).push(
+        variant.key,
+      );
+    }
 
     // Construct slot directive
     const cognitiveTask =
       selectedWf.family.playerSolve?.trim() ||
       `Solve ${selectedWf.family.name} via ${selectedWf.family.modality || 'deductive reasoning'}`;
 
-    const creativeAngle =
-      mode === 'exploitation'
+    const creativeAngle = variant
+      ? `TEMPLATE «${variant.name}» [${variant.key}] — ${variant.brief}${
+          mode === 'exploration'
+            ? ' Stretch it: a framing this template has not had yet.'
+            : ''
+        }`
+      : mode === 'exploitation'
         ? `Core execution: Standard ${input.mechanicKey} interaction pattern emphasizing ${selectedWf.family.name} mechanics.`
         : `Exploratory variation: Cognitive stretch within ${selectedWf.family.name}; introduce novel lateral framing or nuanced challenge.`;
 
@@ -613,7 +663,19 @@ export function allocateCreativeSlots(
       creativeAngle,
       mechanicFit: selectedWf.fitRating,
       selectionReason,
+      ...(variant ? { variantKey: variant.key } : {}),
     });
+  }
+
+  if (fullFamilyKeys.length > 0) {
+    diagnostics.push(
+      `FAMILIES_FULL: ${fullFamilyKeys.length} family(ies) hold all the approved items their templates can carry and were not drawn: ${fullFamilyKeys.join(', ')}`,
+    );
+  }
+  if (recentRuleRelaxed) {
+    diagnostics.push(
+      `RECENT_FAMILIES_REUSED: too few other families to keep this batch to ${config.maxSlotsFromRecentFamilies} slot(s) from the previous batch's families; templates were rotated instead`,
+    );
   }
 
   const distinctFamiliesCount = Object.values(familyUsageCount).filter(
@@ -667,6 +729,47 @@ export function allocateCreativeSlots(
     distinctFamiliesCount,
     diagnostics,
   };
+}
+
+/**
+ * Approved items a family may hold before the planner stops drawing it.
+ *
+ * Only a family that says how much it can carry is capped — by its own
+ * `capacity`, or by a fixed number per template it names. A family that
+ * declares neither is drawn as it always was.
+ */
+export function familyCapacity(
+  family: Pick<CanonicalFamily, 'capacity' | 'variants'>,
+  config: Pick<PlannerDiversityConfig, 'familyCapacityPerVariant'>,
+): number {
+  if (family.capacity !== undefined) return family.capacity;
+  const variants = family.variants?.length ?? 0;
+  return variants > 0
+    ? variants * config.familyCapacityPerVariant
+    : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * The template a slot is written in. Prefers one neither this batch nor the
+ * previous one used; then one this batch has not used; then any.
+ */
+function pickVariant(
+  family: CanonicalFamily,
+  usedInBatch: readonly string[],
+  usedRecently: readonly string[],
+  rng: () => number,
+): FamilyVariant | undefined {
+  const variants = family.variants ?? [];
+  if (variants.length === 0) return undefined;
+  const unusedHere = variants.filter(
+    (variant) => !usedInBatch.includes(variant.key),
+  );
+  const fresh = unusedHere.filter(
+    (variant) => !usedRecently.includes(variant.key),
+  );
+  const pool =
+    fresh.length > 0 ? fresh : unusedHere.length > 0 ? unusedHere : variants;
+  return pool[Math.floor(rng() * pool.length) % pool.length];
 }
 
 /**

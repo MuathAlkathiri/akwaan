@@ -29,6 +29,15 @@ export interface GenerationSlot {
   mechanicFit: MechanicFitRating;
   /** Operational justification for why this family was selected. */
   selectionReason: string;
+  /** The family template this slot must be written in, when it has any. */
+  variantKey?: string;
+}
+
+/** What the previous batch for the same target drew, so the next differs. */
+export interface RecentSlotUsage {
+  familyKeys: string[];
+  /** Templates used, per family. */
+  variantKeys: Record<string, string[]>;
 }
 
 /**
@@ -45,6 +54,10 @@ export interface PlannerDiversityConfig {
   softCapDiscount: number;
   /** Maximum fraction of slots a single family may occupy when catalog has >= 3 eligible families (default: 0.50). */
   maxFamilyBatchShare: number;
+  /** Approved items a family may hold per template before it is no longer drawn (default: 6). */
+  familyCapacityPerVariant: number;
+  /** Slots a batch may give to families the previous batch used (default: 1). */
+  maxSlotsFromRecentFamilies: number;
 }
 
 export const DEFAULT_PLANNER_DIVERSITY_CONFIG: Readonly<PlannerDiversityConfig> =
@@ -54,6 +67,8 @@ export const DEFAULT_PLANNER_DIVERSITY_CONFIG: Readonly<PlannerDiversityConfig> 
     softCapThreshold: 50,
     softCapDiscount: 0.25,
     maxFamilyBatchShare: 0.5,
+    familyCapacityPerVariant: 6,
+    maxSlotsFromRecentFamilies: 1,
   };
 
 /**
@@ -81,6 +96,8 @@ export interface SlotAllocationInput {
   config?: Partial<PlannerDiversityConfig>;
   scopeConstraints?: ScopeDiversityConstraint;
   seed?: string;
+  /** The previous batch for this target; absent means nothing to avoid. */
+  recent?: RecentSlotUsage | null;
 }
 
 /**

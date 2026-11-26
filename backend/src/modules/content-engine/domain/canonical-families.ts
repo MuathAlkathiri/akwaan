@@ -10,6 +10,7 @@ import {
   FamilyResolutionError,
   MECHANIC_FIT_RATINGS,
   MechanicFitRating,
+  FamilyVariant,
 } from './canonical-family.types';
 
 export * from './canonical-family.types';
@@ -262,6 +263,55 @@ export function parseFamilyBlock(
         pausedFor = (item.pausedFor as string[]).map((m) => m.trim()).sort();
       }
 
+      let variants: FamilyVariant[] | undefined;
+      if (item.variants !== undefined) {
+        const raw = item.variants as unknown;
+        const valid =
+          Array.isArray(raw) &&
+          raw.every(
+            (entry) =>
+              entry &&
+              typeof entry === 'object' &&
+              typeof (entry as FamilyVariant).key === 'string' &&
+              /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test((entry as FamilyVariant).key) &&
+              typeof (entry as FamilyVariant).name === 'string' &&
+              Boolean((entry as FamilyVariant).name.trim()) &&
+              typeof (entry as FamilyVariant).brief === 'string' &&
+              Boolean((entry as FamilyVariant).brief.trim()),
+          );
+        const keys = valid
+          ? (raw as FamilyVariant[]).map((entry) => entry.key)
+          : [];
+        if (!valid || new Set(keys).size !== keys.length) {
+          throw new FamilyResolutionError(
+            'INVALID_FAMILY_VARIANTS',
+            source,
+            `variants on family "${familyKey}" must be a list of { key, name, brief } with unique kebab-case keys`,
+          );
+        }
+        variants = (raw as FamilyVariant[]).map((entry) => ({
+          key: entry.key,
+          name: entry.name.trim(),
+          brief: entry.brief.trim(),
+        }));
+      }
+
+      let capacity: number | undefined;
+      if (item.capacity !== undefined) {
+        if (
+          typeof item.capacity !== 'number' ||
+          !Number.isInteger(item.capacity) ||
+          item.capacity < 1
+        ) {
+          throw new FamilyResolutionError(
+            'INVALID_FAMILY_CAPACITY',
+            source,
+            `capacity on family "${familyKey}" must be a positive whole number`,
+          );
+        }
+        capacity = item.capacity;
+      }
+
       families.push({
         familyKey,
         name,
@@ -276,6 +326,8 @@ export function parseFamilyBlock(
         ...(status ? { status } : {}),
         ...(pausedReason ? { pausedReason } : {}),
         ...(pausedFor?.length ? { pausedFor } : {}),
+        ...(variants?.length ? { variants } : {}),
+        ...(capacity !== undefined ? { capacity } : {}),
         source,
       });
     }
@@ -307,6 +359,10 @@ export function computeFamilyCatalogDigest(
     // it had before this field existed.
     ...(f.status === 'paused' ? { status: f.status } : {}),
     ...(f.pausedFor?.length ? { pausedFor: f.pausedFor } : {}),
+    // Templates and capacity shape a plan the same way, and are added the
+    // same way: only when set.
+    ...(f.variants?.length ? { variants: f.variants } : {}),
+    ...(f.capacity !== undefined ? { capacity: f.capacity } : {}),
   }));
 
   return createHash('sha256')
