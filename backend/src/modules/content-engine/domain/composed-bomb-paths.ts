@@ -90,6 +90,34 @@ const STEP: Record<string, [number, number]> = {
   '↓': [0, 1],
 };
 
+/**
+ * Arrows are drawn, never typed: the composer's font has Arabic and digits
+ * but no arrow glyphs, so a «→» in text comes out as an empty box on the
+ * server even where it shows on a laptop.
+ */
+export function arrowIcon(
+  move: string,
+  cx: number,
+  cy: number,
+  size: number,
+  colour = INK,
+): string {
+  const [dx, dy] = STEP[move];
+  const angle = Math.atan2(dy, dx);
+  const half = size / 2;
+  const point = (along: number, across: number) => ({
+    x: round(cx + along * Math.cos(angle) - across * Math.sin(angle)),
+    y: round(cy + along * Math.sin(angle) + across * Math.cos(angle)),
+  });
+  const pair = (p: { x: number; y: number }) => `${p.x},${p.y}`;
+  const tail = point(-half, 0);
+  const neck = point(half * 0.35, 0);
+  return (
+    `<g data-arrow="${move}"><line x1="${tail.x}" y1="${tail.y}" x2="${neck.x}" y2="${neck.y}" stroke="${colour}" stroke-width="${round(size * 0.14)}" stroke-linecap="round"/>` +
+    `<polygon points="${pair(point(half, 0))} ${pair(point(half * 0.2, -half * 0.5))} ${pair(point(half * 0.2, half * 0.5))}" fill="${colour}"/></g>`
+  );
+}
+
 /** Where the arrows take a walker from `start` on a grid; null off the grid. */
 export function walkArrows(
   start: [number, number],
@@ -151,7 +179,7 @@ function arrows(
     body += `<rect x="${W / 2 - 330}" y="${y0 + R * cell + 25}" width="660" height="110" rx="20" fill="#FFF4D6" stroke="${INK}" stroke-width="6"/>`;
     // Read from the right, as Arabic is.
     moves.forEach((move, k) => {
-      body += text(move, W / 2 + 250 - k * 100, y0 + R * cell + 108, 72);
+      body += arrowIcon(move, W / 2 + 250 - k * 100, y0 + R * cell + 80, 64);
     });
     return {
       variant: `arrows:${start.join(',')}:${moves.join('')}`,
@@ -366,7 +394,7 @@ function spinner(
     `<rect x="${W / 2 + 210}" y="${cy - 110}" width="340" height="220" rx="24" fill="#FFF4D6" stroke="${INK}" stroke-width="6"/>` +
     text(label, W / 2 + 380, cy - 10, label.length > 10 ? 34 : 42) +
     text(
-      clockwise ? '↻ مع عقارب الساعة' : '↺ عكس عقارب الساعة',
+      clockwise ? 'مع عقارب الساعة' : 'عكس عقارب الساعة',
       W / 2 + 380,
       cy + 60,
       28,
@@ -419,7 +447,8 @@ function elevator(
     const ey = by + 10 + (floors - 1 - start) * fh;
     body +=
       `<rect data-lift="${start}" x="${bx + 236}" y="${ey + 4}" width="88" height="${fh - 8}" rx="10" fill="${GOLD}" stroke="${INK}" stroke-width="5"/>` +
-      text('▲▼', bx + 280, ey + fh / 2 + 10, 28);
+      `<polygon points="${bx + 280},${ey + 14} ${bx + 266},${ey + 34} ${bx + 294},${ey + 34}" fill="${INK}"/>` +
+      `<polygon points="${bx + 280},${ey + fh - 14} ${bx + 266},${ey + fh - 34} ${bx + 294},${ey + fh - 34}" fill="${INK}"/>`;
     moves.forEach((d, i) => {
       const y = 170 + i * 150;
       body +=
