@@ -160,7 +160,7 @@ export function ChallengePreflight({
   return (
     <section
       dir="rtl"
-      className="flex flex-col gap-[18px] text-brand-navy"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-brand-navy"
       data-testid="challenge-preflight"
     >
       {/* The approved band: the World's picture on one side, who is up next on
@@ -212,20 +212,24 @@ export function ChallengePreflight({
         </div>
       </header>
 
-      <InlineMechanicTutorial
-        key={sessionId + preflight.positionKey}
-        mechanicKey={preflight.challengeKey}
-        worldId={preflight.worldId}
-        worldName={preflight.worldName}
-        occurrenceIndex={preflight.occurrenceIndex}
-        challengeName={preflight.challengeName}
-        {...(preflight.description
-          ? { description: preflight.description }
-          : {})}
-        matchId={match?.id}
-        repeatEncounter={!!repeat}
-        launching={launching}
-      />
+      {/* The explainer owns the middle of the screen, open or closed, so the
+          bottom bar stays where the host is already looking for it. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <InlineMechanicTutorial
+          key={sessionId + preflight.positionKey}
+          mechanicKey={preflight.challengeKey}
+          worldId={preflight.worldId}
+          worldName={preflight.worldName}
+          occurrenceIndex={preflight.occurrenceIndex}
+          challengeName={preflight.challengeName}
+          {...(preflight.description
+            ? { description: preflight.description }
+            : {})}
+          matchId={match?.id}
+          repeatEncounter={!!repeat}
+          launching={launching}
+        />
+      </div>
 
       {/* The approved bottom bar: a pill per team, the join code, and the one
           button that starts the challenge. */}
@@ -257,7 +261,7 @@ export function ChallengePreflight({
                   current === team.teamId ? null : team.teamId,
                 )
               }
-              className="inline-flex min-h-[60px] items-center gap-3 rounded-full border-[3px] border-brand-navy bg-white px-[18px] text-brand-navy shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5"
+              className="inline-flex min-h-[60px] min-w-0 items-center gap-3 rounded-full border-[3px] border-brand-navy bg-white px-[18px] text-brand-navy shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5"
             >
               <i
                 aria-hidden
@@ -266,7 +270,7 @@ export function ChallengePreflight({
                   teamIdentity(TEAM_SLOT_ORDER[i % TEAM_SLOT_ORDER.length]).dot,
                 )}
               />
-              <span className="font-display text-[17px] font-extrabold">
+              <span className="truncate font-display text-[17px] font-extrabold">
                 {teamNames[i] ?? team.teamName}
               </span>
               <span aria-hidden className="inline-flex">
@@ -335,7 +339,7 @@ export function ChallengePreflight({
           aria-busy={launching}
           data-testid="preflight-start"
           className={cn(
-            "ms-auto inline-flex min-h-[68px] items-center gap-3 rounded-full border-[3px] px-8",
+            "ms-auto inline-flex min-h-[68px] shrink-0 items-center gap-3 rounded-full border-[3px] px-8",
             preflight.readyToLaunch && !launching && !cancelling
               ? "border-brand-navy bg-brand-gold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5"
               : "border-brand-dash bg-brand-mist text-brand-plum",

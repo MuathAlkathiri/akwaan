@@ -597,7 +597,9 @@ describe("challenge preflight", () => {
 
   it("names the missing published example and keeps launch available", () => {
     renderRouter(match({ stage: "preflight", preflight: readyPreflight() }));
-    expect(screen.getByRole("status")).toHaveTextContent("ما فيه مثال منشور");
+    expect(screen.getByTestId("explainer-closed")).toHaveTextContent(
+      "ما فيه مثال منشور",
+    );
     expect(screen.getByTestId("preflight-start")).toBeEnabled();
   });
   it("offers a reminder on a repeated encounter in this match", () => {
@@ -605,7 +607,9 @@ describe("challenge preflight", () => {
     value.unified.board.positions[0].status = "completed";
     renderRouter(value);
     fireEvent.click(screen.getByRole("button", { name: "ذكّرني بالقواعد" }));
-    expect(screen.getByRole("status")).toHaveTextContent("ما فيه مثال منشور");
+    expect(screen.getByTestId("explainer-closed")).toHaveTextContent(
+      "ما فيه مثال منشور",
+    );
   });
   describe("launch feedback", () => {
     it("cannot re-fire the launch while one is already pending", async () => {
