@@ -946,8 +946,8 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
     {
       "familyKey": "bomb-put-together",
       "name": "ركّبها وسمّها",
-      "description": "رسمة لشي معروف مقطعة قطع متلخبطة. المطلوب اسمها مكتوب.",
-      "playerSolve": "تركيب الرسمة أو تعديلها في الراس.",
+      "description": "شكلين جوابهم اسم مكتوب: رسمة مقطعة قطع متلخبطة وبعضها مدوّر (المتكسرة 2.0)، وكلمة مقلوبة أو في المراية. ما فيها اختيارات لأن القنبلة ما تعاقب على الجواب الغلط، ولا فيها طي المكعب لأنه موجود في إكس أو وأبطأ من روح القنبلة (قرار المالك 2026-11-27).",
+      "playerSolve": "تركيب الرسمة أو قلب الكلمة في الراس.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -961,14 +961,14 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
       ],
       "variants": [
         {
-          "key": "shattered",
-          "name": "أربع قطع",
-          "brief": "Cut into four tiles, every tile out of place."
+          "key": "shattered-turned",
+          "name": "المتكسرة 2.0",
+          "brief": "Four or six tiles out of place, some turned a quarter or a half."
         },
         {
-          "key": "shattered-fine",
-          "name": "ست قطع",
-          "brief": "Cut into six tiles, every tile out of place."
+          "key": "mirrored-word",
+          "name": "الكلمة المقلوبة",
+          "brief": "The name of a drawn thing written upside down or in a mirror."
         }
       ],
       "capacity": 300
