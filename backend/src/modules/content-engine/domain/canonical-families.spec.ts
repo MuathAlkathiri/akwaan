@@ -552,7 +552,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         others['spot-the-error'] = {
           'moving-xo': ['broken-grid-pattern', 'broken-rule-step'],
           'read-your-opponent': ['false-scale', 'lying-guard'],
-          bomb: ['bomb-odd-one-out', 'bomb-spot-difference'],
+          bomb: ['bomb-odd-one-out'],
           closest: ['wrong-clock-minutes'],
         };
         for (const [scopeKey, byMechanic] of Object.entries(others)) {

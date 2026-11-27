@@ -935,7 +935,9 @@ form: with four choices it is too easy.
           "brief": "The thing is missing from the first picture and shows in the second."
         }
       ],
-      "capacity": 96
+      "capacity": 96,
+      "status": "paused",
+      "pausedReason": "Owner decision 2026-11-27: waits for image-model credit and ENGINE_IMAGE_MODEL on staging; reopen on 2026-11-28."
     }
   ]
 }
