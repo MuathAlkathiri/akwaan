@@ -9,17 +9,23 @@ import {
 } from './composed-kit';
 import { ClosestSlider, dealt, placeable } from './composed-closest-paths';
 import { LETTER_WORDS } from './composed-letters';
+import { dotlessSentences } from './composed-bomb-more';
 
 /**
- * مين أقرب in «الكلمات والحروف»: one family the engine writes for itself —
- * the one word in a row that breaks the rule the rest of the row keeps.
+ * مين أقرب in «الكلمات والحروف»: three families the engine writes for itself
+ * — the letters of a block of writing, one letter's turns inside it, and the
+ * one word in a row that breaks the rule the rest of the row keeps.
  *
- * Counting templates were tried here and taken out again (owner, 2026-11-28):
- * counting the letters of a sentence, or how often a letter turns up in it,
- * is a chore against the clock rather than a puzzle. A Closest question in
- * this Scope has to turn on a rule the player works out, not on enumeration.
+ * The first two were tried once over a single sentence and taken out again
+ * (owner, 2026-11-28): twenty letters is a number a team *can* reach, so it
+ * counts them, and counting against the clock is a chore. They come back at
+ * the size of a paragraph, where counting is out of the question and the
+ * team has to judge the block and throw a number — which is what مين أقرب
+ * is for.
  */
 export const WORD_CLOSEST_VARIANTS = {
+  'letters-in-text': ['six', 'seven', 'eight', 'nine', 'ten', 'longest'],
+  'letter-repeats': ['baa', 'laam', 'raa', 'noon', 'meem', 'mixed'],
   'odd-word-place': [
     'same-last',
     'same-first',
@@ -52,6 +58,7 @@ export interface WordReading {
   svg: string;
 }
 
+const BLUE = '#2F6FE0';
 const GREY = '#6B6558';
 const RULE = '#D8D2C4';
 
@@ -77,6 +84,130 @@ const laneStrip = (cells: number, y: number) => {
 const DOTTED = new Set('بتثجخذزشضظغفقنية'.split(''));
 export const hasDots = (word: string): boolean =>
   word.split('').some((letter) => DOTTED.has(letter));
+
+// ---------------------------------------------------------------------------
+// «كم حرف تقريبًا؟» and «كم مرة يتكرر الحرف؟» — a block too long to count
+// ---------------------------------------------------------------------------
+
+/** The owner's sentences as a player reads them: no brackets, nothing else. */
+export const plainSentences = (): string[] =>
+  dotlessSentences().map((line) => line.replace(/[[\]]/g, '').trim());
+
+export const lettersOf = (lines: readonly string[]): number =>
+  lines.join('').replace(/\s+/g, '').length;
+
+export const countLetter = (lines: readonly string[], letter: string): number =>
+  lines.join('').split(letter).length - 1;
+
+/** Letters a player cannot mistake for another shape. */
+export const SAFE_LETTERS: Record<string, { letter: string; ar: string }> = {
+  baa: { letter: 'ب', ar: 'الباء' },
+  laam: { letter: 'ل', ar: 'اللام' },
+  raa: { letter: 'ر', ar: 'الراء' },
+  noon: { letter: 'ن', ar: 'النون' },
+  meem: { letter: 'م', ar: 'الميم' },
+  seen: { letter: 'س', ar: 'السين' },
+};
+
+const PARAGRAPH_SIZES: Record<string, number> = {
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  longest: 8,
+};
+
+/** Every block of `howMany` sentences in a row. */
+export function paragraphs(howMany: number, longestFirst = false): string[][] {
+  const all = longestFirst
+    ? [...plainSentences()].sort(
+        (one, two) => lettersOf([two]) - lettersOf([one]),
+      )
+    : plainSentences();
+  const out: string[][] = [];
+  for (let i = 0; i + howMany <= all.length; i += 1)
+    out.push(all.slice(i, i + howMany));
+  return out;
+}
+
+/** The block written out, two sentences a line, so it reads as a paragraph. */
+function paragraphSvg(title: string, lines: string[]): string {
+  const rows: string[] = [];
+  for (let i = 0; i < lines.length; i += 2)
+    rows.push(lines.slice(i, i + 2).join(' • '));
+  const size = rows.length > 4 ? 32 : 36;
+  const step = rows.length > 4 ? 76 : 88;
+  const top = 340 - ((rows.length - 1) * step) / 2;
+  return frame(
+    text(title, W / 2, 110, 40) +
+      rows
+        .map((row, index) => text(row, W / 2, top + index * step, size, BLUE))
+        .join(''),
+  );
+}
+
+function composeTextLetters(seed: string, variantKey: string): WordReading {
+  const random = seededRandom(`letters-in-text:${variantKey}:${seed}`);
+  const howMany = PARAGRAPH_SIZES[variantKey] ?? 8;
+  const lines = dealt(
+    seed,
+    paragraphs(howMany, variantKey === 'longest'),
+    random,
+  );
+  const value = lettersOf(lines);
+  return {
+    familyKey: 'letters-in-text',
+    variantKey,
+    variant: `${variantKey}:${value}:${lines[0]}`,
+    value,
+    prompt: 'كم حرف تقريبًا في الكلام المكتوب؟ المسافات ما تنعد.',
+    slider: { mode: 'numeric-range', min: 0, max: 300, step: 1, unit: 'حرف' },
+    altText: 'فقرة من عدة جمل عربية مكتوبة',
+    concept:
+      'Guess the letters of a block of writing too long to count through.',
+    strategy:
+      'Judge the letters of one line, then reckon for the lines below it.',
+    domainDescription: 'letters in the writing, 0 to 300',
+    factualClaim: `These ${howMany} sentences are written with ${value} letters.`,
+    svg: paragraphSvg('كم حرف تقريبًا في الكلام المكتوب؟', lines),
+  };
+}
+
+function composeRepeats(seed: string, variantKey: string): WordReading {
+  const random = seededRandom(`letter-repeats:${variantKey}:${seed}`);
+  const named = SAFE_LETTERS[variantKey];
+  const choices = named ? [named] : Object.values(SAFE_LETTERS);
+  const fits: Array<[string[], { letter: string; ar: string }]> = [];
+  for (const howMany of [8, 9, 10])
+    for (const lines of paragraphs(howMany))
+      for (const one of choices) {
+        const found = countLetter(lines, one.letter);
+        if (found >= 8 && found <= 34) fits.push([lines, one]);
+      }
+  const [lines, letter] = fits.length
+    ? dealt(seed, fits, random)
+    : [paragraphs(8)[0], SAFE_LETTERS.laam];
+  const value = countLetter(lines, letter.letter);
+  return {
+    familyKey: 'letter-repeats',
+    variantKey,
+    variant: `${variantKey}:${letter.letter}:${value}:${lines[0]}`,
+    value,
+    prompt: `كم مرة تقريبًا يتكرر حرف ${letter.ar} في الكلام المكتوب؟`,
+    slider: { mode: 'numeric-range', min: 0, max: 40, step: 1, unit: 'مرة' },
+    altText: 'فقرة من عدة جمل عربية مكتوبة',
+    concept: 'Guess how often one letter turns up across a block of writing.',
+    strategy:
+      'Count the letter in one line, then reckon for the lines below it.',
+    domainDescription: 'turns of the letter, 0 to 40',
+    factualClaim: `The letter ${letter.letter} appears ${value} times in these ${lines.length} sentences.`,
+    svg: paragraphSvg(
+      `كم مرة تقريبًا يتكرر حرف ${letter.ar} في الكلام المكتوب؟`,
+      lines,
+    ),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // «وين الكلمة الغريبة؟» — a row on one rule, with one word off it
@@ -203,5 +334,12 @@ export function composeWordClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
-  return composeOddWord(seed, chosen);
+  switch (familyKey) {
+    case 'letters-in-text':
+      return composeTextLetters(seed, chosen);
+    case 'letter-repeats':
+      return composeRepeats(seed, chosen);
+    default:
+      return composeOddWord(seed, chosen);
+  }
 }

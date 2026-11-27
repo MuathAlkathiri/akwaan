@@ -161,12 +161,12 @@ const KINDS: Record<string, { draw: Draw; ar: string; fill: string }> = {
 // ---------------------------------------------------------------------------
 
 const CLUTTER_SETUPS: Record<string, { want: number[]; others: number }> = {
-  stars: { want: [9, 11, 13, 15], others: 16 },
-  circles: { want: [10, 12, 14, 16], others: 16 },
-  triangles: { want: [8, 10, 12, 14], others: 16 },
-  squares: { want: [9, 11, 13, 15], others: 16 },
-  mixed: { want: [8, 10, 12, 14], others: 22 },
-  dense: { want: [14, 16, 18, 20], others: 24 },
+  stars: { want: [34, 42, 50, 58], others: 46 },
+  circles: { want: [38, 46, 54, 62], others: 44 },
+  triangles: { want: [30, 38, 46, 54], others: 48 },
+  squares: { want: [34, 42, 50, 58], others: 46 },
+  mixed: { want: [28, 36, 44, 52], others: 56 },
+  dense: { want: [48, 58, 68, 78], others: 62 },
 };
 
 function composeClutter(seed: string, variantKey: string): ObservationReading {
@@ -183,9 +183,9 @@ function composeClutter(seed: string, variantKey: string): ObservationReading {
   const spots: Array<[number, number, number, number]> = [];
   for (let i = 0; i < value + setup.others; i += 1)
     spots.push([
-      150 + random() * 900,
-      200 + random() * 380,
-      25 + random() * 16,
+      130 + random() * 940,
+      188 + random() * 404,
+      15 + random() * 11,
       random() * Math.PI,
     ]);
   const targets = new Set(
@@ -207,15 +207,15 @@ function composeClutter(seed: string, variantKey: string): ObservationReading {
     variantKey,
     variant: `${variantKey}:${kindKey}:${value}`,
     value,
-    prompt: `كم ${kind.ar} في الصورة؟`,
-    slider: { mode: 'numeric-range', min: 0, max: 30, step: 1, unit: 'شكل' },
+    prompt: `كم ${kind.ar} تقريبًا في الصورة؟`,
+    slider: { mode: 'numeric-range', min: 0, max: 100, step: 1, unit: 'شكل' },
     altText: 'أشكال كثيرة متداخلة من أنواع مختلفة',
-    concept: 'Count one kind of shape among others that overlap and crowd it.',
+    concept: 'Guess how many shapes of one kind are crowded in among others.',
     strategy:
-      'Sweep the picture in one direction so no shape is counted twice or missed.',
-    domainDescription: 'shapes of one kind, 0 to 30',
+      'Judge one corner of the picture and reckon how many corners like it there are.',
+    domainDescription: 'shapes of one kind, 0 to 100',
     factualClaim: `The picture holds ${value} of the ${kindKey} among ${setup.others} other shapes.`,
-    svg: frame(text(`كم ${kind.ar} في الصورة؟`, W / 2, 100, 44) + body),
+    svg: frame(text(`كم ${kind.ar} تقريبًا في الصورة؟`, W / 2, 96, 42) + body),
   };
 }
 
@@ -316,12 +316,12 @@ const DOT_SETUPS: Record<
   string,
   { reds: number[]; blues: number; clustered: boolean }
 > = {
-  few: { reds: [9, 12, 15, 18], blues: 22, clustered: false },
-  many: { reds: [30, 34, 38, 42], blues: 20, clustered: false },
-  clustered: { reds: [16, 20, 24, 28], blues: 24, clustered: true },
-  spread: { reds: [14, 18, 22, 26], blues: 26, clustered: false },
-  'mostly-red': { reds: [32, 36, 40, 44], blues: 12, clustered: false },
-  'mostly-blue': { reds: [10, 13, 16, 19], blues: 42, clustered: false },
+  few: { reds: [45, 55, 65, 75], blues: 90, clustered: false },
+  many: { reds: [110, 125, 140, 155], blues: 70, clustered: false },
+  clustered: { reds: [70, 85, 100, 115], blues: 85, clustered: true },
+  spread: { reds: [60, 75, 90, 105], blues: 95, clustered: false },
+  'mostly-red': { reds: [120, 135, 150, 165], blues: 45, clustered: false },
+  'mostly-blue': { reds: [40, 50, 60, 70], blues: 150, clustered: false },
 };
 
 function composeDots(seed: string, variantKey: string): ObservationReading {
@@ -339,32 +339,32 @@ function composeDots(seed: string, variantKey: string): ObservationReading {
     if (setup.clustered && red) {
       const [hx, hy] = hubs[i % hubs.length];
       spots.push([
-        Math.max(140, Math.min(1060, hx + (random() - 0.5) * 240)),
-        Math.max(190, Math.min(590, hy + (random() - 0.5) * 180)),
+        Math.max(130, Math.min(1070, hx + (random() - 0.5) * 380)),
+        Math.max(185, Math.min(600, hy + (random() - 0.5) * 280)),
         red,
       ]);
     } else {
-      spots.push([140 + random() * 920, 190 + random() * 400, red]);
+      spots.push([130 + random() * 940, 185 + random() * 415, red]);
     }
   }
   let body = '';
   for (const [x, y, red] of shuffled(spots, random))
-    body += disc(x, y, 15, red ? RED : BLUE);
+    body += disc(x, y, 9, red ? RED : BLUE);
   return {
     familyKey: 'dots-estimate',
     variantKey,
     variant: `${variantKey}:${value}:${setup.blues}`,
     value,
-    prompt: 'كم نقطة حمراء في الصورة؟',
-    slider: { mode: 'numeric-range', min: 0, max: 60, step: 1, unit: 'نقطة' },
+    prompt: 'كم نقطة حمراء تقريبًا في الصورة؟',
+    slider: { mode: 'numeric-range', min: 0, max: 200, step: 1, unit: 'نقطة' },
     altText: 'نقاط حمراء وزرقاء منثورة في الصورة',
     concept:
-      'Estimate how many dots of one colour are scattered among dots of another.',
+      'Guess how many dots of one colour are scattered among dots of another.',
     strategy:
       'Count one small patch, then judge how many patches like it the picture holds.',
-    domainDescription: 'red dots, 0 to 60',
+    domainDescription: 'red dots, 0 to 200',
     factualClaim: `The picture holds ${value} red dots among ${setup.blues} blue ones.`,
-    svg: frame(text('كم نقطة حمراء في الصورة؟', W / 2, 100, 44) + body),
+    svg: frame(text('كم نقطة حمراء تقريبًا في الصورة؟', W / 2, 96, 42) + body),
   };
 }
 

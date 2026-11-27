@@ -108,16 +108,20 @@ const GLYPH = 'M-30,-44 L14,-44 L14,-14 L44,-14 L44,16 L4,16 L4,44 L-30,44 Z';
 // «كم شكل مقلوب؟» — a field of one shape, some of it mirrored
 // ---------------------------------------------------------------------------
 
+/**
+ * A field too big to count through in the time (owner, 2026-11-28): the
+ * team judges the share that faces the wrong way and throws a number.
+ */
 const MIRROR_SETUPS: Record<
   string,
   { cols: number; rows: number; wrong: number[] }
 > = {
-  few: { cols: 7, rows: 4, wrong: [3, 4, 5, 6] },
-  some: { cols: 7, rows: 4, wrong: [6, 7, 8, 9] },
-  many: { cols: 7, rows: 4, wrong: [10, 11, 12, 13] },
-  'wide-grid': { cols: 8, rows: 3, wrong: [5, 6, 7, 8] },
-  'tall-grid': { cols: 5, rows: 5, wrong: [6, 7, 8, 9] },
-  dense: { cols: 8, rows: 4, wrong: [9, 11, 13, 15] },
+  few: { cols: 13, rows: 6, wrong: [14, 18, 22, 26] },
+  some: { cols: 13, rows: 6, wrong: [28, 32, 36, 40] },
+  many: { cols: 13, rows: 6, wrong: [42, 46, 50, 54] },
+  'wide-grid': { cols: 15, rows: 5, wrong: [20, 26, 32, 38] },
+  'tall-grid': { cols: 10, rows: 7, wrong: [22, 28, 34, 40] },
+  dense: { cols: 14, rows: 7, wrong: [30, 40, 50, 60] },
 };
 
 function composeMirrored(seed: string, variantKey: string): ErrorReading {
@@ -128,10 +132,10 @@ function composeMirrored(seed: string, variantKey: string): ErrorReading {
   const flipped = new Set(
     shuffled([...Array(places).keys()], random).slice(0, value),
   );
-  const cw = Math.min(150, Math.floor(980 / setup.cols));
-  const ch = Math.min(112, Math.floor(400 / setup.rows));
+  const cw = Math.min(150, Math.floor(1040 / setup.cols));
+  const ch = Math.min(112, Math.floor(410 / setup.rows));
   const ox = (W - setup.cols * cw) / 2;
-  const oy = 190 + (400 - setup.rows * ch) / 2;
+  const oy = 186 + (410 - setup.rows * ch) / 2;
   const scale = Math.min(0.82, (cw / 150) * 0.82, (ch / 112) * 0.82);
   let body = '';
   for (let i = 0; i < places; i += 1) {
@@ -145,16 +149,15 @@ function composeMirrored(seed: string, variantKey: string): ErrorReading {
     variantKey,
     variant: `${variantKey}:${value}`,
     value,
-    prompt: 'كم شكل مقلوب عكس الباقي؟',
-    slider: { mode: 'numeric-range', min: 0, max: 20, step: 1, unit: 'شكل' },
+    prompt: 'كم شكل تقريبًا مقلوب عكس الباقي؟',
+    slider: { mode: 'numeric-range', min: 0, max: 80, step: 1, unit: 'شكل' },
     altText: 'شبكة من نفس الشكل، وبعضها معكوس',
-    concept:
-      'Count the shapes in a field that are mirrored while the rest face one way.',
+    concept: 'Guess how many shapes of a crowded field are drawn mirrored.',
     strategy:
-      'Fix the right way round in mind, then sweep row by row and count the odd ones.',
-    domainDescription: 'mirrored shapes, 0 to 20',
+      'Fix the right way round in mind, judge one row, then reckon for the rest.',
+    domainDescription: 'mirrored shapes, 0 to 80',
     factualClaim: `${value} of the ${places} shapes are drawn mirrored.`,
-    svg: frame(text('كم شكل مقلوب عكس الباقي؟', W / 2, 108, 44) + body),
+    svg: frame(text('كم شكل تقريبًا مقلوب عكس الباقي؟', W / 2, 104, 42) + body),
   };
 }
 
