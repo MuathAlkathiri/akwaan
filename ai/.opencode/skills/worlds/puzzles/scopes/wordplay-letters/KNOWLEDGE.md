@@ -463,6 +463,7 @@
 | 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
+| 24 | `bomb-first-letters` | أول حرف (القنبلة) | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -545,9 +546,9 @@ The same two tests as the rest of this World: the item is **solved, not
 recalled**, and local colour is decoration, never a fact the player must know.
 One level of difficulty: **medium**.
 
-القنبلة is paused for every family here (`pausedFor: ["bomb"]`): a Bomb item
-must carry a picture, and a word puzzle has none until the image composer
-exists.
+القنبلة was paused for every written family here (`pausedFor: ["bomb"]`): a
+Bomb item must carry a picture. Since 2026-11-27 it draws one family of its
+own, `bomb-first-letters`, which the engine composes.
 
 | Key | What it asks | Example | Answer |
 |---|---|---|---|
@@ -629,6 +630,16 @@ Adding a template is one entry in `variants`: a kebab-case `key`, a short
 Arabic `name`, and a `brief` the generator can act on.
 
 ---
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `bomb-first-letters` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## 11. Machine-Readable Family Catalog
 
@@ -1294,6 +1305,36 @@ The block below is the structured form of the 15 canonical families approved for
         }
       ],
       "capacity": 300
+    },
+    {
+      "familyKey": "bomb-first-letters",
+      "name": "أول حرف (القنبلة)",
+      "description": "ثلاث رسمات، وأول حرف من اسم كل وحدة يكوّن كلمة. المحرك يختار الكلمة والرسمات من الأشياء اللي اسمها ما يختلف عليه أحد.",
+      "playerSolve": "تسمية الرسمات وأخذ أول حرف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "in-order",
+          "name": "بالترتيب",
+          "brief": "Read right to left."
+        },
+        {
+          "key": "scrambled",
+          "name": "ملخبطة",
+          "brief": "The letters must be arranged."
+        }
+      ],
+      "capacity": 200
     }
   ]
 }

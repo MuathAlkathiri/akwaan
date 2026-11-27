@@ -228,7 +228,7 @@ interface Lender {
  * A thing for every letter of the word, each lending the letter at the
  * position `positionOf` allows. Undefined when some letter has no lender.
  */
-function lendersFor(
+export function lendersFor(
   word: string,
   positionsOf: (name: string) => number[],
   random: () => number,

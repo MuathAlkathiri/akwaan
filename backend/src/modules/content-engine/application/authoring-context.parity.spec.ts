@@ -520,7 +520,9 @@ describeIf(
           // stale on staging), and this Scope's SCOPE.md, KNOWLEDGE.md and the
           // World profile gained the owner's 2026-11-24 product selection.
           // f989ae76… reproduces from the files before both.
-          'e2f55f7d315fbac5bca8d9316572e875dd7610903cc79b0f5f830cda4aecec14',
+          // Refreshed 2026-11-27: this Scope's SCOPE.md and KNOWLEDGE.md gained
+          // the drawn القنبلة family; e2f55f7d… reproduces from the files before.
+          '5a2db7db424694e6240dc3c23f8024eeb0493e80ee048d06093f1332dd9eab96',
         );
       });
 

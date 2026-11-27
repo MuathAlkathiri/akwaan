@@ -388,6 +388,7 @@
 | 13 | `spatial-reconstruction` | إعادة بناء النمط المنقسم | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Vector Pieces | Multiple Choice (4 patterns) |
 | 14 | `cube-pile-count` | كم مكعب في الكومة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (cubes) |
 | 15 | `last-pipe-piece` | القطعة الأخيرة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 pieces) |
+| 16 | `bomb-put-together` | ركّبها وسمّها | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -480,6 +481,16 @@ and its answer are unchanged; only what the player is looking at differs.
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `cube-pile-count` (مين أقرب), `last-pipe-piece` (اقرأ خصمك), `bomb-put-together` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## Machine-Readable Family Catalog
 
@@ -931,6 +942,36 @@ nothing is deleted, and a family returns by removing its `status` below.
         }
       ],
       "capacity": 200
+    },
+    {
+      "familyKey": "bomb-put-together",
+      "name": "ركّبها وسمّها",
+      "description": "رسمة لشي معروف مقطعة قطع متلخبطة. المطلوب اسمها مكتوب.",
+      "playerSolve": "تركيب الرسمة أو تعديلها في الراس.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "shattered",
+          "name": "أربع قطع",
+          "brief": "Cut into four tiles, every tile out of place."
+        },
+        {
+          "key": "shattered-fine",
+          "name": "ست قطع",
+          "brief": "Cut into six tiles, every tile out of place."
+        }
+      ],
+      "capacity": 300
     }
   ]
 }

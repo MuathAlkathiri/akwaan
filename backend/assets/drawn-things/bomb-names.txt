@@ -1,0 +1,144 @@
+# key | every name a player may type for the drawing (first is the one shown). Only things nobody would call something else go in.
+ant|نملة|نمله|نمل
+bat|خفاش|وطواط
+bear|دب|دبة
+bird|عصفور|طير|عصفورة
+butterfly|فراشة|فراشه
+camel|جمل|ناقة|بعير
+cat|قطة|بسة|قطوة|بس|هرة|قط
+chicken|دجاجة|دجاج
+cow|بقرة|بقره
+crocodile|تمساح
+dog|كلب
+dolphin|دولفين|دلفين
+duck|بطة|بط
+eagle|نسر|عقاب
+elephant|فيل
+sheep|خروف|غنم|طلي
+fish|سمكة|سمك
+fox|ثعلب|حصني
+frog|ضفدع|ضفدعة
+giraffe|زرافة
+hedgehog|قنفذ
+horse|حصان|خيل
+lion|أسد|اسد
+monkey|قرد|قردة
+mouse|فأر|فار|جرذ
+octopus|أخطبوط|اخطبوط
+owl|بومة|بوم
+panda|باندا|دب باندا
+parrot|ببغاء|ببغا|درة
+peacock|طاووس|طاوس
+penguin|بطريق
+rabbit|أرنب|ارنب
+rooster|ديك
+scorpion|عقرب
+shark|قرش|سمكة قرش
+snail|حلزون|حلزونة
+snake|ثعبان|حية|افعى
+spider|عنكبوت
+tiger|نمر
+turtle|سلحفاة|سلحفا|سلحفاه
+whale|حوت
+wolf|ذئب|ذيب
+zebra|حمار وحشي|زيبرا
+dinosaur|ديناصور
+banana|موزة|موز
+bread|خبز|خبزة|عيش
+carrot|جزرة|جزر
+cheese|جبن|جبنة
+cherries|كرز
+coconut|جوز هند|جوز الهند
+corn|ذرة|ذره
+egg|بيضة|بيض
+eggplant|باذنجان|بتنجان|بذنجان
+fries|بطاطس|بطاطس مقلية|فرايز|بطاطا
+grapes|عنب
+burger|برجر|برقر|همبرجر|همبرقر
+honey|عسل
+ice-cream|آيسكريم|ايسكريم|آيس كريم|بوظة|دندرمة
+lemon|ليمونة|ليمون|ليمونه
+lollipop|مصاصة|مصاص
+olive|زيتون|زيتونة
+onion|بصلة|بصل
+pineapple|أناناس|اناناس
+pizza|بيتزا
+popcorn|فشار|بوب كورن
+apple|تفاحة|تفاح
+strawberry|فراولة|فراوله
+orange|برتقالة|برتقال
+tomato|طماطم|طماطة|بندورة
+watermelon|بطيخ|حبحب|جح
+cake|كيكة|كيك|كعكة
+mushroom|فطر|مشروم|فطر عيش الغراب
+axe|فأس|فاس|بلطة
+bed|سرير
+bell|جرس
+books|كتب|كتاب
+broom|مكنسة|مقشة
+camera|كاميرا|كمرة
+candle|شمعة|شمعه
+chair|كرسي
+crown|تاج
+door|باب
+dress|فستان
+drum|طبل|طبلة
+envelope|ظرف|رسالة|مغلف
+gem|ألماسة|الماسة|ألماس|ماسة
+glasses|نظارة|نظارات
+guitar|قيتار|جيتار|غيتار
+hammer|مطرقة|شاكوش|مرزبة
+key|مفتاح
+ladder|سلّم|سلم|درج
+bulb|لمبة|مصباح|لمبه
+magnet|مغناطيس|مغنطيس
+microphone|مايكروفون|مايك|ميكروفون
+microscope|مجهر|ميكروسكوب
+pencil|قلم رصاص|قلم
+radio|راديو|مذياع
+ring|خاتم
+scissors|مقص
+shield|درع
+soap|صابونة|صابون
+tv|تلفزيون|تلفاز|شاشة|تلفزيونة
+toothbrush|فرشاة أسنان|فرشة اسنان|فرشاة
+umbrella|مظلة|شمسية
+anchor|مرساة|مخطاف
+fire|نار
+rainbow|قوس قزح|قوس المطر
+snowman|رجل ثلج|رجل الثلج
+sun|شمس
+crescent|هلال|قمر
+cloud|غيمة|سحابة|غيم|سحاب
+mountain|جبل
+volcano|بركان
+cactus|صبار|صبارة
+palm|نخلة|نخل
+rose|وردة|ورد
+sunflower|دوار شمس|عباد الشمس|دوار الشمس
+tree|شجرة|شجر
+feather|ريشة|ريش
+tent|خيمة
+house|بيت|منزل
+castle|قلعة|قصر
+rocket|صاروخ
+airplane|طيارة|طائرة
+helicopter|هليكوبتر|هيلوكبتر|طيارة هليكوبتر|مروحية
+car|سيارة|سياره
+bus|باص|حافلة
+ambulance|إسعاف|اسعاف|سيارة إسعاف|سيارة اسعاف
+fire-truck|سيارة مطافي|مطافي|سيارة إطفاء|سيارة اطفاء|اطفاء|إطفاء
+police-car|سيارة شرطة|شرطة|دورية|سيارة شرطه
+truck|شاحنة|تريلا|ترك|لوري
+bicycle|سيكل|دراجة|دراجة هوائية|بسكليت
+motorcycle|دباب|دراجة نارية|موتر|موتورسيكل
+ship|سفينة|باخرة
+train|قطار
+football|كرة قدم|كورة|كرة|كورة قدم
+basketball|كرة سلة|كورة سلة|باسكت
+die|نرد|زهر|زار
+kite|طيارة ورقية|طائرة ورقية
+gift|هدية|هديه
+balloon|بالونة|بالون|نفاخة
+trophy|كاس|كأس|كأس بطولة
+medal|ميدالية|ميداليه

@@ -47,6 +47,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 13 | `spatial-reconstruction` | إعادة بناء النمط المنقسم | 2D Vector Pieces | `multiple_choice` |
 | 14 | `cube-pile-count` | كم مكعب في الكومة؟ | Composed picture | `closest` |
 | 15 | `last-pipe-piece` | القطعة الأخيرة | Composed picture | `multiple_choice` |
+| 16 | `bomb-put-together` | ركّبها وسمّها | Composed picture | `match` |
 
 ---
 

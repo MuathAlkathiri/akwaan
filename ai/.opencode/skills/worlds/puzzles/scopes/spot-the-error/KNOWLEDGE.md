@@ -377,6 +377,7 @@
 | 15 | `false-scale` | الميزان الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 scales) |
 | 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 steps) |
 | 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
+| 18 | `bomb-odd-one-out` | وش الدخيل؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -444,6 +445,16 @@ When generating or reviewing an authored batch for `spot-the-error`:
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
 
 ---
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `broken-rule-step` and `broken-grid-pattern` (إكس أو), `lying-guard` and `false-scale` (اقرأ خصمك), `wrong-clock-minutes` (مين أقرب), `bomb-odd-one-out` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## Machine-Readable Family Catalog
 
@@ -842,6 +853,36 @@ When generating or reviewing an authored batch for `spot-the-error`:
           "key": "mirror",
           "name": "مراية",
           "brief": "The right half mirrors the left."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "bomb-odd-one-out",
+      "name": "وش الدخيل؟",
+      "description": "صف رسمات من نوع واحد (حيوانات، أكل، مركبات) وبينها وحدة من نوع ثاني. المطلوب اسم الدخيلة مكتوب.",
+      "playerSolve": "معرفة النوع المشترك واسم اللي خالفه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "five-things",
+          "name": "خمس",
+          "brief": "Four of a kind and one more."
+        },
+        {
+          "key": "six-things",
+          "name": "ست",
+          "brief": "Five of a kind and one more."
         }
       ],
       "capacity": 300

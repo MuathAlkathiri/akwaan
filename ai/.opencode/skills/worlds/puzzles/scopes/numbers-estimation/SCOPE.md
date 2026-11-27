@@ -63,6 +63,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 29 | `battery-level` | شحن الجوال | Composed picture | `closest` |
 | 30 | `copy-the-mark` | انقل العلامة | Composed picture | `closest` |
 | 31 | `colour-recall` | تذكّر اللون | Composed picture | `closest` |
+| 32 | `bomb-dice-total` | كم مجموع النرد؟ | Composed picture | `match` |
 
 > Rows 13–23 were approved by the owner on 2026-11-24. Which families the engine generates today — and which are paused — is recorded in KNOWLEDGE.md §11–12. A row whose only answer mode is `closest` is answered on the مين أقرب slider and is not a Moving XO family.
 

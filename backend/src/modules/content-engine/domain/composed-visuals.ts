@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { BombFamily, isComposedBombFamily } from './composed-bomb';
 import { ClosestFamily, isComposedClosestFamily } from './composed-closest';
 import {
   ComposedPuzzleFamily,
@@ -32,14 +33,15 @@ export const isComposedVisualFamily = (
 
 /** Every family the engine draws, whichever way it is answered. */
 export type ComposedFamily =
-  ComposedVisualFamily | ComposedPuzzleFamily | ClosestFamily;
+  ComposedVisualFamily | ComposedPuzzleFamily | ClosestFamily | BombFamily;
 
 export const isComposedFamily = (
   familyKey: string | null | undefined,
 ): familyKey is ComposedFamily =>
   isComposedVisualFamily(familyKey) ||
   isComposedPuzzleFamily(familyKey) ||
-  isComposedClosestFamily(familyKey);
+  isComposedClosestFamily(familyKey) ||
+  isComposedBombFamily(familyKey);
 
 export const COMPOSED_VISUAL_WIDTH = 1200;
 export const COMPOSED_VISUAL_HEIGHT = 675;

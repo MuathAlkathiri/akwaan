@@ -394,6 +394,7 @@
 | 29 | `battery-level` | شحن الجوال | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 | 30 | `copy-the-mark` | انقل العلامة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 | 31 | `colour-recall` | تذكّر اللون | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Colour Slider |
+| 32 | `bomb-dice-total` | كم مجموع النرد؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -624,6 +625,16 @@ questions repeat. So each active family now names several **templates**
 
 Adding a template is one entry in `variants`: a kebab-case `key`, a short
 Arabic `name`, and a `brief` the generator can act on.
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `bomb-dice-total` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## 12. Machine-Readable Family Catalog
 
@@ -1697,6 +1708,36 @@ out of generation; `pausedReason` says why.
         "closest"
       ],
       "capacity": 150
+    },
+    {
+      "familyKey": "bomb-dice-total",
+      "name": "كم مجموع النرد؟",
+      "description": "حبتين أو ثلاث نرد، والمطلوب المجموع مكتوب. المحرك يرمي النرد ويرسمه، والجواب ينقبل بالأرقام الإنجليزية والعربية وبالكلمة.",
+      "playerSolve": "جمع النقاط بنظرة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "two-dice",
+          "name": "حبتين",
+          "brief": "Two dice, a total of five or more."
+        },
+        {
+          "key": "three-dice",
+          "name": "ثلاث",
+          "brief": "Three dice."
+        }
+      ],
+      "capacity": 80
     }
   ]
 }

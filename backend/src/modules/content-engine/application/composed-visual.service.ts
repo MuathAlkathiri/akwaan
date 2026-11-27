@@ -1,3 +1,4 @@
+import { composeBomb, isComposedBombFamily } from '../domain/composed-bomb';
 import {
   composeClosest,
   isComposedClosestFamily,
@@ -60,13 +61,19 @@ export class ComposedVisualService {
     const puzzle = isComposedPuzzleFamily(familyKey)
       ? composePuzzle(familyKey, seed, variantKey)
       : undefined;
+    const bomb =
+      !puzzle && isComposedBombFamily(familyKey)
+        ? composeBomb(familyKey, seed, variantKey)
+        : undefined;
     const reading =
-      !puzzle && isComposedClosestFamily(familyKey)
+      !puzzle && !bomb && isComposedClosestFamily(familyKey)
         ? composeClosest(familyKey, seed, variantKey)
         : undefined;
     const visual =
-      puzzle || reading ? undefined : composeVisual(familyKey as never, seed);
-    const drawing = (puzzle ?? reading ?? visual)!;
+      puzzle || reading || bomb
+        ? undefined
+        : composeVisual(familyKey as never, seed);
+    const drawing = (puzzle ?? bomb ?? reading ?? visual)!;
     let media: Record<string, unknown> | undefined;
     let failureReason: string | undefined;
     let governed:
@@ -148,6 +155,7 @@ export class ComposedVisualService {
       variant: drawing.variant,
       ...(puzzle ? { variantKey: puzzle.variantKey } : {}),
       ...(reading ? { variantKey: reading.variantKey } : {}),
+      ...(bomb ? { variantKey: bomb.variantKey } : {}),
       ...((visual ?? reading) ? { value: (visual ?? reading)!.value } : {}),
       ...(failureReason ? { failureReason } : {}),
     };
@@ -175,6 +183,23 @@ export class ComposedVisualService {
           distractorRationale: puzzle.distractorRationale,
           composedVisual,
         },
+        ...(governed ?? {}),
+      };
+    }
+
+    if (bomb) {
+      return {
+        factualClaims: [bomb.factualClaim],
+        draft: {
+          prompt: { ar: bomb.prompt },
+          answerPayload: {
+            mode: 'match',
+            acceptedAnswers: bomb.acceptedAnswers,
+          },
+          ...(media ? { media } : {}),
+          metadata: { notes: COMPOSED_NOTE, entityId },
+        },
+        authoring: { concept: bomb.concept, composedVisual },
         ...(governed ?? {}),
       };
     }

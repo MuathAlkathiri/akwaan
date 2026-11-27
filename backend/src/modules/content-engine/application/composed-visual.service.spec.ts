@@ -44,6 +44,37 @@ const blockingCodes = (candidate: {
 
 describe('ComposedVisualService', () => {
   it.each([
+    ['bomb-dice-total', 'numbers-estimation'],
+    ['bomb-first-letters', 'wordplay-letters'],
+    ['bomb-what-is-it', 'observation-illusions'],
+    ['bomb-put-together', 'assembly-rotation'],
+    ['bomb-thread-end', 'paths-motion'],
+    ['bomb-odd-one-out', 'spot-the-error'],
+  ] as const)(
+    '%s: a قنبلة item whose drawn picture fills the media contract',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-5:3', {
+        mechanicKey: 'bomb',
+        scopeKey,
+      });
+      expect(candidate.draft.answerPayload).toMatchObject({ mode: 'match' });
+      expect(candidate.mediaPlan).toHaveLength(1);
+      expect(candidate.mediaPlan![0]).toMatchObject({ slotKey: 'item-image' });
+      const findings = new DeterministicScreenService({
+        get: () => undefined,
+      } as unknown as ConfigService).screen(
+        candidate.draft,
+        candidate.authoring,
+        { worldKey: 'puzzles', mechanicKey: 'bomb' } as never,
+      ).findings;
+      expect(
+        findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+      ).toEqual([]);
+    },
+  );
+
+  it.each([
     ['mirror-beam', 'paths-motion'],
     ['last-pipe-piece', 'assembly-rotation'],
     ['count-changes', 'observation-illusions'],

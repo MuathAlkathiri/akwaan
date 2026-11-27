@@ -5,6 +5,7 @@ import {
   FIRST_NOTE_SLUG,
   MOVING_XO_SLUG,
   ODD_PIECE_SLUG,
+  FORWARD_PUZZLE_SCOPE_SLUGS,
   VISUAL_PUZZLE_SCOPE_SLUGS,
 } from '../../world-content/domain/world-content.constants';
 
@@ -70,6 +71,8 @@ export interface MediaRequirementEntry {
   mechanicKey: string;
   /** Absent means every Scope of the mechanic. */
   scopeKeys?: readonly string[];
+  /** Scopes the entry does not govern: another entry speaks for them. */
+  exceptScopeKeys?: readonly string[];
   slots: readonly MediaSlotRequirement[];
 }
 
@@ -82,6 +85,7 @@ export const MEDIA_REQUIREMENTS: readonly MediaRequirementEntry[] = [
     // every archetype, name completion included (Product decision 2026-11-22,
     // roadmap §23.4) — a text-only Bomb item is not authored.
     mechanicKey: BOMB_SLUG,
+    exceptScopeKeys: FORWARD_PUZZLE_SCOPE_SLUGS,
     slots: [
       {
         slotKey: BOMB_IMAGE_SLOT,
@@ -92,6 +96,24 @@ export const MEDIA_REQUIREMENTS: readonly MediaRequirementEntry[] = [
         // A real photograph, found or supplied. Never generated: the subject
         // is a real person, club or place, and a drawn likeness is not one.
         acquisition: ['retrieve', 'upload'],
+        aspectPolicy: 'native',
+      },
+    ],
+  },
+  {
+    // القنبلة in عالم الألغاز (owner decision 2026-11-27): the picture is a
+    // puzzle the engine draws — a shadow, a cut-up drawing, dice — so it is
+    // generated, never searched for.
+    mechanicKey: BOMB_SLUG,
+    scopeKeys: FORWARD_PUZZLE_SCOPE_SLUGS,
+    slots: [
+      {
+        slotKey: BOMB_IMAGE_SLOT,
+        purpose: 'gameplay',
+        required: true,
+        mediaType: 'image',
+        targetPath: 'media',
+        acquisition: ['upload', 'generate'],
         aspectPolicy: 'native',
       },
     ],
@@ -194,6 +216,13 @@ export function resolveMediaRequirements(
     if (
       entry.scopeKeys &&
       !(target.scopeKey && entry.scopeKeys.includes(target.scopeKey))
+    ) {
+      continue;
+    }
+    if (
+      entry.exceptScopeKeys &&
+      target.scopeKey &&
+      entry.exceptScopeKeys.includes(target.scopeKey)
     ) {
       continue;
     }
