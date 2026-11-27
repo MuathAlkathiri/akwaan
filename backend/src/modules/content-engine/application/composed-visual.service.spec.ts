@@ -1,5 +1,6 @@
 import { PATH_BOMB_VARIANTS } from '../domain/composed-bomb-paths';
 import { PATH_CLOSEST_VARIANTS } from '../domain/composed-closest-paths';
+import { ASSEMBLY_CLOSEST_VARIANTS } from '../domain/composed-closest-assembly';
 import { NUMBER_BOMB_VARIANTS } from '../domain/composed-bomb-numbers';
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
@@ -161,7 +162,10 @@ describe('ComposedVisualService', () => {
   });
 
   it.each(
-    Object.entries(PATH_CLOSEST_VARIANTS).flatMap(([familyKey, variants]) =>
+    Object.entries({
+      ...PATH_CLOSEST_VARIANTS,
+      ...ASSEMBLY_CLOSEST_VARIANTS,
+    }).flatMap(([familyKey, variants]) =>
       (variants as readonly string[]).map((variant) => [familyKey, variant]),
     ) as Array<[never, string]>,
   )(
@@ -172,7 +176,13 @@ describe('ComposedVisualService', () => {
         const candidate = await service.compose(
           familyKey,
           seed,
-          { mechanicKey: 'closest', scopeKey: 'paths-motion' },
+          {
+            mechanicKey: 'closest',
+            scopeKey:
+              familyKey in PATH_CLOSEST_VARIANTS
+                ? 'paths-motion'
+                : 'assembly-rotation',
+          },
           variant,
         );
         const findings = new DeterministicScreenService({

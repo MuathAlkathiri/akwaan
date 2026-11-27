@@ -389,6 +389,11 @@
 | 14 | `cube-pile-count` | كم مكعب في الكومة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (cubes) |
 | 15 | `last-pipe-piece` | القطعة الأخيرة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 pieces) |
 | 16 | `bomb-put-together` | ركّبها وسمّها | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 17 | `tiles-to-cover` | كم قطعة تغطي الشكل؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (قطعة) |
+| 18 | `rotation-degrees` | كم درجة دارت؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (درجة) |
+| 19 | `cut-pieces` | كم قطعة تطلع؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (قطعة) |
+| 20 | `fold-line` | وين الطية؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 21 | `balance-point` | وين يتزن؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
 
 ---
 
@@ -972,6 +977,256 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
         }
       ],
       "capacity": 300
+    },
+    {
+      "familyKey": "tiles-to-cover",
+      "name": "كم قطعة تغطي الشكل؟",
+      "description": "شكل مرسوم وجنبه قطعة وحدة. الجواب كم نسخة من القطعة تغطي الشكل بالضبط، والمحرك يبني الشكل بالقطع نفسها فالتغطية مضمونة.",
+      "playerSolve": "قارن مربعات الشكل بمربعات القطعة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "domino",
+          "name": "قطعة من مربعين",
+          "brief": "A domino."
+        },
+        {
+          "key": "straight-three",
+          "name": "ثلاثة بالطول",
+          "brief": "A straight tromino."
+        },
+        {
+          "key": "corner-three",
+          "name": "زاوية من ثلاثة",
+          "brief": "An L tromino."
+        },
+        {
+          "key": "square-four",
+          "name": "مربع من أربعة",
+          "brief": "A square tetromino."
+        },
+        {
+          "key": "bend-four",
+          "name": "حرف L",
+          "brief": "An L tetromino."
+        },
+        {
+          "key": "tee-four",
+          "name": "حرف T",
+          "brief": "A T tetromino."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "rotation-degrees",
+      "name": "كم درجة دارت؟",
+      "description": "نفس القطعة مرسومة قبل الدوران وبعده. الجواب كم درجة دارت مع عقارب الساعة، والمسطرة تتحرك 15 درجة.",
+      "playerSolve": "تابع زاوية وحدة من القطعة وشوف كم لفّت.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "small",
+          "name": "دوران خفيف",
+          "brief": "30 to 75 degrees."
+        },
+        {
+          "key": "quarter",
+          "name": "حول الربع",
+          "brief": "90 to 135."
+        },
+        {
+          "key": "half",
+          "name": "حول النص",
+          "brief": "150 to 210."
+        },
+        {
+          "key": "past-half",
+          "name": "بعد النص",
+          "brief": "225 to 270."
+        },
+        {
+          "key": "large",
+          "name": "دوران كبير",
+          "brief": "285 to 330."
+        },
+        {
+          "key": "fine",
+          "name": "درجات غير مألوفة",
+          "brief": "Angles that are not a plain quarter or half."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "cut-pieces",
+      "name": "كم قطعة تطلع؟",
+      "description": "ورقة وعليها خطوط قص. الجواب كم قطعة تطلع لو قصّينا على كلها، والمحرك يحسبها من عدد الخطوط وتقاطعاتها.",
+      "playerSolve": "كل خط يزيد قطعة، وكل تقاطع بين خطين يزيد قطعة ثانية.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "two-cuts",
+          "name": "قصّتين",
+          "brief": "Two cuts."
+        },
+        {
+          "key": "three-cuts",
+          "name": "ثلاث قصّات",
+          "brief": "Three cuts."
+        },
+        {
+          "key": "four-cuts",
+          "name": "أربع قصّات",
+          "brief": "Four cuts."
+        },
+        {
+          "key": "five-cuts",
+          "name": "خمس قصّات",
+          "brief": "Five cuts."
+        },
+        {
+          "key": "parallel",
+          "name": "قصّات متوازية",
+          "brief": "Cuts that never cross."
+        },
+        {
+          "key": "fan",
+          "name": "قصّات متقاطعة",
+          "brief": "Cuts that cross one another often."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "fold-line",
+      "name": "وين الطية؟",
+      "description": "ورقة طويلة وعليها نقطتين. اللاعب يعلّم على المسطرة وين نطويها عشان النقطتين تنطبق، والمسطرة خط بين طرفي الورقة بلا أرقام.",
+      "playerSolve": "الطية في نص المسافة بين النقطتين.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "narrow",
+          "name": "النقطتين قريبات",
+          "brief": "A short gap."
+        },
+        {
+          "key": "wide",
+          "name": "النقطتين بعيدات",
+          "brief": "A long gap."
+        },
+        {
+          "key": "near",
+          "name": "في أول الورقة",
+          "brief": "Both marks near the start."
+        },
+        {
+          "key": "far",
+          "name": "في آخر الورقة",
+          "brief": "Both marks near the end."
+        },
+        {
+          "key": "left-heavy",
+          "name": "الطية يسار",
+          "brief": "The fold falls left of centre."
+        },
+        {
+          "key": "right-heavy",
+          "name": "الطية يمين",
+          "brief": "The fold falls right of centre."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "balance-point",
+      "name": "وين يتزن؟",
+      "description": "لوح طويل وعليه صناديق أوزانها مكتوبة. اللاعب يعلّم وين يحط المسند عشان اللوح يتزن.",
+      "playerSolve": "الأثقل يسحب المسند ناحيته، وضعف الوزن يسحب ضعف السحب.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "two-equal",
+          "name": "وزنين متساويين",
+          "brief": "Two equal loads."
+        },
+        {
+          "key": "heavy-left",
+          "name": "الأثقل يسار",
+          "brief": "The left load is heavier."
+        },
+        {
+          "key": "heavy-right",
+          "name": "الأثقل يمين",
+          "brief": "The right load is heavier."
+        },
+        {
+          "key": "three-weights",
+          "name": "ثلاثة أوزان",
+          "brief": "Three loads on the plank."
+        },
+        {
+          "key": "big-and-small",
+          "name": "كبير وصغير",
+          "brief": "One load several times the other."
+        },
+        {
+          "key": "far-apart",
+          "name": "متباعدين",
+          "brief": "Loads near the two ends."
+        }
+      ],
+      "capacity": 120
     }
   ]
 }

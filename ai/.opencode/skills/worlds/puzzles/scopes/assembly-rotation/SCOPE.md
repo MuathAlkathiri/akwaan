@@ -48,6 +48,11 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 14 | `cube-pile-count` | كم مكعب في الكومة؟ | Composed picture | `closest` |
 | 15 | `last-pipe-piece` | القطعة الأخيرة | Composed picture | `multiple_choice` |
 | 16 | `bomb-put-together` | ركّبها وسمّها | Composed picture | `match` |
+| 17 | `tiles-to-cover` | كم قطعة تغطي الشكل؟ | Composed picture | `closest` |
+| 18 | `rotation-degrees` | كم درجة دارت؟ | Composed picture | `closest` |
+| 19 | `cut-pieces` | كم قطعة تطلع؟ | Composed picture | `closest` |
+| 20 | `fold-line` | وين الطية؟ | Composed picture | `closest` |
+| 21 | `balance-point` | وين يتزن؟ | Composed picture | `closest` |
 
 ---
 

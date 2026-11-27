@@ -536,7 +536,14 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'assembly-rotation': {
             'read-your-opponent': ['last-pipe-piece'],
             bomb: ['bomb-put-together'],
-            closest: ['cube-pile-count'],
+            closest: [
+              'balance-point',
+              'cube-pile-count',
+              'cut-pieces',
+              'fold-line',
+              'rotation-degrees',
+              'tiles-to-cover',
+            ],
           },
           'paths-motion': {
             'read-your-opponent': ['mirror-beam'],
