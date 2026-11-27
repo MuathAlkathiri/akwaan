@@ -138,6 +138,32 @@ async function bootstrap() {
     },
   );
 
+  // Nothing a signed-in player gets back is cacheable by anyone else.
+  //
+  // RFC 9111 already forbids a shared cache from storing a response to a request
+  // carrying `Authorization`, so this is belt to that braces — but the game is
+  // played on phones behind carrier proxies and company networks, and a cached
+  // snapshot served to the wrong player is the one bug nobody could reproduce.
+  // Saying it out loud costs a header.
+  app.use(
+    (
+      request: express.Request,
+      response: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (request.headers.authorization) {
+        response.setHeader('Cache-Control', 'no-store');
+      }
+      next();
+    },
+  );
+
+  // The framework's calling card, of no use to anyone but somebody matching
+  // versions to exploits.
+  (app.getHttpAdapter().getInstance() as express.Express).disable(
+    'x-powered-by',
+  );
+
   app.enableCors({
     origin: corsOriginDelegate(),
     credentials: true,
