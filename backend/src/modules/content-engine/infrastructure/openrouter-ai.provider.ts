@@ -403,6 +403,19 @@ export class OpenRouterAiProvider implements AiProvider {
       // but it is what leaves room for content inside the ceiling instead
       // of spending the whole allowance thinking and returning nothing.
       ...(effort ? { reasoning: { effort } } : {}),
+      // A drawing model: ask for the picture, and its shape.
+      ...(request.outputImage
+        ? {
+            modalities: ['image', 'text'],
+            ...(request.outputImage.aspectRatio
+              ? {
+                  image_config: {
+                    aspect_ratio: request.outputImage.aspectRatio,
+                  },
+                }
+              : {}),
+          }
+        : {}),
       // Structured output is required, not preferred: a prose reply is a
       // failed generation, and the schema is what makes that detectable.
       // An upstream the operator has told us to route around. Sent with or
@@ -493,7 +506,10 @@ export class OpenRouterAiProvider implements AiProvider {
     const payload = (await response.json()) as {
       id?: string;
       choices?: {
-        message?: { content?: string | null };
+        message?: {
+          content?: string | null;
+          images?: { image_url?: { url?: string } }[];
+        };
         finish_reason?: string | null;
         native_finish_reason?: string | null;
       }[];
@@ -516,8 +532,15 @@ export class OpenRouterAiProvider implements AiProvider {
       model?: string;
     };
 
-    const text = payload.choices?.[0]?.message?.content;
-    if (typeof text !== 'string' || !text.trim()) {
+    const drawn = (payload.choices?.[0]?.message?.images ?? [])
+      .map((image) => image?.image_url?.url)
+      .filter(
+        (url): url is string =>
+          typeof url === 'string' && url.startsWith('data:image/'),
+      );
+    const text =
+      payload.choices?.[0]?.message?.content ?? (drawn.length ? '' : undefined);
+    if (typeof text !== 'string' || (!text.trim() && !drawn.length)) {
       // Keep the evidence. Without it, a reasoning model that spent its whole
       // output ceiling thinking is indistinguishable from a provider fault,
       // and is billed and halted as if usage were unknown.
@@ -563,6 +586,7 @@ export class OpenRouterAiProvider implements AiProvider {
       // for. The ledger records the served model so cost is attributable.
       model: payload.model ?? model,
       durationMs: Date.now() - startedAt,
+      ...(drawn.length ? { images: drawn } : {}),
       // Observation only. The provider reports its charge in USD credits while
       // the engine accounts in integer SAR micros, so this is recorded for
       // comparison and deliberately never fed into the ledger — converting it

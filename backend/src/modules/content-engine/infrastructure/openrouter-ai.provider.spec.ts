@@ -60,6 +60,48 @@ const request = {
 };
 
 describe('OpenRouterAiProvider request shape', () => {
+  it('asks a drawing model for its picture, and returns the picture with no text', async () => {
+    const seen: { body?: Record<string, unknown> } = {};
+    const fetchImpl = (async (_url: string, init: { body: string }) => {
+      seen.body = JSON.parse(init.body) as Record<string, unknown>;
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: null,
+                images: [{ image_url: { url: 'data:image/png;base64,AAAA' } }],
+              },
+            },
+          ],
+          model: 'google/gemini-3.1-flash-image',
+          usage: { prompt_tokens: 20, completion_tokens: 1290 },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const result = await new OpenRouterAiProvider(
+      config(),
+      fetchImpl,
+    ).generateText({
+      model: 'google/gemini-3.1-flash-image',
+      prompt: 'draw a park',
+      outputImage: { aspectRatio: '1:1' },
+    });
+    expect(seen.body?.modalities).toEqual(['image', 'text']);
+    expect(seen.body?.image_config).toEqual({ aspect_ratio: '1:1' });
+    expect(result.images).toEqual(['data:image/png;base64,AAAA']);
+    expect(result.text).toBe('');
+    expect(result.usage?.completionTokens).toBe(1290);
+  });
+
+  it('asks for no picture unless told to', async () => {
+    const { seen, fetchImpl } = capture();
+    await new OpenRouterAiProvider(config(), fetchImpl).generateText(request);
+    expect(seen.body).not.toHaveProperty('modalities');
+    expect(seen.body).not.toHaveProperty('image_config');
+  });
+
   it('sends pictures as image parts beside the prompt, at low detail unless told otherwise', async () => {
     const { seen, fetchImpl } = capture();
     await new OpenRouterAiProvider(config(), fetchImpl).generateText({

@@ -1,0 +1,151 @@
+# وش الفرق؟ — scenes an image model draws, and the things it may take out.
+#
+# @ key | the scene, in English, as the image model is asked for it
+# - key | the thing, in English, exactly as it appears in the scene | every Arabic name a player may type, comma-separated
+#
+# Every thing is listed in the drawing request, so it is there exactly once;
+# one of them is taken out of the second picture. Reviewed by the owner.
+
+@ beach | A girl kneeling on the sand at the seaside, reaching out to a small sea otter in the water. A sailboat on the horizon, clouds, a wooden fence and a green hill.
+- hair-bow | a big red bow in the girl's hair | فيونكة, شبرة, توكة, ربطة شعر, بكلة
+- bucket | a red bucket on the sand | سطل, جردل, دلو
+- sandcastle | a sandcastle on the sand | قلعة رمل, قلعة, قصر رمل
+- sailboat | a white sailboat on the sea | قارب, شراع, مركب, قارب شراعي
+
+@ barbecue | A cheerful man grilling burgers on a barbecue in a back garden, a dog sitting beside him, a wooden picnic table, a tree, a swing and flowers along a fence.
+- cap | a blue cap on the man's head | كاب, طاقية, قبعة, برنيطة
+- jug | a jug of orange juice on the table | إبريق, جك, جق, عصير
+- watering-can | a green watering can on the grass | مرشة, رشاش, سقاية
+- swing | a wooden swing hanging from a frame | مرجيحة, مرجوحة, ارجوحة
+
+@ living-room | A grandmother with glasses sitting in an armchair reading a book in a cosy living room, a cat sleeping on a rug, a window with curtains.
+- clock | a round clock on the wall | ساعة, ساعة جدار
+- lamp | a tall floor lamp beside the armchair | أباجورة, اباجوره, لمبة, مصباح, ابجورة
+- teapot | a teapot on a small side table | براد, إبريق شاي, ابريق, ابريق الشاي
+- plant | a plant in a pot on the windowsill | زرعة, نبتة, زرع, شجرة
+
+@ park | A boy flying a kite in a park, his father on a bench reading a newspaper, a duck pond, trees, a small bridge and a hot-air balloon in the sky.
+- football | a football on the grass next to the bench | كورة, كرة, كرة قدم
+- kite | a colourful kite in the sky | طيارة ورق, طائرة ورقية, طياره ورق
+- balloon | a hot-air balloon in the sky | منطاد, بالون
+- newspaper | a newspaper in the father's hands | جريدة, جرايد, صحيفة
+
+@ desert-camp | A family desert camp at sunset: a man in a white thobe sitting on a rug by a small campfire, a camel lying nearby, sand dunes and a tent.
+- dallah | an Arabic coffee pot by the fire | دلة, دله, دلة قهوة
+- camel | a camel lying on the sand | جمل, ناقة, بعير
+- lantern | a hanging lantern at the tent's entrance | فانوس, سراج, لمبة
+- tent | a tent behind the rug | خيمة, خيمه, بيت شعر
+
+@ kitchen | A boy and his mother baking in a bright kitchen, a bowl of dough on the counter, shelves with jars and a window.
+- rolling-pin | a wooden rolling pin on the counter | شوبك, مرق, عصا عجين, نشابة
+- kettle | a kettle on the stove | غلاية, كتلي, ابريق, براد
+- apron | an apron worn by the mother | مريلة, مريول, مريلة مطبخ
+- fridge-drawing | a child's drawing stuck on the fridge door | رسمة, رسمه, ورقة, لوحة
+
+@ classroom | A classroom with a teacher pointing at a world map, two pupils at their desks, a bookshelf and a big window.
+- globe | a globe on the teacher's desk | كرة أرضية, مجسم الكرة الأرضية, كوكب الأرض, الكره الارضيه
+- map | a world map on the wall | خريطة, خريطه, خارطة
+- backpack | a school backpack by a desk | شنطة, شنطة مدرسة, حقيبة, شنطه
+- apple | an apple on the teacher's desk | تفاحة, تفاحه, تفاح
+
+@ farm | A farmer in a straw hat feeding chickens in a farmyard, a red barn, a cow in a field, a tractor and a windmill.
+- straw-hat | a straw hat on the farmer's head | قبعة, برنيطة, طاقية, قبعة قش
+- tractor | a tractor beside the barn | تراكتور, جرار, حراثة, تركتر
+- windmill | a windmill on the hill | طاحونة, طاحونة هواء, مروحة
+- cow | a cow in the field | بقرة, بقره, بقر
+
+@ fruit-market | A busy fruit stall at a market, a smiling seller behind boxes of fruit, a little girl pointing, an awning above the stall.
+- watermelon | a whole watermelon on the stall | حبحب, بطيخ, بطيخة, جح
+- scale | a weighing scale on the counter | ميزان, ميزانية
+- basket | a straw basket held by the girl | سلة, سله, زنبيل
+- awning | a striped awning over the stall | مظلة, شمسية, تندة
+
+@ playground | Children playing in a playground: a girl on a slide, a boy on a seesaw, a sandpit, trees and a bench.
+- slide | a slide | زحليقة, زحليقه, زلاقة, زلاقه
+- seesaw | a seesaw | ميزان, قلابة, اتزان, مرجيحة ميزان
+- ball | a beach ball in the sandpit | كورة, كرة, كرة شاطئ
+- skateboard | a skateboard on the path | سكيت, سكيت بورد, لوح تزلج
+
+@ bedroom | A child's bedroom at night: a boy in pyjamas reading in bed with a teddy bear, a shelf of toys, a window with stars.
+- teddy | a teddy bear on the bed | دبدوب, دبدوبة, دب
+- alarm-clock | an alarm clock on the bedside table | منبه, ساعة, ساعة منبه
+- slippers | a pair of slippers by the bed | زنوبة, نعال, شبشب, زنوبه
+- rocket-toy | a toy rocket on the shelf | صاروخ, صاروخ لعبة
+
+@ supermarket | A father and son pushing a shopping trolley in a supermarket aisle, shelves of colourful products and a sign hanging from the ceiling.
+- trolley | a shopping trolley | عربية, عربة, عربانة, كارت
+- milk | a carton of milk in the trolley | حليب, علبة حليب, كرتون حليب
+- banana | a bunch of bananas in the trolley | موز, موزة, موزه
+- bread | a loaf of bread in the trolley | خبز, عيش, صامولي, رغيف
+
+@ football-pitch | A football match on a sunny day, a goalkeeper diving, a player kicking the ball, a referee with a whistle and a crowd behind the fence.
+- goal-net | a goal with a net | مرمى, قون, شبكة, جول
+- whistle | a whistle at the referee's mouth | صافرة, صفارة
+- corner-flag | a corner flag | راية, علم, علم الركنية, راية ركنية
+- ball | the football in the air | كورة, كرة, كرة قدم
+
+@ airport | Travellers in a bright airport hall: a mother with a suitcase, a boy at the big window watching a plane, a departures board.
+- suitcase | a suitcase with wheels | شنطة, شنطة سفر, حقيبة, حقيبة سفر
+- plane | a plane outside the window | طيارة, طائرة, طياره
+- board | a departures board on the wall | شاشة, لوحة, شاشة الرحلات
+- passport | a passport in the mother's hand | جواز, جواز سفر, باسبور
+
+@ zoo | A family visiting a zoo: a giraffe eating leaves, an elephant by a pool, a boy holding a balloon, a girl taking a photo.
+- giraffe | a giraffe | زرافة, زرافه, زراف
+- balloon | a red balloon in the boy's hand | بالون, بلونة, بالونة
+- camera | a camera in the girl's hands | كاميرا, كميرا
+- elephant | an elephant | فيل, فيله
+
+@ library | A quiet library: a girl reading at a long table, an old man taking a book from a tall shelf, a ladder against the shelf.
+- ladder | a wooden ladder against the shelf | درج, سلم, سلّم
+- globe | a globe on the table | كرة أرضية, مجسم الكرة الأرضية, الكره الارضيه
+- lamp | a green reading lamp on the table | أباجورة, اباجوره, لمبة, مصباح
+- clock | a big round clock on the wall | ساعة, ساعة جدار
+
+@ car-wash | A father washing the family car in front of the house with his son, soap bubbles in the air, a hose on the ground.
+- bucket | a bucket of soapy water | سطل, جردل, دلو
+- hose | a garden hose | لي, هوز, خرطوم, لي موية
+- sponge | a sponge in the boy's hand | اسفنجة, سفنجة, اسفنجه, ليفة
+- bicycle | a bicycle leaning on the wall | سيكل, دراجة, دباب, سيكل هوائي
+
+@ picnic | A family picnic under a tree on a blanket, a mother pouring tea, kids eating sandwiches, a kite stuck in the tree.
+- thermos | a thermos flask on the blanket | ترمس, ترمسة, دلة, حافظة
+- basket | a picnic basket | سلة, سله, زنبيل
+- kite | a kite stuck in the tree | طيارة ورق, طائرة ورقية, طياره ورق
+- watermelon | a slice of watermelon | حبحب, بطيخ, بطيخة, جح
+
+@ fishing | A grandfather and grandson fishing from a small wooden boat on a calm lake, mountains behind, a bird flying.
+- fishing-rod | a fishing rod in the grandfather's hands | سنارة, سناره, صنارة
+- bucket | a bucket with fish in the boat | سطل, جردل, دلو
+- hat | a hat on the grandfather's head | قبعة, برنيطة, طاقية
+- bird | a bird flying in the sky | طير, عصفور, طاير, نورس
+
+@ snow | Children playing in the snow: a boy building a snowman, a girl on a sled, pine trees and a small cabin with smoke from the chimney.
+- snowman | a snowman with a carrot nose | رجل الثلج, رجل ثلج, ثلجي
+- sled | a wooden sled | زلاجة, مزلجة, زحليقة
+- scarf | a red scarf around the boy's neck | شال, سكارف, لفاع, وشاح
+- chimney | a chimney on the cabin roof | مدخنة, مدخنه, شيمني
+
+@ barber | A barber cutting a boy's hair in a barbershop, a big mirror, a chair, a waiting man reading a magazine.
+- scissors | scissors in the barber's hand | مقص, مقصّ
+- mirror | a big mirror on the wall | مراية, مرآة, مرايه
+- magazine | a magazine in the waiting man's hands | مجلة, مجله, جريدة
+- comb | a comb on the counter | مشط, مشطة
+
+@ birthday | A birthday party in a living room: a girl blowing out candles on a cake, friends with party hats, balloons and a wrapped present.
+- cake | a birthday cake with candles | كيكة, كيك, تورتة, تورته
+- present | a wrapped present | هدية, هديه, هدايا
+- party-hat | a party hat on one friend's head | طاقية, قبعة, طاقية حفلة
+- balloon | a single big yellow balloon | بالون, بلونة, بالونة
+
+@ garage | A father fixing a car's engine in a garage, his daughter handing him a tool, shelves with tools and a bicycle hanging on the wall.
+- wrench | a wrench in the girl's hand | مفتاح, مفتاح ربط, مفك, مفتاح عدة
+- toolbox | a red toolbox on the floor | شنطة عدة, صندوق عدة, عدة, صندوق ادوات
+- tyre | a spare tyre leaning on the wall | كفر, إطار, اطار, تاير
+- bicycle | a bicycle hanging on the wall | سيكل, دراجة, دباب
+
+@ beach-umbrella | A family relaxing on the beach: a mother under a striped umbrella, a father reading, a boy with a snorkel mask, a crab on the sand, palm trees.
+- umbrella | a striped beach umbrella | شمسية, مظلة, شمسيه
+- crab | a crab on the sand | سلطعون, سرطان, قبقب, سلطعون بحر
+- snorkel | a snorkel mask on the boy's face | نظارة غطس, نظارة سباحة, قناع غطس
+- palm | a palm tree | نخلة, نخله, شجرة نخيل

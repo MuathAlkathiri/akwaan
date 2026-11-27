@@ -81,6 +81,84 @@ describe('ComposedVisualService', () => {
     },
   );
 
+  it('وش الفرق؟ stores the image model picture and passes the Bomb screen', async () => {
+    const png = jest.fn(async () => Buffer.from('never'));
+    const ingest = jest.fn(async () => resolved());
+    const draw = jest.fn(async () => ({
+      status: 'drawn' as const,
+      png: Buffer.from('pair'),
+      check: 'confirmed' as const,
+      area: 0.01,
+      strayArea: 0,
+      attempts: 1,
+    }));
+    const service = new ComposedVisualService(
+      { toPng: png } as never,
+      { ingestBytes: ingest } as never,
+      { draw } as never,
+    );
+    for (const variant of ['went-missing', 'showed-up']) {
+      const candidate = await service.compose(
+        'bomb-spot-difference' as never,
+        'job-7:3',
+        { mechanicKey: 'bomb', scopeKey: 'spot-the-error' },
+        variant,
+      );
+      expect(
+        new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService)
+          .screen(candidate.draft, candidate.authoring, {
+            worldKey: 'puzzles',
+            mechanicKey: 'bomb',
+          } as never)
+          .findings.filter((f) => f.severity === 'blocking')
+          .map((f) => f.code),
+      ).toEqual([]);
+      expect(candidate.draft.media).toBeDefined();
+      expect(candidate.mediaPlan).toBeDefined();
+      expect(
+        (candidate.authoring.composedVisual as Record<string, unknown>)
+          .differenceCheck,
+      ).toBe('confirmed');
+      expect(
+        (candidate.draft.metadata as { entityId: string }).entityId,
+      ).toMatch(/^composed:bomb:difference:/);
+    }
+    expect(png).not.toHaveBeenCalled();
+    expect(ingest).toHaveBeenCalledWith(
+      expect.objectContaining({ bytes: Buffer.from('pair') }),
+    );
+    expect(draw).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: 'job-7', itemKey: '3' }),
+    );
+  });
+
+  it('وش الفرق؟ without a picture says why and stores nothing', async () => {
+    const ingest = jest.fn(async () => resolved());
+    const service = new ComposedVisualService(
+      { toPng: jest.fn() } as never,
+      { ingestBytes: ingest } as never,
+      {
+        draw: jest.fn(async () => ({
+          status: 'failed' as const,
+          failureReason: 'DIFFERENCE_TOO_SMALL',
+        })),
+      } as never,
+    );
+    const candidate = await service.compose(
+      'bomb-spot-difference' as never,
+      'job:0',
+      { mechanicKey: 'bomb', scopeKey: 'spot-the-error' },
+    );
+    expect(candidate.draft.media).toBeUndefined();
+    expect(ingest).not.toHaveBeenCalled();
+    expect(
+      (candidate.authoring.composedVisual as Record<string, unknown>)
+        .failureReason,
+    ).toBe('DIFFERENCE_TOO_SMALL');
+  });
+
   it.each(PATH_BOMB_VARIANTS.map((variant) => [variant]))(
     'وين توصل؟ / %s passes the Bomb screen',
     async (variant) => {

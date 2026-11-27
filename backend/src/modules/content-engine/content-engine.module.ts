@@ -52,6 +52,7 @@ import { WigoloFactEvidenceRetriever } from './infrastructure/wigolo-fact-eviden
 import { EngineImageIngestionService } from './infrastructure/engine-image-ingestion.service';
 import { SvgRasterizer } from './infrastructure/svg-rasterizer';
 import { ComposedVisualService } from './application/composed-visual.service';
+import { DifferenceSceneService } from './application/difference-scene.service';
 import { MediaStorageModule } from '../../common/uploads/media-storage.module';
 import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
@@ -236,6 +237,7 @@ import {
     // مركّب الصور: pictures the engine draws itself.
     SvgRasterizer,
     ComposedVisualService,
+    DifferenceSceneService,
     CandidateMediaReviewService,
     {
       // Image discovery is fail-closed like the provider slots above: with the

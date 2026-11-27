@@ -27,6 +27,11 @@ import {
   NUMBER_BOMB_VARIANTS,
   composeNumberBomb,
 } from './composed-bomb-numbers';
+import {
+  DIFFERENCE_VARIANTS,
+  DifferenceRequest,
+  composeDifference,
+} from './composed-difference';
 import { LETTER_WORDS, lendersFor, lettersSvg } from './composed-letters';
 import {
   shatteredOrder,
@@ -69,6 +74,7 @@ export const BOMB_VARIANTS = {
     'wrong-shadow',
     'wrong-sum',
   ],
+  'bomb-spot-difference': DIFFERENCE_VARIANTS,
 } as const;
 
 export type BombFamily = keyof typeof BOMB_VARIANTS;
@@ -94,6 +100,11 @@ export interface ComposedBombItem {
   concept: string;
   factualClaim: string;
   svg: string;
+  /**
+   * Set when the picture is drawn by an image model, not the composer
+   * (وش الفرق؟): `svg` is then empty and nothing rasterises it.
+   */
+  difference?: DifferenceRequest;
 }
 
 /** The drawings a Bomb item may ask the name of. */
@@ -595,6 +606,22 @@ function drawBomb(
       return putTogether(seed, chosen);
     case 'bomb-thread-end':
       return threadEnd(seed, chosen);
+    case 'bomb-spot-difference': {
+      const item = composeDifference(seed, chosen);
+      return {
+        familyKey,
+        answerKey: item.answerKey,
+        variantKey: item.variantKey,
+        variant: item.variant,
+        prompt: item.prompt,
+        acceptedAnswers: item.acceptedAnswers,
+        altText: item.altText,
+        concept: item.concept,
+        factualClaim: item.factualClaim,
+        svg: '',
+        difference: item.request,
+      };
+    }
     default:
       return oddOneOut(seed, chosen);
   }

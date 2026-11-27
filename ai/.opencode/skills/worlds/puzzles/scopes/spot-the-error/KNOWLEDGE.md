@@ -378,6 +378,7 @@
 | 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 steps) |
 | 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
 | 18 | `bomb-odd-one-out` | وين الغلط؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 19 | `bomb-spot-difference` | وش الفرق؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Generated picture (image model) | Match (typed) |
 
 ---
 
@@ -455,6 +456,15 @@ is shared between إكس أو and اقرأ خصمك: `broken-rule-step` and `bro
 القنبلة asks a drawing by name only when the drawing is listed in
 `backend/assets/drawn-things/bomb-names.txt` with every name a player may type
 for it. Numbers are accepted in Western digits, Arabic digits and words.
+
+`bomb-spot-difference` (وش الفرق؟, owner decision 2026-11-27) is the one
+القنبلة family here whose picture is not composed: an image model
+(`ENGINE_IMAGE_MODEL`) draws a scene from
+`backend/assets/drawn-things/difference-scenes.txt` and takes one listed thing
+out; the engine keeps that single change and nothing else, a vision model
+checks the thing is gone, and a person approves the picture. The answer is
+always a listed thing with its reviewed names. It has no إكس أو or اقرأ خصمك
+form: with four choices it is too easy.
 
 ## Machine-Readable Family Catalog
 
@@ -896,6 +906,36 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
         }
       ],
       "capacity": 300
+    },
+    {
+      "familyKey": "bomb-spot-difference",
+      "name": "وش الفرق؟",
+      "description": "صورتين متطابقتين لمشهد مرسوم (حديقة، بحر، صالة…) بينهم فرق واحد: شي اختفى من وحدة. موديل صور يرسم المشهد ويشيل الشي، والمحرك يخلي باقي الصورة متطابقة بكسل بكسل، وموديل قراءة يتأكد. الجواب اسم الشي مكتوب.",
+      "playerSolve": "مقارنة الصورتين وكتابة اسم الشي اللي موجود في وحدة بس.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "went-missing",
+          "name": "وش اللي اختفى",
+          "brief": "The thing is in the first picture and gone from the second."
+        },
+        {
+          "key": "showed-up",
+          "name": "وش اللي انضاف",
+          "brief": "The thing is missing from the first picture and shows in the second."
+        }
+      ],
+      "capacity": 96
     }
   ]
 }
