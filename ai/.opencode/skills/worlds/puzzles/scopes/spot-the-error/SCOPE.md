@@ -45,6 +45,8 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | 2D Balance Scales | `multiple_choice` |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | 2D Tessellation Vector | `multiple_choice` |
 | 13 | `wrong-clock-minutes` | الساعة الغلط | Composed picture | `closest` |
+| 14 | `lying-guard` | الشاهد الكذاب | Composed picture | `multiple_choice` |
+| 15 | `false-scale` | الميزان الكذاب | Composed picture | `multiple_choice` |
 
 ---
 

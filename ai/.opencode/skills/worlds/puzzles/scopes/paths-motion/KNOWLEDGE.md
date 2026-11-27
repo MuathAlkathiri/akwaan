@@ -371,6 +371,7 @@ All puzzles in this Scope must be self-contained in the visible diagram. The pla
 | 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | **EXCELLENT** | 2D Grid Vector | 1D Discrete Slider / MC |
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cable Vector | Multiple Choice (4 sockets) |
 | 13 | `key-door-route` | الطريق الوحيد | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (steps) |
+| 14 | `mirror-beam` | الشعاع وين يوصل؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 targets) |
 
 ---
 
@@ -852,6 +853,36 @@ nothing is deleted, and a family returns by removing its `status` below.
           "key": "star-first",
           "name": "النجمة أول",
           "brief": "The walk must pass the star."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "mirror-beam",
+      "name": "الشعاع وين يوصل؟",
+      "description": "شبكة فيها مرايا مايلة وليزر يدخل من اليمين، وأربعة أهداف بحروف حول الشبكة. المحرك يتتبع الشعاع ويحدد الهدف.",
+      "playerSolve": "تتبع الشعاع وتغيير اتجاهه عند كل مراية.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "three-mirrors",
+          "name": "ثلاث مرايا",
+          "brief": "Three mirrors, at least two touched."
+        },
+        {
+          "key": "five-mirrors",
+          "name": "خمس مرايا",
+          "brief": "Five mirrors, at least three touched."
         }
       ],
       "capacity": 200

@@ -373,6 +373,8 @@
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Balance Scales | Multiple Choice (4 scales) |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Tessellation Vector | Multiple Choice (Tile label) |
 | 13 | `wrong-clock-minutes` | الساعة الغلط | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (minutes) |
+| 14 | `lying-guard` | الشاهد الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 doors) |
+| 15 | `false-scale` | الميزان الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 scales) |
 
 ---
 
@@ -710,6 +712,71 @@ When generating or reviewing an authored batch for `spot-the-error`:
         }
       ],
       "capacity": 300
+    },
+    {
+      "familyKey": "lying-guard",
+      "name": "الشاهد الكذاب",
+      "description": "حراس كل واحد يقول جملة عن باب الكنز، وواحد بس يكذب (أو واحد بس صادق). المحرك يجرب كل باب ويتأكد إن واحد بس يناسب.",
+      "playerSolve": "تجربة كل باب وعد اللي يكذبون.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "one-liar",
+          "name": "كذاب واحد",
+          "brief": "Three guards, one lies."
+        },
+        {
+          "key": "four-guards",
+          "name": "أربع حراس",
+          "brief": "Four guards, one lies."
+        },
+        {
+          "key": "one-honest",
+          "name": "صادق واحد",
+          "brief": "Three guards, only one tells the truth."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "false-scale",
+      "name": "الميزان الكذاب",
+      "description": "أربع موازين عليها أشكال، وكل شكل له نفس الوزن في كلها، وميزان واحد مرسوم مايل غلط. المحرك يجرب كل الأوزان ويتأكد إن ميزان واحد بس ممكن يكون الكذاب.",
+      "playerSolve": "مقارنة الموازين ببعض وإيجاد اللي يناقض الباقي.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "three-shapes",
+          "name": "ثلاث أشكال",
+          "brief": "Four scales, three shapes."
+        },
+        {
+          "key": "level-trap",
+          "name": "الميزان المستوي",
+          "brief": "At least one scale is level, and the false one may be drawn level."
+        }
+      ],
+      "capacity": 200
     }
   ]
 }

@@ -139,6 +139,7 @@ describe('composed puzzles answered by choosing', () => {
       'assembly-rotation',
       'paths-motion',
       'observation-illusions',
+      'spot-the-error',
       'wordplay-letters',
     ].flatMap((scope) => {
       const text = readFileSync(join(skills, scope, 'KNOWLEDGE.md'), 'utf8');

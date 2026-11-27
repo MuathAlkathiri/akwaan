@@ -387,6 +387,7 @@
 | 12 | `unfolded-surface-net` | مخطط المجسمات غير المكعبة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Net + 3D Solids | Multiple Choice (4 solids) |
 | 13 | `spatial-reconstruction` | إعادة بناء النمط المنقسم | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Vector Pieces | Multiple Choice (4 patterns) |
 | 14 | `cube-pile-count` | كم مكعب في الكومة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (cubes) |
+| 15 | `last-pipe-piece` | القطعة الأخيرة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 pieces) |
 
 ---
 
@@ -892,6 +893,41 @@ nothing is deleted, and a family returns by removing its `status` below.
           "key": "tall",
           "name": "عالية",
           "brief": "A 3×3 base, up to five high."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "last-pipe-piece",
+      "name": "القطعة الأخيرة",
+      "description": "أنبوب أو سلك ناقص قطعة وحدة، وأربع قطع تحته. وحدة بس طرفيها يوصلون الجيران. المحرك يبني المسار ويحدد القطعة.",
+      "playerSolve": "معرفة الجهتين اللي تحتاجهم الفجوة واختيار القطعة اللي تفتح عليهم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "water",
+          "name": "ماي",
+          "brief": "A pipe from a tap to a tank."
+        },
+        {
+          "key": "wire",
+          "name": "كهرباء",
+          "brief": "A wire from a battery to a lamp."
+        },
+        {
+          "key": "turned",
+          "name": "نفس القطعة مدورة",
+          "brief": "The gap needs a bend; the four choices are the same bend turned."
         }
       ],
       "capacity": 200

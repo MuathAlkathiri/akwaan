@@ -29,6 +29,11 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'visual-closure-fragment',
   'spot-the-difference',
   'visual-match-scan',
+  'count-changes',
+  'mirror-beam',
+  'last-pipe-piece',
+  'lying-guard',
+  'false-scale',
   'gear-train-direction',
   'maze-exit-route',
   'shortest-path-grid',
@@ -73,6 +78,7 @@ import {
   AssemblyFamily,
   composeAssembly,
 } from './composed-assembly';
+import { RYO_VARIANTS, RyoFamily, composeRyo } from './composed-ryo';
 import {
   WORDLE_VARIANTS,
   WordleFamily,
@@ -118,6 +124,8 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   ],
   'spot-the-difference': ['vanished', 'appeared', 'replaced'],
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
+  'count-changes': ['mixed', 'same-kind'],
+  ...RYO_VARIANTS,
   ...PATHS_VARIANTS,
   ...ASSEMBLY_VARIANTS,
   ...OBSERVATION_VARIANTS,
@@ -1425,6 +1433,81 @@ function composeDifference(seed: string, variantKey: string): ComposedPuzzle {
   };
 }
 
+/**
+ * «كم شي تغيّر؟» — the same board twice, nothing moved, and one to four
+ * squares changed: a thing gone, a thing come, or one thing for another.
+ */
+function composeCountChanges(seed: string, variantKey: string): ComposedPuzzle {
+  const random = seededRandom(`count-changes:${variantKey}:${seed}`);
+  const answer = 1 + Math.floor(random() * 4);
+  const sameKind = variantKey === 'same-kind';
+  for (;;) {
+    const cast = castOfThings(14, random);
+    const first: Array<DrawnThing | null> = shuffled(
+      [...cast.slice(0, 7), null, null],
+      random,
+    );
+    const spare = cast.slice(7);
+    const second = [...first];
+    const changed = shuffled([0, 1, 2, 3, 4, 5, 6, 7, 8], random).slice(
+      0,
+      answer,
+    );
+    const kinds: string[] = [];
+    let ok = true;
+    for (const index of changed) {
+      const before = first[index];
+      if (!before) {
+        second[index] = spare.pop()!;
+        kinds.push('appeared');
+        continue;
+      }
+      const swap = sameKind
+        ? spare.find((thing) => thing.category === before.category)
+        : random() < 0.5
+          ? spare[spare.length - 1]
+          : undefined;
+      if (sameKind && !swap) {
+        ok = false;
+        break;
+      }
+      if (swap) {
+        spare.splice(spare.indexOf(swap), 1);
+        second[index] = swap;
+        kinds.push('replaced');
+      } else {
+        second[index] = null;
+        kinds.push('vanished');
+      }
+    }
+    if (!ok) continue;
+    const options = [1, 2, 3, 4].map((count, index) => ({
+      id: ['a', 'b', 'c', 'd'][index],
+      label: String(count),
+    }));
+    const correctOptionId = options[answer - 1].id;
+    return {
+      familyKey: 'count-changes',
+      variantKey,
+      variant: `${variantKey}:${answer}:${kinds.join(',')}`,
+      prompt: 'كم شي تغيّر بين الصورتين؟ (اختفى، انضاف، أو تبدّل بغيره)',
+      options,
+      correctOptionId,
+      distractorRationale: options
+        .filter((option) => option.id !== correctOptionId)
+        .map((option) => ({
+          optionId: option.id,
+          why: `Exactly ${answer} squares differ between the two boards.`,
+        })),
+      altText: 'صورتان مرقّمتان فيهما نفس الأشياء في نفس الأماكن مع تغييرات',
+      concept:
+        'Compare two boards square by square and count the squares that differ.',
+      factualClaim: `${answer} squares differ: ${kinds.join(', ')}.`,
+      svg: twoBoardsSvg(first, second),
+    };
+  }
+}
+
 export function scanBoardSvg(cells: ReadonlyArray<DrawnThing | null>): string {
   return frame(
     `<rect x="70" y="27" width="1060" height="621" rx="36" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
@@ -1524,6 +1607,9 @@ export function composePuzzle(
       variant,
     ) as ComposedPuzzle;
   }
+  if (familyKey in RYO_VARIANTS) {
+    return composeRyo(familyKey as RyoFamily, seed, variant) as ComposedPuzzle;
+  }
   if (familyKey in LETTERS_VARIANTS) {
     return composeLetters(
       familyKey as LettersFamily,
@@ -1553,6 +1639,9 @@ export function composePuzzle(
   }
   if (familyKey === 'spot-the-difference') {
     return composeDifference(seed, variant);
+  }
+  if (familyKey === 'count-changes') {
+    return composeCountChanges(seed, variant);
   }
   return composeScan(seed, variant);
 }

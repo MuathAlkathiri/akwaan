@@ -916,6 +916,7 @@ Islamic geometric patterns, Persian tilework, butterfly wings, snowflake crystal
 | 13 | `visual-closure-fragment` | التعرف عبر الاكتمال البصري | EXCELLENT | EXCELLENT | EXCELLENT | DO_NOT_FORCE | Image (Macro) | MC, Match |
 | 14 | `visual-asymmetry-detection` | ملاحظة كسر التناظر | EXCELLENT | EXCELLENT | GOOD | GOOD | Image | MC, Closest (angle) |
 | 15 | `length-illusion-ratio` | كم طوله؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (share of 100) |
+| 16 | `count-changes` | كم شي تغيّر؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (1–4) |
 
 ---
 
@@ -1483,6 +1484,36 @@ nothing is deleted, and a family returns by removing its `status` below.
         }
       ],
       "capacity": 150
+    },
+    {
+      "familyKey": "count-changes",
+      "name": "كم شي تغيّر؟",
+      "description": "صورتين لنفس اللوحة وما تحرك شي، وبين واحد وأربع مربعات تغيرت (شي اختفى أو انضاف أو تبدل). المطلوب العدد. المحرك يغير ويعد.",
+      "playerSolve": "مقارنة المربعات واحد واحد وعد المختلف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "mixed",
+          "name": "منوعة",
+          "brief": "Things gone, come and replaced."
+        },
+        {
+          "key": "same-kind",
+          "name": "من نفس النوع",
+          "brief": "A thing replaced by another of its kind."
+        }
+      ],
+      "capacity": 200
     }
   ]
 }

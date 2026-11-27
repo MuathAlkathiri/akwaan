@@ -44,6 +44,27 @@ const blockingCodes = (candidate: {
 
 describe('ComposedVisualService', () => {
   it.each([
+    ['mirror-beam', 'paths-motion'],
+    ['last-pipe-piece', 'assembly-rotation'],
+    ['count-changes', 'observation-illusions'],
+    ['lying-guard', 'spot-the-error'],
+    ['false-scale', 'spot-the-error'],
+  ] as const)(
+    '%s: an اقرأ خصمك item of four options that passes the screen',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-4:2', {
+        mechanicKey: 'read-your-opponent',
+        scopeKey,
+      });
+      expect(
+        (candidate.draft.answerPayload as { options: unknown[] }).options,
+      ).toHaveLength(4);
+      expect(blockingCodes(candidate as never)).toEqual([]);
+    },
+  );
+
+  it.each([
     ['key-door-route', 'paths-motion'],
     ['cube-pile-count', 'assembly-rotation'],
     ['length-illusion-ratio', 'observation-illusions'],

@@ -533,17 +533,17 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         // The other challenges draw families of their own (2026-11-27).
         const others: Record<string, Record<string, string[]>> = {
           'assembly-rotation': {
-            'read-your-opponent': [],
+            'read-your-opponent': ['last-pipe-piece'],
             bomb: [],
             closest: ['cube-pile-count'],
           },
           'paths-motion': {
-            'read-your-opponent': [],
+            'read-your-opponent': ['mirror-beam'],
             bomb: [],
             closest: ['key-door-route'],
           },
           'observation-illusions': {
-            'read-your-opponent': [],
+            'read-your-opponent': ['count-changes'],
             bomb: [],
             closest: ['length-illusion-ratio'],
           },
