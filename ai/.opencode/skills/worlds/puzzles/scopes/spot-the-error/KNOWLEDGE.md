@@ -372,6 +372,7 @@
 | 10 | `wrong-code-translation` | الخطأ في تطبيق الشفرة والرموز | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cipher Layout | Multiple Choice (4 options) |
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Balance Scales | Multiple Choice (4 scales) |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Tessellation Vector | Multiple Choice (Tile label) |
+| 13 | `wrong-clock-minutes` | الساعة الغلط | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (minutes) |
 
 ---
 
@@ -437,3 +438,279 @@ When generating or reviewing an authored batch for `spot-the-error`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## Machine-Readable Family Catalog
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.spot-the-error",
+  "families": [
+    {
+      "familyKey": "intruder-element",
+      "name": "العنصر الدخيل على المجموعة",
+      "description": "العنصر الدخيل على المجموعة",
+      "playerSolve": "العنصر الدخيل على المجموعة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "order-violation",
+      "name": "خلل الترتيب والتسلسل المنطقي",
+      "description": "خلل الترتيب والتسلسل المنطقي",
+      "playerSolve": "خلل الترتيب والتسلسل المنطقي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-visual-pattern",
+      "name": "الخلل في النمط والمصفوفة",
+      "description": "الخلل في النمط والمصفوفة",
+      "playerSolve": "الخلل في النمط والمصفوفة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "invalid-transformation-step",
+      "name": "الخطوة غير الصحيحة في التحول",
+      "description": "الخطوة غير الصحيحة في التحول",
+      "playerSolve": "الخطوة غير الصحيحة في التحول",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "impossible-shadow-violation",
+      "name": "خطأ الظلال ومصدر الضوء",
+      "description": "خطأ الظلال ومصدر الضوء",
+      "playerSolve": "خطأ الظلال ومصدر الضوء",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-number-mapping",
+      "name": "الخطأ في معادلة الربط العددي",
+      "description": "الخطأ في معادلة الربط العددي",
+      "playerSolve": "الخطأ في معادلة الربط العددي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "invalid-reflection-rule",
+      "name": "خلل قاعدة التناظر والانعكاس",
+      "description": "خلل قاعدة التناظر والانعكاس",
+      "playerSolve": "خلل قاعدة التناظر والانعكاس",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-chain-link",
+      "name": "الحلقة المكسورة في السلسلة",
+      "description": "الحلقة المكسورة في السلسلة",
+      "playerSolve": "الحلقة المكسورة في السلسلة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "false-classification-member",
+      "name": "الخطأ في تصنيف الفئات والخواص",
+      "description": "الخطأ في تصنيف الفئات والخواص",
+      "playerSolve": "الخطأ في تصنيف الفئات والخواص",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-code-translation",
+      "name": "الخطأ في تطبيق الشفرة والرموز",
+      "description": "الخطأ في تطبيق الشفرة والرموز",
+      "playerSolve": "الخطأ في تطبيق الشفرة والرموز",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-balance-rule",
+      "name": "الخلل في توازن المعادلة المصورة",
+      "description": "الخلل في توازن المعادلة المصورة",
+      "playerSolve": "الخلل في توازن المعادلة المصورة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-tessellation-tile",
+      "name": "الخلل في نمط التبليط الهندسي",
+      "description": "الخلل في نمط التبليط الهندسي",
+      "playerSolve": "الخلل في نمط التبليط الهندسي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-clock-minutes",
+      "name": "الساعة الغلط",
+      "description": "ساعتين، اليمين مضبوطة واليسار متقدمة أو متأخرة. المطلوب بكم دقيقة. المحرك يحدد الوقتين ويرسمهم.",
+      "playerSolve": "قراءة الساعتين وطرح الفرق.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "ahead",
+          "name": "متقدمة",
+          "brief": "The wrong clock is ahead."
+        },
+        {
+          "key": "behind",
+          "name": "متأخرة",
+          "brief": "The wrong clock is behind."
+        },
+        {
+          "key": "digital",
+          "name": "رقمية",
+          "brief": "The right time is shown on a digital clock."
+        }
+      ],
+      "capacity": 300
+    }
+  ]
+}
+```

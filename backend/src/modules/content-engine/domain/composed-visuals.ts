@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { ClosestFamily, isComposedClosestFamily } from './composed-closest';
 import {
   ComposedPuzzleFamily,
   isComposedPuzzleFamily,
@@ -30,12 +31,15 @@ export const isComposedVisualFamily = (
   (COMPOSED_VISUAL_FAMILIES as readonly string[]).includes(familyKey ?? '');
 
 /** Every family the engine draws, whichever way it is answered. */
-export type ComposedFamily = ComposedVisualFamily | ComposedPuzzleFamily;
+export type ComposedFamily =
+  ComposedVisualFamily | ComposedPuzzleFamily | ClosestFamily;
 
 export const isComposedFamily = (
   familyKey: string | null | undefined,
 ): familyKey is ComposedFamily =>
-  isComposedVisualFamily(familyKey) || isComposedPuzzleFamily(familyKey);
+  isComposedVisualFamily(familyKey) ||
+  isComposedPuzzleFamily(familyKey) ||
+  isComposedClosestFamily(familyKey);
 
 export const COMPOSED_VISUAL_WIDTH = 1200;
 export const COMPOSED_VISUAL_HEIGHT = 675;

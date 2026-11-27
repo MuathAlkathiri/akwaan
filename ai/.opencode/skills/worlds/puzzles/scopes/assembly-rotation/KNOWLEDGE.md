@@ -386,6 +386,7 @@
 | 11 | `mirror-vs-rotation-discrim` | التمييز بين التدوير والانعكاس | **EXCELLENT** | **EXCELLENT** | **EXCELLENT** | DO_NOT_FORCE | 2D Vector Geometry | Multiple Choice (Binary/MC) |
 | 12 | `unfolded-surface-net` | مخطط المجسمات غير المكعبة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Net + 3D Solids | Multiple Choice (4 solids) |
 | 13 | `spatial-reconstruction` | إعادة بناء النمط المنقسم | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Vector Pieces | Multiple Choice (4 patterns) |
+| 14 | `cube-pile-count` | كم مكعب في الكومة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (cubes) |
 
 ---
 
@@ -859,6 +860,41 @@ nothing is deleted, and a family returns by removing its `status` below.
       ],
       "status": "paused",
       "pausedReason": "Library V1; needs a picture the composer cannot draw yet."
+    },
+    {
+      "familyKey": "cube-pile-count",
+      "name": "كم مكعب في الكومة؟",
+      "description": "كومة مكعبات متدرجة مرسومة بالمنظور، والمكعبات تحت غيرها موجودة. المطلوب عددها كلها. المحرك يبني الكومة ويجمع الجواب.",
+      "playerSolve": "عدّ ارتفاع كل عمود وجمعها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "square",
+          "name": "مربعة",
+          "brief": "A 4×4 base, up to four high."
+        },
+        {
+          "key": "long",
+          "name": "طويلة",
+          "brief": "A 5×3 base, up to four high."
+        },
+        {
+          "key": "tall",
+          "name": "عالية",
+          "brief": "A 3×3 base, up to five high."
+        }
+      ],
+      "capacity": 200
     }
   ]
 }

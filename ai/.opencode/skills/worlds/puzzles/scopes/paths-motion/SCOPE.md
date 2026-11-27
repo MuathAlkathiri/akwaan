@@ -44,6 +44,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 10 | `cam-linkage-motion` | حركة الكامات والأذرع | 2D Linkage Vector | `multiple_choice` |
 | 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | 2D Grid Vector | `multiple_choice, closest` |
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | 2D Cable Vector | `multiple_choice` |
+| 13 | `key-door-route` | الطريق الوحيد | Composed picture | `closest` |
 
 ---
 

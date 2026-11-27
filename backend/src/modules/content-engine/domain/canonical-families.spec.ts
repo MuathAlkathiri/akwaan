@@ -501,7 +501,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         }
       });
 
-      it('the three visual Scopes draw only what the composer can draw, and only for إكس أو المتحرك', () => {
+      it('the three visual Scopes draw only what the composer can draw', () => {
         expect(drawable('assembly-rotation', 'moving-xo')).toEqual([
           'cube-net-fold',
           'fold-and-punch',
@@ -530,13 +530,27 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'visual-closure-fragment',
           'visual-match-scan',
         ]);
-        for (const scopeKey of [
-          'assembly-rotation',
-          'paths-motion',
-          'observation-illusions',
-        ]) {
-          for (const mechanicKey of ['read-your-opponent', 'bomb', 'closest']) {
-            expect(drawable(scopeKey, mechanicKey)).toEqual([]);
+        // The other challenges draw families of their own (2026-11-27).
+        const others: Record<string, Record<string, string[]>> = {
+          'assembly-rotation': {
+            'read-your-opponent': [],
+            bomb: [],
+            closest: ['cube-pile-count'],
+          },
+          'paths-motion': {
+            'read-your-opponent': [],
+            bomb: [],
+            closest: ['key-door-route'],
+          },
+          'observation-illusions': {
+            'read-your-opponent': [],
+            bomb: [],
+            closest: ['length-illusion-ratio'],
+          },
+        };
+        for (const [scopeKey, byMechanic] of Object.entries(others)) {
+          for (const [mechanicKey, families] of Object.entries(byMechanic)) {
+            expect(drawable(scopeKey, mechanicKey)).toEqual(families);
           }
         }
       });

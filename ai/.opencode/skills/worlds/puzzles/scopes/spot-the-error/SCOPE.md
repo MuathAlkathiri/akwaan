@@ -44,6 +44,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 10 | `wrong-code-translation` | الخطأ في تطبيق الشفرة والرموز | 2D Cipher Layout | `multiple_choice` |
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | 2D Balance Scales | `multiple_choice` |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | 2D Tessellation Vector | `multiple_choice` |
+| 13 | `wrong-clock-minutes` | الساعة الغلط | Composed picture | `closest` |
 
 ---
 

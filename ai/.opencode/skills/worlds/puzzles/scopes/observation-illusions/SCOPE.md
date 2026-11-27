@@ -56,6 +56,7 @@ For the Puzzles Signature mechanic (**Moving XO**), every family answers on a **
 | 12 | `overlapping-boundary-trace` | تداخل الأشكال والمسارات المغلقة | EXCELLENT | Required | `multiple_choice`, `closest` |
 | 13 | `visual-closure-fragment` | التعرف عبر الاكتمال البصري | EXCELLENT | Required | `multiple_choice`, `match` |
 | 14 | `visual-asymmetry-detection` | ملاحظة كسر التناظر | EXCELLENT | Required | `multiple_choice`, `closest` |
+| 15 | `length-illusion-ratio` | كم طوله؟ | Composed picture | `closest` |
 
 ## Safety
 

@@ -915,6 +915,7 @@ Islamic geometric patterns, Persian tilework, butterfly wings, snowflake crystal
 | 12 | `overlapping-boundary-trace` | تداخل الأشكال والمسارات المغلقة | EXCELLENT | GOOD | GOOD | EXCELLENT | Image (Vector) | MC, Closest (count/area) |
 | 13 | `visual-closure-fragment` | التعرف عبر الاكتمال البصري | EXCELLENT | EXCELLENT | EXCELLENT | DO_NOT_FORCE | Image (Macro) | MC, Match |
 | 14 | `visual-asymmetry-detection` | ملاحظة كسر التناظر | EXCELLENT | EXCELLENT | GOOD | GOOD | Image | MC, Closest (angle) |
+| 15 | `length-illusion-ratio` | كم طوله؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (share of 100) |
 
 ---
 
@@ -1447,6 +1448,41 @@ nothing is deleted, and a family returns by removing its `status` below.
         "read-your-opponent",
         "closest"
       ]
+    },
+    {
+      "familyKey": "length-illusion-ratio",
+      "name": "كم طوله؟",
+      "description": "خطين أو دائرتين، الأحمر طوله 100، وحولهم رسم يخدع العين (أسهم، قضبان، دوائر). المطلوب طول الأزرق. المحرك يحدد النسبة قبل الرسم.",
+      "playerSolve": "تجاهل الخدعة ومقارنة الطولين وحدهم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "arrows",
+          "name": "الأسهم",
+          "brief": "Two lines with fins that stretch the shorter and shrink the longer."
+        },
+        {
+          "key": "rails",
+          "name": "القضبان",
+          "brief": "Two bars between converging rails; the longer sits low."
+        },
+        {
+          "key": "circles",
+          "name": "الدوائر",
+          "brief": "Two discs ringed by big or small circles."
+        }
+      ],
+      "capacity": 150
     }
   ]
 }

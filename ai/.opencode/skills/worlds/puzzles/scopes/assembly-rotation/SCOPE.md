@@ -45,6 +45,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 11 | `mirror-vs-rotation-discrim` | التمييز بين التدوير والانعكاس | 2D Vector Geometry | `multiple_choice` |
 | 12 | `unfolded-surface-net` | مخطط المجسمات غير المكعبة | 2D Net + 3D Solids | `multiple_choice` |
 | 13 | `spatial-reconstruction` | إعادة بناء النمط المنقسم | 2D Vector Pieces | `multiple_choice` |
+| 14 | `cube-pile-count` | كم مكعب في الكومة؟ | Composed picture | `closest` |
 
 ---
 

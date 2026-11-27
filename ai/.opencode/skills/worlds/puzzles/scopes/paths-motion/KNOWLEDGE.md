@@ -370,6 +370,7 @@ All puzzles in this Scope must be self-contained in the visible diagram. The pla
 | 10 | `cam-linkage-motion` | حركة الكامات والأذرع | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Linkage Vector | Multiple Choice (Direction) |
 | 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | **EXCELLENT** | 2D Grid Vector | 1D Discrete Slider / MC |
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cable Vector | Multiple Choice (4 sockets) |
+| 13 | `key-door-route` | الطريق الوحيد | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (steps) |
 
 ---
 
@@ -824,6 +825,36 @@ nothing is deleted, and a family returns by removing its `status` below.
         "bomb",
         "read-your-opponent"
       ]
+    },
+    {
+      "familyKey": "key-door-route",
+      "name": "الطريق الوحيد",
+      "description": "شبكة مربعات فيها جدران وبداية ونهاية، وقاعدة واحدة: المفتاح قبل الباب أو المرور على النجمة. المطلوب أقل عدد خطوات. المحرك يرسم الشبكة ويحسب الجواب بالبحث.",
+      "playerSolve": "تخطيط أقصر طريق تحت القاعدة وعدّ خطواته.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "key-door",
+          "name": "المفتاح والباب",
+          "brief": "A wall with one door; the key is on the start side."
+        },
+        {
+          "key": "star-first",
+          "name": "النجمة أول",
+          "brief": "The walk must pass the star."
+        }
+      ],
+      "capacity": 200
     }
   ]
 }

@@ -43,6 +43,35 @@ const blockingCodes = (candidate: {
     .map((finding) => finding.code);
 
 describe('ComposedVisualService', () => {
+  it.each([
+    ['key-door-route', 'paths-motion'],
+    ['cube-pile-count', 'assembly-rotation'],
+    ['length-illusion-ratio', 'observation-illusions'],
+    ['wrong-clock-minutes', 'spot-the-error'],
+  ] as const)(
+    '%s: a مين أقرب item on a numeric slider that passes the screen',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-9:1', {
+        mechanicKey: 'closest',
+        scopeKey,
+      });
+      const slider = (
+        candidate.draft.mechanicPayload as {
+          closestSlider: { mode: string; min: number; step: number };
+        }
+      ).closestSlider;
+      expect(slider.mode).toBe('numeric-range');
+      const value = (candidate.draft.answerPayload as { correctValue: number })
+        .correctValue;
+      expect(candidate.authoring.stepsFromMin).toBe(
+        (value - slider.min) / slider.step,
+      );
+      expect(candidate.authoring.composedVisual).toMatchObject({ familyKey });
+      expect(blockingCodes(candidate as never)).toEqual([]);
+    },
+  );
+
   it('authors the whole candidate from one value', async () => {
     const { service, png, ingest } = build();
     const expected = composeVisual('battery-level', 'job-1:2');
