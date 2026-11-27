@@ -133,3 +133,32 @@ describe('ألغاز الأرقام — القنبلة in الأرقام وال�
     },
   );
 });
+
+describe('one batch never names the same drawing twice', () => {
+  it.each([
+    'bomb-what-is-it',
+    'bomb-put-together',
+    'bomb-thread-end',
+    'bomb-odd-one-out',
+  ] as const)('%s', (family) => {
+    for (const job of ['j1', 'j2', 'j3', 'j4']) {
+      const keys = Array.from({ length: 8 }, (_, ordinal) =>
+        composeBomb(family, `${job}:${ordinal}`),
+      ).map((item) => item.answerKey);
+      expect(keys.every(Boolean)).toBe(true);
+      expect(new Set(keys).size).toBe(keys.length);
+    }
+  });
+
+  it('a batch across forms names each drawing once', () => {
+    const keys = [0, 1, 2, 3, 4, 5].map(
+      (ordinal) =>
+        composeBomb(
+          'bomb-put-together',
+          `job-x:${ordinal}`,
+          ordinal % 2 ? 'mirrored-word' : 'shattered-turned',
+        ).answerKey,
+    );
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});

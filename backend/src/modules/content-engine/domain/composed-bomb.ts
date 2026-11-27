@@ -61,6 +61,8 @@ export const isComposedBombFamily = (
 
 export interface ComposedBombItem {
   familyKey: BombFamily;
+  /** The drawing whose name is the answer: one item a thing, in history too. */
+  answerKey?: string;
   variantKey: string;
   variant: string;
   prompt: string;
@@ -97,6 +99,32 @@ export function bombNames(): ReadonlyMap<string, string[]> {
 /** The drawings a Bomb item may ask the name of. */
 export const namedThings = (): DrawnThing[] =>
   drawnThings().filter((thing) => bombNames().has(thing.key));
+
+/**
+ * The drawing a batch's item asks the name of. The seed is «job:ordinal»: the
+ * job deals the named drawings once, in its own order, and each item takes
+ * the next one that suits it — so no two items of a batch name the same
+ * thing. A seed without an ordinal draws at random.
+ */
+const BATCH_HANDS = 12;
+
+export function dealtThing(
+  seed: string,
+  suits: (thing: DrawnThing) => boolean,
+  random: () => number,
+): DrawnThing {
+  const match = /^(.*):(\d+)$/.exec(seed);
+  const all = namedThings();
+  if (!match) return pick(all.filter(suits), random);
+  const deck = shuffled(all, seededRandom(`bomb-deck:${match[1]}`));
+  // Item n owns every twelfth card from n on: hands that never overlap, so
+  // two items cannot land on one drawing whatever each of them filters for.
+  const ordinal = Number(match[2]) % BATCH_HANDS;
+  for (let place = ordinal; place < deck.length; place += BATCH_HANDS) {
+    if (suits(deck[place])) return deck[place];
+  }
+  return pick(all.filter(suits), random);
+}
 
 const answersFor = (thing: DrawnThing): string[] =>
   bombNames().get(thing.key)!.slice(0, 10);
@@ -200,10 +228,9 @@ function firstLetters(seed: string, variantKey: string): ComposedBombItem {
 
 function whatIsIt(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-what-is-it:${variantKey}:${seed}`);
-  const thing = pick(
-    namedThings().filter(
-      (entry) => variantKey !== 'shadow' || entry.twins.length <= 2,
-    ),
+  const thing = dealtThing(
+    seed,
+    (entry) => variantKey !== 'shadow' || entry.twins.length <= 2,
     random,
   );
   const detail = Math.floor(random() * 20);
@@ -272,7 +299,7 @@ export function shatteredTurnedSvg(
 function putTogether(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-put-together:${variantKey}:${seed}`);
   if (variantKey === 'mirrored-word') {
-    const thing = pick(namedThings(), random);
+    const thing = dealtThing(seed, () => true, random);
     const word = answersFor(thing)[0];
     const mirror = random() < 0.5;
     const size = [...word].length > 6 ? 120 : 160;
@@ -295,10 +322,7 @@ function putTogether(seed: string, variantKey: string): ComposedBombItem {
     };
   }
   // Only well-filled drawings are cut up: a thin one leaves empty tiles.
-  const thing = pick(
-    namedThings().filter((entry) => entry.twins.length >= 1),
-    random,
-  );
+  const thing = dealtThing(seed, (entry) => entry.twins.length >= 1, random);
   const detail = Math.floor(random() * 20);
   const { svg, turned } = shatteredTurnedSvg(thing, detail, random);
   return {
@@ -332,7 +356,15 @@ function threadEnd(seed: string, variantKey: string): ComposedBombItem {
       to: `للدائرة ${start.name}`,
       colour: start.colour,
     }));
-  const things = shuffled(namedThings(), random).slice(0, threads);
+  // The thing at the end of the asked thread is dealt; the others are not.
+  const asked = Math.floor(random() * threads);
+  const dealt = dealtThing(seed, () => true, random);
+  const others = shuffled(
+    namedThings().filter((thing) => thing.key !== dealt.key),
+    random,
+  ).slice(0, threads - 1);
+  const things = [...others];
+  things.splice(routing.endOf[asked], 0, dealt);
   const ends: ThreadStation[] = things.map((thing) => ({
     key: thing.key,
     name: thing.the,
@@ -340,7 +372,6 @@ function threadEnd(seed: string, variantKey: string): ComposedBombItem {
     to: toThe(thing.the),
     thing,
   }));
-  const asked = Math.floor(random() * threads);
   const reached = things[routing.endOf[asked]];
   return {
     familyKey: 'bomb-thread-end',
@@ -374,7 +405,11 @@ function oddOneOut(seed: string, variantKey: string): ComposedBombItem {
     const crowd = pool.filter((thing) => thing.category === kinds[0]);
     const odd = namedThings().filter((thing) => thing.category === kinds[1]);
     if (crowd.length < count - 1 || !odd.length) continue;
-    const intruder = pick(odd, random);
+    const intruder = dealtThing(
+      seed,
+      (thing) => thing.category === kinds[1],
+      random,
+    );
     const row = shuffled(
       [...shuffled(crowd, random).slice(0, count - 1), intruder],
       random,
@@ -433,7 +468,18 @@ export function composeBomb(
           )
         ];
   const item = drawBomb(familyKey, seed, chosen);
-  return { ...item, acceptedAnswers: distinctAnswers(item.acceptedAnswers) };
+  const named = namedThings().find(
+    (thing) => bombNames().get(thing.key)?.[0] === item.acceptedAnswers[0],
+  );
+  return {
+    ...item,
+    ...(named &&
+    familyKey !== 'bomb-first-letters' &&
+    familyKey !== 'bomb-number-puzzles'
+      ? { answerKey: named.key }
+      : {}),
+    acceptedAnswers: distinctAnswers(item.acceptedAnswers),
+  };
 }
 
 function drawBomb(
