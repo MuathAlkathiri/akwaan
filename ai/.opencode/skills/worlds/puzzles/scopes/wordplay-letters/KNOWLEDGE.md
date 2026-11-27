@@ -463,7 +463,7 @@
 | 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
-| 24 | `bomb-first-letters` | أول حرف (القنبلة) | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 24 | `bomb-first-letters` | ألعاب الحروف | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -1308,9 +1308,9 @@ The block below is the structured form of the 15 canonical families approved for
     },
     {
       "familyKey": "bomb-first-letters",
-      "name": "أول حرف (القنبلة)",
-      "description": "ثلاث رسمات، وأول حرف من اسم كل وحدة يكوّن كلمة. المحرك يختار الكلمة والرسمات من الأشياء اللي اسمها ما يختلف عليه أحد.",
-      "playerSolve": "تسمية الرسمات وأخذ أول حرف.",
+      "name": "ألعاب الحروف",
+      "description": "أشكال جوابها مكتوب: أول حرف من ثلاث رسمات، الرسمة اللي ما تبدأ أو ما تنتهي بنفس حرف الباقي، وجملة يومية بدون نقاط والمطلوب الكلمة اللي تحتها خط (من قائمة جمل يراجعها المالك).",
+      "playerSolve": "تسمية الرسمات واللعب بحروفها، أو قراءة الكلمة بدون نقاط من سياق الجملة.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -1325,13 +1325,28 @@ The block below is the structured form of the 15 canonical families approved for
       "variants": [
         {
           "key": "in-order",
-          "name": "بالترتيب",
-          "brief": "Read right to left."
+          "name": "أول حرف بالترتيب",
+          "brief": "First letters of three drawings, read from the right."
         },
         {
           "key": "scrambled",
-          "name": "ملخبطة",
-          "brief": "The letters must be arranged."
+          "name": "أول حرف ملخبط",
+          "brief": "First letters of three drawings, to be arranged."
+        },
+        {
+          "key": "same-first",
+          "name": "نفس أول حرف",
+          "brief": "Three names begin with one letter; name the fourth."
+        },
+        {
+          "key": "same-last",
+          "name": "نفس آخر حرف",
+          "brief": "Three names end with one letter; name the fourth."
+        },
+        {
+          "key": "dotless-sentence",
+          "name": "جملة بدون نقاط",
+          "brief": "A reviewed everyday sentence without its dots; the marked word."
         }
       ],
       "capacity": 200

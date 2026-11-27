@@ -377,7 +377,7 @@
 | 15 | `false-scale` | الميزان الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 scales) |
 | 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 steps) |
 | 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
-| 18 | `bomb-odd-one-out` | وش الدخيل؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 18 | `bomb-odd-one-out` | وين الغلط؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -859,9 +859,9 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
     },
     {
       "familyKey": "bomb-odd-one-out",
-      "name": "وش الدخيل؟",
-      "description": "صف رسمات من نوع واحد (حيوانات، أكل، مركبات) وبينها وحدة من نوع ثاني. المطلوب اسم الدخيلة مكتوب.",
-      "playerSolve": "معرفة النوع المشترك واسم اللي خالفه.",
+      "name": "وين الغلط؟",
+      "description": "أربع أشكال جوابها مكتوب: اللي ما ينتمي، الاسم الغلط تحت رسمة (والجواب اسمها الصحيح)، الظل الغلط، والعملية الغلط (والجواب ناتجها الصحيح). المحرك يحدد الغلط بنفسه.",
+      "playerSolve": "إيجاد اللي خالف الباقي وتصحيحه.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -875,14 +875,24 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
       ],
       "variants": [
         {
-          "key": "five-things",
-          "name": "خمس",
-          "brief": "Four of a kind and one more."
+          "key": "odd-one-out",
+          "name": "اللي ما ينتمي",
+          "brief": "Five or six drawings of one kind and one of another."
         },
         {
-          "key": "six-things",
-          "name": "ست",
-          "brief": "Five of a kind and one more."
+          "key": "mislabeled",
+          "name": "الاسم الغلط",
+          "brief": "Four drawings named under them, one name wrong; give the right one."
+        },
+        {
+          "key": "wrong-shadow",
+          "name": "الظل الغلط",
+          "brief": "Four drawings over their shadows, one shadow another thing's."
+        },
+        {
+          "key": "wrong-sum",
+          "name": "العملية الغلط",
+          "brief": "Four sums, one wrong; give its right result."
         }
       ],
       "capacity": 300

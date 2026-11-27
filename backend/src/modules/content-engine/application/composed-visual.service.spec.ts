@@ -45,6 +45,42 @@ const blockingCodes = (candidate: {
     .map((finding) => finding.code);
 
 describe('ComposedVisualService', () => {
+  it.each([
+    ...['odd-one-out', 'mislabeled', 'wrong-shadow', 'wrong-sum'].map(
+      (variant) => ['bomb-odd-one-out', 'spot-the-error', variant],
+    ),
+    ...[
+      'in-order',
+      'scrambled',
+      'same-first',
+      'same-last',
+      'dotless-sentence',
+    ].map((variant) => ['bomb-first-letters', 'wordplay-letters', variant]),
+  ] as Array<[never, string, string]>)(
+    '%s / %s / %s passes the Bomb screen',
+    async (familyKey, scopeKey, variant) => {
+      const { service } = build();
+      for (const seed of ['q:1', 'q:2', 'q:3', 'q:4', 'q:5']) {
+        const candidate = await service.compose(
+          familyKey,
+          seed,
+          { mechanicKey: 'bomb', scopeKey },
+          variant,
+        );
+        const findings = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService).screen(
+          candidate.draft,
+          candidate.authoring,
+          { worldKey: 'puzzles', mechanicKey: 'bomb' } as never,
+        ).findings;
+        expect(
+          findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+        ).toEqual([]);
+      }
+    },
+  );
+
   it.each(PATH_BOMB_VARIANTS.map((variant) => [variant]))(
     'وين توصل؟ / %s passes the Bomb screen',
     async (variant) => {
