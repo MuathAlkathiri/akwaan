@@ -1,11 +1,11 @@
 "use client";
 
-import { BookOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AkwaanLoader } from "@/components/akwaan/akwaan-loader";
 import { STATE_ACTION, StateCard } from "@/components/akwaan/state-card";
 import { STICKER } from "@/components/akwaan/sticker";
 import { cn } from "@/lib/utils";
+import { ExplainerClosed } from "./explainer-closed";
 import { GameScene } from "../game-scene";
 import {
   MechanicTutorialRenderer,
@@ -88,31 +88,24 @@ export function InlineMechanicTutorial({
 
   if (launching) return null;
 
+  // The room has seen this one: the screen keeps the challenge's own card and
+  // the way back to the rules, rather than emptying out behind a stray button.
   if (enabled && (repeatEncounter || seen) && !replay)
     return (
-      <div className="flex justify-center py-2">
-        <button
-          type="button"
-          className={cn(STATE_ACTION.secondary, STICKER.small, "gap-2")}
-          onClick={() => setReplay(true)}
-        >
-          <BookOpen className="size-4" aria-hidden />
-          ذكّرني بالقواعد
-        </button>
-      </div>
+      <ExplainerClosed
+        challengeName={challengeName}
+        {...(description ? { line: description } : {})}
+        onReplay={() => setReplay(true)}
+      />
     );
 
   if (!enabled && !scoped)
-    return description ? (
-      <div
-        className={cn(
-          "rounded-[22px] bg-brand-paper px-6 py-4 text-center text-base font-bold text-brand-navy",
-          STICKER.base,
-        )}
-      >
-        <p>{description}</p>
-      </div>
-    ) : null;
+    return (
+      <ExplainerClosed
+        challengeName={challengeName}
+        {...(description ? { line: description } : {})}
+      />
+    );
 
   if (enabled && query.isLoading)
     return <AkwaanLoader label="نجهّز المثال…" className="min-h-[260px]" />;
@@ -158,13 +151,14 @@ export function InlineMechanicTutorial({
       />
     );
 
+  // No published example for this World: the challenge still gets its card, and
+  // the host is told why there is nothing to watch.
   if (!matches || !tutorial)
     return (
-      <StateCard
-        role="status"
-        size="page"
-        title="ما فيه مثال منشور لهالتحدي"
-        line={`ما فيه مثال منشور لتحدي ${challengeName} في هالعالم. تقدرون تبدون التحدي مباشرة.`}
+      <ExplainerClosed
+        challengeName={challengeName}
+        {...(description ? { line: description } : {})}
+        note="ما فيه مثال منشور لهالتحدي في هالعالم. تقدرون تبدون التحدي على طول."
       />
     );
 
