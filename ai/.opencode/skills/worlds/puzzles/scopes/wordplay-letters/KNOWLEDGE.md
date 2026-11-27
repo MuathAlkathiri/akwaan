@@ -464,6 +464,10 @@
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
 | 24 | `bomb-first-letters` | ألعاب الحروف | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 25 | `letters-in-sentence` | كم حرف في الجملة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (حرف) |
+| 26 | `letter-repeats` | كم مرة يتكرر الحرف؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (مرة) |
+| 27 | `words-with-letter` | كم كلمة فيها الحرف؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (كلمة) |
+| 28 | `odd-word-place` | وين الكلمة الغريبة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
 
 ---
 
@@ -1350,6 +1354,206 @@ The block below is the structured form of the 15 canonical families approved for
         }
       ],
       "capacity": 200
+    },
+    {
+      "familyKey": "letters-in-sentence",
+      "name": "كم حرف في الجملة؟",
+      "description": "جملة عربية مكتوبة، والجواب عدد حروفها بدون المسافات. المحرك يعدّها من نص الجملة نفسه.",
+      "playerSolve": "عدّ كل كلمة لحالها واجمعها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "short",
+          "name": "جملة قصيرة",
+          "brief": "Up to seventeen letters."
+        },
+        {
+          "key": "medium",
+          "name": "جملة متوسطة",
+          "brief": "Eighteen to twenty."
+        },
+        {
+          "key": "long",
+          "name": "جملة طويلة",
+          "brief": "Twenty-one or twenty-two."
+        },
+        {
+          "key": "very-long",
+          "name": "جملة أطول",
+          "brief": "Twenty-three and up."
+        },
+        {
+          "key": "few-words",
+          "name": "كلمات قليلة",
+          "brief": "Four words or fewer."
+        },
+        {
+          "key": "many-words",
+          "name": "كلمات كثيرة",
+          "brief": "Five words or more."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "letter-repeats",
+      "name": "كم مرة يتكرر الحرف؟",
+      "description": "ثلاث لخمس جمل مكتوبة وحرف محدد، والجواب كم مرة يتكرر الحرف في الكلام كله.",
+      "playerSolve": "خذ سطر سطر واحسب بالتراكم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "baa",
+          "name": "حرف الباء",
+          "brief": "The letter ب."
+        },
+        {
+          "key": "laam",
+          "name": "حرف اللام",
+          "brief": "The letter ل."
+        },
+        {
+          "key": "raa",
+          "name": "حرف الراء",
+          "brief": "The letter ر."
+        },
+        {
+          "key": "noon",
+          "name": "حرف النون",
+          "brief": "The letter ن."
+        },
+        {
+          "key": "meem",
+          "name": "حرف الميم",
+          "brief": "The letter م."
+        },
+        {
+          "key": "mixed",
+          "name": "حرف يختاره المحرك",
+          "brief": "Whichever safe letter fits the block."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "words-with-letter",
+      "name": "كم كلمة فيها الحرف؟",
+      "description": "قائمة 18 كلمة وحرف محدد، والجواب كم كلمة منها فيها الحرف. المحرك يختار كم وحدة فيها الحرف قبل ما يكتب القائمة.",
+      "playerSolve": "اقرأ صف صف وعلّم كل كلمة ظهر فيها الحرف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "raa",
+          "name": "حرف الراء",
+          "brief": "The letter ر."
+        },
+        {
+          "key": "meem",
+          "name": "حرف الميم",
+          "brief": "The letter م."
+        },
+        {
+          "key": "baa",
+          "name": "حرف الباء",
+          "brief": "The letter ب."
+        },
+        {
+          "key": "laam",
+          "name": "حرف اللام",
+          "brief": "The letter ل."
+        },
+        {
+          "key": "noon",
+          "name": "حرف النون",
+          "brief": "The letter ن."
+        },
+        {
+          "key": "seen",
+          "name": "حرف السين",
+          "brief": "The letter س."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "odd-word-place",
+      "name": "وين الكلمة الغريبة؟",
+      "description": "صف 12 كلمة كلها تتبع قاعدة وحدة إلا كلمة. اللاعب يعلّم على المسطرة وين هي، والقاعدة مكتوبة تحت السؤال.",
+      "playerSolve": "استنتج القاعدة من أول الكلمات وامشِ لين تلقى اللي خالفتها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "same-last",
+          "name": "نفس آخر حرف",
+          "brief": "All but one end with the same letter."
+        },
+        {
+          "key": "same-first",
+          "name": "نفس أول حرف",
+          "brief": "All but one start with the same letter."
+        },
+        {
+          "key": "same-length",
+          "name": "نفس عدد الحروف",
+          "brief": "All but one are the same length."
+        },
+        {
+          "key": "has-letter",
+          "name": "فيها نفس الحرف",
+          "brief": "All but one hold the same letter."
+        },
+        {
+          "key": "dotless",
+          "name": "بدون نقط",
+          "brief": "All but one have no dots."
+        },
+        {
+          "key": "dotted",
+          "name": "فيها نقط",
+          "brief": "All but one carry dots."
+        }
+      ],
+      "capacity": 120
     }
   ]
 }

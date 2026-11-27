@@ -3,6 +3,7 @@ import { PATH_CLOSEST_VARIANTS } from '../domain/composed-closest-paths';
 import { ASSEMBLY_CLOSEST_VARIANTS } from '../domain/composed-closest-assembly';
 import { OBSERVATION_CLOSEST_VARIANTS } from '../domain/composed-closest-observation';
 import { ERROR_CLOSEST_VARIANTS } from '../domain/composed-closest-errors';
+import { WORD_CLOSEST_VARIANTS } from '../domain/composed-closest-words';
 import { NUMBER_BOMB_VARIANTS } from '../domain/composed-bomb-numbers';
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
@@ -169,6 +170,7 @@ describe('ComposedVisualService', () => {
       ...ASSEMBLY_CLOSEST_VARIANTS,
       ...OBSERVATION_CLOSEST_VARIANTS,
       ...ERROR_CLOSEST_VARIANTS,
+      ...WORD_CLOSEST_VARIANTS,
     }).flatMap(([familyKey, variants]) =>
       (variants as readonly string[]).map((variant) => [familyKey, variant]),
     ) as Array<[never, string]>,

@@ -29,6 +29,12 @@ import {
   isErrorClosestFamily,
 } from './composed-closest-errors';
 import {
+  WORD_CLOSEST_VARIANTS,
+  WordClosestFamily,
+  composeWordClosest,
+  isWordClosestFamily,
+} from './composed-closest-words';
+import {
   ClosestSlider,
   PATH_CLOSEST_VARIANTS,
   PathClosestFamily,
@@ -47,6 +53,7 @@ export const CLOSEST_VARIANTS = {
   ...ASSEMBLY_CLOSEST_VARIANTS,
   ...OBSERVATION_CLOSEST_VARIANTS,
   ...ERROR_CLOSEST_VARIANTS,
+  ...WORD_CLOSEST_VARIANTS,
   'key-door-route': ['key-door', 'star-first'],
   'cube-pile-count': ['square', 'long', 'tall'],
   'length-illusion-ratio': ['arrows', 'rails', 'circles'],
@@ -659,6 +666,8 @@ export function composeClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  if (isWordClosestFamily(familyKey))
+    return composeWordClosest(familyKey as WordClosestFamily, seed, chosen);
   if (isErrorClosestFamily(familyKey))
     return composeErrorClosest(familyKey as ErrorClosestFamily, seed, chosen);
   if (isObservationClosestFamily(familyKey))
