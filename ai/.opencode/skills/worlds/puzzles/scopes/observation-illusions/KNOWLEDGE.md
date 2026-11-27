@@ -918,6 +918,11 @@ Islamic geometric patterns, Persian tilework, butterfly wings, snowflake crystal
 | 15 | `length-illusion-ratio` | كم طوله؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (share of 100) |
 | 16 | `count-changes` | كم شي تغيّر؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (1–4) |
 | 17 | `bomb-what-is-it` | وش هذا؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 18 | `clutter-count` | كم شكل منها؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (شكل) |
+| 19 | `grid-squares` | كم مربع في الشبكة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (مربع) |
+| 20 | `dots-estimate` | كم نقطة حمراء؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (نقطة) |
+| 21 | `odd-one-place` | وين الشكل المختلف؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 22 | `lines-meet` | وين يتقاطعون؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
 
 ---
 
@@ -1565,6 +1570,256 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
         }
       ],
       "capacity": 400
+    },
+    {
+      "familyKey": "clutter-count",
+      "name": "كم شكل منها؟",
+      "description": "أشكال كثيرة متداخلة من أنواع مختلفة، والسؤال عن نوع واحد منها. الجواب عددها، والمحرك يرسمها ويعرف كم رسم. نسخة مركّبة من فكرة العدّ في الزحام، ترسم بالأشكال بدل الصور.",
+      "playerSolve": "امسح الصورة باتجاه واحد عشان ما تعد شكل مرتين.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "stars",
+          "name": "نجوم",
+          "brief": "Stars among other shapes."
+        },
+        {
+          "key": "circles",
+          "name": "دوائر",
+          "brief": "Circles among other shapes."
+        },
+        {
+          "key": "triangles",
+          "name": "مثلثات",
+          "brief": "Triangles among other shapes."
+        },
+        {
+          "key": "squares",
+          "name": "مربعات",
+          "brief": "Squares among other shapes."
+        },
+        {
+          "key": "mixed",
+          "name": "زحمة مختلطة",
+          "brief": "The asked kind changes with the seed."
+        },
+        {
+          "key": "dense",
+          "name": "زحمة كثيفة",
+          "brief": "More shapes, more overlap."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "grid-squares",
+      "name": "كم مربع في الشبكة؟",
+      "description": "شبكة خطوط، والجواب كم مربع فيها بكل الأحجام مو الصغار بس.",
+      "playerSolve": "عد الصغار، بعدين اللي حجمه اثنين في اثنين، وهكذا.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "small",
+          "name": "شبكة صغيرة",
+          "brief": "Two or three rows."
+        },
+        {
+          "key": "three",
+          "name": "ثلاثة في ثلاثة",
+          "brief": "Around a three by three."
+        },
+        {
+          "key": "wide",
+          "name": "شبكة عريضة",
+          "brief": "Wider than it is tall."
+        },
+        {
+          "key": "four",
+          "name": "أربعة في أربعة",
+          "brief": "Around a four by four."
+        },
+        {
+          "key": "tall",
+          "name": "شبكة طويلة",
+          "brief": "Taller than it is wide."
+        },
+        {
+          "key": "big",
+          "name": "شبكة كبيرة",
+          "brief": "The most squares."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "dots-estimate",
+      "name": "كم نقطة حمراء؟",
+      "description": "نقاط حمراء وزرقاء منثورة، والجواب عدد الحمراء. عدّها وحدة وحدة ما يكفي في الوقت، فاللاعب يقدّر.",
+      "playerSolve": "عدّ رقعة صغيرة وقدّر كم رقعة مثلها في الصورة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "few",
+          "name": "حمراء قليلة",
+          "brief": "Few red dots."
+        },
+        {
+          "key": "many",
+          "name": "حمراء كثيرة",
+          "brief": "Many red dots."
+        },
+        {
+          "key": "clustered",
+          "name": "متجمّعة",
+          "brief": "The red dots gather in patches."
+        },
+        {
+          "key": "spread",
+          "name": "منثورة",
+          "brief": "Evenly scattered."
+        },
+        {
+          "key": "mostly-red",
+          "name": "أغلبها حمراء",
+          "brief": "Red outnumbers blue."
+        },
+        {
+          "key": "mostly-blue",
+          "name": "أغلبها زرقاء",
+          "brief": "Blue outnumbers red."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "odd-one-place",
+      "name": "وين الشكل المختلف؟",
+      "description": "صف طويل من أشكال متشابهة وفيه واحد مختلف. اللاعب يعلّم على المسطرة وين هو، والمسطرة خط بين طرفي الصف.",
+      "playerSolve": "امسح الصف مرة وحدة ووقف عند اللي يكسر الإيقاع.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "colour",
+          "name": "لونه مختلف",
+          "brief": "One shape in another colour."
+        },
+        {
+          "key": "size",
+          "name": "حجمه مختلف",
+          "brief": "One shape bigger."
+        },
+        {
+          "key": "turned",
+          "name": "مايل",
+          "brief": "One shape turned."
+        },
+        {
+          "key": "gap",
+          "name": "ناقص",
+          "brief": "One place left empty."
+        },
+        {
+          "key": "shade",
+          "name": "درجة لونه",
+          "brief": "A near shade, harder to see."
+        },
+        {
+          "key": "shape",
+          "name": "شكله مختلف",
+          "brief": "One circle among squares."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "lines-meet",
+      "name": "وين يتقاطعون؟",
+      "description": "خطين مايلين مرسومين جزئيًا، واللاعب يعلّم وين بيتقاطعون لو كمّلناهم.",
+      "playerSolve": "تابع ميل كل خط بعد ما يوقف وشوف وين يلتقي الثاني.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "shallow",
+          "name": "ميل خفيف",
+          "brief": "Shallow slopes."
+        },
+        {
+          "key": "steep",
+          "name": "ميل حاد",
+          "brief": "Steep slopes."
+        },
+        {
+          "key": "narrow",
+          "name": "بدايتهم قريبة",
+          "brief": "The two lines start close together."
+        },
+        {
+          "key": "wide",
+          "name": "بدايتهم بعيدة",
+          "brief": "The two lines start far apart."
+        },
+        {
+          "key": "left",
+          "name": "التقاطع يسار",
+          "brief": "They cross left of centre."
+        },
+        {
+          "key": "right",
+          "name": "التقاطع يمين",
+          "brief": "They cross right of centre."
+        }
+      ],
+      "capacity": 120
     }
   ]
 }

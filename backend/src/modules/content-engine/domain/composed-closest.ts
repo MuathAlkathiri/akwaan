@@ -17,6 +17,12 @@ import {
   isAssemblyClosestFamily,
 } from './composed-closest-assembly';
 import {
+  OBSERVATION_CLOSEST_VARIANTS,
+  ObservationClosestFamily,
+  composeObservationClosest,
+  isObservationClosestFamily,
+} from './composed-closest-observation';
+import {
   ClosestSlider,
   PATH_CLOSEST_VARIANTS,
   PathClosestFamily,
@@ -33,6 +39,7 @@ import {
 export const CLOSEST_VARIANTS = {
   ...PATH_CLOSEST_VARIANTS,
   ...ASSEMBLY_CLOSEST_VARIANTS,
+  ...OBSERVATION_CLOSEST_VARIANTS,
   'key-door-route': ['key-door', 'star-first'],
   'cube-pile-count': ['square', 'long', 'tall'],
   'length-illusion-ratio': ['arrows', 'rails', 'circles'],
@@ -645,6 +652,12 @@ export function composeClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  if (isObservationClosestFamily(familyKey))
+    return composeObservationClosest(
+      familyKey as ObservationClosestFamily,
+      seed,
+      chosen,
+    );
   if (isAssemblyClosestFamily(familyKey))
     return composeAssemblyClosest(
       familyKey as AssemblyClosestFamily,

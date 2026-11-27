@@ -59,6 +59,11 @@ For the Puzzles Signature mechanic (**Moving XO**), every family answers on a **
 | 15 | `length-illusion-ratio` | كم طوله؟ | Composed picture | `closest` |
 | 16 | `count-changes` | كم شي تغيّر؟ | Composed picture | `multiple_choice` |
 | 17 | `bomb-what-is-it` | وش هذا؟ | Composed picture | `match` |
+| 18 | `clutter-count` | كم شكل منها؟ | Composed picture | `closest` |
+| 19 | `grid-squares` | كم مربع في الشبكة؟ | Composed picture | `closest` |
+| 20 | `dots-estimate` | كم نقطة حمراء؟ | Composed picture | `closest` |
+| 21 | `odd-one-place` | وين الشكل المختلف؟ | Composed picture | `closest` |
+| 22 | `lines-meet` | وين يتقاطعون؟ | Composed picture | `closest` |
 
 ## Safety
 

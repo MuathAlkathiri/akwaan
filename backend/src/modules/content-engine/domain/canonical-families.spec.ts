@@ -563,7 +563,14 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'observation-illusions': {
             'read-your-opponent': ['count-changes'],
             bomb: ['bomb-what-is-it'],
-            closest: ['length-illusion-ratio'],
+            closest: [
+              'clutter-count',
+              'dots-estimate',
+              'grid-squares',
+              'length-illusion-ratio',
+              'lines-meet',
+              'odd-one-place',
+            ],
           },
         };
         others['spot-the-error'] = {
