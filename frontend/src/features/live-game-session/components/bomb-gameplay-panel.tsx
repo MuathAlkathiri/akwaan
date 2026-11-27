@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Send,
   SkipForward,
-  Square,
+  MicOff,
   Volume2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -229,7 +229,10 @@ const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
   // Recognition only. Whether the answer reached the server, and what it said,
   // is the send button's and the answer notice's to tell — never this line's.
   recognized: "تعرّفت على إجابتك.",
-  "no-speech": "ما سمعت إجابة. اضغط المايك وجرّب مرة ثانية.",
+  // No tap to ask for: the mic comes back by itself while it is this player's
+  // turn. Saying "اضغط" here would send them looking for a button they do not
+  // need.
+  "no-speech": "ما سمعت شي… قول إجابتك وأنا أسمعك.",
   "permission-denied":
     "لم يتم السماح باستخدام الميكروفون. فعّل الإذن أو استخدم الكتابة.",
   unsupported: "التعرّف الصوتي غير مدعوم في هذا المتصفح. استخدم الكتابة.",
@@ -238,7 +241,8 @@ const VOICE_MESSAGES: Partial<Record<BombVoiceState, string>> = {
 };
 
 /** The voice line, which says "sending" only while a send is actually open. */
-function voiceMessage(state: BombVoiceState, sending: boolean) {
+function voiceMessage(state: BombVoiceState, sending: boolean, muted = false) {
+  if (muted) return "المايك مكتوم. اضغط المايك ترجّعه.";
   if (state === "recognized" && sending) {
     return "تعرّفت على إجابتك. جارٍ الإرسال…";
   }
@@ -459,19 +463,30 @@ export function BombGameplayPanel({
   );
 
   const submitAnswer = useCallback(
-    (value: string) => {
+    (value: string, alternatives: string[] = []) => {
       const trimmed = value.trim();
       if (!trimmed || !answerEnabled || sendingRef.current) return;
       sendingRef.current = true;
       setSending(true);
       setNotice(undefined);
+      // The speech engine's runners-up travel with the answer, and the server
+      // judges them against the authored list — the phone never learns what is
+      // accepted. A typed answer carries none.
+      const heardToo = alternatives
+        .map((alternative) => alternative.trim())
+        .filter((alternative) => alternative && alternative !== trimmed);
       try {
         gameplayCommand(
           "gameplay-command",
           {
             roundId,
             commandType: "submit-answer",
-            payload: { answer: trimmed },
+            payload: {
+              answer: trimmed,
+              ...(heardToo.length
+                ? { alternativesJson: JSON.stringify(heardToo) }
+                : {}),
+            },
           },
           follow("answer", trimmed),
         );
@@ -678,10 +693,11 @@ export function BombGameplayPanel({
                   {ANSWER_NOTICES[notice]}
                 </AnswerNote>
               )}
-              {voice.state !== "idle" && voice.state !== "listening" && (
+              {(voice.muted ||
+                (voice.state !== "idle" && voice.state !== "listening")) && (
                 <AnswerNote tone="info" data-testid="bomb-phone-voice-state">
                   {voice.transcript ? `«${voice.transcript}» · ` : ""}
-                  {voiceMessage(voice.state, sending)}
+                  {voiceMessage(voice.state, sending, voice.muted)}
                 </AnswerNote>
               )}
               <div className="flex-1" />
@@ -696,19 +712,17 @@ export function BombGameplayPanel({
                   }}
                   disabled={!answerEnabled || sending}
                   mic={
-                    voice.state === "listening"
-                      ? "listening"
-                      : voice.state === "processing"
-                        ? "processing"
-                        : voice.state === "unsupported"
-                          ? "unsupported"
-                          : "idle"
+                    voice.muted
+                      ? "muted"
+                      : voice.state === "listening"
+                        ? "listening"
+                        : voice.state === "processing"
+                          ? "processing"
+                          : voice.state === "unsupported"
+                            ? "unsupported"
+                            : "idle"
                   }
-                  onMic={() =>
-                    voice.state === "listening"
-                      ? voice.stop("idle")
-                      : voice.start()
-                  }
+                  onMic={voice.toggleMute}
                   micDisabled={!answerEnabled || sending}
                   inputTestId="bomb-phone-answer"
                   micTestId="bomb-phone-voice"
@@ -888,27 +902,17 @@ export function BombGameplayPanel({
                   type="button"
                   size="lg"
                   className="size-20 rounded-full"
-                  variant={
-                    voice.state === "listening" ? "destructive" : "default"
-                  }
+                  variant={voice.muted ? "outline" : "default"}
                   disabled={
                     !answerEnabled ||
                     voice.state === "processing" ||
                     voice.state === "unsupported"
                   }
-                  onClick={() =>
-                    voice.state === "listening"
-                      ? voice.stop("idle")
-                      : voice.start()
-                  }
-                  aria-label={
-                    voice.state === "listening"
-                      ? "إيقاف الاستماع"
-                      : "الإجابة بالصوت"
-                  }
+                  onClick={voice.toggleMute}
+                  aria-label={voice.muted ? "رجّع السماع" : "اكتم المايك"}
                 >
-                  {voice.state === "listening" ? (
-                    <Square className="size-8 fill-current" aria-hidden />
+                  {voice.muted ? (
+                    <MicOff className="size-9" aria-hidden />
                   ) : voice.state === "processing" ? (
                     <Loader2 className="size-9 animate-spin" aria-hidden />
                   ) : (
@@ -929,16 +933,17 @@ export function BombGameplayPanel({
                     «{voice.transcript}»
                   </p>
                 )}
-                {voice.state !== "idle" && voice.state !== "listening" && (
+                {(voice.muted ||
+                  (voice.state !== "idle" && voice.state !== "listening")) && (
                   <p
                     className={
-                      voice.state === "recognized"
+                      voice.state === "recognized" && !voice.muted
                         ? "text-sm text-primary"
                         : "text-sm text-muted-foreground"
                     }
                     role="status"
                   >
-                    {voiceMessage(voice.state, sending)}
+                    {voiceMessage(voice.state, sending, voice.muted)}
                   </p>
                 )}
               </div>
@@ -1178,4 +1183,3 @@ function BombGraphic({
     </svg>
   );
 }
-

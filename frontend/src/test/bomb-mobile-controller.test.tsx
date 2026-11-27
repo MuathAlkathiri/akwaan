@@ -18,7 +18,8 @@ import type { GameplayRuntimeSnapshot } from "@/features/live-game-session/model
 /** Captures the callbacks the panel hands the voice hook, so a test can fire a
  *  final transcript exactly the way real speech recognition would. */
 const voiceMock = vi.hoisted(() => ({
-  onAnswer: undefined as ((value: string) => void) | undefined,
+  onAnswer: undefined as
+    ((value: string, alternatives: string[]) => void) | undefined,
   onSkip: undefined as (() => void) | undefined,
   state: "idle" as string,
 }));
@@ -34,7 +35,7 @@ vi.mock("@/features/live-game-session/hooks/use-bomb-voice-input", () => ({
     error: "خطأ",
   },
   useBombVoiceInput: (input: {
-    onAnswer: (value: string) => void;
+    onAnswer: (value: string, alternatives: string[]) => void;
     onSkip: () => void;
   }) => {
     voiceMock.onAnswer = input.onAnswer;
@@ -42,8 +43,10 @@ vi.mock("@/features/live-game-session/hooks/use-bomb-voice-input", () => ({
     return {
       state: voiceMock.state as "idle",
       transcript: "",
+      muted: false,
       start: vi.fn(),
       stop: vi.fn(),
+      toggleMute: vi.fn(),
     };
   },
 }));
@@ -89,7 +92,12 @@ const runtimeOf = (
       sequence: 1,
       status: "active",
       activeParticipantId: "p-1",
-      modeState: { phase: "presenting", itemIndex: 1, itemCount: 10, ...modeState },
+      modeState: {
+        phase: "presenting",
+        itemIndex: 1,
+        itemCount: 10,
+        ...modeState,
+      },
     },
     ...over,
   }) as unknown as GameplayRuntimeSnapshot;
@@ -110,8 +118,18 @@ const context = (
         team("team-beta", "صقور الرياض", 30_000),
       ],
       participants: [
-        { id: "p-1", displayName: "مُعاذ", teamId: "team-alpha", role: "player" },
-        { id: "p-2", displayName: "سالم", teamId: "team-alpha", role: "player" },
+        {
+          id: "p-1",
+          displayName: "مُعاذ",
+          teamId: "team-alpha",
+          role: "player",
+        },
+        {
+          id: "p-2",
+          displayName: "سالم",
+          teamId: "team-alpha",
+          role: "player",
+        },
         { id: "p-3", displayName: "خالد", teamId: "team-beta", role: "player" },
       ],
       availableActions: [],
@@ -224,21 +242,29 @@ describe("the acting phone", () => {
       target: { value: "  طوكيو  " },
     });
     fireEvent.click(screen.getByTestId("bomb-phone-submit"));
-    expect(cmd).toHaveBeenCalledWith("gameplay-command", {
-      roundId: "round-1",
-      commandType: "submit-answer",
-      payload: { answer: "طوكيو" },
-    }, expect.anything());
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "submit-answer",
+        payload: { answer: "طوكيو" },
+      },
+      expect.anything(),
+    );
   });
 
   it("skips with the canonical command and never subtracts time itself", () => {
     const { cmd } = renderPhone();
     fireEvent.click(screen.getByTestId("bomb-phone-skip"));
-    expect(cmd).toHaveBeenCalledWith("gameplay-command", {
-      roundId: "round-1",
-      commandType: "skip",
-      payload: {},
-    }, expect.anything());
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "skip",
+        payload: {},
+      },
+      expect.anything(),
+    );
     // The clock is untouched by the client: only the server takes the 5 seconds.
     expect(screen.getByTestId("bomb-phone-clock")).toHaveTextContent("18");
   });
@@ -265,29 +291,37 @@ describe("the acting phone", () => {
     fireEvent.click(screen.getByTestId("bomb-phone-submit"));
     expect(cmd).toHaveBeenCalledTimes(1);
     // Speech recognition finalises just afterwards.
-    voiceMock.onAnswer?.("طوكيو");
-    voiceMock.onAnswer?.("طوكيو");
+    voiceMock.onAnswer?.("طوكيو", []);
+    voiceMock.onAnswer?.("طوكيو", []);
     expect(cmd).toHaveBeenCalledTimes(1);
   });
 
   it("routes a voice answer through the same command as typing", () => {
     const { cmd } = renderPhone();
-    voiceMock.onAnswer?.("  طوكيو  ");
-    expect(cmd).toHaveBeenCalledWith("gameplay-command", {
-      roundId: "round-1",
-      commandType: "submit-answer",
-      payload: { answer: "طوكيو" },
-    }, expect.anything());
+    voiceMock.onAnswer?.("  طوكيو  ", []);
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "submit-answer",
+        payload: { answer: "طوكيو" },
+      },
+      expect.anything(),
+    );
   });
 
   it("routes a voice skip through the canonical skip command", () => {
     const { cmd } = renderPhone();
     voiceMock.onSkip?.();
-    expect(cmd).toHaveBeenCalledWith("gameplay-command", {
-      roundId: "round-1",
-      commandType: "skip",
-      payload: {},
-    }, expect.anything());
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "skip",
+        payload: {},
+      },
+      expect.anything(),
+    );
   });
 
   it("releases the guard when the server advances the item", () => {
@@ -299,9 +333,13 @@ describe("the acting phone", () => {
     fireEvent.click(screen.getByTestId("bomb-phone-submit"));
     rerender(
       phoneTree(
-        runtimeOf({ currentItem: { index: 2, totalItems: 10 } }, ACTOR_ACTIONS, {
-          itemIndex: 2,
-        }),
+        runtimeOf(
+          { currentItem: { index: 2, totalItems: 10 } },
+          ACTOR_ACTIONS,
+          {
+            itemIndex: 2,
+          },
+        ),
         cmd,
       ),
     );
@@ -476,9 +514,13 @@ describe("the answer lock opens on this command's own outcome", () => {
     expect(answerField()).toHaveValue("طوكيو");
     rerender(
       phoneTree(
-        runtimeOf({ currentItem: { index: 2, totalItems: 10 } }, ACTOR_ACTIONS, {
-          itemIndex: 2,
-        }),
+        runtimeOf(
+          { currentItem: { index: 2, totalItems: 10 } },
+          ACTOR_ACTIONS,
+          {
+            itemIndex: 2,
+          },
+        ),
         cmd,
       ),
     );
@@ -554,16 +596,18 @@ describe("voice says what it knows, and no more", () => {
       "إرسال",
     );
 
-    act(() => voiceMock.onAnswer?.("أوساكا"));
+    act(() => voiceMock.onAnswer?.("أوساكا", []));
     // Sending is an attempt, said as one.
     expect(screen.getByTestId("bomb-phone-voice-state")).toHaveTextContent(
       "جارٍ الإرسال",
     );
 
     act(() =>
-      (cmd.mock.calls.at(-1)![2] as {
-        onOutcome: (o: Record<string, unknown>) => void;
-      }).onOutcome({ status: "accepted", runtimeRevision: 5 }),
+      (
+        cmd.mock.calls.at(-1)![2] as {
+          onOutcome: (o: Record<string, unknown>) => void;
+        }
+      ).onOutcome({ status: "accepted", runtimeRevision: 5 }),
     );
     rerender(
       phoneTree(
@@ -626,14 +670,17 @@ describe("every other phone waits, and waits empty", () => {
   it("tells the opponent it is not their turn, with no clock", () => {
     // No active participant projected to this phone at all.
     renderPhone(
-      runtimeOf({
-        activeRound: {
-          id: "round-1",
-          sequence: 1,
-          status: "active",
-          modeState: { phase: "presenting", itemIndex: 1, itemCount: 10 },
+      runtimeOf(
+        {
+          activeRound: {
+            id: "round-1",
+            sequence: 1,
+            status: "active",
+            modeState: { phase: "presenting", itemIndex: 1, itemCount: 10 },
+          },
         },
-      }, []),
+        [],
+      ),
     );
     expect(screen.getByTestId("bomb-phone-waiting")).toHaveTextContent(
       "الدور على الفريق الآخر",
@@ -775,26 +822,76 @@ describe("a phone whose clock is wrong", () => {
     ["61 s fast", 61_000],
     ["an hour fast", 3_600_000],
     ["61 s slow", -61_000],
-  ])("keeps the holder's answer box while the server has time (%s)", (_l, skew) => {
-    const stamped = Date.parse("2026-01-01T00:00:10.000Z");
-    // The phone received the snapshot at its own (wrong) time, and it is now.
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(stamped + skew);
-    render(
-      phoneTree(
-        runtimeOf(),
-        vi.fn(),
-        {
-          running: true,
-          startedAt: "2026-01-01T00:00:05.000Z",
-          allocatedMs: 30_000,
-          consumedMs: 0,
-          remainingMs: 25_000,
+  ])(
+    "keeps the holder's answer box while the server has time (%s)",
+    (_l, skew) => {
+      const stamped = Date.parse("2026-01-01T00:00:10.000Z");
+      // The phone received the snapshot at its own (wrong) time, and it is now.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(stamped + skew);
+      render(
+        phoneTree(
+          runtimeOf(),
+          vi.fn(),
+          {
+            running: true,
+            startedAt: "2026-01-01T00:00:05.000Z",
+            allocatedMs: 30_000,
+            consumedMs: 0,
+            remainingMs: 25_000,
+          },
+          { snapshotReceivedAtMs: stamped + skew },
+        ),
+      );
+      expect(screen.queryByText("انتهى وقتكم. جارٍ حساب النتيجة…")).toBeNull();
+      expect(screen.getByTestId("bomb-phone-answer")).toBeEnabled();
+    },
+  );
+});
+
+/**
+ * What a spoken answer puts on the wire.
+ *
+ * The phone never learns which answers are accepted — it sends what it heard
+ * and the server judges. So the engine's runners-up have to travel with the
+ * answer, or the second-best reading of a correct word is simply lost.
+ */
+describe("a spoken answer carries the engine's other guesses", () => {
+  it("sends them beside the answer", () => {
+    const { cmd } = renderPhone();
+
+    act(() => voiceMock.onAnswer?.("طوكيو", ["دوكيو", "طوكيو"]));
+
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "submit-answer",
+        payload: {
+          answer: "طوكيو",
+          // The repeat of the answer itself is dropped: it is not a guess.
+          alternativesJson: JSON.stringify(["دوكيو"]),
         },
-        { snapshotReceivedAtMs: stamped + skew },
-      ),
+      },
+      expect.anything(),
     );
-    expect(screen.queryByText("انتهى وقتكم. جارٍ حساب النتيجة…")).toBeNull();
-    expect(screen.getByTestId("bomb-phone-answer")).toBeEnabled();
+  });
+
+  it("sends nothing extra for a typed answer", () => {
+    const { cmd } = renderPhone();
+    fireEvent.change(screen.getByTestId("bomb-phone-answer"), {
+      target: { value: "طوكيو" },
+    });
+    fireEvent.click(screen.getByTestId("bomb-phone-submit"));
+
+    expect(cmd).toHaveBeenCalledWith(
+      "gameplay-command",
+      {
+        roundId: "round-1",
+        commandType: "submit-answer",
+        payload: { answer: "طوكيو" },
+      },
+      expect.anything(),
+    );
   });
 });

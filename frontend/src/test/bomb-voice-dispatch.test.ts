@@ -91,7 +91,7 @@ describe("Bomb decides what a sentence means", () => {
     const { onAnswer, onSkip } = setup();
     speak("طوكيو");
     expect(onAnswer).toHaveBeenCalledTimes(1);
-    expect(onAnswer).toHaveBeenCalledWith("طوكيو");
+    expect(onAnswer).toHaveBeenCalledWith("طوكيو", []);
     expect(onSkip).not.toHaveBeenCalled();
   });
 

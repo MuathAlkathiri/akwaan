@@ -42,16 +42,19 @@ export function useBombVoiceInput({
   enabled: boolean;
   connection: LiveSessionConnectionState;
   lifecycleKey: string;
-  onAnswer: (answer: string) => void;
+  onAnswer: (answer: string, alternatives: string[]) => void;
   onSkip: () => void;
 }) {
   const onFinalTranscript = useCallback(
-    (finalTranscript: string) => {
+    (finalTranscript: string, alternatives: string[]) => {
+      // Only the top reading can skip. A runner-up that happens to sound like
+      // "تخطي" would throw the item away and cost the team five seconds, which
+      // is a bad trade for a guess the engine itself ranked second.
       if (SKIP_WORDS.has(normalizeVoiceCommand(finalTranscript))) {
         onSkip();
         return;
       }
-      onAnswer(finalTranscript);
+      onAnswer(finalTranscript, alternatives);
     },
     [onAnswer, onSkip],
   );
@@ -60,6 +63,10 @@ export function useBombVoiceInput({
     enabled,
     connection,
     lifecycleKey,
+    // Bomb listens for the whole turn. See `useVoiceInput`'s own note: the
+    // phone that is not holding the bomb is never enabled, so the room cannot
+    // answer for the player holding it.
+    autoListen: true,
     onFinalTranscript,
   });
 }
