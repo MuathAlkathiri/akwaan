@@ -1,8 +1,22 @@
+"use client";
+
+import { createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { teamIdentityOf } from "@/lib/team-identity";
 import type { LiveSessionSnapshot } from "../../model";
 import { teamName } from "../presentation";
 import type { MatchChallengeResult } from "../types";
+
+export interface ChallengeResultContinueAction {
+  label: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  /** Decorative preview inside an explainer: identical appearance, never fires. */
+  inert?: boolean;
+}
+
+export const ChallengeResultActionContext =
+  createContext<ChallengeResultContinueAction | null>(null);
 
 const signed = (value: number) => (value > 0 ? `+${value}` : String(value));
 
@@ -34,6 +48,7 @@ export function ChallengeWinnerBanner({
   testIds?: { root?: string; totals?: string; matchPoint?: string };
   className?: string;
 }) {
+  const continueAction = useContext(ChallengeResultActionContext);
   const winnerId = result.winnerTeamId ?? undefined;
   const tied = !winnerId;
   const matchPoint =
@@ -109,6 +124,21 @@ export function ChallengeWinnerBanner({
           )}
         </p>
       </div>
+      {continueAction && (
+        <button
+          type="button"
+          disabled={continueAction.disabled}
+          onClick={continueAction.inert ? undefined : continueAction.onClick}
+          data-testid={
+            continueAction.inert
+              ? "challenge-result-continue-preview"
+              : "challenge-result-continue"
+          }
+          className="inline-flex min-h-[52px] shrink-0 items-center justify-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-navy))] px-7 font-display text-xl font-extrabold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+        >
+          {continueAction.label}
+        </button>
+      )}
     </section>
   );
 }
