@@ -240,26 +240,49 @@ export function EkshifniGameplayPanel({
   );
 
   const recap = view.phase === "completed" && view.result && (
-    <section className="grid gap-4 sm:grid-cols-2" data-testid="ekshifni-recap">
-      {Object.entries(view.result.points).map(([teamId, points]) => (
-        <div
-          key={teamId}
-          className={cn(
-            "flex flex-col items-center gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] p-5 text-center",
-            view.result?.winnerTeamId === teamId
-              ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
-              : "bg-white",
-          )}
+    <section
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5"
+      data-testid="ekshifni-recap"
+    >
+      {/* Who took it, said in words: two bare numbers leave the room to work
+          the winner out for itself. */}
+      {view.result.winnerTeamId ? (
+        <p
+          className="inline-flex items-center gap-2.5 rounded-full border-[3px] border-[hsl(var(--brand-navy))] bg-[hsl(var(--brand-gold))] px-6 py-2 font-display text-2xl font-black shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+          data-testid="ekshifni-recap-winner"
         >
-          <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
-            <TeamDot className={dotOf(teamId)} />
-            {teamName(teamId)}
-          </p>
-          <p className="akwaan-numeral text-[56px] font-bold leading-none">
-            {points}
-          </p>
-        </div>
-      ))}
+          <TeamDot className={dotOf(view.result.winnerTeamId)} />
+          فاز {teamName(view.result.winnerTeamId)} بالتحدي
+        </p>
+      ) : (
+        <p
+          className="font-display text-2xl font-black"
+          data-testid="ekshifni-tie"
+        >
+          تعادل! الفريقين خلصوا بنفس المجموع.
+        </p>
+      )}
+      <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
+        {Object.entries(view.result.points).map(([teamId, points]) => (
+          <div
+            key={teamId}
+            className={cn(
+              "flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-3xl border-[3px] border-[hsl(var(--brand-navy))] p-5 text-center",
+              view.result?.winnerTeamId === teamId
+                ? "bg-[hsl(var(--brand-gold))] shadow-[5px_6px_0_hsl(var(--brand-navy))]"
+                : "bg-white",
+            )}
+          >
+            <p className="inline-flex items-center gap-2.5 font-display text-xl font-extrabold">
+              <TeamDot className={dotOf(teamId)} />
+              {teamName(teamId)}
+            </p>
+            <p className="akwaan-numeral text-[56px] font-bold leading-none">
+              {points}
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 
@@ -420,7 +443,7 @@ export function EkshifniGameplayPanel({
     <section
       dir="rtl"
       data-testid="ekshifni-panel"
-      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -442,7 +465,7 @@ export function EkshifniGameplayPanel({
       {view.phase === "completed" ? (
         recap
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           {/* The shared board is the hero. A phone renders no picture at all —
               the server sends it none. */}
           <main className="flex min-h-[420px] items-center justify-center rounded-[28px] border-[3px] border-[hsl(var(--brand-navy))] bg-brand-paper p-4 shadow-[7px_8px_0_hsl(var(--brand-navy))]">

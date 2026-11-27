@@ -1,10 +1,13 @@
-import { Check, Flame, Timer, Trophy, Zap } from "lucide-react";
+import { Check, Flame, Timer, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { teamIdentityOf } from "@/lib/team-identity";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 import { teamName } from "../presentation";
+import {
+  ChallengeWinnerBanner,
+  ResultRoundCard,
+} from "./challenge-result-banner";
 
 /**
  * How "الكومبو" ended, read from the completion summary the launcher recorded.
@@ -67,13 +70,13 @@ function outcomeOf(
   snapshot: LiveSessionSnapshot,
 ): { Icon: LucideIcon; text: string; lost: boolean } {
   if (run.endedBy === "final-question") {
-    return { Icon: Flame, text: "أكمل الكومبو للنهاية", lost: false };
+    return { Icon: Flame, text: "كمّلوا الكومبو للنهاية", lost: false };
   }
   if (run.endedBy === "cash-out") {
-    return { Icon: Check, text: `ثبّت ${run.bankedPoints}`, lost: false };
+    return { Icon: Check, text: `ثبّتوا ${run.bankedPoints}`, lost: false };
   }
   if (run.endedBy === "timeout") {
-    return { Icon: Timer, text: "انتهى الوقت", lost: true };
+    return { Icon: Timer, text: "خلص وقتهم", lost: true };
   }
   return {
     Icon: Zap,
@@ -95,16 +98,15 @@ function StageTrail({ run }: { run: ComboRunDetail }) {
       {marks.map((mark, index) => (
         <span key={index} className="flex items-center gap-1">
           {index > 0 && (
-            <span aria-hidden className="h-px w-2.5 bg-current opacity-30" />
+            <span aria-hidden className="h-px w-2.5 bg-brand-navy opacity-30" />
           )}
           <span
             aria-hidden
             className={cn(
-              "grid size-4 place-items-center rounded-full border text-[0.6rem] font-black leading-none",
-              mark === "cleared" && "border-current bg-current/20",
-              mark === "lost" &&
-                "border-brand-navy bg-sem-error text-sem-reveal-foreground",
-              mark === "unplayed" && "border-current opacity-35",
+              "grid size-5 place-items-center rounded-full border-2 border-brand-navy text-[0.65rem] font-black leading-none text-brand-navy",
+              mark === "cleared" && "bg-sem-success",
+              mark === "lost" && "bg-sem-error",
+              mark === "unplayed" && "bg-white opacity-45",
             )}
           >
             {mark === "lost" ? "✕" : mark === "cleared" ? "●" : ""}
@@ -115,6 +117,12 @@ function StageTrail({ run }: { run: ComboRunDetail }) {
   );
 }
 
+/**
+ * The two runs, laid face up on the same result card every challenge ends on.
+ *
+ * The Combo's own points and the one Match point are different numbers, so the
+ * banner keeps them apart and the line under it says so in words.
+ */
 export function ComboResultRecap({
   result,
   snapshot,
@@ -122,131 +130,81 @@ export function ComboResultRecap({
   result: MatchChallengeResult;
   snapshot: LiveSessionSnapshot;
 }) {
-  const details = result.details as ComboDetails;
+  const details = (result.details ?? {}) as ComboDetails;
   const points = details.points ?? {};
   const runs = details.runs ?? [];
-  const rewarded = result.matchPoints.filter((entry) => entry.points !== 0);
+  const totals = Object.fromEntries(
+    snapshot.teams.map((team) => [
+      team.id,
+      points[team.id] ??
+        runs.find((entry) => entry.teamId === team.id)?.bankedPoints ??
+        0,
+    ]),
+  );
 
   return (
-    <div className="space-y-4" data-testid="combo-challenge-result">
-      {/* The two Runs, side by side on a shared screen and stacked on a phone. */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {snapshot.teams.map((team) => {
-          const identity = teamIdentityOf(team.id, snapshot.teams);
+    <div className="space-y-5" data-testid="combo-challenge-result">
+      <ol className="grid list-none gap-5 sm:grid-cols-2">
+        {snapshot.teams.map((team, index) => {
           const run = runs.find((entry) => entry.teamId === team.id);
-          const banked = points[team.id] ?? run?.bankedPoints ?? 0;
-          const isWinner = result.winnerTeamId === team.id;
+          const outcome = run ? outcomeOf(run, snapshot) : undefined;
           return (
-            <div
+            <ResultRoundCard
               key={team.id}
               data-testid={`combo-result-${team.id}`}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-[var(--radius)] border p-4 text-center",
-                identity.surface,
-                identity.border,
-                isWinner && "ring-2 ring-inset ring-current",
-              )}
+              round={index + 1}
+              snapshot={snapshot}
+              question={`جولة ${teamName(snapshot, team.id)}`}
+              {...(outcome
+                ? {
+                    stamp: {
+                      label: outcome.text,
+                      tone: outcome.lost
+                        ? ("wrong" as const)
+                        : ("correct" as const),
+                      testId: `combo-outcome-${team.id}`,
+                    },
+                  }
+                : {})}
+              facts={[
+                {
+                  label: "نقاط الكومبو",
+                  value: (
+                    <span
+                      className="akwaan-numeral text-4xl font-black leading-none"
+                      data-testid={`combo-points-${team.id}`}
+                    >
+                      {totals[team.id]}
+                    </span>
+                  ),
+                },
+              ]}
             >
-              <p className={cn("text-sm font-black", identity.text)}>
-                {team.name}
-              </p>
-              <p className="text-[0.7rem] font-bold uppercase tracking-wide text-muted-foreground">
-                نقاط الكومبو
-              </p>
-              <p
-                className="akwaan-numeral text-5xl font-black leading-none text-foreground"
-                data-testid={`combo-points-${team.id}`}
-              >
-                {banked}
-              </p>
-              {/* Only shown when the summary says how the Run ended. */}
-              {run && (
-                <>
-                  {(() => {
-                    const outcome = outcomeOf(run, snapshot);
-                    return (
-                      <p
-                        className={cn(
-                          "inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-brand-navy px-2.5 py-0.5 text-sm font-bold text-sem-reveal-foreground",
-                          outcome.lost ? "bg-sem-error" : "bg-sem-success",
-                        )}
-                        data-testid={`combo-outcome-${team.id}`}
-                      >
-                        <outcome.Icon className="size-3.5" aria-hidden />
-                        {outcome.text}
-                      </p>
-                    );
-                  })()}
-                  <div className={identity.text}>
-                    <StageTrail run={run} />
-                  </div>
-                </>
-              )}
-            </div>
+              {run && <StageTrail run={run} />}
+            </ResultRoundCard>
           );
         })}
-      </div>
+      </ol>
 
-      {/* The mechanic's verdict, taken verbatim from the server. */}
+      <ChallengeWinnerBanner
+        result={result}
+        snapshot={snapshot}
+        totals={totals}
+        testIds={{
+          root: "combo-verdict",
+          totals: "combo-mechanic-totals",
+          matchPoint: "combo-match-reward",
+        }}
+      />
+
+      {/* A Match point means "won a challenge", so it must never read as the
+          Combo total carrying over. */}
       <p
-        className="flex items-center justify-center gap-2 text-center text-xl font-black text-foreground sm:text-2xl"
-        data-testid="combo-verdict"
+        className="text-center text-sm font-bold text-brand-slate"
+        data-testid="combo-match-note"
       >
-        {result.tie ? (
-          <>
-            <Flame className="size-5 text-muted-foreground" aria-hidden />
-            تعادل في الكومبو
-          </>
-        ) : (
-          <>
-            <Trophy className="size-5 text-primary" aria-hidden />
-            {`${teamName(snapshot, result.winnerTeamId!)} يفوز بالكومبو`}
-          </>
-        )}
+        نقاط الكومبو ما تنضاف لنتيجة المباراة
       </p>
-
-      {/* Deliberately smaller and separated: a Match point means "won a
-          challenge", so it must never read as the Combo total carrying over. */}
-      <div className="flex flex-col items-center gap-1">
-        {rewarded.length ? (
-          <div
-            className="flex flex-wrap justify-center gap-2"
-            data-testid="combo-match-reward"
-          >
-            {rewarded.map((entry) => {
-              const identity = teamIdentityOf(entry.teamId, snapshot.teams);
-              return (
-                <span
-                  key={entry.teamId}
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-full border-2 border-brand-navy px-3 py-1 text-sm font-black text-brand-navy",
-                    entry.points > 0 ? "bg-brand-gold" : "bg-muted",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-2.5 rounded-full border border-brand-navy",
-                      identity.solid,
-                    )}
-                  />
-                  {`${entry.points > 0 ? "+" : ""}${entry.points} نقطة للمباراة`}
-                </span>
-              );
-            })}
-          </div>
-        ) : (
-          <p
-            className="text-sm font-bold text-muted-foreground"
-            data-testid="combo-match-reward-none"
-          >
-            لا نقطة مباراة عند التعادل
-          </p>
-        )}
-        <p className="text-xs font-bold text-muted-foreground">
-          نقاط الكومبو لا تُضاف إلى نتيجة المباراة
-        </p>
-      </div>
     </div>
   );
 }

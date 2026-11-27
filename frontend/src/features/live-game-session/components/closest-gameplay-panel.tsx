@@ -102,8 +102,8 @@ export function formatClosestValue(
     slider?.mode === "numeric-range" &&
     slider.displayFormat === "calendar-year"
   )
-    return new Intl.NumberFormat("ar-SA", { useGrouping: false }).format(value);
-  const number = new Intl.NumberFormat("ar-SA", {
+    return new Intl.NumberFormat("en-US", { useGrouping: false }).format(value);
+  const number = new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 4,
   }).format(value);
   return slider?.unit ? `${number} ${slider.unit}` : number;

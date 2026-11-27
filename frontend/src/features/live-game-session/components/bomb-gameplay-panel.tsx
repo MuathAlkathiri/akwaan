@@ -783,7 +783,7 @@ export function BombGameplayPanel({
     <section
       dir="rtl"
       data-testid="bomb-stage"
-      className="flex flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px] text-[hsl(var(--brand-navy))]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -795,7 +795,7 @@ export function BombGameplayPanel({
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)_minmax(0,300px)]">
+      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)_minmax(0,300px)]">
         {stageTeams.map((team, index) => (
           <BombSide
             key={team.id}

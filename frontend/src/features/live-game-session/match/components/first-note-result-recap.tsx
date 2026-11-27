@@ -1,6 +1,39 @@
+import { BidiText } from "@/components/akwaan/bidi-text";
 import type { LiveSessionSnapshot } from "../../model";
 import type { MatchChallengeResult } from "../types";
 import { teamName } from "../presentation";
+import {
+  ChallengeWinnerBanner,
+  ResultRoundCard,
+} from "./challenge-result-banner";
+
+interface FirstNoteDetails {
+  mechanicTotals?: Record<string, number>;
+  items?: Array<{
+    title: string;
+    finalBidSeconds: number;
+    winnerTeamId: string | null;
+    stolen: boolean;
+  }>;
+}
+
+/** «ثانية», «ثانيتين», «3 ثواني», «11 ثانية». */
+const secondsLabel = (seconds: number) =>
+  seconds === 1
+    ? "ثانية"
+    : seconds === 2
+      ? "ثانيتين"
+      : seconds >= 3 && seconds <= 10
+        ? `${seconds} ثواني`
+        : `${seconds} ثانية`;
+
+/**
+ * What the three songs went for.
+ *
+ * One card a song, on the same result shell as every other challenge: how low
+ * the bidding went, and who named it — the bidder, or the other team stealing
+ * it after a miss.
+ */
 export function FirstNoteResultRecap({
   result,
   snapshot,
@@ -8,53 +41,37 @@ export function FirstNoteResultRecap({
   result: MatchChallengeResult;
   snapshot: LiveSessionSnapshot;
 }) {
-  const details = result.details as {
-    mechanicTotals?: Record<string, number>;
-    items?: Array<{
-      title: string;
-      finalBidSeconds: number;
-      winnerTeamId: string | null;
-      stolen: boolean;
-    }>;
-  };
+  const details = (result.details ?? {}) as FirstNoteDetails;
   return (
     <div className="space-y-5" data-testid="first-note-challenge-result">
-      <h2 className="text-center text-2xl font-black">
-        {result.tie
-          ? "تعادل في نقاط الأغاني"
-          : `فوز ${teamName(snapshot, result.winnerTeamId!)}`}
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {snapshot.teams.map((team) => (
-          <div
-            key={team.id}
-            className="rounded-[var(--radius)] border p-4 text-center"
-          >
-            <p className="font-black">{team.name}</p>
-            <p className="text-3xl font-black">
-              {details.mechanicTotals?.[team.id] ?? 0}
-            </p>
-            <p className="text-xs text-muted-foreground">نقاط داخلية</p>
-          </div>
-        ))}
-      </div>
-      <ol className="space-y-2">
+      <ol className="grid list-none gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {details.items?.map((item, index) => (
-          <li
+          <ResultRoundCard
             key={`${index}:${item.title}`}
-            className="flex justify-between rounded-[var(--radius)] border p-3"
-          >
-            <strong>{item.title}</strong>
-            <span>
-              {item.finalBidSeconds} ثانية ·{" "}
-              {item.winnerTeamId
-                ? teamName(snapshot, item.winnerTeamId)
-                : "بدون فائز"}
-              {item.stolen ? " · سرقة" : ""}
-            </span>
-          </li>
+            data-testid={`first-note-result-item-${index}`}
+            round={index + 1}
+            snapshot={snapshot}
+            question={<BidiText>{item.title}</BidiText>}
+            facts={[
+              {
+                label: "أقل مزايدة",
+                value: secondsLabel(item.finalBidSeconds),
+              },
+              {
+                label: item.stolen ? "اللي سرقها" : "اللي عرفها",
+                value: item.winnerTeamId
+                  ? teamName(snapshot, item.winnerTeamId)
+                  : "ما أحد عرفها",
+              },
+            ]}
+          />
         ))}
       </ol>
+      <ChallengeWinnerBanner
+        result={result}
+        snapshot={snapshot}
+        {...(details.mechanicTotals ? { totals: details.mechanicTotals } : {})}
+      />
     </div>
   );
 }

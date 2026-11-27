@@ -44,10 +44,11 @@ export function JourneyError({
           type="button"
           onClick={onRetry}
           disabled={retrying}
+          aria-busy={retrying}
           className="mt-6 rounded-[var(--radius)] font-black"
         >
           <RotateCcw className="ml-2 h-4 w-4" aria-hidden="true" />
-          {retrying ? "جارٍ المحاولة..." : retryLabel}
+          {retrying ? "نحاول…" : retryLabel}
         </Button>
       )}
     </div>

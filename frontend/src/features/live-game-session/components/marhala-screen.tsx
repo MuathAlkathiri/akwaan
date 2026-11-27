@@ -126,7 +126,7 @@ export function MarhalaScreen({
       dir="rtl"
       data-testid="marhala-screen"
       data-marhala-phase={view.phase}
-      className="flex flex-col gap-[18px]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -138,7 +138,7 @@ export function MarhalaScreen({
         }
       />
 
-      <div className="flex flex-col gap-7 lg:flex-row lg:items-stretch">
+      <div className="flex min-h-0 flex-1 flex-col gap-7 lg:flex-row lg:items-stretch">
         <main
           className={cn(
             "flex min-w-0 flex-1 flex-col items-center justify-center gap-2.5 rounded-[28px] bg-brand-paper px-[18px] py-3.5",

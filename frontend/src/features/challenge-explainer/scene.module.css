@@ -1,0 +1,492 @@
+.template {
+  color: hsl(var(--brand-navy));
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* The approved board: a lavender sticker card with a purple shadow. */
+.card {
+  box-sizing: border-box;
+  padding: 14px 20px 18px;
+  border-radius: 26px;
+  background: #f6f3fc;
+  border: 3px solid hsl(var(--brand-navy));
+  box-shadow: 6px 7px 0 hsl(var(--brand-purple));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: #4b4380;
+}
+
+.counter {
+  font-weight: 700;
+}
+
+.scene {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  --team-1-tint: white;
+  --team-2-tint: white;
+  --team-1-fill: var(--card);
+  --team-2-fill: var(--card);
+  --team-1-fill-foreground: var(--brand-navy);
+  --team-2-fill-foreground: var(--brand-navy);
+  --team-1-text: var(--brand-navy);
+  --team-2-text: var(--brand-navy);
+}
+
+.deviceColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.deviceLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: white;
+  border: 2px solid hsl(var(--brand-navy));
+  font-size: 15px;
+  font-weight: 700;
+  color: hsl(var(--brand-navy));
+  white-space: nowrap;
+}
+
+.deviceRole {
+  font-weight: 500;
+  color: #4a5468;
+}
+
+.phone,
+.screen {
+  position: relative;
+  overflow: hidden;
+  background: white;
+  border: 4px solid hsl(var(--brand-navy));
+  box-shadow: 5px 6px 0 hsl(var(--brand-navy));
+  box-sizing: border-box;
+  flex: none;
+}
+
+.screen {
+  border-radius: 16px;
+}
+
+.phone {
+  border-radius: 26px;
+}
+
+.caption {
+  margin: 0;
+  font-family: var(--font-display), "Noto Kufi Arabic", sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.6;
+  min-height: 1.6em;
+}
+
+/* The timeline takes the free width; the controls sit beside it. */
+.stepRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.timeline {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+}
+
+.timelineTrack,
+.timelineProgress {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 16.667%;
+  height: 4px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.timelineTrack {
+  width: 66.667%;
+  background: #e3dff0;
+}
+
+.timelineProgress {
+  background: hsl(var(--brand-navy));
+  transition: width 220ms ease;
+}
+
+.timelineItem {
+  position: relative;
+  flex: 1;
+}
+
+.timelineButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+}
+
+.timelineDotSlot {
+  display: grid;
+  place-items: center;
+  height: 28px;
+}
+
+.timelineLabel {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex: none;
+}
+
+.controlRound,
+.controlPlay {
+  border-radius: 50%;
+  border: 3px solid hsl(var(--brand-navy));
+  background: white;
+  color: hsl(var(--brand-navy));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.controlRound {
+  width: 56px;
+  height: 56px;
+}
+
+.controlPlay {
+  width: 76px;
+  height: 76px;
+  background: hsl(var(--brand-gold));
+  box-shadow: 4px 5px 0 hsl(var(--brand-navy));
+}
+
+.controlPlay:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.controlText {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--brand-navy));
+  font-size: 15px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.controlRound:focus-visible,
+.controlPlay:focus-visible,
+.controlText:focus-visible,
+.timelineButton:focus-visible {
+  outline: 3px solid hsl(var(--brand-purple));
+  outline-offset: 3px;
+}
+
+.stageShell {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.stageViewport {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform-origin: top center;
+}
+
+.phoneCanvas,
+.screenCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  text-align: start;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.screenCanvas {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.screenCanvas > :global([data-testid="challenge-frame"]),
+.panelFill > :global([data-testid="challenge-frame"]) {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 0%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.screenCanvas
+  :global([data-testid="challenge-frame"][data-frame-surface="screen"])
+  > div:first-child {
+  justify-content: space-between;
+}
+
+.screenCanvas
+  :global([data-testid="challenge-frame"][data-frame-surface="screen"])
+  > div:first-child
+  > div {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.panelFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.screenCanvas :global([data-testid="unified-challenge-result"]) {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  flex: 1 1 0%;
+  justify-content: flex-start;
+}
+
+.screenCanvas :global([data-testid="unified-challenge-result"] > section) {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.screenCanvas :global([data-testid="unified-challenge-result"] > div > div) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.screenCanvas
+  :global([data-testid="unified-challenge-result"] > div > div > ol.grid) {
+  flex: 1 1 0%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"] ol.grid:has(> li:only-child)
+  ) {
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      ol.grid:has(> li:nth-child(2):last-child)
+  ) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"] [data-testid="top5-reveal-step"]
+  ) {
+  display: none;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"] [data-testid="top5-result-reveal"]
+  ) {
+  gap: 10px;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      > *
+      + *
+  ) {
+  margin-top: 0;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      > div.grid
+  ) {
+  flex: 1 1 0%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      section[data-testid^="top5-team-column-"]
+  ) {
+  padding: 10px 14px;
+  gap: 6px;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      section[data-testid^="top5-team-column-"]
+      ul
+  ) {
+  gap: 5px;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      li
+  ) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  gap: 2px;
+}
+
+.screenCanvas
+  :global(
+    [data-testid="unified-challenge-result"]
+      [data-testid="top5-result-reveal"]
+      li
+      span
+  ) {
+  min-height: 24px;
+}
+
+.centeredRecap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+}
+
+.centeredRecap > * {
+  width: 100%;
+  max-width: 960px;
+}
+
+.ryoExplain {
+  margin: 14px 0 0;
+  padding: 14px 24px;
+  border: 3px solid hsl(var(--brand-navy));
+  border-radius: 18px;
+  background: hsl(var(--brand-gold));
+  color: hsl(var(--brand-navy));
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 4px 5px 0 hsl(var(--brand-navy));
+}
+
+.phoneCanvas {
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneCanvas :global([data-testid="mobile-gameplay-shell"]) {
+  height: 763px;
+  min-height: 763px;
+}
+
+.controls button:focus-visible,
+.timelineButton:focus-visible {
+  outline: 3px solid hsl(var(--brand-purple));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene *,
+  .scene *::before,
+  .scene *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.scene :global(.bg-sem-success),
+.scene :global(.bg-success),
+.scene :global(.bg-brand-mint),
+.scene :global(.bg-brand-mint-tint) {
+  background: hsl(var(--sem-success));
+  color: hsl(var(--brand-navy));
+  border: 2px solid hsl(var(--brand-navy));
+}
+
+.scene :global(.bg-sem-error),
+.scene :global(.bg-destructive),
+.scene :global(.bg-brand-coral),
+.scene :global(.bg-brand-coral-tint) {
+  background: hsl(var(--sem-error));
+  color: hsl(var(--brand-navy));
+  border: 2px solid hsl(var(--brand-navy));
+}
+
+/* The board takes the phone's own title row away: the pill above the phone
+   already says whose phone it is and what it is doing in this step. */
+.phoneCanvas :global([data-testid="mobile-shell-header"]) {
+  display: none;
+}

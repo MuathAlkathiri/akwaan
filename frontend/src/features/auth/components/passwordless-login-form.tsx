@@ -256,9 +256,10 @@ export function PasswordlessLoginForm({
                 type="submit"
                 className="h-auto min-h-16 w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-[21px] font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:cursor-not-allowed disabled:opacity-100"
                 disabled={busy || !identifier.trim()}
+                aria-busy={busy}
                 data-testid="otp-request-button"
               >
-                {busy ? "جارٍ الإرسال…" : "أرسل رمز الدخول"}
+                {busy ? "نرسل الرمز…" : "أرسل رمز الدخول"}
               </Button>
             </form>
           </div>
@@ -286,10 +287,11 @@ export function PasswordlessLoginForm({
               type="button"
               className="h-auto min-h-16 w-full rounded-full border-[3px] border-brand-navy bg-brand-gold font-display text-[21px] font-extrabold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] hover:bg-brand-gold disabled:cursor-not-allowed disabled:opacity-100"
               disabled={busy || code.length < OTP_LENGTH}
+              aria-busy={busy}
               onClick={() => void verify(code)}
               data-testid="otp-verify-button"
             >
-              {busy ? "جارٍ التحقق…" : "تأكيد"}
+              {busy ? "نتأكد…" : "تأكيد"}
             </Button>
 
             <div className="space-y-3 text-sm">

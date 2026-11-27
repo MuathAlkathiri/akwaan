@@ -197,7 +197,7 @@ describe("completed الكومبو challenge", () => {
   it("declares the winner the server declared", () => {
     renderResult(comboResult());
     expect(screen.getByTestId("combo-verdict")).toHaveTextContent(
-      "أسود الشمال يفوز بالكومبو",
+      "فوز أسود الشمال",
     );
   });
 
@@ -214,16 +214,15 @@ describe("completed الكومبو challenge", () => {
       }),
     );
 
-    expect(screen.getByTestId("combo-verdict")).toHaveTextContent(
-      "تعادل في الكومبو",
-    );
+    expect(screen.getByTestId("combo-verdict")).toHaveTextContent("تعادل");
     expect(screen.getByTestId("combo-verdict").textContent).not.toContain(
-      "يفوز",
+      "فوز",
     );
     // No Match point exists on a tie, and the screen says so rather than
     // showing an empty reward slot.
-    expect(screen.getByTestId("combo-match-reward-none")).toBeInTheDocument();
-    expect(screen.queryByTestId("combo-match-reward")).toBeNull();
+    expect(screen.getByTestId("combo-match-reward")).toHaveTextContent(
+      "لا نقطة مباراة، تعادل",
+    );
   });
 
   it("keeps the Match point separate from the Combo total", () => {
@@ -234,9 +233,9 @@ describe("completed الكومبو challenge", () => {
     expect(reward).toHaveTextContent("+1 نقطة للمباراة");
     expect(reward.textContent).not.toContain("5");
     // And the screen states the rule, so the big number cannot be misread.
-    expect(
-      screen.getByText("نقاط الكومبو لا تُضاف إلى نتيجة المباراة"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("combo-match-note")).toHaveTextContent(
+      "نقاط الكومبو ما تنضاف لنتيجة المباراة",
+    );
   });
 
   it("tells each Run's story from endedBy, not from its point total", () => {
@@ -264,7 +263,7 @@ describe("completed الكومبو challenge", () => {
     );
 
     expect(screen.getByTestId(`combo-outcome-${TEAM_A}`)).toHaveTextContent(
-      "ثبّت 3",
+      "ثبّتوا 3",
     );
     // Named the breaker, because the summary recorded who it was.
     expect(screen.getByTestId(`combo-outcome-${TEAM_B}`)).toHaveTextContent(
@@ -275,10 +274,10 @@ describe("completed الكومبو challenge", () => {
   it("distinguishes clearing the run from being broken on it", () => {
     renderResult(comboResult());
     expect(screen.getByTestId(`combo-outcome-${TEAM_A}`)).toHaveTextContent(
-      "أكمل الكومبو للنهاية",
+      "كمّلوا الكومبو للنهاية",
     );
     expect(screen.getByTestId(`combo-outcome-${TEAM_B}`)).toHaveTextContent(
-      "ثبّت 2",
+      "ثبّتوا 2",
     );
   });
 
@@ -295,7 +294,7 @@ describe("completed الكومبو challenge", () => {
     expect(screen.queryByTestId(`combo-trail-${TEAM_B}`)).toBeNull();
     const body = screen.getByTestId("combo-challenge-result").textContent ?? "";
     expect(body).not.toContain("انكسر الكومبو");
-    expect(body).not.toContain("أكمل الكومبو للنهاية");
+    expect(body).not.toContain("كمّلوا الكومبو للنهاية");
   });
 
   it("marks the question a broken Run was lost on", () => {

@@ -275,13 +275,13 @@ describe("how a Closest number is written", () => {
   it("writes a calendar year ungrouped and with no unit", async () => {
     const format = await load();
     for (const [value, expected] of [
-      [1900, "١٩٠٠"],
-      [1930, "١٩٣٠"],
-      [1950, "١٩٥٠"],
+      [1900, "1900"],
+      [1930, "1930"],
+      [1950, "1950"],
     ] as const) {
       const text = format(value, year);
       expect(text).toBe(expected);
-      expect(text).not.toContain("٬");
+      expect(text).not.toContain(",");
       expect(text).not.toContain("سنة");
     }
   });
@@ -294,20 +294,20 @@ describe("how a Closest number is written", () => {
   it("still groups the very same number when it is a quantity", async () => {
     const format = await load();
     const text = format(1930, quantity);
-    expect(text).toContain("٬");
+    expect(text).toContain(",");
     expect(text).toContain("هدف");
-    expect(text).not.toBe("١٩٣٠");
+    expect(text).not.toBe("1930");
   });
 
   it("keeps units, decimals and the unauthored default untouched", async () => {
     const format = await load();
     expect(format(260, { ...quantity, unit: "هدف" })).toContain("هدف");
     expect(format(2.5, { mode: "numeric-range", min: 0, max: 10 })).toContain(
-      "٢٫٥",
+      "2.5",
     );
     // An item authored before the field existed is a quantity.
     expect(format(1930, { mode: "numeric-range", min: 0, max: 3000 })).toContain(
-      "٬",
+      ",",
     );
     // A between-anchors slider is unaffected.
     expect(
@@ -318,6 +318,6 @@ describe("how a Closest number is written", () => {
         leftAnchor: "أ",
         rightAnchor: "ب",
       }),
-    ).toBe("٥٠");
+    ).toBe("50");
   });
 });

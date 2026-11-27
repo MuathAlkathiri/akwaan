@@ -117,7 +117,7 @@ export function MovingXoScreen({
       dir="rtl"
       data-testid="moving-xo-screen"
       data-moving-xo-phase={phase}
-      className="flex flex-col gap-[18px]"
+      className="flex min-h-0 flex-1 flex-col gap-[18px]"
     >
       <ChallengeContextStrip
         {...(context.eyebrow ? { eyebrow: context.eyebrow } : {})}
@@ -143,7 +143,7 @@ export function MovingXoScreen({
         }
       />
 
-      <div className="flex flex-col gap-7 lg:flex-row lg:items-stretch">
+      <div className="flex min-h-0 flex-1 flex-col gap-7 lg:flex-row lg:items-stretch">
         {won ? (
           <main
             data-testid="moving-xo-win"

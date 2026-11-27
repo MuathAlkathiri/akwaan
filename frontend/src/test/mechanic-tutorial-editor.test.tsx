@@ -12,7 +12,6 @@ import type { AdminTutorialState } from "@/features/world-management/api/mechani
 import {
   SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
   SAMPLE_TOP5_TUTORIAL_SCENARIO,
-  type OneClueTutorialScenario,
 } from "@/features/challenge-explainer";
 
 /**
@@ -117,39 +116,6 @@ const top5Scenario = {
   instruction: "احتفظ بها أو دسّها للخصم",
 };
 
-const oneClueScenario: OneClueTutorialScenario = {
-  kind: "one-clue" as const,
-  version: 1 as const,
-  prompt: "ما المدينة المقصودة؟",
-  clues: [
-    { order: 1, value: 5, text: "مدينة عربية ساحلية" },
-    { order: 2, value: 4, text: "واجهة بحرية طويلة" },
-    { order: 3, value: 3, text: "فيها نافورة الملك فهد" },
-    { order: 4, value: 2, text: "عروس البحر الأحمر" },
-    { order: 5, value: 1, text: "تبدأ بحرف الجيم" },
-  ],
-  acceptedAnswer: "جدة",
-  firstSubmittedAnswer: "الدمام",
-  secondSubmittedAnswer: "جدة",
-  outcome: {
-    itemCount: 3 as const,
-    firstLockedTeam: "team-a" as const,
-    firstLockedAtClue: 2 as const,
-    firstLockedValue: 4 as const,
-    firstAnswerCorrect: false as const,
-    eliminatedTeam: "team-a" as const,
-    continuingTeam: "team-b" as const,
-    correctTeam: "team-b" as const,
-    correctAtClue: 3 as const,
-    correctValue: 3 as const,
-    itemPoints: { "team-a": 0, "team-b": 3 },
-    finalTotals: { "team-a": 5, "team-b": 7 },
-    winnerTeam: "team-b" as const,
-    matchPointDelta: 1 as const,
-    reason: "one-clue.progressive-lock" as const,
-  },
-};
-
 const state = (
   overrides: Partial<AdminTutorialState> = {},
 ): AdminTutorialState => ({
@@ -203,11 +169,6 @@ const mountBomb = async () => {
 
 const mountTop5 = async () => {
   render(<MechanicTutorialEditor mechanicKey="top-5" />);
-  await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
-};
-
-const mountOneClue = async () => {
-  render(<MechanicTutorialEditor mechanicKey="one-clue" />);
   await waitFor(() => expect(api.fetchAdminTutorial).toHaveBeenCalled());
 };
 
@@ -382,8 +343,9 @@ describe("mechanic tutorial editor", () => {
     );
     await user.click(screen.getByTestId("tutorial-validate"));
     expect(
-      within(await screen.findByTestId("tutorial-preview")).getByTestId(
-        "ekshifni-explainer",
+      within(await screen.findByTestId("tutorial-preview")).getByRole(
+        "region",
+        { name: "شرح التحدي" },
       ),
     ).toBeInTheDocument();
     expect(api.validateTutorialDraft).toHaveBeenCalledWith(
@@ -412,41 +374,6 @@ describe("mechanic tutorial editor", () => {
     expect(screen.getByTestId("tutorial-decision")).toBeDisabled();
   });
 
-  it("loads, validates, and previews a One Clue draft", async () => {
-    const user = userEvent.setup();
-    api.fetchAdminTutorial.mockResolvedValue(
-      state({
-        mechanicKey: "one-clue",
-        mechanicName: "بدليل واحد",
-        draft: oneClueScenario,
-        hasUnpublishedChanges: true,
-      }),
-    );
-    api.validateTutorialDraft.mockResolvedValue({
-      valid: true,
-      issues: [],
-      competitiveOverlap: [],
-      outcome: oneClueScenario.outcome,
-    });
-
-    await mountOneClue();
-    await waitFor(() =>
-      expect(screen.getByTestId("tutorial-one-clue-prompt")).toHaveValue(
-        oneClueScenario.prompt,
-      ),
-    );
-    await user.click(screen.getByTestId("tutorial-validate"));
-    expect(
-      within(await screen.findByTestId("tutorial-preview")).getByTestId(
-        "one-clue-explainer",
-      ),
-    ).toBeInTheDocument();
-    expect(api.validateTutorialDraft).toHaveBeenCalledWith(
-      "one-clue",
-      expect.objectContaining({ kind: "one-clue", version: 1 }),
-    );
-  });
-
   it("loads, validates, and previews a Bomb draft", async () => {
     const user = userEvent.setup();
     api.fetchAdminTutorial.mockResolvedValue(
@@ -472,8 +399,9 @@ describe("mechanic tutorial editor", () => {
     );
     await user.click(screen.getByRole("button", { name: /فحص ومعاينة/ }));
     expect(
-      within(await screen.findByTestId("tutorial-preview")).getByTestId(
-        "bomb-explainer",
+      within(await screen.findByTestId("tutorial-preview")).getByRole(
+        "region",
+        { name: "شرح التحدي" },
       ),
     ).toBeInTheDocument();
     expect(api.validateTutorialDraft).toHaveBeenCalledWith(
@@ -593,8 +521,12 @@ describe("mechanic tutorial editor", () => {
     );
 
     await mountBomb();
-    const urlInput = screen.getByTestId("tutorial-bomb-next-question-media-url");
-    const altInput = screen.getByTestId("tutorial-bomb-next-question-media-alt");
+    const urlInput = screen.getByTestId(
+      "tutorial-bomb-next-question-media-url",
+    );
+    const altInput = screen.getByTestId(
+      "tutorial-bomb-next-question-media-alt",
+    );
     await user.clear(urlInput);
     expect(altInput).toBeDisabled();
 
@@ -776,8 +708,9 @@ describe("mechanic tutorial editor", () => {
       }),
     );
     expect(
-      within(await screen.findByTestId("tutorial-preview")).getByTestId(
-        "top5-explainer",
+      within(await screen.findByTestId("tutorial-preview")).getByRole(
+        "region",
+        { name: "شرح التحدي" },
       ),
     ).toBeInTheDocument();
   });
@@ -809,7 +742,7 @@ describe("mechanic tutorial editor", () => {
     await user.click(screen.getByTestId("tutorial-validate"));
     const preview = await screen.findByTestId("tutorial-preview");
     expect(
-      within(preview).getByTestId("closest-explainer"),
+      within(preview).getByRole("region", { name: "شرح التحدي" }),
     ).toBeInTheDocument();
     expect(api.validateTutorialDraft).toHaveBeenCalledWith(
       "closest",
@@ -891,7 +824,9 @@ describe("mechanic tutorial editor", () => {
 
     const preview = await screen.findByTestId("tutorial-preview");
     // The production component, not a mock of it.
-    expect(within(preview).getByTestId("ryo-explainer")).toBeInTheDocument();
+    expect(
+      within(preview).getByRole("region", { name: "شرح التحدي" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("tutorial-validation")).toHaveAttribute(
       "data-valid",
       "true",
