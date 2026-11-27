@@ -224,3 +224,19 @@ describe('وين توصل؟ — القنبلة in المسارات والحرك�
     ).toBeLessThan(0.2);
   });
 });
+
+describe('only what the composer font can draw', () => {
+  // Noto Kufi Arabic has Arabic, digits and plain punctuation. Anything else
+  // in a <text> — an arrow, a triangle — is an empty box on the server.
+  const drawable = /^[؀-ۿ0-9A-Za-z\s.,:؟?+=\-×()%«»⁦⁩٠-٩]*$/;
+  it.each(all)('%s / %s', (family, variant) => {
+    for (const seed of seeds.slice(0, 15)) {
+      const item = composeBomb(family, `${seed}:1`, variant);
+      for (const [, words] of item.svg.matchAll(
+        /<text[^>]*>([^<]*)<\/text>/g,
+      )) {
+        expect(words).toMatch(drawable);
+      }
+    }
+  });
+});
