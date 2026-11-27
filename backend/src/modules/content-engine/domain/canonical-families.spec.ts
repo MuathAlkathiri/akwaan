@@ -379,7 +379,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         key === 'ENGINE_AUTHORING_ROOT' ? ROOT : undefined,
     } as unknown as ConfigService);
 
-    it('resolves the real canonical wordplay-letters profile and parses all 25 families', () => {
+    it('resolves the real canonical wordplay-letters profile and parses all 28 families', () => {
       const resolved = service.resolve({
         mechanicKey: 'read-your-opponent',
         worldKey: 'puzzles',
@@ -390,7 +390,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(resolved.canonicalFamilies.version).toBe(1);
       expect(resolved.canonicalFamilies.scopeKey).toBe('wordplay-letters');
       expect(resolved.canonicalFamilies.worldKey).toBe('puzzles');
-      expect(resolved.canonicalFamilies.families).toHaveLength(25);
+      expect(resolved.canonicalFamilies.families).toHaveLength(28);
 
       const keys = resolved.canonicalFamilies.families.map((f) => f.familyKey);
       expect(keys).toEqual([
@@ -402,6 +402,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'arabic-cipher-dhad',
         'bomb-first-letters',
         'classic-riddle',
+        'column-words',
         'dot-shift',
         'dotless-disambiguation',
         'hidden-word',
@@ -415,9 +416,11 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'remove-letter',
         'shared-letter-completion',
         'substitute-letter',
+        'survivor-words',
         'word-completion',
         'word-inside-word',
         'word-ladder-mini',
+        'word-paths',
         'wordle-single-guess',
       ]);
 
@@ -629,7 +632,10 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         expect(drawable('wordplay-letters', 'closest')).toEqual([
           'alphabet-counts',
           'alphabet-position',
+          'column-words',
           'odd-word-place',
+          'survivor-words',
+          'word-paths',
         ]);
       });
 
@@ -735,8 +741,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(report.valid).toBe(true);
       expect(report.driftCount).toBe(0);
       expect(report.tablesFound).toBe(2);
-      expect(report.authoritativeFamilyCount).toBe(25);
-      expect(report.catalogFamilyCount).toBe(25);
+      expect(report.authoritativeFamilyCount).toBe(28);
+      expect(report.catalogFamilyCount).toBe(28);
       expect(report.verifiedFields).toEqual([
         'familyKey',
         'membership',
@@ -753,8 +759,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'KNOWLEDGE.md',
       );
 
-      expect(scopeExtracted).toHaveLength(25);
-      expect(knowledgeExtracted).toHaveLength(25);
+      expect(scopeExtracted).toHaveLength(28);
+      expect(knowledgeExtracted).toHaveLength(28);
       expect(scopeExtracted[0].familyKey).toBe('plural-form');
       expect(knowledgeExtracted[0].mechanicFit).toEqual({
         'moving-xo': 'EXCELLENT',
