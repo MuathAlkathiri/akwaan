@@ -1,5 +1,6 @@
 import { COMPOSED_PUZZLE_VARIANTS, composePuzzle } from './composed-puzzles';
 import { RYO_VARIANTS } from './composed-ryo';
+import { ERRORS_VARIANTS, stepsThatCanBreak } from './composed-errors';
 
 const seeds = Array.from({ length: 40 }, (_, index) => `job:${index}`);
 const all = [
@@ -78,6 +79,48 @@ describe('اقرأ خصمك, drawn by the engine', () => {
           Number(right.label),
         );
       }
+    }
+  });
+});
+
+describe('اكتشف الخطأ, إكس أو, drawn by the engine', () => {
+  it.each([
+    ...ERRORS_VARIANTS['broken-rule-step'].map((v) => ['broken-rule-step', v]),
+    ...ERRORS_VARIANTS['broken-grid-pattern'].map((v) => [
+      'broken-grid-pattern',
+      v,
+    ]),
+  ] as Array<[never, string]>)(
+    '%s / %s: one guilty step or square, and it is offered',
+    (family, variant) => {
+      for (const seed of seeds.slice(0, 25)) {
+        const item = composePuzzle(family, seed, variant);
+        expect(item.options).toHaveLength(4);
+        expect(item.options.map((option) => option.id)).toContain(
+          item.correctOptionId,
+        );
+      }
+    },
+  );
+
+  it('set aside any step but the broken one and no law explains the rest', () => {
+    for (const seed of seeds.slice(0, 25)) {
+      const item = composePuzzle('broken-rule-step', seed);
+      const steps = [
+        ...item.svg.matchAll(
+          /data-sides="(\d)" data-colour="(\w+)" data-angle="(\d+)"/g,
+        ),
+      ].map((m) => ({
+        sides: Number(m[1]),
+        colour: ['red', 'blue', 'green', 'yellow'].indexOf(m[2]),
+        angle: Number(m[3]),
+      }));
+      const broken = Number(/Step (\d)/.exec(item.factualClaim)![1]) - 1;
+      expect(stepsThatCanBreak(steps)).toEqual([broken]);
+      const right = item.options.find(
+        (option) => option.id === item.correctOptionId,
+      )!;
+      expect(right.label).toBe(`الخطوة ${broken + 1}`);
     }
   });
 });

@@ -34,6 +34,8 @@ export const COMPOSED_PUZZLE_FAMILIES = [
   'last-pipe-piece',
   'lying-guard',
   'false-scale',
+  'broken-rule-step',
+  'broken-grid-pattern',
   'gear-train-direction',
   'maze-exit-route',
   'shortest-path-grid',
@@ -79,6 +81,11 @@ import {
   composeAssembly,
 } from './composed-assembly';
 import { RYO_VARIANTS, RyoFamily, composeRyo } from './composed-ryo';
+import {
+  ERRORS_VARIANTS,
+  ErrorsFamily,
+  composeErrors,
+} from './composed-errors';
 import {
   WORDLE_VARIANTS,
   WordleFamily,
@@ -126,6 +133,7 @@ export const COMPOSED_PUZZLE_VARIANTS = {
   'visual-match-scan': ['duplicate', 'absent', 'no-twin'],
   'count-changes': ['mixed', 'same-kind'],
   ...RYO_VARIANTS,
+  ...ERRORS_VARIANTS,
   ...PATHS_VARIANTS,
   ...ASSEMBLY_VARIANTS,
   ...OBSERVATION_VARIANTS,
@@ -1603,6 +1611,13 @@ export function composePuzzle(
   if (familyKey in WORDLE_VARIANTS) {
     return composeWordle(
       familyKey as WordleFamily,
+      seed,
+      variant,
+    ) as ComposedPuzzle;
+  }
+  if (familyKey in ERRORS_VARIANTS) {
+    return composeErrors(
+      familyKey as ErrorsFamily,
       seed,
       variant,
     ) as ComposedPuzzle;

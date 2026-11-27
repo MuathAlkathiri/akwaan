@@ -441,7 +441,7 @@ function composeLyingGuard(
       correctOptionId,
       distractorRationale: options
         .filter((option) => option.id !== correctOptionId)
-        .map((option, index) => ({
+        .map((option) => ({
           optionId: option.id,
           why: `With the treasure there, the number of lying guards is not ${liars}.`,
         })),

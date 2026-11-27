@@ -548,6 +548,12 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
             closest: ['length-illusion-ratio'],
           },
         };
+        others['spot-the-error'] = {
+          'moving-xo': ['broken-grid-pattern', 'broken-rule-step'],
+          'read-your-opponent': ['false-scale', 'lying-guard'],
+          bomb: [],
+          closest: ['wrong-clock-minutes'],
+        };
         for (const [scopeKey, byMechanic] of Object.entries(others)) {
           for (const [mechanicKey, families] of Object.entries(byMechanic)) {
             expect(drawable(scopeKey, mechanicKey)).toEqual(families);

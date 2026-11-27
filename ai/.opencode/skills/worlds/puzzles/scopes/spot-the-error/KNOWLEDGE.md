@@ -375,6 +375,8 @@
 | 13 | `wrong-clock-minutes` | الساعة الغلط | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (minutes) |
 | 14 | `lying-guard` | الشاهد الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 doors) |
 | 15 | `false-scale` | الميزان الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 scales) |
+| 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 steps) |
+| 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
 
 ---
 
@@ -540,7 +542,8 @@ When generating or reviewing an authored batch for `spot-the-error`:
         "closest": "GOOD"
       },
       "answerModes": [
-        "multiple_choice"
+        "multiple_choice",
+        "closest"
       ],
       "status": "paused",
       "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
@@ -777,6 +780,71 @@ When generating or reviewing an authored batch for `spot-the-error`:
         }
       ],
       "capacity": 200
+    },
+    {
+      "familyKey": "broken-rule-step",
+      "name": "أي خطوة كسرت القانون؟",
+      "description": "خمس أشكال في صف تمشي على قانون مركب (أضلاع تزيد، لون يدور، شكل يلف)، وخطوة وحدة كسرته. المحرك يتأكد إن القانون ينقرأ من الباقي وإن خطوة وحدة بس ممكن تكون الغلط.",
+      "playerSolve": "قراءة القانون من الخطوات السليمة وإيجاد اللي خالفته.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "two-rules",
+          "name": "قانونين",
+          "brief": "Two of sides, colour and turn change at once."
+        },
+        {
+          "key": "three-rules",
+          "name": "ثلاث قوانين",
+          "brief": "Sides, colour and turn all change."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "broken-grid-pattern",
+      "name": "وين الخلل في النمط؟",
+      "description": "لوحة ٤×٤ من أشكال ملونة ماشية على نمط (صفوف وأعمدة، قطري، أو مراية)، ومربع واحد كاسره، وأربع مربعات عليها حروف. المحرك يتأكد إن مربع واحد بس ممكن يكون الغلط.",
+      "playerSolve": "قراءة النمط من المربعات السليمة وإيجاد اللي خالفه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "rows-and-columns",
+          "name": "صفوف وأعمدة",
+          "brief": "Shape by column, colour by row."
+        },
+        {
+          "key": "diagonal",
+          "name": "قطري",
+          "brief": "Shape and colour repeat along the diagonals."
+        },
+        {
+          "key": "mirror",
+          "name": "مراية",
+          "brief": "The right half mirrors the left."
+        }
+      ],
+      "capacity": 300
     }
   ]
 }
