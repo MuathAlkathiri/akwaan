@@ -46,7 +46,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | 2D Cable Vector | `multiple_choice` |
 | 13 | `key-door-route` | الطريق الوحيد | Composed picture | `closest` |
 | 14 | `mirror-beam` | الشعاع وين يوصل؟ | Composed picture | `multiple_choice` |
-| 15 | `bomb-thread-end` | وش في آخر الخيط؟ | Composed picture | `match` |
+| 15 | `bomb-thread-end` | وين توصل؟ | Composed picture | `match` |
 
 ---
 

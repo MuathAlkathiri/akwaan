@@ -1,3 +1,4 @@
+import { PATH_BOMB_VARIANTS } from '../domain/composed-bomb-paths';
 import { NUMBER_BOMB_VARIANTS } from '../domain/composed-bomb-numbers';
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
@@ -44,6 +45,31 @@ const blockingCodes = (candidate: {
     .map((finding) => finding.code);
 
 describe('ComposedVisualService', () => {
+  it.each(PATH_BOMB_VARIANTS.map((variant) => [variant]))(
+    'وين توصل؟ / %s passes the Bomb screen',
+    async (variant) => {
+      const { service } = build();
+      for (const seed of ['p:1', 'p:2', 'p:3', 'p:4']) {
+        const candidate = await service.compose(
+          'bomb-thread-end',
+          seed,
+          { mechanicKey: 'bomb', scopeKey: 'paths-motion' },
+          variant,
+        );
+        const findings = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService).screen(
+          candidate.draft,
+          candidate.authoring,
+          { worldKey: 'puzzles', mechanicKey: 'bomb' } as never,
+        ).findings;
+        expect(
+          findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+        ).toEqual([]);
+      }
+    },
+  );
+
   it.each(NUMBER_BOMB_VARIANTS.map((variant) => [variant]))(
     'ألغاز الأرقام / %s passes the Bomb screen',
     async (variant) => {

@@ -8,6 +8,13 @@ import {
 } from './composed-bomb';
 import { drawnThings } from './drawn-things';
 import {
+  PATH_BOMB_VARIANTS,
+  SLOW_PATH_BOMB_VARIANTS,
+  dropBall,
+  runRobot,
+  walkArrows,
+} from './composed-bomb-paths';
+import {
   NUMBER_BOMB_VARIANTS,
   SLOW_NUMBER_BOMB_VARIANTS,
   completions,
@@ -160,5 +167,60 @@ describe('one batch never names the same drawing twice', () => {
         ).answerKey,
     );
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('وين توصل؟ — القنبلة in المسارات والحركة', () => {
+  it('walks every way the engine draws to the drawing it names', () => {
+    for (const variant of PATH_BOMB_VARIANTS) {
+      for (const seed of seeds.slice(0, 25)) {
+        const item = composeBomb('bomb-thread-end', `${seed}:3`, variant);
+        expect(item.answerKey).toBeTruthy();
+        const named = /«(.+)»/.exec(item.factualClaim)![1];
+        expect(item.acceptedAnswers).toContain(named);
+        if (variant === 'arrows') {
+          const [, start, moves] = item.variant.split(':');
+          const end = walkArrows(
+            start.split(',').map(Number) as [number, number],
+            [...moves],
+            5,
+            3,
+          );
+          expect(item.factualClaim).toContain(`end at ${end!.join(',')}`);
+        }
+        if (variant === 'ball-drop') {
+          const [, start, rows] = item.variant.split(':');
+          const boards = rows
+            .split('/')
+            .map((row) => row.match(/-?\d/g)!.map(Number));
+          // No board pushes the ball onto another board of its row.
+          for (const row of boards) {
+            row.forEach((d, i) => {
+              if (d) expect(row[i + d]).toBe(0);
+            });
+          }
+          expect(item.factualClaim).toContain(
+            dropBall(boards, Number(start)).join('→'),
+          );
+        }
+        if (variant === 'robot') {
+          const [, start, facing, commands] = item.variant.split(':');
+          const end = runRobot(
+            start.split(',').map(Number) as [number, number],
+            Number(facing),
+            commands.split('|'),
+            5,
+            3,
+          );
+          expect(item.factualClaim).toContain(`ends at ${end!.join(',')}`);
+        }
+      }
+    }
+  });
+
+  it('keeps the slow robot to one template in seven', () => {
+    expect(
+      SLOW_PATH_BOMB_VARIANTS.length / PATH_BOMB_VARIANTS.length,
+    ).toBeLessThan(0.2);
   });
 });

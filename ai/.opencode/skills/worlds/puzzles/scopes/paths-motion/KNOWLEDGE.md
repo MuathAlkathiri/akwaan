@@ -372,7 +372,7 @@ All puzzles in this Scope must be self-contained in the visible diagram. The pla
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cable Vector | Multiple Choice (4 sockets) |
 | 13 | `key-door-route` | الطريق الوحيد | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (steps) |
 | 14 | `mirror-beam` | الشعاع وين يوصل؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 targets) |
-| 15 | `bomb-thread-end` | وش في آخر الخيط؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 15 | `bomb-thread-end` | وين توصل؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -900,9 +900,9 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
     },
     {
       "familyKey": "bomb-thread-end",
-      "name": "وش في آخر الخيط؟",
-      "description": "دوائر ملونة تطلع منها خيوط متشابكة لرسمات. المطلوب اسم الرسمة اللي في آخر خيط لون معين.",
-      "playerSolve": "تتبع خيط واحد لآخره.",
+      "name": "وين توصل؟",
+      "description": "طريق من بداية إلى رسمة من بين عدة رسمات، والجواب اسم الرسمة مكتوب: خيط متشابك، أسهم على شبكة، كورة تحولها ألواح، طريق أحمر، سهم يلف، مصعد، وروبوت ينفذ أوامر. المحرك يمشي الطريق بنفسه. الروبوت أبطأ، فيكون قليل في الدفعة (قرار المالك 2026-11-27).",
+      "playerSolve": "تتبع الطريق بالعين إلى آخره.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -916,14 +916,39 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
       ],
       "variants": [
         {
-          "key": "three-threads",
-          "name": "ثلاث خيوط",
-          "brief": "Three threads."
+          "key": "threads",
+          "name": "الخيط",
+          "brief": "Three or four tangled threads from coloured dots to drawings."
         },
         {
-          "key": "four-threads",
-          "name": "أربع خيوط",
-          "brief": "Four threads."
+          "key": "arrows",
+          "name": "امشِ على الأسهم",
+          "brief": "A grid of drawings, a green start and six arrows read from the right."
+        },
+        {
+          "key": "ball-drop",
+          "name": "الكورة وين تطيح",
+          "brief": "A ball falls past slanted boards into boxes of drawings; a board always sends it into an empty space."
+        },
+        {
+          "key": "red-path",
+          "name": "امشِ على الأحمر",
+          "brief": "One red way, never forking, across a board of coloured squares."
+        },
+        {
+          "key": "spinner",
+          "name": "السهم الدوار",
+          "brief": "Eight drawings round a dial; turn the arrow by a stated share of a turn."
+        },
+        {
+          "key": "elevator",
+          "name": "المصعد",
+          "brief": "A building of drawings, a lift and three moves up and down."
+        },
+        {
+          "key": "robot",
+          "name": "الروبوت",
+          "brief": "Moves and turns relative to where the robot faces. Slow: one template in seven."
         }
       ],
       "capacity": 300
