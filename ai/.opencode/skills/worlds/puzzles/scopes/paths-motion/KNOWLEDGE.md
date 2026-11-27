@@ -373,6 +373,14 @@ All puzzles in this Scope must be self-contained in the visible diagram. The pla
 | 13 | `key-door-route` | الطريق الوحيد | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (steps) |
 | 14 | `mirror-beam` | الشعاع وين يوصل؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 targets) |
 | 15 | `bomb-thread-end` | وين توصل؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 16 | `ball-bounce-count` | كم مرة ترتد؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (ارتدادة) |
+| 17 | `travel-seconds` | كم ثانية يوصل؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (ثانية) |
+| 18 | `gear-turns` | كم لفة يلف؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (لفة) |
+| 19 | `pipe-flow-litres` | كم لتر يوصل؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (لتر) |
+| 20 | `thread-length` | كم طول الخيط؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (مربع) |
+| 21 | `meeting-point` | وين يلتقون؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 22 | `robot-stop` | وين يوقف الروبوت؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 23 | `ball-drop-floor` | وين تطيح الكورة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
 
 ---
 
@@ -952,6 +960,406 @@ for it. Numbers are accepted in Western digits, Arabic digits and words.
         }
       ],
       "capacity": 300
+    },
+    {
+      "familyKey": "ball-bounce-count",
+      "name": "كم مرة ترتد؟",
+      "description": "كورة تنطلق بزاوية وترتد في جدران صندوق لين تدخل الحفرة، ومسارها مرسوم. الجواب عدد الارتدادات، والمحرك يحسبه بمحاكاة المسار.",
+      "playerSolve": "عدّ ملامسات الجدار على المسار المرسوم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "small",
+          "name": "صندوق صغير",
+          "brief": "A small box: six or seven bounces."
+        },
+        {
+          "key": "wide",
+          "name": "صندوق عريض",
+          "brief": "A wide box."
+        },
+        {
+          "key": "tall",
+          "name": "صندوق طويل",
+          "brief": "A box taller than it is wide."
+        },
+        {
+          "key": "long",
+          "name": "صندوق ممدود",
+          "brief": "A long box: more bounces."
+        },
+        {
+          "key": "square",
+          "name": "قريب من المربع",
+          "brief": "Nearly square."
+        },
+        {
+          "key": "odd",
+          "name": "أبعاد غير متجانسة",
+          "brief": "Sides with no common factor: the longest path."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "travel-seconds",
+      "name": "كم ثانية يوصل؟",
+      "description": "مسار مربعات من المركبة لين العلم، وسرعتها مكتوبة بالمربعات في الثانية. الجواب عدد الثواني.",
+      "playerSolve": "عدّ مربعات المسار وقسّمها على سرعة الثانية.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "car",
+          "name": "سيارة",
+          "brief": "3 squares a second."
+        },
+        {
+          "key": "bus",
+          "name": "باص",
+          "brief": "2 squares a second."
+        },
+        {
+          "key": "bicycle",
+          "name": "سيكل",
+          "brief": "4 squares a second."
+        },
+        {
+          "key": "train",
+          "name": "قطار",
+          "brief": "3 squares a second."
+        },
+        {
+          "key": "scooter",
+          "name": "سكوتر",
+          "brief": "2 squares a second."
+        },
+        {
+          "key": "truck",
+          "name": "شاحنة",
+          "brief": "4 squares a second."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "gear-turns",
+      "name": "كم لفة يلف؟",
+      "description": "ترسان متعاشقان بأحجام مختلفة، ولفات الأول مكتوبة. الجواب لفات الثاني، والمحرك يحسبه من نسبة السنون.",
+      "playerSolve": "قارن حجم الترسين: الأصغر يلف أكثر بنفس النسبة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "half",
+          "name": "النص",
+          "brief": "Driver twice the driven."
+        },
+        {
+          "key": "third",
+          "name": "الثلث",
+          "brief": "Driver three times the driven."
+        },
+        {
+          "key": "quarter",
+          "name": "الربع",
+          "brief": "Driver four times the driven."
+        },
+        {
+          "key": "slow-half",
+          "name": "الضعف",
+          "brief": "The small gear drives the big one."
+        },
+        {
+          "key": "slow-third",
+          "name": "ثلاث أضعاف",
+          "brief": "A small driver, a much bigger driven gear."
+        },
+        {
+          "key": "three-to-two",
+          "name": "ثلاثة لاثنين",
+          "brief": "A ratio that is not a whole number of turns either way."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "pipe-flow-litres",
+      "name": "كم لتر يوصل؟",
+      "description": "خزان موية ينقسم بالتساوي على فروع، وبعض الفروع مقفولة. الجواب كم لتر يوصل للدلو.",
+      "playerSolve": "احسب نصيب الفرع الواحد، واجمع الفروع المفتوحة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "one-closed",
+          "name": "فرع مقفول",
+          "brief": "One of four branches shut."
+        },
+        {
+          "key": "two-closed",
+          "name": "فرعين مقفولين",
+          "brief": "Two of four shut."
+        },
+        {
+          "key": "three-closed",
+          "name": "ثلاثة مقفولة",
+          "brief": "Three of four shut."
+        },
+        {
+          "key": "half-closed",
+          "name": "نص مقفول",
+          "brief": "A shut valve higher up kills two branches at once."
+        },
+        {
+          "key": "mixed",
+          "name": "مقفول فوق وتحت",
+          "brief": "A half and a leaf both shut."
+        },
+        {
+          "key": "three-branches",
+          "name": "ثلاثة فروع",
+          "brief": "The tank splits three ways."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "thread-length",
+      "name": "كم طول الخيط؟",
+      "description": "خيط متعرّج فوق شبكة مربعات. الجواب طوله بالمربعات لو انمدّ، والمحرك يحسبه قطعة قطعة.",
+      "playerSolve": "خذ الخيط قطعة قطعة وقدّر طول كل وحدة بالمربعات.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "gentle",
+          "name": "خيط مرتخي",
+          "brief": "Few long segments."
+        },
+        {
+          "key": "zigzag",
+          "name": "متعرّج",
+          "brief": "Sharp turns."
+        },
+        {
+          "key": "coiled",
+          "name": "ملفوف",
+          "brief": "Many short segments: the longest thread."
+        },
+        {
+          "key": "wave",
+          "name": "موجة",
+          "brief": "A gentle wave."
+        },
+        {
+          "key": "steep",
+          "name": "صعود ونزول",
+          "brief": "Tall rises over short runs."
+        },
+        {
+          "key": "long",
+          "name": "ممدود",
+          "brief": "Many medium segments."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "meeting-point",
+      "name": "وين يلتقون؟",
+      "description": "سيارة وشاحنة ينطلقون من طرفي الطريق بسرعتين مختلفتين. اللاعب يعلّم على المسطرة وين يلتقون، والمسطرة خط بين البيتين بلا أرقام.",
+      "playerSolve": "وزّع الطريق بنسبة السرعتين: الأسرع يقطع أكثر.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "quick-left",
+          "name": "أسرع من اليسار",
+          "brief": "Left mover twice the right."
+        },
+        {
+          "key": "quick-right",
+          "name": "أسرع من اليمين",
+          "brief": "Right mover twice the left."
+        },
+        {
+          "key": "faster-left",
+          "name": "أسرع بثلاث",
+          "brief": "Three to one from the left."
+        },
+        {
+          "key": "faster-right",
+          "name": "أسرع بثلاث من اليمين",
+          "brief": "Three to one from the right."
+        },
+        {
+          "key": "steady-left",
+          "name": "أسرع بأربع",
+          "brief": "Four to one from the left."
+        },
+        {
+          "key": "steady-right",
+          "name": "أسرع بأربع من اليمين",
+          "brief": "Four to one from the right."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "robot-stop",
+      "name": "وين يوقف الروبوت؟",
+      "description": "روبوت على ممر مربعات ينفّذ أوامر حركة بالترتيب، والأوامر مرسومة بأسهم وأرقام. اللاعب يعلّم وين يوقف.",
+      "playerSolve": "ابدأ من الروبوت ونفّذ الأوامر وحدة وحدة.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "two-moves",
+          "name": "أمرين",
+          "brief": "Two orders."
+        },
+        {
+          "key": "three-moves",
+          "name": "ثلاثة أوامر",
+          "brief": "Three orders."
+        },
+        {
+          "key": "four-moves",
+          "name": "أربعة أوامر",
+          "brief": "Four orders."
+        },
+        {
+          "key": "back-heavy",
+          "name": "رجعة طويلة",
+          "brief": "A long step backwards in the middle."
+        },
+        {
+          "key": "forward-run",
+          "name": "تقدّم متصل",
+          "brief": "Mostly forward."
+        },
+        {
+          "key": "long-way",
+          "name": "طريق طويل",
+          "brief": "Four orders that double back."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "ball-drop-floor",
+      "name": "وين تطيح الكورة؟",
+      "description": "كورة تنزل على ألواح مايلة، وكل لوح يمرّرها لطرفه الأوطى وتسقط على اللي تحته. اللاعب يعلّم وين تطيح على الأرض.",
+      "playerSolve": "على كل لوح الكورة تتدحرج للطرف الأوطى وتنزل عمودي على اللي بعده.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "two-boards",
+          "name": "لوحين",
+          "brief": "Two boards."
+        },
+        {
+          "key": "three-boards",
+          "name": "ثلاثة ألواح",
+          "brief": "Three boards."
+        },
+        {
+          "key": "four-boards",
+          "name": "أربعة ألواح",
+          "brief": "Four boards."
+        },
+        {
+          "key": "zigzag",
+          "name": "ذهاب ورجوع",
+          "brief": "Boards that send the ball back and forth."
+        },
+        {
+          "key": "long-boards",
+          "name": "ألواح طويلة",
+          "brief": "Wide boards: long travel."
+        },
+        {
+          "key": "short-boards",
+          "name": "ألواح قصيرة",
+          "brief": "Narrow boards: short hops."
+        }
+      ],
+      "capacity": 120
     }
   ]
 }

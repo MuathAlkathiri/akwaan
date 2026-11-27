@@ -541,7 +541,17 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'paths-motion': {
             'read-your-opponent': ['mirror-beam'],
             bomb: ['bomb-thread-end'],
-            closest: ['key-door-route'],
+            closest: [
+              'ball-bounce-count',
+              'ball-drop-floor',
+              'gear-turns',
+              'key-door-route',
+              'meeting-point',
+              'pipe-flow-litres',
+              'robot-stop',
+              'thread-length',
+              'travel-seconds',
+            ],
           },
           'observation-illusions': {
             'read-your-opponent': ['count-changes'],

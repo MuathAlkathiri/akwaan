@@ -1,4 +1,5 @@
 import { PATH_BOMB_VARIANTS } from '../domain/composed-bomb-paths';
+import { PATH_CLOSEST_VARIANTS } from '../domain/composed-closest-paths';
 import { NUMBER_BOMB_VARIANTS } from '../domain/composed-bomb-numbers';
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
@@ -158,6 +159,44 @@ describe('ComposedVisualService', () => {
         .failureReason,
     ).toBe('DIFFERENCE_TOO_SMALL');
   });
+
+  it.each(
+    Object.entries(PATH_CLOSEST_VARIANTS).flatMap(([familyKey, variants]) =>
+      (variants as readonly string[]).map((variant) => [familyKey, variant]),
+    ) as Array<[never, string]>,
+  )(
+    'مين أقرب %s / %s passes the Closest screen',
+    async (familyKey, variant) => {
+      const { service } = build();
+      for (const seed of ['c:0', 'c:1', 'c:2', 'c:3', 'c:4']) {
+        const candidate = await service.compose(
+          familyKey,
+          seed,
+          { mechanicKey: 'closest', scopeKey: 'paths-motion' },
+          variant,
+        );
+        const findings = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService).screen(
+          candidate.draft,
+          candidate.authoring,
+          {
+            worldKey: 'puzzles',
+            mechanicKey: 'closest',
+          } as never,
+        ).findings;
+        expect(
+          findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+        ).toEqual([]);
+        const payload = candidate.draft.mechanicPayload as {
+          closestSlider: { mode: string };
+        };
+        expect(payload.closestSlider.mode).toMatch(
+          /^(numeric-range|between-anchors)$/,
+        );
+      }
+    },
+  );
 
   it.each(PATH_BOMB_VARIANTS.map((variant) => [variant]))(
     'وين توصل؟ / %s passes the Bomb screen',

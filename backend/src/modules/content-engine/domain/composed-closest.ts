@@ -10,6 +10,13 @@ import {
   round,
   seededRandom,
 } from './composed-kit';
+import {
+  ClosestSlider,
+  PATH_CLOSEST_VARIANTS,
+  PathClosestFamily,
+  composePathClosest,
+  isPathClosestFamily,
+} from './composed-closest-paths';
 
 /**
  * مين أقرب, drawn: a picture whose answer is a number the engine worked out
@@ -18,6 +25,7 @@ import {
  * nearest wins, so the question needs no tolerance.
  */
 export const CLOSEST_VARIANTS = {
+  ...PATH_CLOSEST_VARIANTS,
   'key-door-route': ['key-door', 'star-first'],
   'cube-pile-count': ['square', 'long', 'tall'],
   'length-illusion-ratio': ['arrows', 'rails', 'circles'],
@@ -41,13 +49,7 @@ export interface ComposedReading {
   variant: string;
   value: number;
   prompt: string;
-  slider: {
-    mode: 'numeric-range';
-    min: number;
-    max: number;
-    step: number;
-    unit?: string;
-  };
+  slider: ClosestSlider;
   altText: string;
   concept: string;
   strategy: string;
@@ -636,6 +638,8 @@ export function composeClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  if (isPathClosestFamily(familyKey))
+    return composePathClosest(familyKey as PathClosestFamily, seed, chosen);
   switch (familyKey) {
     case 'key-door-route':
       return composeKeyDoor(seed, chosen);
