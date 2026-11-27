@@ -11,6 +11,7 @@ import { EntitlementsModule } from './modules/entitlements/entitlements.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { LiveGameSessionsModule } from './modules/live-game-sessions/live-game-sessions.module';
 import { HealthController } from './health.controller';
+import { ProxyDiagnosticsController } from './proxy-diagnostics.controller';
 import { WorldContentModule } from './modules/world-content/world-content.module';
 import { MediaRightsModule } from './modules/media-rights/media-rights.module';
 import { ContentEngineModule } from './modules/content-engine/content-engine.module';
@@ -39,6 +40,6 @@ import { MatchModule } from './modules/match/match.module';
     LiveGameSessionsModule,
     MatchModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, ProxyDiagnosticsController],
 })
 export class AppModule {}
