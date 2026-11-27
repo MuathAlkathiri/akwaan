@@ -743,7 +743,7 @@ export class LiveGameSession {
     this.assertStatus(['active'], now);
     const currentTeamId = this.requireActiveTeam();
     this.endTurn(reason, now);
-    const nextTeamId = teamId ?? this.nextEligibleTeamId(currentTeamId, now);
+    const nextTeamId = teamId ?? this.nextEligibleTeamId(currentTeamId);
     this.activateTeam(nextTeamId, reason, now);
   }
 
@@ -883,7 +883,12 @@ export class LiveGameSession {
   private activateTeam(teamId: string, reason: string, now: Date): void {
     const team = this.requireTeam(teamId);
     const clock = TeamClock.restore(team.clock);
-    if (!team.active || clock.isExpired(now)) {
+    // Eligibility is about the team, not its budget. A Match outlives its
+    // challenges and its clocks are reallocated per challenge, so a spent clock
+    // here meant a Match that could never launch another turn-driving challenge
+    // — the whole `TEAM_NOT_ELIGIBLE` lockout. Expiry is now owned by whichever
+    // mechanic gives it meaning.
+    if (!team.active) {
       throw new LiveSessionDomainError(
         'TEAM_NOT_ELIGIBLE',
         'The selected team cannot receive a turn',
@@ -916,18 +921,16 @@ export class LiveGameSession {
     this.state.lastTransitionAt = now;
   }
 
-  private nextEligibleTeamId(currentId: string, now: Date): string {
+  private nextEligibleTeamId(currentId: string): string {
     const currentIndex = this.state.teams.findIndex(
       (team) => team.id === currentId,
     );
     for (let offset = 1; offset <= this.state.teams.length; offset += 1) {
       const team =
         this.state.teams[(currentIndex + offset) % this.state.teams.length];
-      if (
-        team.active &&
-        !TeamClock.restore(team.clock).isExpired(now) &&
-        team.id !== currentId
-      ) {
+      // Deliberately blind to the clock, for the reason given in `activateTeam`:
+      // two spent clocks used to leave a Match with no team to hand the turn to.
+      if (team.active && team.id !== currentId) {
         return team.id;
       }
     }

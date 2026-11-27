@@ -45,6 +45,7 @@ import {
 import { MatchWorldCatalog } from './match-world.catalog';
 import { TokenLedgerService } from '../../entitlements/application/token-ledger.service';
 import { LaunchCampaignService } from '../../entitlements/application/launch-campaign.service';
+import { allocateSessionClocksForLaunch } from './session-clock-allocation';
 import { releaseSessionTurnForBoardReturn } from './session-turn-release';
 import { UnifiedMatchSetupValidator } from './unified-match-setup.validator';
 import {
@@ -493,6 +494,30 @@ export class MatchUseCases {
     }
   }
 
+  /**
+   * Hands this challenge a clean clock, and never fails a launch over it.
+   *
+   * Logged rather than raised for the same reason the release is: the player
+   * experience of a launch that worked beats a strict seam, and since expiry no
+   * longer refuses a turn, stale clocks cost a wrong number in the snapshot
+   * rather than a stranded Match.
+   */
+  private async allocateSessionClocks(sessionId: string): Promise<void> {
+    try {
+      await allocateSessionClocksForLaunch({
+        sessions: this.sessions,
+        sessionId,
+        now: this.clock.now(),
+      });
+    } catch (error) {
+      this.logger.error({
+        event: 'session_clock_allocation_failed',
+        sessionId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   /** Abandons a prepared position. Consumes nothing and changes no turn. */
   cancelUnifiedPreflight(command: MatchCommand): Promise<Match> {
     return this.mutate(command, 'preflight-cancelled', (match, now) =>
@@ -734,6 +759,10 @@ export class MatchUseCases {
     const backdrop = await this.worldPresentation.questionBackdropFor(
       occurrence.worldId,
     );
+    // Fresh clocks for this challenge, before any mechanic takes a turn on
+    // them. القنبلة reallocates its own 30 seconds inside `launch`, which lands
+    // after this and still wins.
+    await this.allocateSessionClocks(command.sessionId);
     const { runtimeId } = await launcher.launch(context);
     const revision = match.revision;
     match.launchChallenge({
