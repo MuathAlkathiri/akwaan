@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'fs';
+import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import { join } from 'path';
 import {
   INK,
@@ -411,6 +412,20 @@ function oddOneOut(seed: string, variantKey: string): ComposedBombItem {
   }
 }
 
+/**
+ * The answers the game will compare: two spellings the game already folds
+ * together (فأر and فار) are one answer, and the game refuses both kept.
+ */
+export function distinctAnswers(answers: readonly string[]): string[] {
+  const seen = new Set<string>();
+  return answers.filter((answer) => {
+    const key = normalizeAnswer(answer);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function composeBomb(
   familyKey: BombFamily,
   seed: string,
@@ -425,6 +440,15 @@ export function composeBomb(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  const item = drawBomb(familyKey, seed, chosen);
+  return { ...item, acceptedAnswers: distinctAnswers(item.acceptedAnswers) };
+}
+
+function drawBomb(
+  familyKey: BombFamily,
+  seed: string,
+  chosen: string,
+): ComposedBombItem {
   switch (familyKey) {
     case 'bomb-dice-total':
       return diceTotal(seed, chosen);

@@ -1,3 +1,4 @@
+import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
 import {
   BOMB_VARIANTS,
   bombNames,
@@ -39,6 +40,11 @@ describe('القنبلة in عالم الألغاز, drawn by the engine', () =>
         expect(item.variantKey).toBe(variant);
         expect([...item.prompt].length).toBeLessThan(70);
         expect(item.acceptedAnswers.length).toBeGreaterThan(0);
+        // The game refuses two answers it folds into one (فأر, فار).
+        const folded = item.acceptedAnswers.map((answer) =>
+          normalizeAnswer(answer),
+        );
+        expect(new Set(folded).size).toBe(folded.length);
         for (const answer of item.acceptedAnswers) {
           expect(answer.trim()).toBe(answer);
           if (answer.length > 2) expect(item.prompt).not.toContain(answer);
