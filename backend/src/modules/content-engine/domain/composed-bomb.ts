@@ -3,7 +3,6 @@ import { normalizeAnswer } from '../../../common/utils/answer-normalization.util
 import { join } from 'path';
 import {
   INK,
-  RED,
   W,
   H,
   frame,
@@ -12,6 +11,10 @@ import {
   seededRandom,
   shuffled,
 } from './composed-kit';
+import {
+  NUMBER_BOMB_VARIANTS,
+  composeNumberBomb,
+} from './composed-bomb-numbers';
 import { LETTER_WORDS, lendersFor, lettersSvg } from './composed-letters';
 import {
   THREAD_LAYOUTS,
@@ -36,7 +39,7 @@ import {
  * player may type for them.
  */
 export const BOMB_VARIANTS = {
-  'bomb-dice-total': ['two-dice', 'three-dice'],
+  'bomb-number-puzzles': NUMBER_BOMB_VARIANTS,
   'bomb-first-letters': ['in-order', 'scrambled'],
   'bomb-what-is-it': ['shadow', 'close-up', 'half-hidden', 'upside-down'],
   'bomb-put-together': ['shattered', 'shattered-fine'],
@@ -135,89 +138,12 @@ const SPOKEN_TEENS: Record<number, string> = {
 export const numberAnswers = (value: number): string[] => [
   String(value),
   String(value).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]),
-  NUMBER_WORDS[value],
+  ...(NUMBER_WORDS[value] ? [NUMBER_WORDS[value]] : []),
   ...(value === 2 ? ['اثنان'] : []),
   ...(SPOKEN_TEENS[value] ? [SPOKEN_TEENS[value]] : []),
 ];
 
 // ---------------------------------------------------------------------------
-
-const PIPS: Record<number, Array<[number, number]>> = {
-  1: [[0, 0]],
-  2: [
-    [-1, -1],
-    [1, 1],
-  ],
-  3: [
-    [-1, -1],
-    [0, 0],
-    [1, 1],
-  ],
-  4: [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ],
-  5: [
-    [-1, -1],
-    [1, -1],
-    [0, 0],
-    [-1, 1],
-    [1, 1],
-  ],
-  6: [
-    [-1, -1],
-    [1, -1],
-    [-1, 0],
-    [1, 0],
-    [-1, 1],
-    [1, 1],
-  ],
-};
-
-const dieSvg = (
-  face: number,
-  cx: number,
-  cy: number,
-  size: number,
-  tilt: number,
-) =>
-  `<g data-die="${face}" transform="rotate(${tilt} ${cx} ${cy})"><rect x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}" rx="${size * 0.16}" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
-  PIPS[face]
-    .map(
-      ([dx, dy]) =>
-        `<circle cx="${round(cx + dx * size * 0.27)}" cy="${round(cy + dy * size * 0.27)}" r="${round(size * 0.09)}" fill="${face === 1 ? RED : INK}"/>`,
-    )
-    .join('') +
-  `</g>`;
-
-function diceTotal(seed: string, variantKey: string): ComposedBombItem {
-  const random = seededRandom(`bomb-dice-total:${variantKey}:${seed}`);
-  const count = variantKey === 'three-dice' ? 3 : 2;
-  const faces = Array.from(
-    { length: count },
-    () => 1 + Math.floor(random() * 6),
-  );
-  const total = faces.reduce((a, b) => a + b, 0);
-  const size = 220;
-  let body = '';
-  faces.forEach((face, index) => {
-    const cx = W / 2 + ((count - 1) / 2 - index) * (size + 70);
-    body += dieSvg(face, cx, H / 2, size, pick([-12, -6, 0, 6, 12], random));
-  });
-  return {
-    familyKey: 'bomb-dice-total',
-    variantKey,
-    variant: `${variantKey}:${faces.join('+')}`,
-    prompt: 'كم مجموع النرد؟',
-    acceptedAnswers: numberAnswers(total),
-    altText: `${count === 3 ? 'ثلاث' : 'حبتين'} نرد على وجوه مختلفة`,
-    concept: 'Add the pips on the dice at a glance.',
-    factualClaim: `Faces ${faces.join(' + ')} = ${total}.`,
-    svg: frame(body),
-  };
-}
 
 /**
  * Drawings a player might call by a name with another first letter (an
@@ -450,8 +376,20 @@ function drawBomb(
   chosen: string,
 ): ComposedBombItem {
   switch (familyKey) {
-    case 'bomb-dice-total':
-      return diceTotal(seed, chosen);
+    case 'bomb-number-puzzles': {
+      const puzzle = composeNumberBomb(seed, chosen);
+      return {
+        familyKey,
+        variantKey: puzzle.variantKey,
+        variant: puzzle.variant,
+        prompt: puzzle.prompt,
+        acceptedAnswers: numberAnswers(puzzle.answer),
+        altText: puzzle.altText,
+        concept: puzzle.concept,
+        factualClaim: puzzle.factualClaim,
+        svg: puzzle.svg,
+      };
+    }
     case 'bomb-first-letters':
       return firstLetters(seed, chosen);
     case 'bomb-what-is-it':

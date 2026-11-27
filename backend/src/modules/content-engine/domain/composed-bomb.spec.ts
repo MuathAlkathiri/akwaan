@@ -7,6 +7,15 @@ import {
   numberAnswers,
 } from './composed-bomb';
 import { drawnThings } from './drawn-things';
+import {
+  NUMBER_BOMB_VARIANTS,
+  SLOW_NUMBER_BOMB_VARIANTS,
+  completions,
+  composeNumberBomb,
+  fewestCoins,
+  machineAnswers,
+  sequenceAnswers,
+} from './composed-bomb-numbers';
 
 const seeds = Array.from({ length: 40 }, (_, index) => `job:${index}`);
 const all = Object.entries(BOMB_VARIANTS).flatMap(([family, variants]) =>
@@ -61,4 +70,66 @@ describe('القنبلة in عالم الألغاز, drawn by the engine', () =>
       expect(item.acceptedAnswers).toContain(named);
     }
   });
+});
+
+describe('ألغاز الأرقام — القنبلة in الأرقام والتقدير', () => {
+  it('keeps the slow templates to about a third', () => {
+    expect(
+      SLOW_NUMBER_BOMB_VARIANTS.length / NUMBER_BOMB_VARIANTS.length,
+    ).toBeLessThanOrEqual(0.4);
+  });
+
+  it('refuses a puzzle with a second reasonable reading', () => {
+    expect(sequenceAnswers([3, 8, 6, 11, 9])).toEqual([14]);
+    // Two examples fit more than one rule; three settle it.
+    expect(
+      machineAnswers(
+        [
+          [1, 2],
+          [2, 5],
+        ],
+        3,
+      ).length,
+    ).toBeGreaterThan(1);
+    expect(
+      machineAnswers(
+        [
+          [2, 5],
+          [4, 9],
+          [5, 11],
+        ],
+        6,
+      ),
+    ).toEqual([13]);
+    expect(fewestCoins([1, 3, 4], 6)).toBe(2);
+  });
+
+  it.each(NUMBER_BOMB_VARIANTS.map((v) => [v]))(
+    '%s: the answer is the one the drawing proves',
+    (variant) => {
+      for (const seed of seeds) {
+        const item = composeNumberBomb(seed, variant);
+        expect(Number.isInteger(item.answer)).toBe(true);
+        expect(item.answer).toBeGreaterThanOrEqual(0);
+        if (variant === 'number-grid') {
+          const grid = item.variant
+            .split(':')[1]
+            .split('/')
+            .map((row) => [...row].map((v) => (v === '.' ? null : Number(v))));
+          expect(completions(grid)).toBe(1);
+        }
+        if (variant === 'fewest-coins') {
+          const [coins, target] = item.variant.split(':');
+          expect(
+            fewestCoins(coins.split(',').map(Number), Number(target)),
+          ).toBe(item.answer);
+        }
+        const bomb = composeBomb('bomb-number-puzzles', seed, variant);
+        expect(bomb.acceptedAnswers).toContain(String(item.answer));
+        for (const answer of bomb.acceptedAnswers) {
+          expect(bomb.prompt).not.toContain(answer);
+        }
+      }
+    },
+  );
 });
