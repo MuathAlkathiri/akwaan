@@ -39,13 +39,14 @@ describe('«أول حرف», drawn', () => {
 
   it('lends letters only from names spelled one way', () => {
     const lenders = letterThings();
-    expect(lenders.length).toBeGreaterThanOrEqual(60);
+    // Fewer since a drawing with two names (نسر، عقاب) lends nothing.
+    expect(lenders.length).toBeGreaterThanOrEqual(35);
     for (const thing of lenders) {
       // One word, no hamza, no ta marbuta, no doubled letter mark.
       expect(thing.ar).toMatch(/^[ابتثجحخدذرزسشصضطظعغفقكلمنهوي]+$/);
     }
     // Names the dialects disagree on, or borrowed words, lend nothing.
-    for (const disputed of ['جوال', 'سيكل', 'تلفزيون', 'كاس']) {
+    for (const disputed of ['جوال', 'سيكل', 'تلفزيون', 'كاس', 'نسر', 'جمل']) {
       expect(lenders.map((thing) => thing.ar)).not.toContain(disputed);
     }
   });

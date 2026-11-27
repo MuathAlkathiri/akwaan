@@ -9,7 +9,7 @@ import {
   seededRandom,
   shuffled,
 } from './composed-kit';
-import { DrawnThing, drawnThings, thingSvg } from './drawn-things';
+import { DrawnThing, bombNames, drawnThings, thingSvg } from './drawn-things';
 
 /**
  * «أول حرف» — a word spelled by drawn things, one letter from the name of
@@ -94,9 +94,30 @@ const DISPUTED = new Set([
   'كتب',
 ]);
 
+/** A name as the game compares it: no «ال», hamza and taa marbuta folded. */
+const folded = (name: string): string =>
+  name
+    .replace(/^ال/, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي');
+
+/**
+ * A drawing a player might call by another name (an eagle is «نسر» to one and
+ * «عقاب» to another) lends a letter nobody can count on: only drawings whose
+ * accepted names all read the same may lend one.
+ */
+const oneName = (thing: DrawnThing): boolean => {
+  const forms = bombNames().get(thing.key);
+  return !forms || new Set(forms.map(folded)).size === 1;
+};
+
 export const letterThings = (): DrawnThing[] =>
   drawnThings().filter(
-    (thing) => PLAIN_SPELLING.test(thing.ar) && !DISPUTED.has(thing.ar),
+    (thing) =>
+      PLAIN_SPELLING.test(thing.ar) &&
+      !DISPUTED.has(thing.ar) &&
+      oneName(thing),
   );
 
 /** Everyday words of three or four plain letters: what the pictures spell. */

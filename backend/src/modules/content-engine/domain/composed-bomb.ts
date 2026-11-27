@@ -1,6 +1,4 @@
-import { existsSync, readFileSync } from 'fs';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { join } from 'path';
 import {
   INK,
   W,
@@ -33,7 +31,7 @@ import {
 import {
   DrawnThing,
   drawnThings,
-  findDrawnThingsDirectory,
+  bombNames,
   thingSvg,
   toThe,
 } from './drawn-things';
@@ -78,30 +76,9 @@ export interface ComposedBombItem {
   svg: string;
 }
 
-let names: ReadonlyMap<string, string[]> | undefined;
-
-/** Every name a player may type for each drawing asked by name. */
-export function bombNames(): ReadonlyMap<string, string[]> {
-  if (names) return names;
-  const map = new Map<string, string[]>();
-  try {
-    const directory = findDrawnThingsDirectory();
-    const file = directory ? join(directory, 'bomb-names.txt') : '';
-    if (file && existsSync(file)) {
-      for (const line of readFileSync(file, 'utf8').split('\n')) {
-        if (!line.trim() || line.startsWith('#')) continue;
-        const [key, ...forms] = line.split('|').map((part) => part.trim());
-        if (key && forms.length) map.set(key, forms.filter(Boolean));
-      }
-    }
-  } catch {
-    // No list, no named drawings: the families that need one draw nothing.
-  }
-  names = map;
-  return names;
-}
-
 /** The drawings a Bomb item may ask the name of. */
+export { bombNames };
+
 export const namedThings = (): DrawnThing[] =>
   drawnThings().filter((thing) => bombNames().has(thing.key));
 
