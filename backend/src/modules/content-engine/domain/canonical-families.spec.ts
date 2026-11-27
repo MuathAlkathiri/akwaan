@@ -602,7 +602,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
 
       it('القنبلة draws one drawn family in each Scope (2026-11-27)', () => {
         expect(drawable('numbers-estimation', 'bomb')).toEqual([
-          'bomb-dice-total',
+          'bomb-number-puzzles',
         ]);
         expect(drawable('wordplay-letters', 'bomb')).toEqual([
           'bomb-first-letters',

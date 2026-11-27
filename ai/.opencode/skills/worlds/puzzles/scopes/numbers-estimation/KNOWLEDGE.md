@@ -394,7 +394,7 @@
 | 29 | `battery-level` | شحن الجوال | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 | 30 | `copy-the-mark` | انقل العلامة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (Between Anchors) |
 | 31 | `colour-recall` | تذكّر اللون | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Colour Slider |
-| 32 | `bomb-dice-total` | كم مجموع النرد؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 32 | `bomb-number-puzzles` | ألغاز الأرقام | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -630,7 +630,7 @@ Arabic `name`, and a `brief` the generator can act on.
 
 The owner asked that every Puzzles Scope serve all four challenges. The engine
 draws these families itself and proves each answer from its own drawing; none
-is shared between إكس أو and اقرأ خصمك: `bomb-dice-total` (القنبلة).
+is shared between إكس أو and اقرأ خصمك: `bomb-number-puzzles` (القنبلة).
 
 القنبلة asks a drawing by name only when the drawing is listed in
 `backend/assets/drawn-things/bomb-names.txt` with every name a player may type
@@ -1710,10 +1710,10 @@ out of generation; `pausedReason` says why.
       "capacity": 150
     },
     {
-      "familyKey": "bomb-dice-total",
-      "name": "كم مجموع النرد؟",
-      "description": "حبتين أو ثلاث نرد، والمطلوب المجموع مكتوب. المحرك يرمي النرد ويرسمه، والجواب ينقبل بالأرقام الإنجليزية والعربية وبالكلمة.",
-      "playerSolve": "جمع النقاط بنظرة.",
+      "familyKey": "bomb-number-puzzles",
+      "name": "ألغاز الأرقام",
+      "description": "لغز أرقام صغير مرسوم وجوابه رقم مكتوب: الرمز السري، الميزان المجهول، الدومينو الناقص، أقل عدد من القطع، الرقم المفقود، الآلة الغامضة، السلسلة المتناوبة. خمسة أشكال سريعة وثلاثة تاخذ ٥ إلى ٨ ثواني، فتصير ثلث الدفعة تقريبًا (قرار المالك 2026-11-27). المحرك يثبت الجواب ويتأكد إن ما فيه قراءة ثانية معقولة.",
+      "playerSolve": "استنتاج الرقم من التلميحات أو القاعدة.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -1727,17 +1727,47 @@ out of generation; `pausedReason` says why.
       ],
       "variants": [
         {
-          "key": "two-dice",
-          "name": "حبتين",
-          "brief": "Two dice, a total of five or more."
+          "key": "secret-code",
+          "name": "الرمز السري",
+          "brief": "A two-digit lock; the sum of its digits and their difference."
         },
         {
-          "key": "three-dice",
-          "name": "ثلاث",
-          "brief": "Three dice."
+          "key": "secret-code-product",
+          "name": "الرمز السري بالضرب",
+          "brief": "A two-digit lock; the product of its digits and their difference."
+        },
+        {
+          "key": "hidden-symbol",
+          "name": "الميزان المجهول",
+          "brief": "Two cards of symbols with totals; the value of the second symbol."
+        },
+        {
+          "key": "domino-gap",
+          "name": "الدومينو الناقص",
+          "brief": "Four dominoes of one total, the last half blank."
+        },
+        {
+          "key": "fewest-coins",
+          "name": "أقل عدد من القطع",
+          "brief": "Three coin values and a sum; the fewest coins, mostly where biggest-first is wrong."
+        },
+        {
+          "key": "number-grid",
+          "name": "الرقم المفقود",
+          "brief": "A 4×4 grid of 1 to 4; a square neither its row nor its column fixes alone. Slow."
+        },
+        {
+          "key": "mystery-machine",
+          "name": "الآلة الغامضة",
+          "brief": "Three numbers in and out of a machine; the fourth out. Every rule that fits must agree. Slow."
+        },
+        {
+          "key": "alternating-sequence",
+          "name": "السلسلة المتناوبة",
+          "brief": "Five numbers built by two steps in turn; the sixth. Slow."
         }
       ],
-      "capacity": 80
+      "capacity": 500
     }
   ]
 }

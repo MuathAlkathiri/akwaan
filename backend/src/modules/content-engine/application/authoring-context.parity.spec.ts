@@ -522,7 +522,9 @@ describeIf(
           // f989ae76… reproduces from the files before both.
           // Refreshed 2026-11-27: this Scope's SCOPE.md and KNOWLEDGE.md gained
           // the drawn القنبلة family; e2f55f7d… reproduces from the files before.
-          '5a2db7db424694e6240dc3c23f8024eeb0493e80ee048d06093f1332dd9eab96',
+          // Refreshed again the same day: that family became ألغاز الأرقام
+          // (5a2db7db… before).
+          '2aa61d8f27e9cc8544cbe25a3c87351c11d8ace3aa3d428aef8e72b53fc01219',
         );
       });
 
