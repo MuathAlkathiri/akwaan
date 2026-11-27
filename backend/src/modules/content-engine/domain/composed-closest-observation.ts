@@ -403,7 +403,7 @@ function composeOdd(seed: string, variantKey: string): ObservationReading {
     variantKey,
     variant: `${variantKey}:${odd}`,
     value: odd,
-    prompt: 'وحد من الأشكال مختلف عن الباقي. وين هو؟',
+    prompt: 'واحد من الأشكال مختلف عن الباقي. وين هو؟',
     slider: {
       mode: 'between-anchors',
       min: 0,
@@ -420,7 +420,7 @@ function composeOdd(seed: string, variantKey: string): ObservationReading {
     domainDescription: 'a place along the row',
     factualClaim: `The ${variantKey} odd one sits at place ${odd} of the row.`,
     svg: frame(
-      text('وحد من الأشكال مختلف عن الباقي. وين هو؟', W / 2, 116, 42) +
+      text('واحد من الأشكال مختلف عن الباقي. وين هو؟', W / 2, 116, 42) +
         body +
         shapes +
         text('يسار الصف', at(0) + 62, y + 106, 28, GREY) +
