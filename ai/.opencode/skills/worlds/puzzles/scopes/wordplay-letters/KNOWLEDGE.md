@@ -465,8 +465,6 @@
 | 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
 | 24 | `bomb-first-letters` | ألعاب الحروف | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 | 25 | `odd-word-place` | وين الكلمة الغريبة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
-| 26 | `letters-in-text` | كم حرف تقريبًا؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (حرف) |
-| 27 | `letter-repeats` | كم مرة يتكرر الحرف؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (مرة) |
 
 ---
 
@@ -1400,106 +1398,6 @@ The block below is the structured form of the 15 canonical families approved for
           "key": "dotted",
           "name": "فيها نقط",
           "brief": "All but one carry dots."
-        }
-      ],
-      "capacity": 120
-    },
-    {
-      "familyKey": "letters-in-text",
-      "name": "كم حرف تقريبًا؟",
-      "description": "فقرة من ست لعشر جمل مكتوبة، والجواب عدد حروفها بدون المسافات. الرقم أكبر من إن أحد يعده في الوقت، فاللاعب يقدّر سطر ويضرب.",
-      "playerSolve": "قدّر حروف سطر واحد واضربها في عدد السطور.",
-      "modality": "composed-visual",
-      "scalability": "HIGH",
-      "mechanicFit": {
-        "moving-xo": "DO_NOT_FORCE",
-        "read-your-opponent": "DO_NOT_FORCE",
-        "bomb": "DO_NOT_FORCE",
-        "closest": "EXCELLENT"
-      },
-      "answerModes": [
-        "closest"
-      ],
-      "variants": [
-        {
-          "key": "six",
-          "name": "ست جمل",
-          "brief": "About 110 to 130 letters."
-        },
-        {
-          "key": "seven",
-          "name": "سبع جمل",
-          "brief": "About 130 to 160."
-        },
-        {
-          "key": "eight",
-          "name": "ثمان جمل",
-          "brief": "About 145 to 175."
-        },
-        {
-          "key": "nine",
-          "name": "تسع جمل",
-          "brief": "About 160 to 200."
-        },
-        {
-          "key": "ten",
-          "name": "عشر جمل",
-          "brief": "About 185 to 215."
-        },
-        {
-          "key": "longest",
-          "name": "أطول الجمل",
-          "brief": "The longest sentences first."
-        }
-      ],
-      "capacity": 120
-    },
-    {
-      "familyKey": "letter-repeats",
-      "name": "كم مرة يتكرر الحرف؟",
-      "description": "نفس الفقرة وحرف محدد، والجواب كم مرة يتكرر فيها. مستحيل تعده في الوقت، فاللاعب يعد سطر ويقدّر الباقي.",
-      "playerSolve": "عد الحرف في سطر واحد وقدّر الباقي.",
-      "modality": "composed-visual",
-      "scalability": "HIGH",
-      "mechanicFit": {
-        "moving-xo": "DO_NOT_FORCE",
-        "read-your-opponent": "DO_NOT_FORCE",
-        "bomb": "DO_NOT_FORCE",
-        "closest": "EXCELLENT"
-      },
-      "answerModes": [
-        "closest"
-      ],
-      "variants": [
-        {
-          "key": "baa",
-          "name": "حرف الباء",
-          "brief": "The letter ب."
-        },
-        {
-          "key": "laam",
-          "name": "حرف اللام",
-          "brief": "The letter ل."
-        },
-        {
-          "key": "raa",
-          "name": "حرف الراء",
-          "brief": "The letter ر."
-        },
-        {
-          "key": "noon",
-          "name": "حرف النون",
-          "brief": "The letter ن."
-        },
-        {
-          "key": "meem",
-          "name": "حرف الميم",
-          "brief": "The letter م."
-        },
-        {
-          "key": "mixed",
-          "name": "حرف يختاره المحرك",
-          "brief": "Whichever safe letter fits the block."
         }
       ],
       "capacity": 120
