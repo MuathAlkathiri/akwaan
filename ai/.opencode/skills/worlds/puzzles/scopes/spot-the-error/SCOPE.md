@@ -36,7 +36,7 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 2 | `order-violation` | خلل الترتيب والتسلسل المنطقي | 2D Sequence Vector | `multiple_choice` |
 | 3 | `broken-visual-pattern` | الخلل في النمط والمصفوفة | 2D Grid Vector | `multiple_choice` |
 | 4 | `invalid-transformation-step` | الخطوة غير الصحيحة في التحول | 2D Flow Diagram | `multiple_choice` |
-| 5 | `impossible-shadow-violation` | خطأ الظلال ومصدر الضوء | 2D/3D Optics Vector | `multiple_choice \| closest` |
+| 5 | `impossible-shadow-violation` | خطأ الظلال ومصدر الضوء | 2D/3D Optics Vector | `multiple_choice, closest` |
 | 6 | `wrong-number-mapping` | الخطأ في معادلة الربط العددي | 2D Math Diagram | `multiple_choice` |
 | 7 | `invalid-reflection-rule` | خلل قاعدة التناظر والانعكاس | 2D Reflection Pairs | `multiple_choice` |
 | 8 | `broken-chain-link` | الحلقة المكسورة في السلسلة | 2D Causal Schematic | `multiple_choice` |
@@ -44,6 +44,12 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 10 | `wrong-code-translation` | الخطأ في تطبيق الشفرة والرموز | 2D Cipher Layout | `multiple_choice` |
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | 2D Balance Scales | `multiple_choice` |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | 2D Tessellation Vector | `multiple_choice` |
+| 13 | `wrong-clock-minutes` | الساعة الغلط | Composed picture | `closest` |
+| 14 | `lying-guard` | الشاهد الكذاب | Composed picture | `multiple_choice` |
+| 15 | `false-scale` | الميزان الكذاب | Composed picture | `multiple_choice` |
+| 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | Composed picture | `multiple_choice` |
+| 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | Composed picture | `multiple_choice` |
+| 18 | `bomb-odd-one-out` | وش الدخيل؟ | Composed picture | `match` |
 
 ---
 

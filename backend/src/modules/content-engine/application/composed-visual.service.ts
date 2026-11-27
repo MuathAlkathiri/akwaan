@@ -1,3 +1,8 @@
+import { composeBomb, isComposedBombFamily } from '../domain/composed-bomb';
+import {
+  composeClosest,
+  isComposedClosestFamily,
+} from '../domain/composed-closest';
 import { Injectable, Optional } from '@nestjs/common';
 import { createHash } from 'crypto';
 import {
@@ -56,8 +61,19 @@ export class ComposedVisualService {
     const puzzle = isComposedPuzzleFamily(familyKey)
       ? composePuzzle(familyKey, seed, variantKey)
       : undefined;
-    const visual = puzzle ? undefined : composeVisual(familyKey as never, seed);
-    const drawing = (puzzle ?? visual)!;
+    const bomb =
+      !puzzle && isComposedBombFamily(familyKey)
+        ? composeBomb(familyKey, seed, variantKey)
+        : undefined;
+    const reading =
+      !puzzle && !bomb && isComposedClosestFamily(familyKey)
+        ? composeClosest(familyKey, seed, variantKey)
+        : undefined;
+    const visual =
+      puzzle || reading || bomb
+        ? undefined
+        : composeVisual(familyKey as never, seed);
+    const drawing = (puzzle ?? bomb ?? reading ?? visual)!;
     let media: Record<string, unknown> | undefined;
     let failureReason: string | undefined;
     let governed:
@@ -138,7 +154,9 @@ export class ComposedVisualService {
       familyKey: drawing.familyKey,
       variant: drawing.variant,
       ...(puzzle ? { variantKey: puzzle.variantKey } : {}),
-      ...(visual ? { value: visual.value } : {}),
+      ...(reading ? { variantKey: reading.variantKey } : {}),
+      ...(bomb ? { variantKey: bomb.variantKey } : {}),
+      ...((visual ?? reading) ? { value: (visual ?? reading)!.value } : {}),
       ...(failureReason ? { failureReason } : {}),
     };
 
@@ -163,6 +181,46 @@ export class ComposedVisualService {
         authoring: {
           concept: puzzle.concept,
           distractorRationale: puzzle.distractorRationale,
+          composedVisual,
+        },
+        ...(governed ?? {}),
+      };
+    }
+
+    if (bomb) {
+      return {
+        factualClaims: [bomb.factualClaim],
+        draft: {
+          prompt: { ar: bomb.prompt },
+          answerPayload: {
+            mode: 'match',
+            acceptedAnswers: bomb.acceptedAnswers,
+          },
+          ...(media ? { media } : {}),
+          metadata: { notes: COMPOSED_NOTE, entityId },
+        },
+        authoring: { concept: bomb.concept, composedVisual },
+        ...(governed ?? {}),
+      };
+    }
+
+    if (reading) {
+      return {
+        factualClaims: [reading.factualClaim],
+        draft: {
+          prompt: { ar: reading.prompt },
+          answerPayload: { mode: 'closest', correctValue: reading.value },
+          mechanicPayload: { closestSlider: reading.slider },
+          ...(media ? { media } : {}),
+          metadata: { notes: COMPOSED_NOTE, entityId },
+        },
+        authoring: {
+          concept: reading.concept,
+          answerBasis: 'reasoning',
+          playerReasoningStrategy: reading.strategy,
+          domainDescription: reading.domainDescription,
+          stepsFromMin:
+            (reading.value - reading.slider.min) / reading.slider.step,
           composedVisual,
         },
         ...(governed ?? {}),

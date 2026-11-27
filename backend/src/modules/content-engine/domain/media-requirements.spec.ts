@@ -39,8 +39,25 @@ describe('media requirements registry', () => {
     ).toEqual([]);
   });
 
-  it('requires one real picture on every Bomb item, in every Scope', () => {
-    for (const scopeKey of scopes) {
+  it('draws the Bomb picture in عالم الألغاز, and finds it everywhere else', () => {
+    for (const scopeKey of [
+      'observation-illusions',
+      'wordplay-letters',
+      'numbers-estimation',
+      'assembly-rotation',
+      'paths-motion',
+      'spot-the-error',
+    ]) {
+      expect(
+        resolveMediaRequirements({ mechanicKey: 'bomb', scopeKey }).map(
+          (slot) => [slot.slotKey, slot.acquisition],
+        ),
+      ).toEqual([['item-image', ['upload', 'generate']]]);
+    }
+  });
+
+  it('requires one real picture on every Bomb item outside عالم الألغاز', () => {
+    for (const scopeKey of ['any-scope', 'football-clubs']) {
       expect(
         resolveMediaRequirements({ mechanicKey: 'bomb', scopeKey }),
       ).toEqual([

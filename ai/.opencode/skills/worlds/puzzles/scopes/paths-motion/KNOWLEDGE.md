@@ -370,6 +370,9 @@ All puzzles in this Scope must be self-contained in the visible diagram. The pla
 | 10 | `cam-linkage-motion` | حركة الكامات والأذرع | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Linkage Vector | Multiple Choice (Direction) |
 | 11 | `shortest-path-grid` | أقصر مسار حركي في الشبكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | **EXCELLENT** | 2D Grid Vector | 1D Discrete Slider / MC |
 | 12 | `wire-trace-terminal` | تتبع الأسلاك المتشابكة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cable Vector | Multiple Choice (4 sockets) |
+| 13 | `key-door-route` | الطريق الوحيد | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (steps) |
+| 14 | `mirror-beam` | الشعاع وين يوصل؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 targets) |
+| 15 | `bomb-thread-end` | وش في آخر الخيط؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -466,6 +469,16 @@ and its answer are unchanged; only what the player is looking at differs.
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `key-door-route` (مين أقرب), `mirror-beam` (اقرأ خصمك), `bomb-thread-end` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## Machine-Readable Family Catalog
 
@@ -824,6 +837,96 @@ nothing is deleted, and a family returns by removing its `status` below.
         "bomb",
         "read-your-opponent"
       ]
+    },
+    {
+      "familyKey": "key-door-route",
+      "name": "الطريق الوحيد",
+      "description": "شبكة مربعات فيها جدران وبداية ونهاية، وقاعدة واحدة: المفتاح قبل الباب أو المرور على النجمة. المطلوب أقل عدد خطوات. المحرك يرسم الشبكة ويحسب الجواب بالبحث.",
+      "playerSolve": "تخطيط أقصر طريق تحت القاعدة وعدّ خطواته.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "key-door",
+          "name": "المفتاح والباب",
+          "brief": "A wall with one door; the key is on the start side."
+        },
+        {
+          "key": "star-first",
+          "name": "النجمة أول",
+          "brief": "The walk must pass the star."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "mirror-beam",
+      "name": "الشعاع وين يوصل؟",
+      "description": "شبكة فيها مرايا مايلة وليزر يدخل من اليمين، وأربعة أهداف بحروف حول الشبكة. المحرك يتتبع الشعاع ويحدد الهدف.",
+      "playerSolve": "تتبع الشعاع وتغيير اتجاهه عند كل مراية.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "three-mirrors",
+          "name": "ثلاث مرايا",
+          "brief": "Three mirrors, at least two touched."
+        },
+        {
+          "key": "five-mirrors",
+          "name": "خمس مرايا",
+          "brief": "Five mirrors, at least three touched."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "bomb-thread-end",
+      "name": "وش في آخر الخيط؟",
+      "description": "دوائر ملونة تطلع منها خيوط متشابكة لرسمات. المطلوب اسم الرسمة اللي في آخر خيط لون معين.",
+      "playerSolve": "تتبع خيط واحد لآخره.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "three-threads",
+          "name": "ثلاث خيوط",
+          "brief": "Three threads."
+        },
+        {
+          "key": "four-threads",
+          "name": "أربع خيوط",
+          "brief": "Four threads."
+        }
+      ],
+      "capacity": 300
     }
   ]
 }

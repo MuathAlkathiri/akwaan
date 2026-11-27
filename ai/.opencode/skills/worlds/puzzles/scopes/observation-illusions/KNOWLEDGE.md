@@ -915,6 +915,9 @@ Islamic geometric patterns, Persian tilework, butterfly wings, snowflake crystal
 | 12 | `overlapping-boundary-trace` | تداخل الأشكال والمسارات المغلقة | EXCELLENT | GOOD | GOOD | EXCELLENT | Image (Vector) | MC, Closest (count/area) |
 | 13 | `visual-closure-fragment` | التعرف عبر الاكتمال البصري | EXCELLENT | EXCELLENT | EXCELLENT | DO_NOT_FORCE | Image (Macro) | MC, Match |
 | 14 | `visual-asymmetry-detection` | ملاحظة كسر التناظر | EXCELLENT | EXCELLENT | GOOD | GOOD | Image | MC, Closest (angle) |
+| 15 | `length-illusion-ratio` | كم طوله؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (share of 100) |
+| 16 | `count-changes` | كم شي تغيّر؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (1–4) |
+| 17 | `bomb-what-is-it` | وش هذا؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -1021,6 +1024,16 @@ Each drawn family asks its picture in more than one way — its **templates**
 They are generated for إكس أو المتحرك only. Every other family of the library
 stays in it with its ratings and is **paused** until the composer can draw it:
 nothing is deleted, and a family returns by removing its `status` below.
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `length-illusion-ratio` (مين أقرب), `count-changes` (اقرأ خصمك), `bomb-what-is-it` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
 
 ## Machine-Readable Family Catalog
 
@@ -1447,6 +1460,111 @@ nothing is deleted, and a family returns by removing its `status` below.
         "read-your-opponent",
         "closest"
       ]
+    },
+    {
+      "familyKey": "length-illusion-ratio",
+      "name": "كم طوله؟",
+      "description": "خطين أو دائرتين، الأحمر طوله 100، وحولهم رسم يخدع العين (أسهم، قضبان، دوائر). المطلوب طول الأزرق. المحرك يحدد النسبة قبل الرسم.",
+      "playerSolve": "تجاهل الخدعة ومقارنة الطولين وحدهم.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "arrows",
+          "name": "الأسهم",
+          "brief": "Two lines with fins that stretch the shorter and shrink the longer."
+        },
+        {
+          "key": "rails",
+          "name": "القضبان",
+          "brief": "Two bars between converging rails; the longer sits low."
+        },
+        {
+          "key": "circles",
+          "name": "الدوائر",
+          "brief": "Two discs ringed by big or small circles."
+        }
+      ],
+      "capacity": 150
+    },
+    {
+      "familyKey": "count-changes",
+      "name": "كم شي تغيّر؟",
+      "description": "صورتين لنفس اللوحة وما تحرك شي، وبين واحد وأربع مربعات تغيرت (شي اختفى أو انضاف أو تبدل). المطلوب العدد. المحرك يغير ويعد.",
+      "playerSolve": "مقارنة المربعات واحد واحد وعد المختلف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "mixed",
+          "name": "منوعة",
+          "brief": "Things gone, come and replaced."
+        },
+        {
+          "key": "same-kind",
+          "name": "من نفس النوع",
+          "brief": "A thing replaced by another of its kind."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "bomb-what-is-it",
+      "name": "وش هذا؟",
+      "description": "رسمة لشي معروف، يظهر ظلها أو جزء مكبر منها أو نصها أو مقلوبة. المطلوب اسمها مكتوب، والمحرك يقبل كل الأسماء اللي في قائمة الأسماء المعتمدة.",
+      "playerSolve": "التعرف على الشي من جزء منه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "shadow",
+          "name": "الظل",
+          "brief": "Its shadow only."
+        },
+        {
+          "key": "close-up",
+          "name": "مكبّر",
+          "brief": "A window on part of it."
+        },
+        {
+          "key": "half-hidden",
+          "name": "نصه مغطى",
+          "brief": "Half behind a wall."
+        },
+        {
+          "key": "upside-down",
+          "name": "مقلوب",
+          "brief": "Upside down."
+        }
+      ],
+      "capacity": 400
     }
   ]
 }

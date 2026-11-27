@@ -43,6 +43,87 @@ const blockingCodes = (candidate: {
     .map((finding) => finding.code);
 
 describe('ComposedVisualService', () => {
+  it.each([
+    ['bomb-dice-total', 'numbers-estimation'],
+    ['bomb-first-letters', 'wordplay-letters'],
+    ['bomb-what-is-it', 'observation-illusions'],
+    ['bomb-put-together', 'assembly-rotation'],
+    ['bomb-thread-end', 'paths-motion'],
+    ['bomb-odd-one-out', 'spot-the-error'],
+  ] as const)(
+    '%s: a قنبلة item whose drawn picture fills the media contract',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-5:3', {
+        mechanicKey: 'bomb',
+        scopeKey,
+      });
+      expect(candidate.draft.answerPayload).toMatchObject({ mode: 'match' });
+      expect(candidate.mediaPlan).toHaveLength(1);
+      expect(candidate.mediaPlan![0]).toMatchObject({ slotKey: 'item-image' });
+      const findings = new DeterministicScreenService({
+        get: () => undefined,
+      } as unknown as ConfigService).screen(
+        candidate.draft,
+        candidate.authoring,
+        { worldKey: 'puzzles', mechanicKey: 'bomb' } as never,
+      ).findings;
+      expect(
+        findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+      ).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['mirror-beam', 'paths-motion'],
+    ['last-pipe-piece', 'assembly-rotation'],
+    ['count-changes', 'observation-illusions'],
+    ['lying-guard', 'spot-the-error'],
+    ['false-scale', 'spot-the-error'],
+  ] as const)(
+    '%s: an اقرأ خصمك item of four options that passes the screen',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-4:2', {
+        mechanicKey: 'read-your-opponent',
+        scopeKey,
+      });
+      expect(
+        (candidate.draft.answerPayload as { options: unknown[] }).options,
+      ).toHaveLength(4);
+      expect(blockingCodes(candidate as never)).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['key-door-route', 'paths-motion'],
+    ['cube-pile-count', 'assembly-rotation'],
+    ['length-illusion-ratio', 'observation-illusions'],
+    ['wrong-clock-minutes', 'spot-the-error'],
+  ] as const)(
+    '%s: a مين أقرب item on a numeric slider that passes the screen',
+    async (familyKey, scopeKey) => {
+      const { service } = build();
+      const candidate = await service.compose(familyKey, 'job-9:1', {
+        mechanicKey: 'closest',
+        scopeKey,
+      });
+      const slider = (
+        candidate.draft.mechanicPayload as {
+          closestSlider: { mode: string; min: number; step: number };
+        }
+      ).closestSlider;
+      expect(slider.mode).toBe('numeric-range');
+      const value = (candidate.draft.answerPayload as { correctValue: number })
+        .correctValue;
+      expect(candidate.authoring.stepsFromMin).toBe(
+        (value - slider.min) / slider.step,
+      );
+      expect(candidate.authoring.composedVisual).toMatchObject({ familyKey });
+      expect(blockingCodes(candidate as never)).toEqual([]);
+    },
+  );
+
   it('authors the whole candidate from one value', async () => {
     const { service, png, ingest } = build();
     const expected = composeVisual('battery-level', 'job-1:2');

@@ -372,6 +372,12 @@
 | 10 | `wrong-code-translation` | الخطأ في تطبيق الشفرة والرموز | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Cipher Layout | Multiple Choice (4 options) |
 | 11 | `broken-balance-rule` | الخلل في توازن المعادلة المصورة | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Balance Scales | Multiple Choice (4 scales) |
 | 12 | `broken-tessellation-tile` | الخلل في نمط التبليط الهندسي | **EXCELLENT** | **EXCELLENT** | **GOOD** | DO_NOT_FORCE | 2D Tessellation Vector | Multiple Choice (Tile label) |
+| 13 | `wrong-clock-minutes` | الساعة الغلط | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | 1D Slider (minutes) |
+| 14 | `lying-guard` | الشاهد الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 doors) |
+| 15 | `false-scale` | الميزان الكذاب | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 scales) |
+| 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 steps) |
+| 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
+| 18 | `bomb-odd-one-out` | وش الدخيل؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 
 ---
 
@@ -437,3 +443,450 @@ When generating or reviewing an authored batch for `spot-the-error`:
 4. **Mechanic Feasibility:** Must have at least 2 mechanics rated `GOOD` or `EXCELLENT`.
 5. **Human Product Sign-Off:** Canonical promotion requires formal Human Product Review approval.
 6. **Generator Write Protection:** Content generation scripts must strictly read from the registered library and **NEVER** write or declare new canonical Families during batch authoring.
+
+---
+
+## Every challenge, drawn — owner decision 2026-11-27
+
+The owner asked that every Puzzles Scope serve all four challenges. The engine
+draws these families itself and proves each answer from its own drawing; none
+is shared between إكس أو and اقرأ خصمك: `broken-rule-step` and `broken-grid-pattern` (إكس أو), `lying-guard` and `false-scale` (اقرأ خصمك), `wrong-clock-minutes` (مين أقرب), `bomb-odd-one-out` (القنبلة).
+
+القنبلة asks a drawing by name only when the drawing is listed in
+`backend/assets/drawn-things/bomb-names.txt` with every name a player may type
+for it. Numbers are accepted in Western digits, Arabic digits and words.
+
+## Machine-Readable Family Catalog
+
+```akwaan-families
+{
+  "version": 1,
+  "scope": "puzzles.spot-the-error",
+  "families": [
+    {
+      "familyKey": "intruder-element",
+      "name": "العنصر الدخيل على المجموعة",
+      "description": "العنصر الدخيل على المجموعة",
+      "playerSolve": "العنصر الدخيل على المجموعة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "order-violation",
+      "name": "خلل الترتيب والتسلسل المنطقي",
+      "description": "خلل الترتيب والتسلسل المنطقي",
+      "playerSolve": "خلل الترتيب والتسلسل المنطقي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-visual-pattern",
+      "name": "الخلل في النمط والمصفوفة",
+      "description": "الخلل في النمط والمصفوفة",
+      "playerSolve": "الخلل في النمط والمصفوفة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "invalid-transformation-step",
+      "name": "الخطوة غير الصحيحة في التحول",
+      "description": "الخطوة غير الصحيحة في التحول",
+      "playerSolve": "الخطوة غير الصحيحة في التحول",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "impossible-shadow-violation",
+      "name": "خطأ الظلال ومصدر الضوء",
+      "description": "خطأ الظلال ومصدر الضوء",
+      "playerSolve": "خطأ الظلال ومصدر الضوء",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "GOOD"
+      },
+      "answerModes": [
+        "multiple_choice",
+        "closest"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-number-mapping",
+      "name": "الخطأ في معادلة الربط العددي",
+      "description": "الخطأ في معادلة الربط العددي",
+      "playerSolve": "الخطأ في معادلة الربط العددي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "invalid-reflection-rule",
+      "name": "خلل قاعدة التناظر والانعكاس",
+      "description": "خلل قاعدة التناظر والانعكاس",
+      "playerSolve": "خلل قاعدة التناظر والانعكاس",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-chain-link",
+      "name": "الحلقة المكسورة في السلسلة",
+      "description": "الحلقة المكسورة في السلسلة",
+      "playerSolve": "الحلقة المكسورة في السلسلة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "false-classification-member",
+      "name": "الخطأ في تصنيف الفئات والخواص",
+      "description": "الخطأ في تصنيف الفئات والخواص",
+      "playerSolve": "الخطأ في تصنيف الفئات والخواص",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-code-translation",
+      "name": "الخطأ في تطبيق الشفرة والرموز",
+      "description": "الخطأ في تطبيق الشفرة والرموز",
+      "playerSolve": "الخطأ في تطبيق الشفرة والرموز",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-balance-rule",
+      "name": "الخلل في توازن المعادلة المصورة",
+      "description": "الخلل في توازن المعادلة المصورة",
+      "playerSolve": "الخلل في توازن المعادلة المصورة",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "broken-tessellation-tile",
+      "name": "الخلل في نمط التبليط الهندسي",
+      "description": "الخلل في نمط التبليط الهندسي",
+      "playerSolve": "الخلل في نمط التبليط الهندسي",
+      "modality": "visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "GOOD",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "status": "paused",
+      "pausedReason": "Not drawn by the engine yet; the Scope opens with the composed families added on 2026-11-27."
+    },
+    {
+      "familyKey": "wrong-clock-minutes",
+      "name": "الساعة الغلط",
+      "description": "ساعتين، اليمين مضبوطة واليسار متقدمة أو متأخرة. المطلوب بكم دقيقة. المحرك يحدد الوقتين ويرسمهم.",
+      "playerSolve": "قراءة الساعتين وطرح الفرق.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "ahead",
+          "name": "متقدمة",
+          "brief": "The wrong clock is ahead."
+        },
+        {
+          "key": "behind",
+          "name": "متأخرة",
+          "brief": "The wrong clock is behind."
+        },
+        {
+          "key": "digital",
+          "name": "رقمية",
+          "brief": "The right time is shown on a digital clock."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "lying-guard",
+      "name": "الشاهد الكذاب",
+      "description": "حراس كل واحد يقول جملة عن باب الكنز، وواحد بس يكذب (أو واحد بس صادق). المحرك يجرب كل باب ويتأكد إن واحد بس يناسب.",
+      "playerSolve": "تجربة كل باب وعد اللي يكذبون.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "one-liar",
+          "name": "كذاب واحد",
+          "brief": "Three guards, one lies."
+        },
+        {
+          "key": "four-guards",
+          "name": "أربع حراس",
+          "brief": "Four guards, one lies."
+        },
+        {
+          "key": "one-honest",
+          "name": "صادق واحد",
+          "brief": "Three guards, only one tells the truth."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "false-scale",
+      "name": "الميزان الكذاب",
+      "description": "أربع موازين عليها أشكال، وكل شكل له نفس الوزن في كلها، وميزان واحد مرسوم مايل غلط. المحرك يجرب كل الأوزان ويتأكد إن ميزان واحد بس ممكن يكون الكذاب.",
+      "playerSolve": "مقارنة الموازين ببعض وإيجاد اللي يناقض الباقي.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "EXCELLENT",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "three-shapes",
+          "name": "ثلاث أشكال",
+          "brief": "Four scales, three shapes."
+        },
+        {
+          "key": "level-trap",
+          "name": "الميزان المستوي",
+          "brief": "At least one scale is level, and the false one may be drawn level."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "broken-rule-step",
+      "name": "أي خطوة كسرت القانون؟",
+      "description": "خمس أشكال في صف تمشي على قانون مركب (أضلاع تزيد، لون يدور، شكل يلف)، وخطوة وحدة كسرته. المحرك يتأكد إن القانون ينقرأ من الباقي وإن خطوة وحدة بس ممكن تكون الغلط.",
+      "playerSolve": "قراءة القانون من الخطوات السليمة وإيجاد اللي خالفته.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "two-rules",
+          "name": "قانونين",
+          "brief": "Two of sides, colour and turn change at once."
+        },
+        {
+          "key": "three-rules",
+          "name": "ثلاث قوانين",
+          "brief": "Sides, colour and turn all change."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "broken-grid-pattern",
+      "name": "وين الخلل في النمط؟",
+      "description": "لوحة ٤×٤ من أشكال ملونة ماشية على نمط (صفوف وأعمدة، قطري، أو مراية)، ومربع واحد كاسره، وأربع مربعات عليها حروف. المحرك يتأكد إن مربع واحد بس ممكن يكون الغلط.",
+      "playerSolve": "قراءة النمط من المربعات السليمة وإيجاد اللي خالفه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "EXCELLENT",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "multiple_choice"
+      ],
+      "variants": [
+        {
+          "key": "rows-and-columns",
+          "name": "صفوف وأعمدة",
+          "brief": "Shape by column, colour by row."
+        },
+        {
+          "key": "diagonal",
+          "name": "قطري",
+          "brief": "Shape and colour repeat along the diagonals."
+        },
+        {
+          "key": "mirror",
+          "name": "مراية",
+          "brief": "The right half mirrors the left."
+        }
+      ],
+      "capacity": 300
+    },
+    {
+      "familyKey": "bomb-odd-one-out",
+      "name": "وش الدخيل؟",
+      "description": "صف رسمات من نوع واحد (حيوانات، أكل، مركبات) وبينها وحدة من نوع ثاني. المطلوب اسم الدخيلة مكتوب.",
+      "playerSolve": "معرفة النوع المشترك واسم اللي خالفه.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "EXCELLENT",
+        "closest": "DO_NOT_FORCE"
+      },
+      "answerModes": [
+        "match"
+      ],
+      "variants": [
+        {
+          "key": "five-things",
+          "name": "خمس",
+          "brief": "Four of a kind and one more."
+        },
+        {
+          "key": "six-things",
+          "name": "ست",
+          "brief": "Five of a kind and one more."
+        }
+      ],
+      "capacity": 300
+    }
+  ]
+}
+```
