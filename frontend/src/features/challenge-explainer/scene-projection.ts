@@ -5,9 +5,72 @@ import type {
 import type { MatchChallengeResult } from "../live-game-session/match/types";
 import type { TutorialScenario } from "./tutorial-scenario";
 
-export type SceneExample =
+export interface PreviewRyoRecapItem {
+  prompt: string;
+  answeringTeamId: string;
+  opposingTeamId: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  decision: "trust" | "steal";
+  correct: boolean;
+  mechanicPoints: Array<{ teamId: string; points: number }>;
+}
+
+export interface PreviewClosestRecapItem {
+  correctValue: number;
+  answers: Record<string, number | null>;
+  distances: Record<string, number | null>;
+  winnerTeamId: string | null;
+  tie: boolean;
+}
+
+export interface PreviewBombRecapItem {
+  teamId: string;
+  prompt: string;
+  submittedAnswer: string | null;
+  correctAnswer: string;
+  outcome: "correct" | "skipped" | "timeout";
+}
+
+export interface PreviewEkshifniRecapItem {
+  identity: string;
+  winnerTeamId: string | null;
+  value: number;
+  revealedRegionIds: string[];
+  resolvedBy: "answer" | "timeout";
+}
+
+export interface PreviewFirstNoteRecapItem {
+  title: string;
+  finalBidSeconds: number;
+  winnerTeamId: string | null;
+  stolen: boolean;
+}
+
+export interface PreviewOddPieceRecapPuzzle {
+  puzzleIndex: number;
+  winnerTeamId: string | null;
+}
+
+export type SceneExample = (
   | Exclude<TutorialScenario, { kind: "one-clue" | "laqatha" }>
-  | { kind: "moving-xo"; prompt?: string };
+  | { kind: "moving-xo"; prompt?: string }
+) & {
+  previewRecapItems?:
+    | PreviewRyoRecapItem[]
+    | PreviewClosestRecapItem[]
+    | PreviewBombRecapItem[]
+    | PreviewEkshifniRecapItem[]
+    | PreviewFirstNoteRecapItem[];
+  previewRecapPuzzles?: PreviewOddPieceRecapPuzzle[];
+  previewRecapTotals?: Record<string, number>;
+};
+
+export interface SceneWorldContext {
+  id?: string;
+  name?: string;
+  occurrenceIndex?: number;
+}
 export const teamIds = ["team-a", "team-b"];
 export const teamNames = ["الفريق الأول", "الفريق الثاني"];
 const [a, b] = teamIds;
@@ -66,7 +129,7 @@ function deriveClosestSlider(
     return {
       ...extended.slider,
       mode: extended.slider.mode ?? "numeric-range",
-      ...(extended.slider.unit ?? example.unit
+      ...((extended.slider.unit ?? example.unit)
         ? { unit: extended.slider.unit ?? example.unit }
         : {}),
     };
@@ -148,14 +211,15 @@ const challengeNames: Record<string, string> = {
 function buildChallengeResult(
   example: SceneExample,
   modeKey: string,
+  world?: SceneWorldContext,
 ): MatchChallengeResult {
   const base: MatchChallengeResult = {
     id: "example",
     positionKey: "example",
-    occurrenceIndex: 0,
+    occurrenceIndex: world?.occurrenceIndex ?? 0,
     slotKey: "slot_1",
-    worldId: "example",
-    worldName: "مثال توضيحي",
+    worldId: world?.id ?? "example",
+    worldName: world?.name ?? "مثال توضيحي",
     challengeTypeId: modeKey,
     challengeKey: modeKey,
     challengeName: challengeNames[modeKey] ?? "نتيجة التحدي",
@@ -181,54 +245,113 @@ function buildChallengeResult(
     case undefined: {
       const owner = example.outcome.teamRole === "answering" ? a : b;
       const other = owner === a ? b : a;
-      const winnerTeamId =
-        example.outcome.delta > 0
-          ? owner
-          : example.outcome.delta < 0
-            ? other
-            : null;
       const answer = (id: string) =>
         example.options.find((o) => o.id === id)?.label;
-      const mechanicTotals = {
-        [a]: owner === a ? example.outcome.delta : 0,
-        [b]: owner === b ? example.outcome.delta : 0,
-      };
+      const customItems = example.previewRecapItems as
+        PreviewRyoRecapItem[] | undefined;
+      const items =
+        customItems && customItems.length > 0
+          ? customItems.map((entry, itemIndex) => ({ itemIndex, ...entry }))
+          : [
+              {
+                itemIndex: 0,
+                prompt: example.prompt,
+                answeringTeamId: a,
+                opposingTeamId: b,
+                selectedAnswer: answer(example.answeringSelectionOptionId),
+                correctAnswer: answer(example.correctOptionId),
+                decision: example.opposingDecision.toLowerCase(),
+                correct: example.outcome.correct,
+                mechanicPoints: [
+                  { teamId: owner, points: example.outcome.delta },
+                ],
+              },
+            ];
+      const mechanicTotals = items.reduce<Record<string, number>>(
+        (totals, item) => {
+          for (const entry of item.mechanicPoints ?? []) {
+            totals[entry.teamId] = (totals[entry.teamId] ?? 0) + entry.points;
+          }
+          return totals;
+        },
+        { [a]: 0, [b]: 0 },
+      );
+      const winnerTeamId =
+        customItems && customItems.length > 0
+          ? mechanicTotals[a] === mechanicTotals[b]
+            ? null
+            : mechanicTotals[a] > mechanicTotals[b]
+              ? a
+              : b
+          : example.outcome.delta > 0
+            ? owner
+            : example.outcome.delta < 0
+              ? other
+              : null;
       return {
         ...base,
         winnerTeamId,
         tie: winnerTeamId === null,
         matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
         details: {
-          itemsPlayed: 1,
+          itemsPlayed: items.length,
           mechanicTotals,
           tie: winnerTeamId === null,
-          items: [
-            {
-              itemIndex: 0,
-              prompt: example.prompt,
-              answeringTeamId: a,
-              opposingTeamId: b,
-              selectedAnswer: answer(example.answeringSelectionOptionId),
-              correctAnswer: answer(example.correctOptionId),
-              decision: example.opposingDecision.toLowerCase(),
-              correct: example.outcome.correct,
-              mechanicPoints: [
-                { teamId: owner, points: example.outcome.delta },
-              ],
-            },
-          ],
+          items,
         },
       };
     }
     case "closest": {
-      const winnerTeamId = example.outcome.tie
+      const customItems = example.previewRecapItems as
+        PreviewClosestRecapItem[] | undefined;
+      const singleWinner = example.outcome.tie
         ? null
         : example.outcome.winnerTeam;
-      const tie = example.outcome.tie || winnerTeamId === null;
-      const mechanicTotals = {
-        [a]: winnerTeamId === a ? example.outcome.mechanicTallyDelta : 0,
-        [b]: winnerTeamId === b ? example.outcome.mechanicTallyDelta : 0,
-      };
+      const singleTie = example.outcome.tie || singleWinner === null;
+      const items =
+        customItems && customItems.length > 0
+          ? customItems.map((entry, itemIndex) => ({ itemIndex, ...entry }))
+          : [
+              {
+                itemIndex: 0,
+                correctValue: example.correctValue,
+                answers: {
+                  [a]: example.teamAEstimate,
+                  [b]: example.teamBEstimate,
+                },
+                distances: {
+                  [a]: example.outcome.teamADistance,
+                  [b]: example.outcome.teamBDistance,
+                },
+                winnerTeamId: singleWinner,
+                tie: singleTie,
+              },
+            ];
+      const mechanicTotals =
+        customItems && customItems.length > 0
+          ? items.reduce<Record<string, number>>(
+              (totals, item) => {
+                if (item.winnerTeamId) {
+                  totals[item.winnerTeamId] =
+                    (totals[item.winnerTeamId] ?? 0) + 1;
+                }
+                return totals;
+              },
+              { [a]: 0, [b]: 0 },
+            )
+          : {
+              [a]: singleWinner === a ? example.outcome.mechanicTallyDelta : 0,
+              [b]: singleWinner === b ? example.outcome.mechanicTallyDelta : 0,
+            };
+      const winnerTeamId =
+        customItems && customItems.length > 0
+          ? mechanicTotals[a] === mechanicTotals[b]
+            ? null
+            : mechanicTotals[a] > mechanicTotals[b]
+              ? a
+              : b
+          : singleWinner;
+      const tie = winnerTeamId === null;
       return {
         ...base,
         winnerTeamId,
@@ -236,28 +359,15 @@ function buildChallengeResult(
         matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
         details: {
           mechanicTotals,
-          items: [
-            {
-              itemIndex: 0,
-              correctValue: example.correctValue,
-              answers: {
-                [a]: example.teamAEstimate,
-                [b]: example.teamBEstimate,
-              },
-              distances: {
-                [a]: example.outcome.teamADistance,
-                [b]: example.outcome.teamBDistance,
-              },
-              winnerTeamId,
-              tie,
-            },
-          ],
+          items,
         },
       };
     }
     case "bomb": {
       const winnerTeamId = example.outcome.winnerTeam;
       const secondQuestion = example.returnQuestion ?? example.nextQuestion;
+      const customItems = example.previewRecapItems as
+        PreviewBombRecapItem[] | undefined;
       return {
         ...base,
         winnerTeamId,
@@ -266,26 +376,29 @@ function buildChallengeResult(
           { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
         ],
         details: {
-          items: [
-            {
-              teamId: example.startingTeam,
-              prompt: example.prompt,
-              submittedAnswer: example.acceptedAnswer,
-              correctAnswer: example.acceptedAnswer,
-              outcome: "correct",
-            },
-            ...(secondQuestion
-              ? [
+          items:
+            customItems && customItems.length > 0
+              ? customItems
+              : [
                   {
-                    teamId: example.outcome.expiredTeam,
-                    prompt: secondQuestion.prompt,
-                    submittedAnswer: null,
-                    correctAnswer: secondQuestion.acceptedAnswer,
-                    outcome: "timeout",
+                    teamId: example.startingTeam,
+                    prompt: example.prompt,
+                    submittedAnswer: example.acceptedAnswer,
+                    correctAnswer: example.acceptedAnswer,
+                    outcome: "correct",
                   },
-                ]
-              : []),
-          ],
+                  ...(secondQuestion
+                    ? [
+                        {
+                          teamId: example.outcome.expiredTeam,
+                          prompt: secondQuestion.prompt,
+                          submittedAnswer: null,
+                          correctAnswer: secondQuestion.acceptedAnswer,
+                          outcome: "timeout",
+                        },
+                      ]
+                    : []),
+                ],
         },
       };
     }
@@ -344,6 +457,11 @@ function buildChallengeResult(
       };
     }
     case "odd-piece": {
+      const puzzles =
+        example.previewRecapPuzzles && example.previewRecapPuzzles.length > 0
+          ? example.previewRecapPuzzles
+          : [{ puzzleIndex: 0, winnerTeamId: example.outcome.winnerTeam }];
+      const points = example.previewRecapTotals ?? example.outcome.points;
       const winnerTeamId = example.outcome.winnerTeam;
       return {
         ...base,
@@ -353,7 +471,8 @@ function buildChallengeResult(
           { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
         ],
         details: {
-          points: example.outcome.points,
+          points,
+          puzzles,
         },
       };
     }
@@ -366,7 +485,12 @@ function buildChallengeResult(
         tie: false,
         matchPoints:
           winnerTeamId && example.outcome.matchPointDelta
-            ? [{ teamId: winnerTeamId, points: example.outcome.matchPointDelta }]
+            ? [
+                {
+                  teamId: winnerTeamId,
+                  points: example.outcome.matchPointDelta,
+                },
+              ]
             : [],
         details: {
           endedBy: "finish",
@@ -379,6 +503,8 @@ function buildChallengeResult(
     }
     case "ekshifni": {
       const winnerTeamId = example.outcome.winnerTeam;
+      const customItems = example.previewRecapItems as
+        PreviewEkshifniRecapItem[] | undefined;
       return {
         ...base,
         winnerTeamId,
@@ -387,16 +513,20 @@ function buildChallengeResult(
           { teamId: winnerTeamId, points: example.outcome.matchPointDelta },
         ],
         details: {
-          mechanicTotals: example.outcome.finalTotals,
-          items: [
-            {
-              identity: example.celebrityIdentity,
-              winnerTeamId: example.outcome.correctTeam,
-              value: example.outcome.resolvedValue,
-              revealedRegionIds: example.outcome.revealedRegionIds,
-              resolvedBy: "answer",
-            },
-          ],
+          mechanicTotals:
+            example.previewRecapTotals ?? example.outcome.finalTotals,
+          items:
+            customItems && customItems.length > 0
+              ? customItems
+              : [
+                  {
+                    identity: example.celebrityIdentity,
+                    winnerTeamId: example.outcome.correctTeam,
+                    value: example.outcome.resolvedValue,
+                    revealedRegionIds: example.outcome.revealedRegionIds,
+                    resolvedBy: "answer",
+                  },
+                ],
         },
       };
     }
@@ -420,7 +550,12 @@ function buildChallengeResult(
         tie: example.outcome.tie,
         matchPoints:
           winnerTeamId && example.outcome.matchPointDelta
-            ? [{ teamId: winnerTeamId, points: example.outcome.matchPointDelta }]
+            ? [
+                {
+                  teamId: winnerTeamId,
+                  points: example.outcome.matchPointDelta,
+                },
+              ]
             : [],
         details: {
           mechanicTotals: example.outcome.finalTotals,
@@ -452,8 +587,12 @@ function buildChallengeResult(
         : example.outcome.firstAnswerFailed
           ? null
           : example.outcome.firstAnswerTeam;
-      const pointsA = example.outcome.points["team-a"] ?? 0;
-      const pointsB = example.outcome.points["team-b"] ?? 0;
+      const customItems = example.previewRecapItems as
+        PreviewFirstNoteRecapItem[] | undefined;
+      const mechanicTotals: Record<string, number> =
+        example.previewRecapTotals ?? example.outcome.points;
+      const pointsA = mechanicTotals["team-a"] ?? 0;
+      const pointsB = mechanicTotals["team-b"] ?? 0;
       const winnerTeamId =
         pointsA === pointsB ? null : pointsA > pointsB ? a : b;
       return {
@@ -462,15 +601,18 @@ function buildChallengeResult(
         tie: winnerTeamId === null,
         matchPoints: winnerTeamId ? [{ teamId: winnerTeamId, points: 1 }] : [],
         details: {
-          mechanicTotals: example.outcome.points,
-          items: [
-            {
-              title: example.title,
-              finalBidSeconds: example.outcome.finalBidSeconds,
-              winnerTeamId: roundWinner,
-              stolen: example.outcome.stolen,
-            },
-          ],
+          mechanicTotals,
+          items:
+            customItems && customItems.length > 0
+              ? customItems
+              : [
+                  {
+                    title: example.title,
+                    finalBidSeconds: example.outcome.finalBidSeconds,
+                    winnerTeamId: roundWinner,
+                    stolen: example.outcome.stolen,
+                  },
+                ],
         },
       };
     }
@@ -481,6 +623,7 @@ export function sceneProjection(
   example: SceneExample,
   step: number,
   actor?: string,
+  world?: SceneWorldContext,
 ) {
   const key = example.kind ?? "ryo";
   const mode = {
@@ -573,8 +716,10 @@ export function sceneProjection(
       animationCue: null,
       audioCue: null,
     },
-    ...(step === 2
-      ? { challengeResult: buildChallengeResult(example, mode.key) }
+    // توب 5 reveals its cards on the shared screen before the challenge is
+    // over, and that reveal reads the same record the result screen reads.
+    ...(step === 2 || (example.kind === "top-5" && step === 1)
+      ? { challengeResult: buildChallengeResult(example, mode.key, world) }
       : {}),
     unified: {
       occurrences: [],
@@ -773,7 +918,8 @@ export function sceneProjection(
       const turn = example.outcome.ownership[0];
       const activeTurn = example.outcome.ownership[step === 1 ? 1 : 0];
       Object.assign(state, {
-        phase: step === 2 ? "completed" : "deciding",
+        // Step 2 is the reveal: every card has been played by then.
+        phase: step === 0 ? "deciding" : "completed",
         activeTeamId: activeTurn?.actingTeam ?? example.startingTeam,
         activeParticipantId: activeTurn?.actingTeam ?? example.startingTeam,
         title: example.title,
@@ -797,42 +943,53 @@ export function sceneProjection(
             : [],
         ),
       });
-      if (step < 2 && actor === state.activeTeamId) allow("mode:decide-card");
+      if (step === 0 && actor === state.activeTeamId) allow("mode:decide-card");
       break;
     }
     case "combo": {
-      const question =
+      // The three steps the board draws: a question in the run, the decision
+      // that follows a right answer, and the run's result. The forced question
+      // belongs to the record, so it is kept for the result step alone.
+      const forced =
         example.stages.find(
           (s) => s.stage === example.outcome.forcedQuestionStage,
         ) ?? example.stages.at(-1);
-      if (!question) break;
+      const open =
+        example.stages.find(
+          (s) => s.stage === example.outcome.forcedQuestionStage - 1,
+        ) ??
+        example.stages[0] ??
+        forced;
+      const question = step === 2 ? forced : open;
+      if (!question || !open) break;
       Object.assign(state, {
         phase:
-          step === 2
-            ? "run-complete"
-            : step === 1 && actor === b
-              ? "break-reveal"
-              : step === 1 && actor === a
-                ? "decision"
-                : "question",
+          step === 2 ? "run-complete" : step === 1 ? "decision" : "question",
         questionPrompt: json(question.prompt),
         questionNumber: question.stage,
         questionStage: question.stage,
         assignedParticipantId: a,
+        // What the run is carrying: before the answer, and after it lands.
         unbankedPoints:
-          step === 0 ? example.outcome.unbankedPointsBeforeForcedQuestion : 0,
-        forcedQuestion: true,
-        comboBreakRevealedByTeamId: b,
-        chargesJson: json({ [a]: "available", [b]: "spent" }),
+          step === 0 ? open.stage - 1 : step === 1 ? open.stage : 0,
+        forcedQuestion: false,
+        comboBreakRevealedByTeamId: step === 2 ? b : null,
+        chargesJson: json({
+          [a]: "available",
+          [b]: step === 2 ? "spent" : "available",
+        }),
+        canArmComboBreak: step === 1 && actor === b,
         lastQuestionRevealJson:
-          step === 1 && actor !== b
+          step === 1
             ? json({
                 teamId: a,
-                correct: false,
-                submittedAnswer: question.submittedAnswer,
-                correctAnswer: question.correctAnswer,
-                earned: 0,
-                resolvedAt: stamp,
+                correct: true,
+                submittedAnswer: open.submittedAnswer,
+                correctAnswer: open.correctAnswer,
+                earned: 1,
+                // Dated before this scene so the shared pacing beat is over and
+                // the decision — not the answer — is what the step shows.
+                resolvedAt: "2025-01-01T00:00:00Z",
               })
             : null,
         runResultsJson: json(
@@ -851,6 +1008,11 @@ export function sceneProjection(
         ),
       });
       if (step === 0 && actor === a) allow("mode:submit-combo-answer");
+      if (step === 1 && actor === a) {
+        allow("mode:cash-out-combo");
+        allow("mode:continue-combo");
+      }
+      if (step === 1 && actor === b) allow("mode:arm-combo-break");
       break;
     }
     case "odd-piece": {
@@ -897,6 +1059,14 @@ export function sceneProjection(
         selectedDifficulty: example.difficulty,
         questionPrompt: json(example.prompt),
         positionsJson: json(positions),
+        resultJson:
+          step === 2
+            ? json({
+                endedBy: "finish",
+                winnerTeamId:
+                  example.outcome.finalLanding >= 16 ? active : null,
+              })
+            : null,
         lastTurnJson:
           step === 1 && (!actor || actor === active)
             ? json({
@@ -1024,11 +1194,13 @@ export function sceneProjection(
         teamStatusJson: json({
           [a]: {
             locked: step > 0,
-            committedCount: step > 0 ? (dish?.teamASelection.length ?? 0) : null,
+            committedCount:
+              step > 0 ? (dish?.teamASelection.length ?? 0) : null,
           },
           [b]: {
             locked: step > 0,
-            committedCount: step > 0 ? (dish?.teamBSelection.length ?? 0) : null,
+            committedCount:
+              step > 0 ? (dish?.teamBSelection.length ?? 0) : null,
           },
         }),
         captainParticipantIdsJson: json({ [a]: a, [b]: b }),

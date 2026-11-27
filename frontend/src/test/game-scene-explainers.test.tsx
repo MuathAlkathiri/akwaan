@@ -5,6 +5,8 @@ import {
   SAMPLE_COMBO_TUTORIAL_SCENARIO,
   SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
   SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
+  SAMPLE_MARHALA_TUTORIAL_SCENARIO,
+  SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
   type ClosestTutorialScenario,
   type FirstNoteTutorialScenario,
   type RyoTutorialScenario,
@@ -99,14 +101,15 @@ describe("GameScene unified explainers", () => {
       "شرح توضيحي · مو السؤال الحقيقي",
     );
     expect(screen.getByTestId("scene-step-counter")).toHaveTextContent("1 / 3");
+    // The board labels every device with its name and what it is doing now.
     expect(screen.getByTestId("scene-label-team-a")).toHaveTextContent(
-      "جوال الفريق الأول",
+      "الفريق الأول· يكشف منطقة",
     );
     expect(screen.getByTestId("scene-label-shared")).toHaveTextContent(
-      "الشاشة الرئيسية",
+      "الشاشة· يشوفها الكل",
     );
     expect(screen.getByTestId("scene-label-team-b")).toHaveTextContent(
-      "جوال الفريق الثاني",
+      "الفريق الثاني· ينتظر دوره",
     );
 
     const screenFrame = screen.getByTestId("scene-screen-frame");
@@ -184,14 +187,14 @@ describe("GameScene unified explainers", () => {
     expect(
       screen.getAllByTestId("la-tahriqha-dish-name").length,
     ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByTestId("la-tahriqha-commit").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("la-tahriqha-commit").length).toBeGreaterThan(
+      0,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(
-      screen.getAllByTestId("la-tahriqha-reveal").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("la-tahriqha-reveal").length).toBeGreaterThan(
+      0,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
     expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
@@ -218,9 +221,9 @@ describe("GameScene unified explainers", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
-    expect(
-      screen.getAllByTestId("first-note-reveal").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("first-note-reveal").length).toBeGreaterThan(
+      0,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
     expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
@@ -270,17 +273,20 @@ describe("GameScene unified explainers", () => {
     );
   });
 
-  it("shows reveal-only phone, spent charge, and 0 balance for combo step 2 and UnifiedChallengeResultStage on step 3", () => {
+  it("shows the bank-or-continue decision on combo step 2 and UnifiedChallengeResultStage on step 3", () => {
     render(
       <MechanicTutorialRenderer scenario={SAMPLE_COMBO_TUTORIAL_SCENARIO} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    // The board's second step: the decision after a right answer, with the
+    // opponent's break still in hand and the run's balance on the ladder.
     expect(screen.queryByTestId("combo-answer-input")).toBeNull();
-    expect(screen.getByTestId("combo-charge-team-b")).toHaveTextContent(
-      "انصرف",
+    expect(screen.getByTestId("combo-decision")).toHaveTextContent(
+      "نوقف ولا نكمل؟",
     );
-    expect(screen.getByTestId("combo-streak-points")).toHaveTextContent("0");
+    expect(screen.getByTestId("combo-charge-team-b")).toHaveTextContent("باقي");
+    expect(screen.getByTestId("combo-streak-points")).toHaveTextContent("2");
 
     fireEvent.click(screen.getByRole("button", { name: "التالي" }));
     expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
@@ -292,5 +298,37 @@ describe("GameScene unified explainers", () => {
       expect(phone).toHaveAttribute("data-match-complete", "false");
       expect(phone).toHaveAttribute("data-showing-result", "true");
     }
+  });
+
+  it("renders odd-piece puzzle cards inside UnifiedChallengeResultStage and keeps MarhalaScreen on step 3", () => {
+    const { unmount } = render(
+      <MechanicTutorialRenderer
+        scenario={SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO}
+        world={{ id: "world-1", name: "عالم السيارات", occurrenceIndex: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    expect(screen.getByTestId("unified-challenge-result")).toBeInTheDocument();
+    expect(screen.getByTestId("odd-piece-result-puzzle-0")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("challenge-result-continue-preview"),
+    ).toHaveTextContent("العودة إلى الأكوان");
+    expect(screen.queryByTestId("challenge-result-continue")).toBeNull();
+    expect(screen.getByText(/عالم السيارات/)).toBeInTheDocument();
+    expect(screen.getAllByTestId("participant-waiting")).toHaveLength(2);
+    unmount();
+
+    render(
+      <MechanicTutorialRenderer scenario={SAMPLE_MARHALA_TUTORIAL_SCENARIO} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    fireEvent.click(screen.getByRole("button", { name: "التالي" }));
+    expect(screen.getByTestId("marhala-screen")).toHaveAttribute(
+      "data-marhala-phase",
+      "completed",
+    );
+    expect(screen.getAllByTestId("participant-waiting")).toHaveLength(2);
   });
 });

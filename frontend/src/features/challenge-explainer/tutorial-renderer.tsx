@@ -1,6 +1,7 @@
 "use client";
 
 import { GameScene } from "./game-scene";
+import type { SceneWorldContext } from "./scene-projection";
 import type { TutorialScenario } from "./tutorial-scenario";
 
 export const SUPPORTED_TUTORIAL_KINDS = [
@@ -27,11 +28,13 @@ export function supportsTutorialScenario(scenario: TutorialScenario) {
 
 export function MechanicTutorialRenderer({
   scenario,
+  world,
 }: {
   scenario: TutorialScenario;
+  world?: SceneWorldContext;
   compact?: boolean;
   mode?: "player" | "preview";
 }) {
   if (scenario.kind === "laqatha" || scenario.kind === "one-clue") return null;
-  return <GameScene example={scenario} />;
+  return <GameScene example={scenario} {...(world ? { world } : {})} />;
 }

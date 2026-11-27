@@ -24,10 +24,19 @@ import {
 import {
   teamIds,
   teamNames,
+  type PreviewBombRecapItem,
+  type PreviewClosestRecapItem,
+  type PreviewEkshifniRecapItem,
+  type PreviewFirstNoteRecapItem,
+  type PreviewOddPieceRecapPuzzle,
+  type PreviewRyoRecapItem,
 } from "@/features/challenge-explainer/scene-projection";
 import { ChallengePreflight } from "@/features/live-game-session/match/components/challenge-preflight";
 import { MatchScoreHud } from "@/features/live-game-session/match/components/match-score-hud";
-import { usePlayableWorlds } from "@/features/worlds/hooks/use-player-catalog";
+import {
+  playerCatalogKeys,
+  usePlayableWorlds,
+} from "@/features/worlds/hooks/use-player-catalog";
 import { cn } from "@/lib/utils";
 
 const PREVIEW_ROUTES = [
@@ -46,7 +55,9 @@ const PREVIEW_ROUTES = [
 
 // Dev-preview-only fallback scenarios for mechanics whose legacy demo files
 // were removed. Never imported by InlineMechanicTutorial or production code.
-const PREVIEW_RYO_SCENARIO: RyoTutorialScenario = {
+const PREVIEW_RYO_SCENARIO: RyoTutorialScenario & {
+  previewRecapItems: PreviewRyoRecapItem[];
+} = {
   kind: "ryo",
   version: 1,
   prompt: "أي دولة عربية تضم مدينة البتراء الأثرية؟",
@@ -65,9 +76,43 @@ const PREVIEW_RYO_SCENARIO: RyoTutorialScenario = {
     reason: "ryo.correct-steal",
     correct: true,
   },
+  previewRecapItems: [
+    {
+      prompt: "أي دولة عربية تضم مدينة البتراء الأثرية؟",
+      answeringTeamId: "team-a",
+      opposingTeamId: "team-b",
+      selectedAnswer: "الأردن",
+      correctAnswer: "الأردن",
+      decision: "steal",
+      correct: true,
+      mechanicPoints: [{ teamId: "team-b", points: 1 }],
+    },
+    {
+      prompt: "ما أكبر جزيرة في العالم من حيث المساحة؟",
+      answeringTeamId: "team-b",
+      opposingTeamId: "team-a",
+      selectedAnswer: "مدغشقر",
+      correctAnswer: "غرينلاند",
+      decision: "steal",
+      correct: false,
+      mechanicPoints: [{ teamId: "team-a", points: -1 }],
+    },
+    {
+      prompt: "في أي مدينة يقع برج خليفة؟",
+      answeringTeamId: "team-a",
+      opposingTeamId: "team-b",
+      selectedAnswer: "دبي",
+      correctAnswer: "دبي",
+      decision: "trust",
+      correct: true,
+      mechanicPoints: [{ teamId: "team-a", points: 1 }],
+    },
+  ],
 };
 
-const PREVIEW_CLOSEST_SCENARIO: ClosestTutorialScenario = {
+const PREVIEW_CLOSEST_SCENARIO: ClosestTutorialScenario & {
+  previewRecapItems: PreviewClosestRecapItem[];
+} = {
   kind: "closest",
   version: 1,
   prompt: "في أي سنة تأسست المملكة العربية السعودية؟",
@@ -83,9 +128,34 @@ const PREVIEW_CLOSEST_SCENARIO: ClosestTutorialScenario = {
     matchPointDelta: 0,
     reason: "closest.absolute-distance",
   },
+  previewRecapItems: [
+    {
+      correctValue: 1932,
+      answers: { "team-a": 1930, "team-b": 1935 },
+      distances: { "team-a": 2, "team-b": 3 },
+      winnerTeamId: "team-a",
+      tie: false,
+    },
+    {
+      correctValue: 828,
+      answers: { "team-a": 790, "team-b": 820 },
+      distances: { "team-a": 38, "team-b": 8 },
+      winnerTeamId: "team-b",
+      tie: false,
+    },
+    {
+      correctValue: 206,
+      answers: { "team-a": 208, "team-b": 195 },
+      distances: { "team-a": 2, "team-b": 11 },
+      winnerTeamId: "team-a",
+      tie: false,
+    },
+  ],
 };
 
-const PREVIEW_BOMB_SCENARIO: BombTutorialScenario = {
+const PREVIEW_BOMB_SCENARIO: BombTutorialScenario & {
+  previewRecapItems: PreviewBombRecapItem[];
+} = {
   kind: "bomb",
   version: 1,
   prompt: "ما عاصمة سلطنة عُمان؟",
@@ -107,15 +177,42 @@ const PREVIEW_BOMB_SCENARIO: BombTutorialScenario = {
     matchPointDelta: 1,
     reason: "bomb.clock-expired",
   },
+  previewRecapItems: [
+    {
+      teamId: "team-a",
+      prompt: "ما عاصمة سلطنة عُمان؟",
+      submittedAnswer: "مسقط",
+      correctAnswer: "مسقط",
+      outcome: "correct",
+    },
+    {
+      teamId: "team-b",
+      prompt: "كم عدد قارات العالم؟",
+      submittedAnswer: null,
+      correctAnswer: "7",
+      outcome: "skipped",
+    },
+    {
+      teamId: "team-b",
+      prompt: "ما أكبر محيط في العالم؟",
+      submittedAnswer: null,
+      correctAnswer: "المحيط الهادئ",
+      outcome: "timeout",
+    },
+  ],
 };
 
-const PREVIEW_FIRST_NOTE_SCENARIO: FirstNoteTutorialScenario = {
+const PREVIEW_FIRST_NOTE_SCENARIO: FirstNoteTutorialScenario & {
+  previewRecapItems: PreviewFirstNoteRecapItem[];
+  previewRecapTotals: Record<string, number>;
+} = {
   kind: "first-note",
   version: 1,
   prompt: "تعرّفوا على الأغنية من مزاد ثوانٍ قصير.",
   title: "على بالي",
   clueLabel: "السياق",
-  contextualClue: "أغنية عربية معاصرة بصوت نسائي، من ألبوم حقق انتشاراً واسعاً.",
+  contextualClue:
+    "أغنية عربية معاصرة بصوت نسائي، من ألبوم حقق انتشاراً واسعاً.",
   bids: [
     { team: "team-a", seconds: 8 },
     { team: "team-b", seconds: 5 },
@@ -142,6 +239,65 @@ const PREVIEW_FIRST_NOTE_SCENARIO: FirstNoteTutorialScenario = {
     points: { "team-a": 0, "team-b": 11 },
     reason: "first-note.auction-steal",
   },
+  previewRecapTotals: { "team-a": 10, "team-b": 23 },
+  previewRecapItems: [
+    {
+      title: "على بالي",
+      finalBidSeconds: 3,
+      winnerTeamId: "team-b",
+      stolen: true,
+    },
+    {
+      title: "الأماكن",
+      finalBidSeconds: 6,
+      winnerTeamId: "team-a",
+      stolen: false,
+    },
+    {
+      title: "بنت الجيران",
+      finalBidSeconds: 4,
+      winnerTeamId: "team-b",
+      stolen: false,
+    },
+  ],
+};
+
+const PREVIEW_EKSHIFNI_SCENARIO = {
+  ...SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
+  previewRecapTotals: { "team-a": 3, "team-b": 6 },
+  previewRecapItems: [
+    {
+      identity: SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO.celebrityIdentity,
+      winnerTeamId: "team-b",
+      value: 2,
+      revealedRegionIds: ["r1", "r2", "r6"],
+      resolvedBy: "answer",
+    },
+    {
+      identity: "ناصر القصبي",
+      winnerTeamId: "team-a",
+      value: 3,
+      revealedRegionIds: ["r1", "r2"],
+      resolvedBy: "answer",
+    },
+    {
+      identity: "محمد عبده",
+      winnerTeamId: "team-b",
+      value: 4,
+      revealedRegionIds: ["r1"],
+      resolvedBy: "answer",
+    },
+  ] satisfies PreviewEkshifniRecapItem[],
+};
+
+const PREVIEW_ODD_PIECE_SCENARIO = {
+  ...SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
+  previewRecapTotals: { "team-a": 1, "team-b": 2 },
+  previewRecapPuzzles: [
+    { puzzleIndex: 0, winnerTeamId: "team-b" },
+    { puzzleIndex: 1, winnerTeamId: "team-a" },
+    { puzzleIndex: 2, winnerTeamId: "team-b" },
+  ] satisfies PreviewOddPieceRecapPuzzle[],
 };
 
 function buildSampleTutorial(
@@ -154,9 +310,9 @@ function buildSampleTutorial(
     bomb: PREVIEW_BOMB_SCENARIO,
     "top-5": SAMPLE_TOP5_TUTORIAL_SCENARIO,
     combo: SAMPLE_COMBO_TUTORIAL_SCENARIO,
-    "odd-piece": SAMPLE_ODD_PIECE_V2_TUTORIAL_SCENARIO,
+    "odd-piece": PREVIEW_ODD_PIECE_SCENARIO,
     marhala: SAMPLE_MARHALA_TUTORIAL_SCENARIO,
-    ekshifni: SAMPLE_EKSHIFNI_TUTORIAL_SCENARIO,
+    ekshifni: PREVIEW_EKSHIFNI_SCENARIO,
     "la-tahriqha": SAMPLE_LA_TAHRIQHA_TUTORIAL_SCENARIO,
     "first-note": PREVIEW_FIRST_NOTE_SCENARIO,
   };
@@ -200,7 +356,11 @@ export function Preview({
   const [worldId, select] = useState("");
   const [started, start] = useState(false);
   const [sampleOverride, setSampleOverride] = useState<boolean | null>(null);
-  const world = worlds.data?.find((w) => w.id === worldId) ?? worlds.data?.[0];
+  const world =
+    worlds.data?.find((w) => w.id === worldId) ??
+    worlds.data?.find((w) => Boolean(w.banner?.url)) ??
+    worlds.data?.find((w) => !/smoke/i.test(w.name)) ??
+    worlds.data?.[0];
   const liveTutorial = usePublishedTutorial(
     world ? mechanicKey : undefined,
     world?.id,
@@ -225,12 +385,10 @@ export function Preview({
         },
       },
     });
-    client.setQueryData(
-      ["mechanic-tutorial", world.id, mechanicKey],
-      sample,
-    );
+    client.setQueryData(["mechanic-tutorial", world.id, mechanicKey], sample);
+    client.setQueryData(playerCatalogKeys.worlds, worlds.data ?? []);
     return client;
-  }, [useSample, world, mechanicKey]);
+  }, [useSample, world, mechanicKey, worlds.data]);
 
   const teams = teamIds.map((id, i) => ({ id, name: teamNames[i], score: 0 }));
   const currentSlug =
@@ -241,7 +399,7 @@ export function Preview({
       key={`${world.id}-${useSample ? "sample" : "api"}`}
       preflight={{
         positionKey: "preview",
-        occurrenceIndex: 1,
+        occurrenceIndex: 0,
         slotKey: "slot_1",
         worldId: world.id,
         worldName: world.name,

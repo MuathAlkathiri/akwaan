@@ -135,15 +135,17 @@ describe("team colour never means correct or wrong", () => {
 });
 
 describe("a persistent status may still be legible", () => {
-  it("states readiness in a semantic colour, an icon, and a word", () => {
+  it("states readiness in a semantic colour and a word", () => {
     // Deliberately *not* stripped to neutral: "these players are ready" is a real
-    // success state and a host is about to act on it.
+    // success state and a host is about to act on it. The approved bottom bar
+    // carries it as mint plus the words, which is what keeps the colour from
+    // being the only thing saying it.
     const preflight = read(
       "src/features/live-game-session/match/components/challenge-preflight.tsx",
     );
     expect(preflight).toContain("bg-brand-mint");
     expect(preflight).not.toMatch(/text-success\b/);
-    expect(preflight).toContain("✓ جاهز");
+    expect(preflight).toContain("الكل جاهز");
   });
 
   it("keeps connection failures actionable without a persistent utility pill", () => {

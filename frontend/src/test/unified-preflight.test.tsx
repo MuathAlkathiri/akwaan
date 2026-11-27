@@ -325,8 +325,12 @@ describe("challenge preflight", () => {
 
   it("opens the join QR on demand and shows both fixed team names", async () => {
     renderRouter(match({ stage: "preflight", preflight: preflight() }));
-    expect(screen.getByText(/الفريق الأول ·/)).toBeVisible();
-    expect(screen.getByText(/الفريق الثاني ·/)).toBeVisible();
+    expect(
+      screen.getByTestId("preflight-team-status-team-a"),
+    ).toHaveTextContent("الفريق الأول");
+    expect(
+      screen.getByTestId("preflight-team-status-team-b"),
+    ).toHaveTextContent("الفريق الثاني");
     const join = screen.getByRole("button", { name: "انضمام" });
     expect(join).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(join);
@@ -485,7 +489,9 @@ describe("challenge preflight", () => {
     expect(screen.getByTestId("preflight-start").hasAttribute("disabled")).toBe(
       true,
     );
-    expect(screen.getByText(/الفريق الأول ·/)).toHaveTextContent("1/3");
+    expect(
+      screen.getByTestId("preflight-team-status-team-a"),
+    ).toHaveTextContent("1 / 3");
   });
 
   it("cancels back to the board", async () => {

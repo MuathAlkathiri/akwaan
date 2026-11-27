@@ -16,6 +16,8 @@ import { usePublishedTutorial } from "../use-published-tutorial";
 export function InlineMechanicTutorial({
   mechanicKey,
   worldId,
+  worldName,
+  occurrenceIndex,
   challengeName,
   description,
   launching,
@@ -24,6 +26,8 @@ export function InlineMechanicTutorial({
 }: {
   mechanicKey: string;
   worldId?: string;
+  worldName?: string;
+  occurrenceIndex?: number;
   challengeName: string;
   description?: string;
   launching?: boolean;
@@ -132,6 +136,15 @@ export function InlineMechanicTutorial({
       />
     );
 
+  const worldContext =
+    worldId || worldName || occurrenceIndex !== undefined
+      ? {
+          ...(worldId ? { id: worldId } : {}),
+          ...(worldName ? { name: worldName } : {}),
+          ...(occurrenceIndex !== undefined ? { occurrenceIndex } : {}),
+        }
+      : undefined;
+
   if (mechanicKey === "moving-xo")
     return (
       <GameScene
@@ -141,6 +154,7 @@ export function InlineMechanicTutorial({
             ? { prompt: tutorial.scenario.prompt }
             : {}),
         }}
+        {...(worldContext ? { world: worldContext } : {})}
       />
     );
 
@@ -154,5 +168,10 @@ export function InlineMechanicTutorial({
       />
     );
 
-  return <MechanicTutorialRenderer scenario={tutorial.scenario} />;
+  return (
+    <MechanicTutorialRenderer
+      scenario={tutorial.scenario}
+      {...(worldContext ? { world: worldContext } : {})}
+    />
+  );
 }

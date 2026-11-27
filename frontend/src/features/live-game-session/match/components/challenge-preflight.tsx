@@ -1,9 +1,18 @@
 "use client";
 
-import { ArrowRight, Check, Copy, Crown, X } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  ChevronUp,
+  Copy,
+  Crown,
+  QrCode,
+  X,
+} from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ScannableQr } from "@/components/akwaan/scannable-qr";
+import { getMediaUrl } from "@/lib/api/media-url";
 import { STATE_ACTION } from "@/components/akwaan/state-card";
 import { STICKER } from "@/components/akwaan/sticker";
 import { InlineMechanicTutorial } from "@/features/challenge-explainer/components/inline-mechanic-tutorial";
@@ -13,9 +22,6 @@ import { cn } from "@/lib/utils";
 import { LiveSessionContext } from "../../hooks/live-session-context";
 import type { PreflightTeam, UnifiedPreflight } from "../types";
 import { CaptainControl } from "./captain-control";
-
-const pill =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-brand-navy bg-white px-4 py-2 font-bold text-brand-navy transition-transform hover:-translate-y-0.5";
 
 interface TeamPanelPlayer {
   id: string;
@@ -28,6 +34,7 @@ interface TeamPanelPlayer {
 export function ChallengePreflight({
   preflight,
   sessionId,
+  worldImageUrl,
   launching,
   cancelling,
   onCancel,
@@ -139,26 +146,78 @@ export function ChallengePreflight({
   };
 
   const openPlayers = openTeam ? resolvePlayers(openTeam) : [];
+  const bannerUrl = worldImageUrl ? getMediaUrl(worldImageUrl) : undefined;
+  // Named on the start button, so the host knows who the room is waiting for.
+  const pending = preflight.teams
+    .map((team, index) => ({ team, name: teamNames[index] ?? team.teamName }))
+    .filter((entry) => !entry.team.ready);
+  const waitingFor = preflight.readyToLaunch
+    ? undefined
+    : pending.length === 1
+      ? pending[0]!.name
+      : "اللاعبين";
 
   return (
     <section
       dir="rtl"
-      className="space-y-3 text-brand-navy"
+      className="flex flex-col gap-[18px] text-brand-navy"
       data-testid="challenge-preflight"
     >
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-brand-navy px-5 py-2 font-bold text-white">
-        <span>{preflight.worldName}</span>
-        <span className="text-brand-gold">التحدي القادم</span>
-        <h1 className="font-display text-xl">{preflight.challengeName}</h1>
-        {starting >= 0 && (
-          <span className="ms-auto">يبدأ {teamNames[starting]}</span>
+      {/* The approved band: the World's picture on one side, who is up next on
+          the other, and the challenge's name in the middle of it all. */}
+      <header
+        data-testid="preflight-band"
+        className="relative h-[92px] flex-none overflow-hidden rounded-[22px] border-[3px] border-brand-navy bg-brand-navy text-white shadow-[6px_7px_0_hsl(var(--brand-gold))]"
+      >
+        {bannerUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={bannerUrl}
+            alt=""
+            className="absolute inset-y-0 right-0 h-full w-1/2 object-cover"
+          />
         )}
+        <span
+          aria-hidden
+          className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--brand-navy))_0%,hsl(var(--brand-navy))_50%,hsl(var(--brand-navy)/0.5)_72%,hsl(var(--brand-navy)/0.15)_100%)]"
+        />
+        <div className="absolute inset-0 flex items-center justify-between gap-6 px-8">
+          <span className="font-display text-[22px] font-extrabold [text-shadow:0_2px_0_hsl(var(--brand-navy))]">
+            {preflight.worldName}
+          </span>
+          <div className="flex items-center gap-[18px]">
+            {starting >= 0 && (
+              <span className="inline-flex min-h-[34px] items-center gap-2 rounded-full bg-white px-3.5 text-[15px] font-bold text-brand-navy">
+                <i
+                  aria-hidden
+                  className={cn(
+                    "size-3 shrink-0 rounded-full border-2 border-brand-navy",
+                    teamIdentity(
+                      TEAM_SLOT_ORDER[starting % TEAM_SLOT_ORDER.length],
+                    ).dot,
+                  )}
+                />
+                {teamNames[starting]} يبدأ
+              </span>
+            )}
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-brand-gold">
+                التحدي القادم
+              </span>
+              <h1 className="font-display text-4xl font-black leading-[1.25]">
+                {preflight.challengeName}
+              </h1>
+            </div>
+          </div>
+        </div>
       </header>
 
       <InlineMechanicTutorial
         key={sessionId + preflight.positionKey}
         mechanicKey={preflight.challengeKey}
         worldId={preflight.worldId}
+        worldName={preflight.worldName}
+        occurrenceIndex={preflight.occurrenceIndex}
         challengeName={preflight.challengeName}
         {...(preflight.description
           ? { description: preflight.description }
@@ -168,48 +227,105 @@ export function ChallengePreflight({
         launching={launching}
       />
 
-      <footer className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-brand-navy bg-white p-3">
-        {preflight.teams.map((team, i) => (
-          <button
-            type="button"
-            key={team.teamId}
-            className={pill}
-            aria-expanded={openTeamId === team.teamId}
-            data-testid={`preflight-team-status-${team.teamId}`}
-            onClick={() =>
-              setOpenTeamId((current) =>
-                current === team.teamId ? null : team.teamId,
-              )
-            }
-          >
-            <i
-              aria-hidden
-              className={`size-3 rounded-full border border-brand-navy ${teamIdentity(TEAM_SLOT_ORDER[i % TEAM_SLOT_ORDER.length]).dot}`}
-            />
-            {teamNames[i] ?? team.teamName} ·{" "}
-            <bdi dir="ltr" className="akwaan-numeral">
-              {team.connectedCount}/{team.maximum ?? team.minimum}
-            </bdi>
-            <span
-              className={
-                team.ready
-                  ? "rounded-full border-2 border-brand-navy bg-brand-mint px-2 text-brand-navy"
-                  : ""
+      {/* The approved bottom bar: a pill per team, the join code, and the one
+          button that starts the challenge. */}
+      <footer
+        data-testid="preflight-bottom-bar"
+        className="flex flex-none flex-wrap items-center gap-3.5"
+      >
+        {preflight.teams.map((team, i) => {
+          const players = resolvePlayers(team);
+          const slots = Math.max(
+            team.maximum ?? team.minimum,
+            players.length,
+            1,
+          );
+          const readyCount = players.filter((player) => player.ready).length;
+          const missing = Math.max(
+            0,
+            Math.max(team.minimum, players.length) - readyCount,
+          );
+          return (
+            <button
+              type="button"
+              key={team.teamId}
+              aria-label={`تفاصيل ${teamNames[i] ?? team.teamName}`}
+              aria-expanded={openTeamId === team.teamId}
+              data-testid={`preflight-team-status-${team.teamId}`}
+              onClick={() =>
+                setOpenTeamId((current) =>
+                  current === team.teamId ? null : team.teamId,
+                )
               }
+              className="inline-flex min-h-[60px] items-center gap-3 rounded-full border-[3px] border-brand-navy bg-white px-[18px] text-brand-navy shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5"
             >
-              {team.ready ? "✓ جاهز" : "ننتظر اللاعبين"}
-            </span>
-          </button>
-        ))}
+              <i
+                aria-hidden
+                className={cn(
+                  "size-3.5 shrink-0 rounded-full border-2 border-brand-navy",
+                  teamIdentity(TEAM_SLOT_ORDER[i % TEAM_SLOT_ORDER.length]).dot,
+                )}
+              />
+              <span className="font-display text-[17px] font-extrabold">
+                {teamNames[i] ?? team.teamName}
+              </span>
+              <span aria-hidden className="inline-flex">
+                {Array.from({ length: slots }).map((_, slot) => (
+                  <span
+                    key={slot}
+                    className={cn(
+                      "size-[30px] shrink-0 rounded-full border-2 border-brand-navy",
+                      slot > 0 && "-ms-2",
+                      slot < team.connectedCount
+                        ? "bg-[#E3DAF6]"
+                        : "border-dashed border-brand-dash bg-white",
+                    )}
+                  />
+                ))}
+              </span>
+              <bdi dir="ltr" className="akwaan-numeral text-[15px] font-bold">
+                {team.connectedCount} / {slots}
+              </bdi>
+              <span
+                className={cn(
+                  "inline-flex min-h-[30px] items-center rounded-full border-2 border-brand-navy px-3 text-sm font-bold",
+                  team.ready ? "bg-brand-mint" : "bg-brand-gold",
+                )}
+              >
+                {team.ready ? (
+                  "الكل جاهز"
+                ) : missing === 1 ? (
+                  "باقي لاعب واحد"
+                ) : missing === 2 ? (
+                  "باقي لاعبين"
+                ) : missing > 2 ? (
+                  <>
+                    باقي{" "}
+                    <bdi dir="ltr" className="akwaan-numeral">
+                      {missing}
+                    </bdi>{" "}
+                    لاعبين
+                  </>
+                ) : (
+                  "ننتظر اللاعبين"
+                )}
+              </span>
+              <ChevronUp className="size-4" aria-hidden />
+            </button>
+          );
+        })}
 
         {(preflight.requiresPhones || preflight.join) && (
           <button
             type="button"
-            className={pill}
+            className="inline-flex min-h-[60px] items-center gap-2.5 rounded-full border-[3px] border-brand-navy bg-brand-lavender px-[18px] text-[15px] font-bold text-brand-navy shadow-[3px_4px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5 disabled:opacity-50"
             disabled={!preflight.join}
             aria-expanded={qr}
             onClick={() => setQr(!qr)}
           >
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg border-[3px] border-brand-navy bg-white">
+              <QrCode className="size-[22px]" aria-hidden />
+            </span>
             انضمام
           </button>
         )}
@@ -219,13 +335,20 @@ export function ChallengePreflight({
           aria-busy={launching}
           data-testid="preflight-start"
           className={cn(
-            pill,
-            "bg-brand-gold shadow-[3px_4px_0_hsl(var(--brand-navy))] disabled:opacity-50 disabled:shadow-none",
+            "ms-auto inline-flex min-h-[68px] items-center gap-3 rounded-full border-[3px] px-8",
+            preflight.readyToLaunch && !launching && !cancelling
+              ? "border-brand-navy bg-brand-gold text-brand-navy shadow-[5px_6px_0_hsl(var(--brand-navy))] transition-transform hover:-translate-y-0.5"
+              : "border-brand-dash bg-brand-mist text-brand-plum",
           )}
           disabled={!preflight.readyToLaunch || launching || cancelling}
           onClick={onLaunch}
         >
-          {launching ? "نبدأ الحين…" : "ابدأ التحدي"}
+          <span className="font-display text-[22px] font-extrabold">
+            {launching ? "نبدأ الحين…" : "ابدأ التحدي"}
+          </span>
+          {!launching && waitingFor && (
+            <span className="text-sm font-semibold">بانتظار {waitingFor}</span>
+          )}
         </button>
       </footer>
 
@@ -271,7 +394,11 @@ export function ChallengePreflight({
             <button
               type="button"
               onClick={() => void copyJoinLink()}
-              className={cn(STATE_ACTION.secondary, STICKER.small, "w-full gap-2")}
+              className={cn(
+                STATE_ACTION.secondary,
+                STICKER.small,
+                "w-full gap-2",
+              )}
             >
               {copied ? (
                 <>
