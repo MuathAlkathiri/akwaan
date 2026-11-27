@@ -143,12 +143,14 @@ export class ComposedVisualService {
     // What makes this item itself and no other: the drawing. Two composed
     // items can share every word and still be different puzzles, and the
     // duplicate check reads identity from the draft.
-    const entityId = `${COMPOSED_ENTITY_PREFIX}${drawing.familyKey}:${createHash(
-      'sha256',
-    )
-      .update(drawing.svg)
-      .digest('hex')
-      .slice(0, 16)}`;
+    // A Bomb item that names a drawing is that drawing: a second item about
+    // the same thing is a repeat however it is drawn.
+    const entityId = bomb?.answerKey
+      ? `${COMPOSED_ENTITY_PREFIX}bomb:${bomb.answerKey}`
+      : `${COMPOSED_ENTITY_PREFIX}${drawing.familyKey}:${createHash('sha256')
+          .update(drawing.svg)
+          .digest('hex')
+          .slice(0, 16)}`;
 
     const composedVisual = {
       familyKey: drawing.familyKey,
