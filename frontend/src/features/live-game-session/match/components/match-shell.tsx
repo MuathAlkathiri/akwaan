@@ -78,8 +78,13 @@ export function MatchShell({
     match?.stage.key === "preflight" &&
     match.unified.preflight?.requiresPhones === true;
   // The board is one fixed screen on a display wide enough to lay the three
-  // Worlds side by side: it fits the viewport and never scrolls.
-  const fixedScreen = match?.stage.key === "board";
+  // Worlds side by side: it fits the viewport and never scrolls. The lobby is
+  // the same kind of screen — the room is looking at it from the sofa, and the
+  // button that starts the match must never be below the fold.
+  const fixedScreen =
+    match?.stage.key === "board" ||
+    snapshot?.status === "waiting" ||
+    snapshot?.status === "ready";
 
   // The visible score/turn change is the confirmation of a control; only a
   // failure needs a message. So this reports errors and stays silent on success.

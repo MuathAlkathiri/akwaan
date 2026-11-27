@@ -34,15 +34,15 @@ export const PHONE_FRAME = {
   innerHeight: 763,
 } as const;
 
-/** The approved board keeps the devices 34px apart. */
-const STAGE_GAP = 34;
-const STAGE_WIDTH =
-  PHONE_FRAME.width +
-  STAGE_GAP +
-  SHARED_SCREEN_FRAME.width +
-  STAGE_GAP +
-  PHONE_FRAME.width;
+/**
+ * The scene's own size, before it is scaled to the page.
+ *
+ * It is measured rather than computed: a device's label pill is wider than the
+ * phone under it, and whatever the widest step's labels come to is what has to
+ * fit — a guessed width clips the outer two devices.
+ */
 const LABEL_ROW_HEIGHT = 38;
+const STAGE_WIDTH = PHONE_FRAME.width * 2 + SHARED_SCREEN_FRAME.width + 68;
 const STAGE_HEIGHT = SHARED_SCREEN_FRAME.height + LABEL_ROW_HEIGHT;
 
 /**
@@ -80,18 +80,29 @@ export function SceneTemplate({
   const scene = useRef<HTMLDivElement>(null);
   const stageShell = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
+  const [stage, setStage] = useState({
+    width: STAGE_WIDTH,
+    height: STAGE_HEIGHT,
+  });
 
   useEffect(() => {
     const shell = stageShell.current;
-    if (!shell || typeof ResizeObserver === "undefined") return;
+    const content = scene.current;
+    if (!shell || !content || typeof ResizeObserver === "undefined") return;
     const measure = () => {
+      const width = content.offsetWidth || STAGE_WIDTH;
+      const height = content.offsetHeight || STAGE_HEIGHT;
       const available = shell.clientWidth;
-      if (available > 0) {
-        setFit(Math.min(1, available / STAGE_WIDTH));
-      }
+      setStage((current) =>
+        current.width === width && current.height === height
+          ? current
+          : { width, height },
+      );
+      if (available > 0) setFit(Math.min(1, available / width));
     };
     const observer = new ResizeObserver(measure);
     observer.observe(shell);
+    observer.observe(content);
     measure();
     return () => observer.disconnect();
   }, []);
@@ -151,15 +162,11 @@ export function SceneTemplate({
         <div
           ref={stageShell}
           className={styles.stageShell}
-          style={{ height: Math.ceil(STAGE_HEIGHT * fit) }}
+          style={{ height: Math.ceil(stage.height * fit) }}
         >
           <div
             className={styles.stageViewport}
-            style={{
-              width: STAGE_WIDTH,
-              height: STAGE_HEIGHT,
-              transform: `translateX(-50%) scale(${fit})`,
-            }}
+            style={{ transform: `translateX(-50%) scale(${fit})` }}
           >
             <div className={styles.scene} ref={scene}>
               {DEVICES.map(({ team, name, slot }) => {

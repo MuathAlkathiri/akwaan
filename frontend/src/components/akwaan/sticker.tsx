@@ -126,15 +126,29 @@ export function ChallengePill({ children }: { children: React.ReactNode }) {
 export function Spark({
   className,
   fill = "hsl(var(--brand-navy))",
+  outlined = false,
 }: {
   className?: string;
   fill?: string;
+  /** Drawn with the navy line around it, as the stickers wear it. */
+  outlined?: boolean;
 }) {
   return (
-    <svg viewBox="-10 -10 20 20" aria-hidden="true" className={className}>
+    <svg
+      viewBox={outlined ? "-12 -12 24 24" : "-10 -10 20 20"}
+      aria-hidden="true"
+      className={className}
+    >
       <path
         d="M0 -10 Q1.8 -1.8 10 0 Q1.8 1.8 0 10 Q-1.8 1.8 -10 0 Q-1.8 -1.8 0 -10Z"
         fill={fill}
+        {...(outlined
+          ? {
+              stroke: "hsl(var(--brand-navy))",
+              strokeWidth: 1.6,
+              strokeLinejoin: "round" as const,
+            }
+          : {})}
       />
     </svg>
   );

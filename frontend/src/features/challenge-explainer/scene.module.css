@@ -58,6 +58,7 @@
 
 .deviceLabel {
   display: inline-flex;
+  max-width: 300px;
   align-items: center;
   gap: 8px;
   min-height: 30px;
@@ -239,6 +240,7 @@
   position: absolute;
   top: 0;
   left: 50%;
+  width: max-content;
   transform-origin: top center;
 }
 

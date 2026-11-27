@@ -567,7 +567,7 @@ describe("phone lifecycle across a challenge result", () => {
     expect(waiting.dataset.showingResult).toBe("true");
     expect(waiting.textContent).toContain("انتهى التحدي");
     expect(waiting.textContent).toContain("أسود الشمال");
-    expect(waiting.textContent).toContain("بانتظار التحدي القادم");
+    expect(waiting.textContent).toContain("بانتظار التحدي الجاي");
     // No board, no result page of its own, and nothing to press.
     expect(screen.queryByTestId("unified-board")).toBeNull();
     expect(screen.queryByTestId("unified-challenge-result")).toBeNull();

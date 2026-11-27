@@ -1,7 +1,8 @@
 "use client";
 
-import { PartyPopper, Smartphone, Trophy } from "lucide-react";
+import { Smartphone, Trophy } from "lucide-react";
 import { FacePlanet } from "@/components/akwaan/state-card";
+import { Spark } from "@/components/akwaan/sticker";
 import { teamIdentityOf } from "@/lib/team-identity";
 import { cn } from "@/lib/utils";
 import { useLiveSession } from "../../hooks/live-session-context";
@@ -86,30 +87,40 @@ export function ParticipantWaiting({
     >
       {challengeResult && !matchComplete ? (
         <>
-          {/* The moment, then the wait — one screen, read top to bottom. Calm on
-              purpose: a player can sit here for minutes between challenges, so
-              nothing loops or pulses. */}
-          <span
-            aria-hidden
-            className="grid size-[72px] place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold shadow-[4px_5px_0_hsl(var(--brand-navy))]"
-          >
-            <PartyPopper className="size-9 text-brand-navy" />
-          </span>
-          <h1 className="font-display text-2xl font-black text-brand-navy">
+          {/* The moment, then the wait — one screen, read top to bottom, as the
+              board draws it. Calm on purpose: a player can sit here for minutes
+              between challenges, so nothing loops or pulses. */}
+          <div className="relative">
+            <Spark
+              outlined
+              fill="hsl(var(--brand-purple))"
+              className="absolute -top-2.5 end-[-30px] size-[34px] rotate-12"
+            />
+            <Spark
+              outlined
+              fill="hsl(var(--brand-purple))"
+              className="absolute bottom-0 start-[-24px] size-[22px] -rotate-12"
+            />
+            <span
+              aria-hidden
+              className="grid size-24 place-items-center rounded-full border-[3px] border-brand-navy bg-brand-gold shadow-[4px_5px_0_hsl(var(--brand-navy))]"
+            >
+              <Spark className="size-12" />
+            </span>
+          </div>
+          <h1 className="font-display text-[34px] font-black text-brand-navy">
             انتهى التحدي
           </h1>
           {winnerName && (
             <p
               data-testid="participant-challenge-winner"
-              className={cn(
-                // Gold: a point moved. Whose it is, is the dot.
-                "inline-flex items-center gap-2 rounded-full border-[3px] border-brand-navy bg-brand-gold px-4 py-2 text-base font-bold text-brand-navy",
-              )}
+              // Gold: a point moved. Whose it is, is the dot.
+              className="inline-flex min-h-[52px] items-center gap-2.5 rounded-full border-[3px] border-brand-navy bg-brand-gold px-[22px] text-[19px] font-extrabold text-brand-navy"
             >
               <span
                 aria-hidden
                 className={cn(
-                  "size-3 rounded-full border-2 border-brand-navy",
+                  "size-4 rounded-full border-2 border-brand-navy",
                   winnerIdentity?.dot,
                 )}
               />
@@ -121,17 +132,16 @@ export function ParticipantWaiting({
                   className="akwaan-numeral"
                   data-testid="participant-challenge-points"
                 >
-                  +{winnerPoints} نقطة
+                  <bdi dir="ltr">+{winnerPoints}</bdi> نقطة
                 </span>
               ) : null}
             </p>
           )}
           {/* The hand-off: the result settles above, and the wait for the next
               challenge sits quietly under it behind a hairline. */}
-          <p className="mt-2 w-full max-w-xs border-t-2 border-brand-mist pt-3 text-sm leading-6 text-brand-slate">
-            بانتظار التحدي القادم…
-            <br />
-            التحدي الجاي بيفتح هنا، خلّوا الجوال معكم.
+          <span aria-hidden className="h-0.5 w-[70%] bg-brand-mist" />
+          <p className="max-w-xs text-base leading-[1.8] text-brand-slate">
+            بانتظار التحدي الجاي… بنفتحه لك هنا، خلّ جوالك معك.
           </p>
         </>
       ) : (
@@ -172,7 +182,7 @@ export function ParticipantWaiting({
         </>
       )}
       {joinedTeamName && (
-        <p className="text-sm font-bold text-brand-slate">
+        <p className="text-[15px] font-bold text-brand-navy">
           أنت مع {joinedTeamName}
         </p>
       )}
