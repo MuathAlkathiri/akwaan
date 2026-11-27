@@ -17,6 +17,7 @@ import {
 } from './composed-bomb-numbers';
 import { LETTER_WORDS, lendersFor, lettersSvg } from './composed-letters';
 import {
+  shatteredOrder,
   THREAD_LAYOUTS,
   THREAD_STARTS,
   ThreadStation,
@@ -42,7 +43,7 @@ export const BOMB_VARIANTS = {
   'bomb-number-puzzles': NUMBER_BOMB_VARIANTS,
   'bomb-first-letters': ['in-order', 'scrambled'],
   'bomb-what-is-it': ['shadow', 'close-up', 'half-hidden', 'upside-down'],
-  'bomb-put-together': ['shattered', 'shattered-fine'],
+  'bomb-put-together': ['shattered-turned', 'mirrored-word'],
   'bomb-thread-end': ['three-threads', 'four-threads'],
   'bomb-odd-one-out': ['five-things', 'six-things'],
 } as const;
@@ -225,27 +226,92 @@ function whatIsIt(seed: string, variantKey: string): ComposedBombItem {
   };
 }
 
+/**
+ * Cut into four or six tiles, dealt out of place, and some tiles turned: the
+ * drawing has to be put back together and set upright in the head.
+ */
+export function shatteredTurnedSvg(
+  thing: DrawnThing,
+  detail: number,
+  random: () => number,
+): { svg: string; turned: number } {
+  const size = 440;
+  const x = W / 2 - size / 2;
+  const y = H / 2 - size / 2;
+  const columns = detail % 2 ? 3 : 2;
+  const rows = 2;
+  const order = shatteredOrder(columns, rows, detail);
+  const gap = 14;
+  const wide = (size - (columns - 1) * gap) / columns;
+  const tall = (size - (rows - 1) * gap) / rows;
+  // Square tiles turn a quarter or a half; tall ones only a half.
+  const turns: number[] = order.map((): number =>
+    random() < 0.5 ? 0 : columns === 2 ? pick([90, 180, 270], random) : 180,
+  );
+  if (!turns.some((turn) => turn !== 0)) turns[0] = columns === 2 ? 90 : 180;
+  let tiles = '';
+  order.forEach((source, place) => {
+    const tx = x + (place % columns) * (wide + gap);
+    const ty = y + Math.floor(place / columns) * (tall + gap);
+    const cx = tx + wide / 2;
+    const cy = ty + tall / 2;
+    tiles +=
+      `<g data-tile="${place}" data-from="${source}" data-turn="${turns[place]}" transform="rotate(${turns[place]} ${round(cx)} ${round(cy)})">` +
+      `<rect x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" fill="#FFFFFF" stroke="${INK}" stroke-width="6"/>` +
+      `<svg x="${round(tx)}" y="${round(ty)}" width="${round(wide)}" height="${round(tall)}" viewBox="${round((source % columns) * (32 / columns))} ${round(Math.floor(source / columns) * (32 / rows))} ${round(32 / columns)} ${round(32 / rows)}" preserveAspectRatio="none" fill="none">${thing.body}</svg></g>`;
+  });
+  return {
+    svg: frame(
+      `<rect x="${x - 30}" y="${y - 30}" width="${size + 60}" height="${size + 60}" rx="36" fill="#E8B33A" stroke="${INK}" stroke-width="10"/>` +
+        `<g data-thing="${thing.key}">${tiles}</g>`,
+    ),
+    turned: turns.filter((turn) => turn !== 0).length,
+  };
+}
+
 function putTogether(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-put-together:${variantKey}:${seed}`);
+  if (variantKey === 'mirrored-word') {
+    const thing = pick(namedThings(), random);
+    const word = answersFor(thing)[0];
+    const mirror = random() < 0.5;
+    const size = [...word].length > 6 ? 120 : 160;
+    return {
+      familyKey: 'bomb-put-together',
+      variantKey,
+      variant: `${variantKey}:${thing.key}:${mirror ? 'mirror' : 'upside-down'}`,
+      prompt: mirror
+        ? 'كلمة في المراية. وش هي؟'
+        : 'كلمة مقلوبة على راسها. وش هي؟',
+      acceptedAnswers: answersFor(thing),
+      altText: mirror ? 'كلمة مكتوبة بالمعكوس' : 'كلمة مكتوبة مقلوبة',
+      concept: 'Read a word turned upside down or seen in a mirror.',
+      factualClaim: `The word is «${word}», drawn ${mirror ? 'mirrored' : 'upside down'}.`,
+      svg: frame(
+        `<rect x="150" y="150" width="900" height="375" rx="36" fill="#FFFFFF" stroke="${INK}" stroke-width="10"/>` +
+          `<g data-word="${thing.key}" transform="${mirror ? `translate(${W} 0) scale(-1 1)` : `rotate(180 ${W / 2} ${H / 2})`}">` +
+          `<text x="${W / 2}" y="${H / 2 + size * 0.35}" text-anchor="middle" font-family="Noto Kufi Arabic" font-weight="700" font-size="${size}" fill="${INK}">${word}</text></g>`,
+      ),
+    };
+  }
   // Only well-filled drawings are cut up: a thin one leaves empty tiles.
   const thing = pick(
     namedThings().filter((entry) => entry.twins.length >= 1),
     random,
   );
-  // Four tiles on an even detail, six on an odd one.
-  const detail =
-    2 * Math.floor(random() * 10) + (variantKey === 'shattered-fine' ? 1 : 0);
+  const detail = Math.floor(random() * 20);
+  const { svg, turned } = shatteredTurnedSvg(thing, detail, random);
   return {
     familyKey: 'bomb-put-together',
     variantKey,
-    variant: `${variantKey}:${thing.key}:${detail}`,
-    prompt: 'رسمة متكسّرة. وش هي؟',
+    variant: `${variantKey}:${thing.key}:${detail}:${turned}`,
+    prompt: 'ركّب القطع وعدّل المدوّر منها. وش تطلع الرسمة؟',
     acceptedAnswers: answersFor(thing),
-    altText: 'رسمة لشي معروف مقطعة قطع متلخبطة',
+    altText: 'رسمة لشي معروف مقطعة قطع متلخبطة وبعضها مدوّر',
     concept:
-      'Put a cut-up or turned drawing back together in the head and name it.',
-    factualClaim: `The drawing is of «${thing.ar}».`,
-    svg: fragmentSvg(thing, 'shattered', detail),
+      'Put a cut-up drawing together, turning the turned tiles back, and name it.',
+    factualClaim: `The drawing is of «${thing.ar}»; ${turned} tile(s) are turned.`,
+    svg,
   };
 }
 
