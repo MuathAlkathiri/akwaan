@@ -222,6 +222,11 @@ export class MatchReconciliationService
     // Whatever this challenge drew but never showed goes back to the account.
     // Only `reserved` rows are released, so nothing a player saw is un-seen.
     await this.releaseUnseenContent(match.id);
+    // The challenge is over, so the turn ends here rather than at the board.
+    // Between the two sits the result screen: a turn left open across it kept
+    // the active team's clock running while nobody was playing, which is how a
+    // match-long budget quietly drained.
+    await this.releaseSessionTurn(input.sessionId, 'challenge-completed');
     // Announced only after the Match is durably completed, and exactly once: a
     // replayed terminal state never reaches this line.
     this.transitions.publish(match, this.transitions.completionReason(match));
@@ -328,6 +333,35 @@ export class MatchReconciliationService
   }
 
   /**
+   * Stops the session's turn on both routes out of a challenge.
+   *
+   * Completion and abort differ in everything but this: the session must stop
+   * owning a team and running its clock the moment the challenge is over.
+   * Logged rather than raised, because a Match that is durably completed must
+   * never be reported as unreconciled over bookkeeping.
+   */
+  private async releaseSessionTurn(
+    sessionId: string,
+    reason: string,
+  ): Promise<void> {
+    try {
+      await releaseSessionTurnForBoardReturn({
+        sessions: this.sessions,
+        sessionId,
+        reason,
+        now: this.clock.now(),
+      });
+    } catch (error) {
+      this.logger.error({
+        event: 'session_turn_release_failed',
+        sessionId,
+        reason,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
    * Hand back the current challenge's unseen reservations.
    *
    * Never allowed to fail a reconciliation that already committed: a stranded
@@ -379,20 +413,7 @@ export class MatchReconciliationService
     // An abort goes straight back to the board without a result screen, so it is
     // the second route that has to hand the session's turn back — and the one
     // that could leave a clock still running.
-    try {
-      await releaseSessionTurnForBoardReturn({
-        sessions: this.sessions,
-        sessionId: input.sessionId,
-        reason: 'challenge-aborted',
-        now: this.clock.now(),
-      });
-    } catch (error) {
-      this.logger.error({
-        event: 'session_turn_release_failed',
-        sessionId: input.sessionId,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await this.releaseSessionTurn(input.sessionId, 'challenge-aborted');
     this.transitions.publish(match, 'challenge-aborted');
     return { outcome: 'aborted', matchId: match.id, importedScoreEvents: 0 };
   }

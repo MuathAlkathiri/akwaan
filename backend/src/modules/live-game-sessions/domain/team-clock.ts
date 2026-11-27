@@ -42,13 +42,16 @@ export class TeamClock {
     return this.remainingMs(now) === 0;
   }
 
+  /**
+   * Starts the clock, spent or not.
+   *
+   * A clock that reads zero used to refuse to start, which turned a measurement
+   * into a gate: the session would rather strand a Match than run a turn with no
+   * budget left. What a spent clock means belongs to the mechanic that cares —
+   * القنبلة ends its round on `expire-team` and hands the win to the other team —
+   * so starting one is allowed and simply measures from zero.
+   */
   start(now: Date): void {
-    if (this.isExpired(now)) {
-      throw new LiveSessionDomainError(
-        'TEAM_CLOCK_EXPIRED',
-        'An expired team clock cannot be started',
-      );
-    }
     if (this.state.running) {
       throw new LiveSessionDomainError(
         'CLOCK_ALREADY_RUNNING',
