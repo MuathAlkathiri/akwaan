@@ -379,6 +379,11 @@
 | 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Composed picture | Multiple Choice (4 squares) |
 | 18 | `bomb-odd-one-out` | وين الغلط؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
 | 19 | `bomb-spot-difference` | وش الفرق؟ | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Generated picture (image model) | Match (typed) |
+| 20 | `mirrored-count` | كم شكل مقلوب؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (شكل) |
+| 21 | `total-off-by` | الحساب غلطان بكم؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (ريال) |
+| 22 | `balance-missing` | كم ناقص عشان يتعادل؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (كيلو) |
+| 23 | `pattern-break` | وين انكسر النمط؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 24 | `shadow-break` | وين الظل الغلط؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
 
 ---
 
@@ -938,6 +943,256 @@ form: with four choices it is too easy.
       "capacity": 96,
       "status": "paused",
       "pausedReason": "Owner decision 2026-11-27: waits for image-model credit and ENGINE_IMAGE_MODEL on staging; reopen on 2026-11-28."
+    },
+    {
+      "familyKey": "mirrored-count",
+      "name": "كم شكل مقلوب؟",
+      "description": "شبكة من نفس الشكل، وبعضها مرسوم معكوس. الجواب عدد المعكوسة، والمحرك يعرف كم عكس.",
+      "playerSolve": "ثبّت الاتجاه الصحيح في بالك وامسح صف صف.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "few",
+          "name": "قليلة",
+          "brief": "Three to six mirrored."
+        },
+        {
+          "key": "some",
+          "name": "متوسطة",
+          "brief": "Six to nine."
+        },
+        {
+          "key": "many",
+          "name": "كثيرة",
+          "brief": "Ten and up."
+        },
+        {
+          "key": "wide-grid",
+          "name": "شبكة عريضة",
+          "brief": "Eight across, three down."
+        },
+        {
+          "key": "tall-grid",
+          "name": "شبكة مربعة",
+          "brief": "Five by five."
+        },
+        {
+          "key": "dense",
+          "name": "شبكة مزدحمة",
+          "brief": "Eight by four."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "total-off-by",
+      "name": "الحساب غلطان بكم؟",
+      "description": "فاتورة فيها أصناف وأسعار ومجموع مكتوب غلط. الجواب مقدار الغلط، مو المجموع الصحيح.",
+      "playerSolve": "اجمع الأسعار بنفسك وقارن بالمكتوب.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "three-items",
+          "name": "ثلاثة أصناف",
+          "brief": "Three prices."
+        },
+        {
+          "key": "four-items",
+          "name": "أربعة أصناف",
+          "brief": "Four prices."
+        },
+        {
+          "key": "five-items",
+          "name": "خمسة أصناف",
+          "brief": "Five prices."
+        },
+        {
+          "key": "over",
+          "name": "المكتوب أكبر",
+          "brief": "The slip overstates the total."
+        },
+        {
+          "key": "under",
+          "name": "المكتوب أصغر",
+          "brief": "The slip understates it."
+        },
+        {
+          "key": "big-prices",
+          "name": "أسعار كبيرة",
+          "brief": "Larger prices, larger error."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "balance-missing",
+      "name": "كم ناقص عشان يتعادل؟",
+      "description": "ميزان بكفتين مايل، والأوزان مكتوبة على الصناديق. الجواب كم كيلو ناقص على الكفة الخفيفة.",
+      "playerSolve": "اجمع كل كفة واطرح الأصغر من الأكبر.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "one-each",
+          "name": "صندوق لكل كفة",
+          "brief": "One box each side."
+        },
+        {
+          "key": "two-left",
+          "name": "صندوقين يسار",
+          "brief": "Two boxes on the left."
+        },
+        {
+          "key": "two-right",
+          "name": "صندوقين يمين",
+          "brief": "Two boxes on the right."
+        },
+        {
+          "key": "three-blocks",
+          "name": "صناديق أكثر",
+          "brief": "Two boxes each side."
+        },
+        {
+          "key": "small-gap",
+          "name": "فرق بسيط",
+          "brief": "A small difference."
+        },
+        {
+          "key": "big-gap",
+          "name": "فرق كبير",
+          "brief": "A large difference."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "pattern-break",
+      "name": "وين انكسر النمط؟",
+      "description": "صف أرقام ماشي على نمط ثابت، ورقم واحد كسره. اللاعب يعلّم على المسطرة وين هو.",
+      "playerSolve": "استنتج الخطوة من أول الأرقام وامشِ لين تلقى اللي خالفها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "step-two",
+          "name": "يزيد اثنين",
+          "brief": "Step of two."
+        },
+        {
+          "key": "step-three",
+          "name": "يزيد ثلاثة",
+          "brief": "Step of three."
+        },
+        {
+          "key": "step-four",
+          "name": "يزيد أربعة",
+          "brief": "Step of four."
+        },
+        {
+          "key": "step-five",
+          "name": "يزيد خمسة",
+          "brief": "Step of five."
+        },
+        {
+          "key": "step-six",
+          "name": "يزيد ستة",
+          "brief": "Step of six."
+        },
+        {
+          "key": "countdown",
+          "name": "تنازلي",
+          "brief": "The run counts down."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "shadow-break",
+      "name": "وين الظل الغلط؟",
+      "description": "صف أشياء وظلالها، والشمس مرسومة على طرف. ظل واحد يميل عكس البقية. اللاعب يعلّم وين هو.",
+      "playerSolve": "الشمس ترمي كل ظل بعيد عنها، فدوّر على اللي يميل ناحيتها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "sun-left",
+          "name": "الشمس يسار",
+          "brief": "The sun sits on the left."
+        },
+        {
+          "key": "sun-right",
+          "name": "الشمس يمين",
+          "brief": "The sun sits on the right."
+        },
+        {
+          "key": "short-row",
+          "name": "صف قصير",
+          "brief": "Fewer objects."
+        },
+        {
+          "key": "long-row",
+          "name": "صف طويل",
+          "brief": "More objects."
+        },
+        {
+          "key": "near-start",
+          "name": "الغلط في أول الصف",
+          "brief": "The wrong shadow falls early."
+        },
+        {
+          "key": "near-end",
+          "name": "الغلط في آخر الصف",
+          "brief": "The wrong shadow falls late."
+        }
+      ],
+      "capacity": 120
     }
   ]
 }

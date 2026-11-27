@@ -23,6 +23,12 @@ import {
   isObservationClosestFamily,
 } from './composed-closest-observation';
 import {
+  ERROR_CLOSEST_VARIANTS,
+  ErrorClosestFamily,
+  composeErrorClosest,
+  isErrorClosestFamily,
+} from './composed-closest-errors';
+import {
   ClosestSlider,
   PATH_CLOSEST_VARIANTS,
   PathClosestFamily,
@@ -40,6 +46,7 @@ export const CLOSEST_VARIANTS = {
   ...PATH_CLOSEST_VARIANTS,
   ...ASSEMBLY_CLOSEST_VARIANTS,
   ...OBSERVATION_CLOSEST_VARIANTS,
+  ...ERROR_CLOSEST_VARIANTS,
   'key-door-route': ['key-door', 'star-first'],
   'cube-pile-count': ['square', 'long', 'tall'],
   'length-illusion-ratio': ['arrows', 'rails', 'circles'],
@@ -652,6 +659,8 @@ export function composeClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  if (isErrorClosestFamily(familyKey))
+    return composeErrorClosest(familyKey as ErrorClosestFamily, seed, chosen);
   if (isObservationClosestFamily(familyKey))
     return composeObservationClosest(
       familyKey as ObservationClosestFamily,
