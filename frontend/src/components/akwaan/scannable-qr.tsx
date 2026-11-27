@@ -32,6 +32,7 @@ export function ScannableQr({
   enlargedTitle = "كبّر رمز QR للانضمام",
   hint = "اضغط على الكود عشان تكبّره",
   level = "M",
+  fluid = false,
   className,
 }: {
   /** The join URL. Rendered as-is, inline and enlarged, never transformed. */
@@ -40,6 +41,8 @@ export function ScannableQr({
   size?: number;
   enlargedTitle?: string;
   hint?: string;
+  /** Fill the box instead of taking `size`, for a screen that is short. */
+  fluid?: boolean;
   level?: "L" | "M" | "Q" | "H";
   className?: string;
 }) {
@@ -55,10 +58,15 @@ export function ScannableQr({
         title={hint}
         className={cn(
           "group relative inline-flex cursor-pointer rounded-xl border border-border bg-white p-1.5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          fluid && "size-full items-center justify-center",
           className,
         )}
       >
-        <QRCodeSVG value={value} size={size} level={level} />
+        <QRCodeSVG
+          value={value}
+          level={level}
+          {...(fluid ? { style: { width: "100%", height: "auto" } } : { size })}
+        />
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -271,7 +271,7 @@ describe("waiting and completion own the screen", () => {
     ).toHaveTextContent("+1 نقطة");
     // …and settles into the wait on the same screen.
     expect(screen.getByTestId("participant-waiting")).toHaveTextContent(
-      "بانتظار التحدي القادم…",
+      "بانتظار التحدي الجاي…",
     );
   });
 
