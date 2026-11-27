@@ -566,10 +566,9 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         }
       });
 
-      it('wordplay-letters: إكس أو المتحرك draws three written families and one drawn, the slider two', () => {
+      it('wordplay-letters: إكس أو المتحرك draws one written family and two drawn, the slider two', () => {
         const expected = [
           'anagram-rearrange',
-          'dotless-disambiguation',
           'picture-initials',
           'wordle-single-guess',
         ];
