@@ -12,6 +12,11 @@ import {
   shuffled,
 } from './composed-kit';
 import {
+  PATH_BOMB_PROMPTS,
+  PATH_BOMB_VARIANTS,
+  composePathBomb,
+} from './composed-bomb-paths';
+import {
   NUMBER_BOMB_VARIANTS,
   composeNumberBomb,
 } from './composed-bomb-numbers';
@@ -44,7 +49,7 @@ export const BOMB_VARIANTS = {
   'bomb-first-letters': ['in-order', 'scrambled'],
   'bomb-what-is-it': ['shadow', 'close-up', 'half-hidden', 'upside-down'],
   'bomb-put-together': ['shattered-turned', 'mirrored-word'],
-  'bomb-thread-end': ['three-threads', 'four-threads'],
+  'bomb-thread-end': PATH_BOMB_VARIANTS,
   'bomb-odd-one-out': ['five-things', 'six-things'],
 } as const;
 
@@ -341,7 +346,25 @@ function putTogether(seed: string, variantKey: string): ComposedBombItem {
 
 function threadEnd(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-thread-end:${variantKey}:${seed}`);
-  const threads = variantKey === 'four-threads' ? 4 : 3;
+  if (variantKey !== 'threads') {
+    // Never a drawing whose name the question itself says («كورة» in «الكورة تنزل»).
+    const answer = dealtThing(
+      seed,
+      (thing) =>
+        !answersFor(thing).some((name) =>
+          PATH_BOMB_PROMPTS[variantKey].includes(name),
+        ),
+      random,
+    );
+    const way = composePathBomb(variantKey, answer, namedThings(), random);
+    return {
+      familyKey: 'bomb-thread-end',
+      variantKey,
+      ...way,
+      acceptedAnswers: answersFor(answer),
+    };
+  }
+  const threads = random() < 0.5 ? 4 : 3;
   const layout = pick(
     THREAD_LAYOUTS.filter((entry) => entry.threads === threads),
     random,
