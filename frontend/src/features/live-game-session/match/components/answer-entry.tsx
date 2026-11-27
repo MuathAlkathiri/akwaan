@@ -1,11 +1,16 @@
 "use client";
 
 import type { Ref } from "react";
-import { Loader2, Mic } from "lucide-react";
+import { Loader2, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type AnswerMicState =
-  "idle" | "listening" | "processing" | "unsupported";
+  | "idle"
+  | "listening"
+  | "processing"
+  | "unsupported"
+  /** Listening on this surface is continuous, and the player silenced it. */
+  | "muted";
 
 /**
  * The one way a phone takes a typed or spoken answer.
@@ -62,7 +67,13 @@ export function AnswerEntry({
           onClick={onMic}
           disabled={micDisabled || mic === "processing"}
           aria-pressed={listening}
-          aria-label={listening ? "أسمعك، وقّف التسجيل" : "تكلّم بدل الكتابة"}
+          aria-label={
+            mic === "muted"
+              ? "المايك مكتوم، اضغط ترجّعه"
+              : listening
+                ? "أسمعك، وقّف التسجيل"
+                : "تكلّم بدل الكتابة"
+          }
           data-testid={micTestId}
           className={cn(
             "grid size-[60px] shrink-0 place-items-center rounded-full border-[3px] border-[hsl(var(--brand-navy))] text-[hsl(var(--brand-navy))] transition-colors disabled:opacity-60",
@@ -73,6 +84,8 @@ export function AnswerEntry({
         >
           {mic === "processing" ? (
             <Loader2 className="size-6 animate-spin" aria-hidden />
+          ) : mic === "muted" ? (
+            <MicOff className="size-[26px]" strokeWidth={2.4} aria-hidden />
           ) : (
             <Mic className="size-[26px]" strokeWidth={2.4} aria-hidden />
           )}

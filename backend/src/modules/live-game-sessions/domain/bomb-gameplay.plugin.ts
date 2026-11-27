@@ -7,6 +7,47 @@ import {
   GameplayCommandResult,
 } from './gameplay-mode.plugin';
 import { LiveSessionDomainError } from './live-session.errors';
+
+/**
+ * How many of the speech engine's other guesses a submission may carry.
+ *
+ * Browser recognition returns a ranked list, and in a room with eight people
+ * talking the word the player actually said is often second rather than first.
+ * Taking the list is the cheapest accuracy available — the engine's own ranked
+ * guesses, not a looser match on our side. Capped at two because this is a
+ * transcription aid, not a way to submit a handful of guesses in one tap.
+ */
+export const BOMB_MAX_VOICE_ALTERNATIVES = 2;
+
+/**
+ * The authored answer bound, restated rather than imported.
+ *
+ * Same reasoning as `bomb-content.policy`: a live session must not depend on
+ * the authoring module to know what a plausible answer looks like.
+ */
+const BOMB_MAX_SPOKEN_LENGTH = 120;
+
+function parseVoiceAlternatives(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  let parsed: unknown;
+  try {
+    parsed = typeof value === 'string' ? JSON.parse(value) : undefined;
+  } catch {
+    parsed = undefined;
+  }
+  if (!Array.isArray(parsed) || parsed.some((e) => typeof e !== 'string')) {
+    throw new LiveSessionDomainError(
+      'INVALID_BOMB_ANSWER',
+      'Voice alternatives must be a JSON array of strings',
+    );
+  }
+  return (parsed as string[])
+    .map((entry) => entry.trim())
+    .filter(
+      (entry) => entry.length > 0 && entry.length <= BOMB_MAX_SPOKEN_LENGTH,
+    )
+    .slice(0, BOMB_MAX_VOICE_ALTERNATIVES);
+}
 import {
   BOMB_CHOOSE_HOLDER_COMMAND,
   BOMB_START_COMMAND,
@@ -397,8 +438,11 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         authorization: 'active-participant',
         allowedRoundStatuses: ['active'],
         validatePayload(payload) {
+          const keys = Object.keys(payload);
           if (
-            Object.keys(payload).length !== 1 ||
+            keys.some(
+              (key) => key !== 'answer' && key !== 'alternativesJson',
+            ) ||
             typeof payload.answer !== 'string' ||
             !payload.answer.trim()
           ) {
@@ -407,7 +451,13 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
               'Bomb submission requires a non-empty text answer',
             );
           }
-          return { answer: payload.answer.trim() };
+          const alternatives = parseVoiceAlternatives(payload.alternativesJson);
+          return {
+            answer: payload.answer.trim(),
+            ...(alternatives.length
+              ? { alternativesJson: JSON.stringify(alternatives) }
+              : {}),
+          };
         },
       };
     }
@@ -551,10 +601,19 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
         ],
       };
     }
-    const accepted = JSON.parse(String(round.answersJson)) as string[];
-    const correct = accepted
-      .map(normalizeAnswer)
-      .includes(normalizeAnswer(String(command.payload.answer)));
+    const accepted = (JSON.parse(String(round.answersJson)) as string[]).map(
+      normalizeAnswer,
+    );
+    // What the player said, the engine's best guess first. A typed answer is a
+    // list of one, so both paths run the same comparison.
+    const heard = [
+      String(command.payload.answer),
+      ...parseVoiceAlternatives(command.payload.alternativesJson),
+    ];
+    const matched = heard.find((candidate) =>
+      accepted.includes(normalizeAnswer(candidate)),
+    );
+    const correct = matched !== undefined;
     // The bomb's first arrival at a team goes to that team's initial holder;
     // every later handoff follows Bomb's existing ownership rule.
     const arrival = correct
@@ -576,7 +635,7 @@ export const BOMB_GAMEPLAY_PLUGIN: GameplayModePlugin = {
               round,
               _context.activeTeamId,
               'correct',
-              String(command.payload.answer),
+              matched ?? String(command.payload.answer),
             ).outcomeHistoryJson,
           }
         : command.runtimeState,

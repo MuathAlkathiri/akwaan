@@ -51,6 +51,17 @@ class FakeRecognition {
       results: { length: 1, 0: { isFinal, length: 1, 0: { transcript } } },
     });
   }
+  /** One final result carrying the engine's ranked readings of it. */
+  emitRanked(transcripts: string[]) {
+    const result: Record<string | number, unknown> = {
+      isFinal: true,
+      length: transcripts.length,
+    };
+    transcripts.forEach((transcript, rank) => {
+      result[rank] = { transcript };
+    });
+    this.onresult?.({ resultIndex: 0, results: { length: 1, 0: result } });
+  }
   fail(error: string) {
     this.onerror?.({ error });
   }
@@ -148,7 +159,7 @@ describe("a listening session", () => {
     expect(result.current.state).toBe("processing");
     act(() => void vi.advanceTimersByTime(200));
     expect(onFinalTranscript).toHaveBeenCalledTimes(1);
-    expect(onFinalTranscript).toHaveBeenCalledWith("طوكيو");
+    expect(onFinalTranscript).toHaveBeenCalledWith("طوكيو", []);
     expect(result.current.state).toBe("recognized");
   });
 
@@ -345,5 +356,76 @@ describe("no audio ever reaches Akwaan", () => {
     ]) {
       expect(source).not.toContain(forbidden);
     }
+  });
+});
+
+/**
+ * Listening for a whole turn, which is what القنبلة needs.
+ *
+ * One tap per sentence is affordable in المرحلة and ruinous against a 30-second
+ * clock. The room cannot abuse this: only the phone holding the bomb is ever
+ * `enabled`, so the mic that is open is the one that is supposed to be.
+ */
+describe("listening for a whole turn", () => {
+  const RESTART = 250;
+  const AFTER_RESULT = 150 + 1_200;
+
+  it("starts with no tap at all", () => {
+    setup({ autoListen: true });
+
+    act(() => void vi.advanceTimersByTime(RESTART));
+
+    expect(FakeRecognition.instances).toHaveLength(1);
+  });
+
+  it("listens again after an answer, and after a silence", () => {
+    setup({ autoListen: true });
+    act(() => void vi.advanceTimersByTime(RESTART));
+
+    act(() => FakeRecognition.latest().emit("ميسي", true));
+    // The result settles first, and only then does the mic come back: the
+    // restart is scheduled by the state that settling produces.
+    act(() => void vi.advanceTimersByTime(AFTER_RESULT));
+    act(() => void vi.advanceTimersByTime(RESTART));
+    expect(FakeRecognition.instances).toHaveLength(2);
+
+    act(() => FakeRecognition.latest().fail("no-speech"));
+    act(() => void vi.advanceTimersByTime(RESTART));
+    expect(FakeRecognition.instances).toHaveLength(3);
+  });
+
+  it("goes quiet when the player mutes, and comes back when they unmute", () => {
+    const { result } = setup({ autoListen: true });
+    act(() => void vi.advanceTimersByTime(RESTART));
+
+    act(() => result.current.toggleMute());
+    act(() => void vi.advanceTimersByTime(RESTART * 8));
+    expect(result.current.muted).toBe(true);
+    expect(FakeRecognition.instances).toHaveLength(1);
+
+    act(() => result.current.toggleMute());
+    act(() => void vi.advanceTimersByTime(RESTART));
+    expect(FakeRecognition.instances).toHaveLength(2);
+  });
+
+  it("does not hammer a denied microphone", () => {
+    setup({ autoListen: true });
+    act(() => void vi.advanceTimersByTime(RESTART));
+
+    act(() => FakeRecognition.latest().fail("not-allowed"));
+    act(() => void vi.advanceTimersByTime(RESTART * 20));
+
+    expect(FakeRecognition.instances).toHaveLength(1);
+  });
+
+  it("hands the caller what the engine ranked below its best guess", () => {
+    const { onFinalTranscript } = setup({ autoListen: true });
+    act(() => void vi.advanceTimersByTime(RESTART));
+
+    act(() => FakeRecognition.latest().emitRanked(["ميسو", "ميسي", "ميسي"]));
+    act(() => void vi.advanceTimersByTime(200));
+
+    // Deduplicated: the same word twice is one guess, not two.
+    expect(onFinalTranscript).toHaveBeenCalledWith("ميسو", ["ميسي"]);
   });
 });
