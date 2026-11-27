@@ -149,9 +149,11 @@ describe('one batch never names the same drawing twice', () => {
     'bomb-odd-one-out',
   ] as const)('%s', (family) => {
     for (const job of ['j1', 'j2', 'j3', 'j4']) {
-      const keys = Array.from({ length: 8 }, (_, ordinal) =>
+      // A sum has no drawing to repeat; every named item has its own.
+      const items = Array.from({ length: 8 }, (_, ordinal) =>
         composeBomb(family, `${job}:${ordinal}`),
-      ).map((item) => item.answerKey);
+      ).filter((item) => item.variantKey !== 'wrong-sum');
+      const keys = items.map((item) => item.answerKey);
       expect(keys.every(Boolean)).toBe(true);
       expect(new Set(keys).size).toBe(keys.length);
     }

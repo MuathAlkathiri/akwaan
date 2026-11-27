@@ -1,6 +1,4 @@
-import { existsSync, readFileSync } from 'fs';
 import { normalizeAnswer } from '../../../common/utils/answer-normalization.util';
-import { join } from 'path';
 import {
   INK,
   W,
@@ -12,6 +10,15 @@ import {
   shuffled,
 } from './composed-kit';
 import {
+  MoreBomb,
+  dotlessSentence,
+  dotlessSentences,
+  mislabeled,
+  sameLetter,
+  wrongShadow,
+  wrongSum,
+} from './composed-bomb-more';
+import {
   PATH_BOMB_PROMPTS,
   PATH_BOMB_VARIANTS,
   composePathBomb,
@@ -20,6 +27,11 @@ import {
   NUMBER_BOMB_VARIANTS,
   composeNumberBomb,
 } from './composed-bomb-numbers';
+import {
+  DIFFERENCE_VARIANTS,
+  DifferenceRequest,
+  composeDifference,
+} from './composed-difference';
 import { LETTER_WORDS, lendersFor, lettersSvg } from './composed-letters';
 import {
   shatteredOrder,
@@ -33,7 +45,7 @@ import {
 import {
   DrawnThing,
   drawnThings,
-  findDrawnThingsDirectory,
+  bombNames,
   thingSvg,
   toThe,
 } from './drawn-things';
@@ -46,11 +58,23 @@ import {
  */
 export const BOMB_VARIANTS = {
   'bomb-number-puzzles': NUMBER_BOMB_VARIANTS,
-  'bomb-first-letters': ['in-order', 'scrambled'],
+  'bomb-first-letters': [
+    'in-order',
+    'scrambled',
+    'same-first',
+    'same-last',
+    'dotless-sentence',
+  ],
   'bomb-what-is-it': ['shadow', 'close-up', 'half-hidden', 'upside-down'],
   'bomb-put-together': ['shattered-turned', 'mirrored-word'],
   'bomb-thread-end': PATH_BOMB_VARIANTS,
-  'bomb-odd-one-out': ['five-things', 'six-things'],
+  'bomb-odd-one-out': [
+    'odd-one-out',
+    'mislabeled',
+    'wrong-shadow',
+    'wrong-sum',
+  ],
+  'bomb-spot-difference': DIFFERENCE_VARIANTS,
 } as const;
 
 export type BombFamily = keyof typeof BOMB_VARIANTS;
@@ -76,32 +100,16 @@ export interface ComposedBombItem {
   concept: string;
   factualClaim: string;
   svg: string;
-}
-
-let names: ReadonlyMap<string, string[]> | undefined;
-
-/** Every name a player may type for each drawing asked by name. */
-export function bombNames(): ReadonlyMap<string, string[]> {
-  if (names) return names;
-  const map = new Map<string, string[]>();
-  try {
-    const directory = findDrawnThingsDirectory();
-    const file = directory ? join(directory, 'bomb-names.txt') : '';
-    if (file && existsSync(file)) {
-      for (const line of readFileSync(file, 'utf8').split('\n')) {
-        if (!line.trim() || line.startsWith('#')) continue;
-        const [key, ...forms] = line.split('|').map((part) => part.trim());
-        if (key && forms.length) map.set(key, forms.filter(Boolean));
-      }
-    }
-  } catch {
-    // No list, no named drawings: the families that need one draw nothing.
-  }
-  names = map;
-  return names;
+  /**
+   * Set when the picture is drawn by an image model, not the composer
+   * (وش الفرق؟): `svg` is then empty and nothing rasterises it.
+   */
+  difference?: DifferenceRequest;
 }
 
 /** The drawings a Bomb item may ask the name of. */
+export { bombNames };
+
 export const namedThings = (): DrawnThing[] =>
   drawnThings().filter((thing) => bombNames().has(thing.key));
 
@@ -199,6 +207,34 @@ function unsureFirstLetter(): Set<string> {
 
 function firstLetters(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-first-letters:${variantKey}:${seed}`);
+  if (variantKey === 'dotless-sentence') {
+    const all = dotlessSentences();
+    const match = /^(.*):(\d+)$/.exec(seed);
+    const deck = shuffled(
+      all,
+      seededRandom(`dotless-deck:${match?.[1] ?? seed}`),
+    );
+    const sentence = match
+      ? deck[Number(match[2]) % deck.length]
+      : pick(all, random);
+    return fromMore(
+      'bomb-first-letters',
+      variantKey,
+      dotlessSentence(sentence),
+    );
+  }
+  if (variantKey === 'same-first' || variantKey === 'same-last') {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const answer = dealtThing(`${seed}#${attempt}`, () => true, random);
+      const more = sameLetter(
+        answer,
+        namedThings(),
+        variantKey === 'same-last',
+        random,
+      );
+      if (more) return fromMore('bomb-first-letters', variantKey, more);
+    }
+  }
   for (const word of shuffled(
     LETTER_WORDS.filter((w) => w.length === 3),
     random,
@@ -409,30 +445,65 @@ function threadEnd(seed: string, variantKey: string): ComposedBombItem {
   };
 }
 
+function fromMore(
+  familyKey: BombFamily,
+  variantKey: string,
+  more: MoreBomb,
+): ComposedBombItem {
+  return {
+    familyKey,
+    variantKey,
+    variant: more.variant,
+    prompt: more.prompt,
+    acceptedAnswers:
+      more.answerNumber !== undefined
+        ? numberAnswers(more.answerNumber)
+        : more.answers!.slice(0, 10),
+    ...(more.answerKey ? { answerKey: more.answerKey } : {}),
+    altText: more.altText,
+    concept: more.concept,
+    factualClaim: more.factualClaim,
+    svg: more.svg,
+  };
+}
+
 function oddOneOut(seed: string, variantKey: string): ComposedBombItem {
   const random = seededRandom(`bomb-odd-one-out:${variantKey}:${seed}`);
-  const count = variantKey === 'six-things' ? 6 : 5;
+  if (variantKey === 'wrong-sum') {
+    return fromMore('bomb-odd-one-out', variantKey, wrongSum(random));
+  }
+  if (variantKey === 'mislabeled' || variantKey === 'wrong-shadow') {
+    const clear = (thing: DrawnThing) =>
+      variantKey === 'mislabeled' || thing.twins.length <= 1;
+    const answer = dealtThing(seed, clear, random);
+    return fromMore(
+      'bomb-odd-one-out',
+      variantKey,
+      variantKey === 'mislabeled'
+        ? mislabeled(answer, namedThings(), random)
+        : wrongShadow(answer, namedThings(), random),
+    );
+  }
+  const count = random() < 0.5 ? 6 : 5;
   const pool = drawnThings().filter((thing) => thing.category !== 'place');
   for (;;) {
-    // The crowd is of a kind nobody argues about; the intruder of another.
-    const crowdKind = pick(['animal', 'food', 'vehicle'], random);
-    const kinds = [
-      crowdKind,
-      pick(
-        ['animal', 'food', 'vehicle', 'object'].filter(
-          (kind) => kind !== crowdKind,
-        ),
-        random,
-      ),
-    ];
-    const crowd = pool.filter((thing) => thing.category === kinds[0]);
-    const odd = namedThings().filter((thing) => thing.category === kinds[1]);
-    if (crowd.length < count - 1 || !odd.length) continue;
+    // The intruder is dealt first, so no two items of a batch name it; the
+    // crowd is then of another kind, one nobody argues about.
     const intruder = dealtThing(
       seed,
-      (thing) => thing.category === kinds[1],
+      (thing) =>
+        ['animal', 'food', 'vehicle', 'object'].includes(thing.category),
       random,
     );
+    const crowdKind = pick(
+      ['animal', 'food', 'vehicle'].filter(
+        (kind) => kind !== intruder.category,
+      ),
+      random,
+    );
+    const kinds = [crowdKind, intruder.category];
+    const crowd = pool.filter((thing) => thing.category === crowdKind);
+    if (crowd.length < count - 1) continue;
     const row = shuffled(
       [...shuffled(crowd, random).slice(0, count - 1), intruder],
       random,
@@ -496,11 +567,13 @@ export function composeBomb(
   );
   return {
     ...item,
-    ...(named &&
-    familyKey !== 'bomb-first-letters' &&
-    familyKey !== 'bomb-number-puzzles'
-      ? { answerKey: named.key }
-      : {}),
+    ...(item.answerKey
+      ? {}
+      : named &&
+          familyKey !== 'bomb-first-letters' &&
+          familyKey !== 'bomb-number-puzzles'
+        ? { answerKey: named.key }
+        : {}),
     acceptedAnswers: distinctAnswers(item.acceptedAnswers),
   };
 }
@@ -533,6 +606,22 @@ function drawBomb(
       return putTogether(seed, chosen);
     case 'bomb-thread-end':
       return threadEnd(seed, chosen);
+    case 'bomb-spot-difference': {
+      const item = composeDifference(seed, chosen);
+      return {
+        familyKey,
+        answerKey: item.answerKey,
+        variantKey: item.variantKey,
+        variant: item.variant,
+        prompt: item.prompt,
+        acceptedAnswers: item.acceptedAnswers,
+        altText: item.altText,
+        concept: item.concept,
+        factualClaim: item.factualClaim,
+        svg: '',
+        difference: item.request,
+      };
+    }
     default:
       return oddOneOut(seed, chosen);
   }

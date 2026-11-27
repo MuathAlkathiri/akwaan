@@ -463,7 +463,11 @@
 | 21 | `word-completion` | كمّل الكلمة | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 22 | `antonym` | وش عكسها؟ | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | Text only | Multiple Choice (4 options) |
 | 23 | `picture-initials` | أول حرف | **EXCELLENT** | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | Image (drawn) | Match (typed word) |
-| 24 | `bomb-first-letters` | أول حرف (القنبلة) | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 24 | `bomb-first-letters` | ألعاب الحروف | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | DO_NOT_FORCE | Composed picture | Match (typed) |
+| 25 | `odd-word-place` | وين الكلمة الغريبة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (between two anchors) |
+| 26 | `survivor-words` | كم كلمة نجت؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (0—45) |
+| 27 | `word-paths` | كم طريق للكلمة؟ | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (0—40) |
+| 28 | `column-words` | الأعمدة المتحركة | DO_NOT_FORCE | DO_NOT_FORCE | DO_NOT_FORCE | **EXCELLENT** | Composed picture | Closest slider (0—24) |
 
 ---
 
@@ -1308,9 +1312,9 @@ The block below is the structured form of the 15 canonical families approved for
     },
     {
       "familyKey": "bomb-first-letters",
-      "name": "أول حرف (القنبلة)",
-      "description": "ثلاث رسمات، وأول حرف من اسم كل وحدة يكوّن كلمة. المحرك يختار الكلمة والرسمات من الأشياء اللي اسمها ما يختلف عليه أحد.",
-      "playerSolve": "تسمية الرسمات وأخذ أول حرف.",
+      "name": "ألعاب الحروف",
+      "description": "أشكال جوابها مكتوب: أول حرف من ثلاث رسمات، الرسمة اللي ما تبدأ أو ما تنتهي بنفس حرف الباقي، وجملة يومية بدون نقاط والمطلوب الكلمة اللي تحتها خط (من قائمة جمل يراجعها المالك).",
+      "playerSolve": "تسمية الرسمات واللعب بحروفها، أو قراءة الكلمة بدون نقاط من سياق الجملة.",
       "modality": "composed-visual",
       "scalability": "HIGH",
       "mechanicFit": {
@@ -1325,13 +1329,228 @@ The block below is the structured form of the 15 canonical families approved for
       "variants": [
         {
           "key": "in-order",
-          "name": "بالترتيب",
-          "brief": "Read right to left."
+          "name": "أول حرف بالترتيب",
+          "brief": "First letters of three drawings, read from the right."
         },
         {
           "key": "scrambled",
-          "name": "ملخبطة",
-          "brief": "The letters must be arranged."
+          "name": "أول حرف ملخبط",
+          "brief": "First letters of three drawings, to be arranged."
+        },
+        {
+          "key": "same-first",
+          "name": "نفس أول حرف",
+          "brief": "Three names begin with one letter; name the fourth."
+        },
+        {
+          "key": "same-last",
+          "name": "نفس آخر حرف",
+          "brief": "Three names end with one letter; name the fourth."
+        },
+        {
+          "key": "dotless-sentence",
+          "name": "جملة بدون نقاط",
+          "brief": "A reviewed everyday sentence without its dots; the marked word."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "odd-word-place",
+      "name": "وين الكلمة الغريبة؟",
+      "description": "صف 10 كلمات كلها تتبع قاعدة وحدة إلا كلمة. اللاعب يعلّم على المسطرة وين هي، والقاعدة مكتوبة تحت السؤال.",
+      "playerSolve": "استنتج القاعدة من أول الكلمات وامشِ لين تلقى اللي خالفتها.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "same-last",
+          "name": "نفس آخر حرف",
+          "brief": "All but one end with the same letter."
+        },
+        {
+          "key": "same-first",
+          "name": "نفس أول حرف",
+          "brief": "All but one start with the same letter."
+        },
+        {
+          "key": "same-length",
+          "name": "نفس عدد الحروف",
+          "brief": "All but one are the same length."
+        },
+        {
+          "key": "has-letter",
+          "name": "فيها نفس الحرف",
+          "brief": "All but one hold the same letter."
+        },
+        {
+          "key": "dotless",
+          "name": "بدون نقط",
+          "brief": "All but one have no dots."
+        },
+        {
+          "key": "dotted",
+          "name": "فيها نقط",
+          "brief": "All but one carry dots."
+        }
+      ],
+      "capacity": 120
+    },
+    {
+      "familyKey": "survivor-words",
+      "name": "كم كلمة نجت؟",
+      "description": "حيطة فيها 45 بطاقة كلمة، وفوقها شرط. اللاعب يخمّن كم بطاقة تنجو من الشرط بدون ما يعدّها كلها.",
+      "playerSolve": "اقرأ شوية بطاقات، قدّر كم نسبتها اللي تحقق الشرط، واضرب في 45.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "has-not",
+          "name": "حرف موجود وحرف ممنوع",
+          "brief": "Cards holding one letter and free of another."
+        },
+        {
+          "key": "has-either",
+          "name": "أحد حرفين",
+          "brief": "Cards holding either of two letters."
+        },
+        {
+          "key": "length-has",
+          "name": "طول وحرف",
+          "brief": "Cards of one length that hold a letter."
+        },
+        {
+          "key": "length-not",
+          "name": "طول بدون حرف",
+          "brief": "Cards of one length free of a letter."
+        },
+        {
+          "key": "starts-group",
+          "name": "تبدأ بأحد حروف",
+          "brief": "Cards starting with one of three letters."
+        },
+        {
+          "key": "ends-group",
+          "name": "تنتهي بأحد حروف",
+          "brief": "Cards ending with one of three letters."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "word-paths",
+      "name": "كم طريق للكلمة؟",
+      "description": "شبكة حروف، واللاعب يخمّن كم طريق يقدر يكوّن فيه الكلمة بالتنقل بين خانتين متلاصقتين بدون ما يعيد خانة.",
+      "playerSolve": "عدّ الخانات اللي تبدأ منها الكلمة، قدّر كم طريق يطلع من كل وحدة، واضرب.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "grid-five",
+          "name": "شبكة 5×6",
+          "brief": "A 5×6 board, a few foreign letters mixed in."
+        },
+        {
+          "key": "grid-six",
+          "name": "شبكة 6×6",
+          "brief": "A 6×6 board of the word’s own letters."
+        },
+        {
+          "key": "grid-wide",
+          "name": "شبكة 6×7",
+          "brief": "A wider 6×7 board."
+        },
+        {
+          "key": "grid-big",
+          "name": "شبكة 7×7",
+          "brief": "The widest board, walks into the twenties."
+        },
+        {
+          "key": "grid-tall",
+          "name": "شبكة 7×6",
+          "brief": "A tall board with a few foreign letters."
+        },
+        {
+          "key": "with-fillers",
+          "name": "شبكة مخلوطة",
+          "brief": "A 6×6 board with foreign letters throughout."
+        }
+      ],
+      "capacity": 200
+    },
+    {
+      "familyKey": "column-words",
+      "name": "الأعمدة المتحركة",
+      "description": "أعمدة حروف وقائمة كلمات، واللاعب يخمّن كم كلمة من القائمة تتكوّن بأخذ حرف من كل عمود بالترتيب.",
+      "playerSolve": "امشِ على أول حرف من كل كلمة وقارنه بالعمود الأول، واترك اللي ما يطابق من أول.",
+      "modality": "composed-visual",
+      "scalability": "HIGH",
+      "mechanicFit": {
+        "moving-xo": "DO_NOT_FORCE",
+        "read-your-opponent": "DO_NOT_FORCE",
+        "bomb": "DO_NOT_FORCE",
+        "closest": "EXCELLENT"
+      },
+      "answerModes": [
+        "closest"
+      ],
+      "variants": [
+        {
+          "key": "three-columns",
+          "name": "ثلاثة أعمدة",
+          "brief": "Three columns of six letters, a list of 18."
+        },
+        {
+          "key": "wide-columns",
+          "name": "أعمدة واسعة",
+          "brief": "Three columns of seven letters."
+        },
+        {
+          "key": "four-columns",
+          "name": "أربعة أعمدة",
+          "brief": "Four columns for four-letter words."
+        },
+        {
+          "key": "short-columns",
+          "name": "أعمدة قصيرة",
+          "brief": "Three columns of five letters."
+        },
+        {
+          "key": "long-list",
+          "name": "قائمة طويلة",
+          "brief": "A list of 24 words."
+        },
+        {
+          "key": "tight-list",
+          "name": "قائمة قصيرة",
+          "brief": "A list of 12 words."
         }
       ],
       "capacity": 200

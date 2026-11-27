@@ -1,4 +1,9 @@
 import { PATH_BOMB_VARIANTS } from '../domain/composed-bomb-paths';
+import { PATH_CLOSEST_VARIANTS } from '../domain/composed-closest-paths';
+import { ASSEMBLY_CLOSEST_VARIANTS } from '../domain/composed-closest-assembly';
+import { OBSERVATION_CLOSEST_VARIANTS } from '../domain/composed-closest-observation';
+import { ERROR_CLOSEST_VARIANTS } from '../domain/composed-closest-errors';
+import { WORD_CLOSEST_VARIANTS } from '../domain/composed-closest-words';
 import { NUMBER_BOMB_VARIANTS } from '../domain/composed-bomb-numbers';
 import { createHash } from 'crypto';
 import { ComposedVisualService } from './composed-visual.service';
@@ -45,6 +50,170 @@ const blockingCodes = (candidate: {
     .map((finding) => finding.code);
 
 describe('ComposedVisualService', () => {
+  it.each([
+    ...['odd-one-out', 'mislabeled', 'wrong-shadow', 'wrong-sum'].map(
+      (variant) => ['bomb-odd-one-out', 'spot-the-error', variant],
+    ),
+    ...[
+      'in-order',
+      'scrambled',
+      'same-first',
+      'same-last',
+      'dotless-sentence',
+    ].map((variant) => ['bomb-first-letters', 'wordplay-letters', variant]),
+  ] as Array<[never, string, string]>)(
+    '%s / %s / %s passes the Bomb screen',
+    async (familyKey, scopeKey, variant) => {
+      const { service } = build();
+      for (const seed of ['q:1', 'q:2', 'q:3', 'q:4', 'q:5']) {
+        const candidate = await service.compose(
+          familyKey,
+          seed,
+          { mechanicKey: 'bomb', scopeKey },
+          variant,
+        );
+        const findings = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService).screen(
+          candidate.draft,
+          candidate.authoring,
+          { worldKey: 'puzzles', mechanicKey: 'bomb' } as never,
+        ).findings;
+        expect(
+          findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+        ).toEqual([]);
+      }
+    },
+  );
+
+  it('وش الفرق؟ stores the image model picture and passes the Bomb screen', async () => {
+    const png = jest.fn(async () => Buffer.from('never'));
+    const ingest = jest.fn(async () => resolved());
+    const draw = jest.fn(async () => ({
+      status: 'drawn' as const,
+      png: Buffer.from('pair'),
+      check: 'confirmed' as const,
+      area: 0.01,
+      strayArea: 0,
+      attempts: 1,
+    }));
+    const service = new ComposedVisualService(
+      { toPng: png } as never,
+      { ingestBytes: ingest } as never,
+      { draw } as never,
+    );
+    for (const variant of ['went-missing', 'showed-up']) {
+      const candidate = await service.compose(
+        'bomb-spot-difference' as never,
+        'job-7:3',
+        { mechanicKey: 'bomb', scopeKey: 'spot-the-error' },
+        variant,
+      );
+      expect(
+        new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService)
+          .screen(candidate.draft, candidate.authoring, {
+            worldKey: 'puzzles',
+            mechanicKey: 'bomb',
+          } as never)
+          .findings.filter((f) => f.severity === 'blocking')
+          .map((f) => f.code),
+      ).toEqual([]);
+      expect(candidate.draft.media).toBeDefined();
+      expect(candidate.mediaPlan).toBeDefined();
+      expect(
+        (candidate.authoring.composedVisual as Record<string, unknown>)
+          .differenceCheck,
+      ).toBe('confirmed');
+      expect(
+        (candidate.draft.metadata as { entityId: string }).entityId,
+      ).toMatch(/^composed:bomb:difference:/);
+    }
+    expect(png).not.toHaveBeenCalled();
+    expect(ingest).toHaveBeenCalledWith(
+      expect.objectContaining({ bytes: Buffer.from('pair') }),
+    );
+    expect(draw).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: 'job-7', itemKey: '3' }),
+    );
+  });
+
+  it('وش الفرق؟ without a picture says why and stores nothing', async () => {
+    const ingest = jest.fn(async () => resolved());
+    const service = new ComposedVisualService(
+      { toPng: jest.fn() } as never,
+      { ingestBytes: ingest } as never,
+      {
+        draw: jest.fn(async () => ({
+          status: 'failed' as const,
+          failureReason: 'DIFFERENCE_TOO_SMALL',
+        })),
+      } as never,
+    );
+    const candidate = await service.compose(
+      'bomb-spot-difference' as never,
+      'job:0',
+      { mechanicKey: 'bomb', scopeKey: 'spot-the-error' },
+    );
+    expect(candidate.draft.media).toBeUndefined();
+    expect(ingest).not.toHaveBeenCalled();
+    expect(
+      (candidate.authoring.composedVisual as Record<string, unknown>)
+        .failureReason,
+    ).toBe('DIFFERENCE_TOO_SMALL');
+  });
+
+  it.each(
+    Object.entries({
+      ...PATH_CLOSEST_VARIANTS,
+      ...ASSEMBLY_CLOSEST_VARIANTS,
+      ...OBSERVATION_CLOSEST_VARIANTS,
+      ...ERROR_CLOSEST_VARIANTS,
+      ...WORD_CLOSEST_VARIANTS,
+    }).flatMap(([familyKey, variants]) =>
+      (variants as readonly string[]).map((variant) => [familyKey, variant]),
+    ) as Array<[never, string]>,
+  )(
+    'مين أقرب %s / %s passes the Closest screen',
+    async (familyKey, variant) => {
+      const { service } = build();
+      for (const seed of ['c:0', 'c:1', 'c:2', 'c:3', 'c:4']) {
+        const candidate = await service.compose(
+          familyKey,
+          seed,
+          {
+            mechanicKey: 'closest',
+            scopeKey:
+              familyKey in PATH_CLOSEST_VARIANTS
+                ? 'paths-motion'
+                : 'assembly-rotation',
+          },
+          variant,
+        );
+        const findings = new DeterministicScreenService({
+          get: () => undefined,
+        } as unknown as ConfigService).screen(
+          candidate.draft,
+          candidate.authoring,
+          {
+            worldKey: 'puzzles',
+            mechanicKey: 'closest',
+          } as never,
+        ).findings;
+        expect(
+          findings.filter((f) => f.severity === 'blocking').map((f) => f.code),
+        ).toEqual([]);
+        const payload = candidate.draft.mechanicPayload as {
+          closestSlider: { mode: string };
+        };
+        expect(payload.closestSlider.mode).toMatch(
+          /^(numeric-range|between-anchors)$/,
+        );
+      }
+    },
+  );
+
   it.each(PATH_BOMB_VARIANTS.map((variant) => [variant]))(
     'وين توصل؟ / %s passes the Bomb screen',
     async (variant) => {

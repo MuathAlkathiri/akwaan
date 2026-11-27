@@ -47,6 +47,14 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 13 | `key-door-route` | الطريق الوحيد | Composed picture | `closest` |
 | 14 | `mirror-beam` | الشعاع وين يوصل؟ | Composed picture | `multiple_choice` |
 | 15 | `bomb-thread-end` | وين توصل؟ | Composed picture | `match` |
+| 16 | `ball-bounce-count` | كم مرة ترتد؟ | Composed picture | `closest` |
+| 17 | `travel-seconds` | كم ثانية يوصل؟ | Composed picture | `closest` |
+| 18 | `gear-turns` | كم لفة يلف؟ | Composed picture | `closest` |
+| 19 | `pipe-flow-litres` | كم لتر يوصل؟ | Composed picture | `closest` |
+| 20 | `thread-length` | كم طول الخيط؟ | Composed picture | `closest` |
+| 21 | `meeting-point` | وين يلتقون؟ | Composed picture | `closest` |
+| 22 | `robot-stop` | وين يوقف الروبوت؟ | Composed picture | `closest` |
+| 23 | `ball-drop-floor` | وين تطيح الكورة؟ | Composed picture | `closest` |
 
 ---
 

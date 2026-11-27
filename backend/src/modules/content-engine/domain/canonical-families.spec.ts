@@ -379,7 +379,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         key === 'ENGINE_AUTHORING_ROOT' ? ROOT : undefined,
     } as unknown as ConfigService);
 
-    it('resolves the real canonical wordplay-letters profile and parses all 24 families', () => {
+    it('resolves the real canonical wordplay-letters profile and parses all 28 families', () => {
       const resolved = service.resolve({
         mechanicKey: 'read-your-opponent',
         worldKey: 'puzzles',
@@ -390,7 +390,7 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(resolved.canonicalFamilies.version).toBe(1);
       expect(resolved.canonicalFamilies.scopeKey).toBe('wordplay-letters');
       expect(resolved.canonicalFamilies.worldKey).toBe('puzzles');
-      expect(resolved.canonicalFamilies.families).toHaveLength(24);
+      expect(resolved.canonicalFamilies.families).toHaveLength(28);
 
       const keys = resolved.canonicalFamilies.families.map((f) => f.familyKey);
       expect(keys).toEqual([
@@ -402,11 +402,13 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'arabic-cipher-dhad',
         'bomb-first-letters',
         'classic-riddle',
+        'column-words',
         'dot-shift',
         'dotless-disambiguation',
         'hidden-word',
         'letter-pattern-progression',
         'letter-subtraction-math',
+        'odd-word-place',
         'palindrome-symmetry',
         'picture-initials',
         'plural-form',
@@ -414,9 +416,11 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'remove-letter',
         'shared-letter-completion',
         'substitute-letter',
+        'survivor-words',
         'word-completion',
         'word-inside-word',
         'word-ladder-mini',
+        'word-paths',
         'wordle-single-guess',
       ]);
 
@@ -536,24 +540,55 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
           'assembly-rotation': {
             'read-your-opponent': ['last-pipe-piece'],
             bomb: ['bomb-put-together'],
-            closest: ['cube-pile-count'],
+            closest: [
+              'balance-point',
+              'cube-pile-count',
+              'cut-pieces',
+              'fold-line',
+              'rotation-degrees',
+              'tiles-to-cover',
+            ],
           },
           'paths-motion': {
             'read-your-opponent': ['mirror-beam'],
             bomb: ['bomb-thread-end'],
-            closest: ['key-door-route'],
+            closest: [
+              'ball-bounce-count',
+              'ball-drop-floor',
+              'gear-turns',
+              'key-door-route',
+              'meeting-point',
+              'pipe-flow-litres',
+              'robot-stop',
+              'thread-length',
+              'travel-seconds',
+            ],
           },
           'observation-illusions': {
             'read-your-opponent': ['count-changes'],
             bomb: ['bomb-what-is-it'],
-            closest: ['length-illusion-ratio'],
+            closest: [
+              'clutter-count',
+              'dots-estimate',
+              'grid-squares',
+              'length-illusion-ratio',
+              'lines-meet',
+              'odd-one-place',
+            ],
           },
         };
         others['spot-the-error'] = {
           'moving-xo': ['broken-grid-pattern', 'broken-rule-step'],
           'read-your-opponent': ['false-scale', 'lying-guard'],
           bomb: ['bomb-odd-one-out'],
-          closest: ['wrong-clock-minutes'],
+          closest: [
+            'balance-missing',
+            'mirrored-count',
+            'pattern-break',
+            'shadow-break',
+            'total-off-by',
+            'wrong-clock-minutes',
+          ],
         };
         for (const [scopeKey, byMechanic] of Object.entries(others)) {
           for (const [mechanicKey, families] of Object.entries(byMechanic)) {
@@ -597,6 +632,10 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         expect(drawable('wordplay-letters', 'closest')).toEqual([
           'alphabet-counts',
           'alphabet-position',
+          'column-words',
+          'odd-word-place',
+          'survivor-words',
+          'word-paths',
         ]);
       });
 
@@ -702,8 +741,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
       expect(report.valid).toBe(true);
       expect(report.driftCount).toBe(0);
       expect(report.tablesFound).toBe(2);
-      expect(report.authoritativeFamilyCount).toBe(24);
-      expect(report.catalogFamilyCount).toBe(24);
+      expect(report.authoritativeFamilyCount).toBe(28);
+      expect(report.catalogFamilyCount).toBe(28);
       expect(report.verifiedFields).toEqual([
         'familyKey',
         'membership',
@@ -720,8 +759,8 @@ describe('Canonical Families Parser & Resolver (Slice 1)', () => {
         'KNOWLEDGE.md',
       );
 
-      expect(scopeExtracted).toHaveLength(24);
-      expect(knowledgeExtracted).toHaveLength(24);
+      expect(scopeExtracted).toHaveLength(28);
+      expect(knowledgeExtracted).toHaveLength(28);
       expect(scopeExtracted[0].familyKey).toBe('plural-form');
       expect(knowledgeExtracted[0].mechanicFit).toEqual({
         'moving-xo': 'EXCELLENT',

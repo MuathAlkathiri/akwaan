@@ -49,7 +49,13 @@ Every family answers on a **text-only** phone within the **15-second** window, w
 | 15 | `false-scale` | الميزان الكذاب | Composed picture | `multiple_choice` |
 | 16 | `broken-rule-step` | أي خطوة كسرت القانون؟ | Composed picture | `multiple_choice` |
 | 17 | `broken-grid-pattern` | وين الخلل في النمط؟ | Composed picture | `multiple_choice` |
-| 18 | `bomb-odd-one-out` | وش الدخيل؟ | Composed picture | `match` |
+| 18 | `bomb-odd-one-out` | وين الغلط؟ | Composed picture | `match` |
+| 19 | `bomb-spot-difference` | وش الفرق؟ | Generated picture (image model) | `match` |
+| 20 | `mirrored-count` | كم شكل مقلوب؟ | Composed picture | `closest` |
+| 21 | `total-off-by` | الحساب غلطان بكم؟ | Composed picture | `closest` |
+| 22 | `balance-missing` | كم ناقص عشان يتعادل؟ | Composed picture | `closest` |
+| 23 | `pattern-break` | وين انكسر النمط؟ | Composed picture | `closest` |
+| 24 | `shadow-break` | وين الظل الغلط؟ | Composed picture | `closest` |
 
 ---
 

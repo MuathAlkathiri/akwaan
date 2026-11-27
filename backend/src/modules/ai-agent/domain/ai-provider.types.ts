@@ -16,6 +16,11 @@ export interface AiTextGenerationRequest {
   maxOutputTokens?: number;
   responseSchema?: Record<string, unknown>;
   timeoutMs?: number;
+  /**
+   * Ask for a picture back, from a model that draws. Its pictures arrive on
+   * `images`; the text may then be empty.
+   */
+  outputImage?: { aspectRatio?: string };
 }
 
 export interface AiTextGenerationResult {
@@ -23,6 +28,8 @@ export interface AiTextGenerationResult {
   provider: string;
   model: string;
   durationMs: number;
+  /** Pictures the model drew, as data URLs, when `outputImage` was asked. */
+  images?: string[];
   diagnostics?: Record<string, unknown>;
   usage?: {
     promptTokens?: number;

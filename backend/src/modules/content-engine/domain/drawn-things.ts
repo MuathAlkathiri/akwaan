@@ -118,3 +118,30 @@ export function thingSilhouetteSvg(
     size,
   );
 }
+
+let names: ReadonlyMap<string, string[]> | undefined;
+
+/**
+ * Every name a player may type for each drawing asked by name
+ * (`bomb-names.txt`, reviewed by the owner). A drawing with one name, or
+ * whose names all agree on a letter, can lend that letter safely.
+ */
+export function bombNames(): ReadonlyMap<string, string[]> {
+  if (names) return names;
+  const map = new Map<string, string[]>();
+  try {
+    const directory = findDrawnThingsDirectory();
+    const file = directory ? join(directory, 'bomb-names.txt') : '';
+    if (file && existsSync(file)) {
+      for (const line of readFileSync(file, 'utf8').split('\n')) {
+        if (!line.trim() || line.startsWith('#')) continue;
+        const [key, ...forms] = line.split('|').map((part) => part.trim());
+        if (key && forms.length) map.set(key, forms.filter(Boolean));
+      }
+    }
+  } catch {
+    // No list, no named drawings: the families that need one draw nothing.
+  }
+  names = map;
+  return names;
+}

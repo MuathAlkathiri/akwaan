@@ -18,6 +18,7 @@ import { COMPOSED_ENTITY_PREFIX } from '../domain/content-identity.policy';
 import { resolveMediaRequirements } from '../domain/media-requirements';
 import { EngineImageIngestionService } from '../infrastructure/engine-image-ingestion.service';
 import { SvgRasterizer } from '../infrastructure/svg-rasterizer';
+import { DifferenceSceneService } from './difference-scene.service';
 
 export const COMPOSED_VISUAL_PROVIDER = 'akwaan-composer';
 
@@ -49,7 +50,36 @@ export class ComposedVisualService {
   constructor(
     @Optional() private readonly rasterizer?: SvgRasterizer,
     @Optional() private readonly ingestion?: EngineImageIngestionService,
+    @Optional() private readonly differences?: DifferenceSceneService,
   ) {}
+
+  /**
+   * The picture's bytes: rasterised from the composer's drawing, or — for
+   * وش الفرق؟ — drawn by an image model and checked.
+   */
+  private async pictureBytes(
+    svg: string,
+    seed: string,
+    bomb: ReturnType<typeof composeBomb> | undefined,
+    notes: Record<string, unknown>,
+  ): Promise<Buffer | { failureReason: string }> {
+    if (!bomb?.difference) return this.rasterizer!.toPng(svg);
+    if (!this.differences)
+      return { failureReason: 'DIFFERENCE_IMAGE_MODEL_NOT_CONFIGURED' };
+    const split = seed.lastIndexOf(':');
+    const outcome = await this.differences.draw({
+      jobId: split > 0 ? seed.slice(0, split) : seed,
+      itemKey: split > 0 ? seed.slice(split + 1) : 'single',
+      request: bomb.difference,
+    });
+    if (outcome.status === 'failed')
+      return { failureReason: outcome.failureReason };
+    notes.differenceCheck = outcome.check;
+    notes.differenceArea = Math.round(outcome.area * 10_000) / 10_000;
+    notes.differenceAttempts = outcome.attempts;
+    notes.differenceSceneReused = outcome.sceneReused;
+    return outcome.png;
+  }
 
   async compose(
     familyKey: ComposedFamily,
@@ -80,12 +110,23 @@ export class ComposedVisualService {
       | { mediaPlan: CandidateMediaSlot[]; mediaReviewRevision: number }
       | undefined;
 
+    const pictureNotes: Record<string, unknown> = {};
     if (!this.rasterizer || !this.ingestion) {
       failureReason = 'COMPOSED_VISUAL_NOT_CONFIGURED';
     } else {
       try {
+        const bytes = await this.pictureBytes(
+          drawing.svg,
+          seed,
+          bomb,
+          pictureNotes,
+        );
+        if (!Buffer.isBuffer(bytes))
+          throw Object.assign(new Error(bytes.failureReason), {
+            code: bytes.failureReason,
+          });
         const stored = await this.ingestion.ingestBytes({
-          bytes: await this.rasterizer.toPng(drawing.svg),
+          bytes,
           acquisition: 'generate',
           provenance: {
             provider: COMPOSED_VISUAL_PROVIDER,
@@ -159,6 +200,7 @@ export class ComposedVisualService {
       ...(reading ? { variantKey: reading.variantKey } : {}),
       ...(bomb ? { variantKey: bomb.variantKey } : {}),
       ...((visual ?? reading) ? { value: (visual ?? reading)!.value } : {}),
+      ...pictureNotes,
       ...(failureReason ? { failureReason } : {}),
     };
 

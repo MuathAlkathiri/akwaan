@@ -10,6 +10,37 @@ import {
   round,
   seededRandom,
 } from './composed-kit';
+import {
+  ASSEMBLY_CLOSEST_VARIANTS,
+  AssemblyClosestFamily,
+  composeAssemblyClosest,
+  isAssemblyClosestFamily,
+} from './composed-closest-assembly';
+import {
+  OBSERVATION_CLOSEST_VARIANTS,
+  ObservationClosestFamily,
+  composeObservationClosest,
+  isObservationClosestFamily,
+} from './composed-closest-observation';
+import {
+  ERROR_CLOSEST_VARIANTS,
+  ErrorClosestFamily,
+  composeErrorClosest,
+  isErrorClosestFamily,
+} from './composed-closest-errors';
+import {
+  WORD_CLOSEST_VARIANTS,
+  WordClosestFamily,
+  composeWordClosest,
+  isWordClosestFamily,
+} from './composed-closest-words';
+import {
+  ClosestSlider,
+  PATH_CLOSEST_VARIANTS,
+  PathClosestFamily,
+  composePathClosest,
+  isPathClosestFamily,
+} from './composed-closest-paths';
 
 /**
  * مين أقرب, drawn: a picture whose answer is a number the engine worked out
@@ -18,6 +49,11 @@ import {
  * nearest wins, so the question needs no tolerance.
  */
 export const CLOSEST_VARIANTS = {
+  ...PATH_CLOSEST_VARIANTS,
+  ...ASSEMBLY_CLOSEST_VARIANTS,
+  ...OBSERVATION_CLOSEST_VARIANTS,
+  ...ERROR_CLOSEST_VARIANTS,
+  ...WORD_CLOSEST_VARIANTS,
   'key-door-route': ['key-door', 'star-first'],
   'cube-pile-count': ['square', 'long', 'tall'],
   'length-illusion-ratio': ['arrows', 'rails', 'circles'],
@@ -41,13 +77,7 @@ export interface ComposedReading {
   variant: string;
   value: number;
   prompt: string;
-  slider: {
-    mode: 'numeric-range';
-    min: number;
-    max: number;
-    step: number;
-    unit?: string;
-  };
+  slider: ClosestSlider;
   altText: string;
   concept: string;
   strategy: string;
@@ -636,6 +666,24 @@ export function composeClosest(
             seededRandom(`${familyKey}:variant:${seed}`)() * variants.length,
           )
         ];
+  if (isWordClosestFamily(familyKey))
+    return composeWordClosest(familyKey as WordClosestFamily, seed, chosen);
+  if (isErrorClosestFamily(familyKey))
+    return composeErrorClosest(familyKey as ErrorClosestFamily, seed, chosen);
+  if (isObservationClosestFamily(familyKey))
+    return composeObservationClosest(
+      familyKey as ObservationClosestFamily,
+      seed,
+      chosen,
+    );
+  if (isAssemblyClosestFamily(familyKey))
+    return composeAssemblyClosest(
+      familyKey as AssemblyClosestFamily,
+      seed,
+      chosen,
+    );
+  if (isPathClosestFamily(familyKey))
+    return composePathClosest(familyKey as PathClosestFamily, seed, chosen);
   switch (familyKey) {
     case 'key-door-route':
       return composeKeyDoor(seed, chosen);
