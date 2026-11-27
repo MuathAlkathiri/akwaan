@@ -53,6 +53,11 @@ import { EngineImageIngestionService } from './infrastructure/engine-image-inges
 import { SvgRasterizer } from './infrastructure/svg-rasterizer';
 import { ComposedVisualService } from './application/composed-visual.service';
 import { DifferenceSceneService } from './application/difference-scene.service';
+import { DifferenceSceneStore } from './infrastructure/difference-scene.store';
+import {
+  EngineDifferenceSceneDocument,
+  EngineDifferenceSceneSchema,
+} from './schemas/engine-difference-scene.schema';
 import { MediaStorageModule } from '../../common/uploads/media-storage.module';
 import { LocalImageStorageService } from '../../common/uploads/local-image-storage.service';
 import { ImageDownloadService } from '../ai-agent/infrastructure/assets/image-download.service';
@@ -146,6 +151,10 @@ import {
         name: EngineMediaLibraryDocument.name,
         schema: EngineMediaLibrarySchema,
       },
+      {
+        name: EngineDifferenceSceneDocument.name,
+        schema: EngineDifferenceSceneSchema,
+      },
     ]),
     // Explicit, though global in the app: the engine's media ingestion needs
     // the R2 mirror token even where the module is compiled on its own.
@@ -237,6 +246,7 @@ import {
     // مركّب الصور: pictures the engine draws itself.
     SvgRasterizer,
     ComposedVisualService,
+    DifferenceSceneStore,
     DifferenceSceneService,
     CandidateMediaReviewService,
     {

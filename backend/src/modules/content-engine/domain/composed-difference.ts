@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { pick, seededRandom, shuffled } from './composed-kit';
@@ -36,6 +37,12 @@ export interface DifferenceScene {
 export interface DifferenceRequest {
   sceneKey: string;
   thingKey: string;
+  /**
+   * Names one drawing of the scene: every item about this scene shares it,
+   * so the scene is drawn — and paid for — once. It changes when the scene's
+   * wording in the catalogue does, which is how a scene is drawn afresh.
+   */
+  sceneDrawingKey: string;
   /** The whole scene, every listed thing in it once. */
   drawPrompt: string;
   /** Take the one thing out; nothing else. */
@@ -154,6 +161,7 @@ export function composeDifference(
   ) as DifferenceVariant;
   const missingFrom = chosen === 'went-missing' ? 'second' : 'first';
   const listed = scene.things.map((other) => other.english).join('; ');
+  const drawPrompt = `${DIFFERENCE_STYLE}\n\nScene: ${scene.english}\n\nThe picture must clearly show each of these exactly once: ${listed}.`;
   return {
     variantKey: chosen,
     variant: `${chosen}:${scene.key}:${thing.key}`,
@@ -170,7 +178,8 @@ export function composeDifference(
     request: {
       sceneKey: scene.key,
       thingKey: thing.key,
-      drawPrompt: `${DIFFERENCE_STYLE}\n\nScene: ${scene.english}\n\nThe picture must clearly show each of these exactly once: ${listed}.`,
+      sceneDrawingKey: `${scene.key}:${createHash('sha256').update(drawPrompt).digest('hex').slice(0, 12)}`,
+      drawPrompt,
       editPrompt: `Remove ${thing.english} from this picture completely, and fill its place with whatever would naturally be behind it. Change nothing else at all: keep exactly the same composition, framing, people, colours, line style and every other object.`,
       thingEnglish: thing.english,
       missingFrom,

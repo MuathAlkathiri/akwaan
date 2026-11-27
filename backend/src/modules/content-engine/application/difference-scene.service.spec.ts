@@ -32,6 +32,8 @@ const build = async (
     verdict?: { inFirst: boolean; inSecond: boolean };
     noModel?: boolean;
     noVision?: boolean;
+    editModel?: string;
+    store?: { get: jest.Mock; put: jest.Mock };
   } = {},
 ) => {
   const original = await square(
@@ -45,6 +47,9 @@ const build = async (
     ...(options.noVision
       ? {}
       : { ENGINE_MEDIA_VISION_MODEL: 'openai/gpt-5-mini' }),
+    ...(options.editModel
+      ? { ENGINE_IMAGE_EDIT_MODEL: options.editModel }
+      : {}),
     ENGINE_PROVIDER_NAME: 'openrouter',
   };
   const budget = {
@@ -77,6 +82,7 @@ const build = async (
     budget as never,
     { get: (key: string) => settings[key] } as unknown as ConfigService,
     provider as never,
+    options.store as never,
   );
   return { service, budget, provider };
 };
@@ -142,6 +148,41 @@ describeNative('DifferenceSceneService', () => {
       status: 'failed',
       failureReason: 'DIFFERENCE_TOO_SMALL',
     });
+  });
+
+  it('draws a scene once: the next item about it reuses the drawing', async () => {
+    const kept = new Map<string, Buffer>();
+    const store = {
+      get: jest.fn(async (key: string) => kept.get(key)),
+      put: jest.fn(async (key: string, _model: string, png: Buffer) => {
+        kept.set(key, png);
+      }),
+    };
+    const { service, provider } = await build({ store });
+    const first = await service.draw({ jobId: 'job', itemKey: '0', request });
+    expect(first.status === 'drawn' && first.sceneReused).toBe(false);
+    expect(store.put).toHaveBeenCalledTimes(1);
+    expect([...kept.keys()][0]).toBe(
+      `${request.sceneDrawingKey}:google/gemini-3.1-flash-image`,
+    );
+    provider.generateText.mockClear();
+    const second = await service.draw({ jobId: 'job2', itemKey: '0', request });
+    expect(second.status === 'drawn' && second.sceneReused).toBe(true);
+    // No drawing this time: the edit and the check only.
+    expect(provider.generateText).toHaveBeenCalledTimes(2);
+    expect(store.put).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the thing out with the edit model when one is set', async () => {
+    const { service, provider } = await build({ editModel: 'cheap/edit' });
+    await service.draw({ jobId: 'job', itemKey: '0', request });
+    const models = provider.generateText.mock.calls.map(
+      (call) => (call as unknown as [{ model: string }])[0].model,
+    );
+    expect(models.slice(0, 2)).toEqual([
+      'google/gemini-3.1-flash-image',
+      'cheap/edit',
+    ]);
   });
 
   it('is unchecked, not confirmed, without a vision model', async () => {

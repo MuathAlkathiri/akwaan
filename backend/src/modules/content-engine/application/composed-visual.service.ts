@@ -77,6 +77,7 @@ export class ComposedVisualService {
     notes.differenceCheck = outcome.check;
     notes.differenceArea = Math.round(outcome.area * 10_000) / 10_000;
     notes.differenceAttempts = outcome.attempts;
+    notes.differenceSceneReused = outcome.sceneReused;
     return outcome.png;
   }
 

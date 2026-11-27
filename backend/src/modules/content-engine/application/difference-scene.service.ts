@@ -6,6 +6,7 @@ import {
   ENGINE_AI_PROVIDER,
   ENGINE_MEDIA_VISION_MODEL,
 } from '../domain/content-engine.constants';
+import { DifferenceSceneStore } from '../infrastructure/difference-scene.store';
 import {
   keepOneDifference,
   sideBySide,
@@ -14,6 +15,8 @@ import { EngineBudgetService } from './engine-budget.service';
 
 /** The model that draws: `ENGINE_IMAGE_MODEL`, e.g. google/gemini-3.1-flash-image. */
 export const ENGINE_IMAGE_MODEL = 'ENGINE_IMAGE_MODEL';
+/** The model that takes the thing out, when it is not the one that draws. */
+export const ENGINE_IMAGE_EDIT_MODEL = 'ENGINE_IMAGE_EDIT_MODEL';
 
 /** One picture out is ~1,300 tokens; the ceiling leaves room and is reserved whole. */
 const DRAW_PROMPT_TOKENS = 1_500;
@@ -50,6 +53,8 @@ export type DifferenceOutcome =
       area: number;
       strayArea: number;
       attempts: number;
+      /** True when the scene's drawing was already kept and cost nothing. */
+      sceneReused: boolean;
     }
   | { status: 'failed'; failureReason: string };
 
@@ -71,6 +76,7 @@ export class DifferenceSceneService {
     @Optional()
     @Inject(ENGINE_AI_PROVIDER)
     private readonly provider?: AiProvider,
+    @Optional() private readonly store?: DifferenceSceneStore,
   ) {}
 
   private imageModel(): string | undefined {
@@ -90,19 +96,23 @@ export class DifferenceSceneService {
         failureReason: 'DIFFERENCE_IMAGE_MODEL_NOT_CONFIGURED',
       };
 
-    const original = await this.picture(
-      model,
-      input,
-      'draw',
-      input.request.drawPrompt,
-    );
+    const editModel =
+      this.config.get<string>(ENGINE_IMAGE_EDIT_MODEL)?.trim() || model;
+
+    // The scene is drawn once and every item about it shares the drawing.
+    const sceneKey = `${input.request.sceneDrawingKey}:${model}`;
+    const kept = await this.store?.get(sceneKey);
+    const original =
+      kept ??
+      (await this.picture(model, input, 'draw', input.request.drawPrompt));
     if (typeof original === 'string')
       return { status: 'failed', failureReason: original };
+    if (!kept) await this.store?.put(sceneKey, model, original);
 
     let lastReason = 'DIFFERENCE_NOT_FOUND';
     for (let attempt = 1; attempt <= EDIT_ATTEMPTS; attempt += 1) {
       const edited = await this.picture(
-        model,
+        editModel,
         input,
         `edit-${attempt}`,
         input.request.editPrompt,
@@ -110,36 +120,32 @@ export class DifferenceSceneService {
       );
       if (typeof edited === 'string')
         return { status: 'failed', failureReason: edited };
-      const kept = await keepOneDifference(original, edited);
-      if (kept.area < MIN_DIFFERENCE_AREA) {
+      const one = await keepOneDifference(original, edited);
+      if (one.area < MIN_DIFFERENCE_AREA) {
         lastReason = 'DIFFERENCE_TOO_SMALL';
         continue;
       }
-      if (kept.area > MAX_DIFFERENCE_AREA) {
+      if (one.area > MAX_DIFFERENCE_AREA) {
         lastReason = 'DIFFERENCE_TOO_LARGE';
         continue;
       }
-      const check = await this.check(
-        input,
-        attempt,
-        kept.original,
-        kept.edited,
-      );
+      const check = await this.check(input, attempt, one.original, one.edited);
       if (check === 'wrong') {
         lastReason = 'DIFFERENCE_NOT_THE_THING_ASKED';
         continue;
       }
       const [first, second] =
         input.request.missingFrom === 'second'
-          ? [kept.original, kept.edited]
-          : [kept.edited, kept.original];
+          ? [one.original, one.edited]
+          : [one.edited, one.original];
       return {
         status: 'drawn',
         png: await sideBySide(first, second),
         check,
-        area: kept.area,
-        strayArea: kept.strayArea,
+        area: one.area,
+        strayArea: one.strayArea,
         attempts: attempt,
+        sceneReused: Boolean(kept),
       };
     }
     return { status: 'failed', failureReason: lastReason };

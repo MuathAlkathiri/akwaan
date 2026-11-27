@@ -42,6 +42,18 @@ describe('وش الفرق؟ (bomb-spot-difference)', () => {
     }
   });
 
+  it('names one drawing per scene, whatever thing is asked', () => {
+    const byScene = new Map<string, Set<string>>();
+    for (let ordinal = 0; ordinal < differenceDeck().length; ordinal += 1) {
+      const { request } = composeDifference(`job:${ordinal}`, 'went-missing');
+      if (!byScene.has(request.sceneKey))
+        byScene.set(request.sceneKey, new Set());
+      byScene.get(request.sceneKey)!.add(request.sceneDrawingKey);
+    }
+    expect(byScene.size).toBe(differenceScenes().length);
+    for (const keys of byScene.values()) expect(keys.size).toBe(1);
+  });
+
   it('says which picture lacks the thing', () => {
     expect(composeDifference('j:0', 'went-missing').request.missingFrom).toBe(
       'second',
